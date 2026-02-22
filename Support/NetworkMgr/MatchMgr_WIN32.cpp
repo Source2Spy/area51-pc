@@ -777,6 +777,7 @@ void match_mgr::UpdateState( f32 DeltaTime)
             SetState( MATCH_IDLE );
             break;
         }
+        break;
 
         //-----------------------------------------------------
 
