@@ -4,6 +4,8 @@
 //
 //=========================================================================
 
+// TODO: GS: Rework this file for PC platform.
+
 #include "entropy.hpp"
 
 #include "ui\ui_text.hpp"
@@ -489,17 +491,25 @@ void dlg_online_connect::OnPadSelect( ui_win* pWin )
             }
             else
             {
+#ifndef TARGET_PC
                 g_StateMgr.Reboot( REBOOT_NEWUSER );
                 // create a new user account
                 // XBOX- exit game and go to dashboard
                 ASSERTS( FALSE ,"Boot to XBOX Dashboard here" );
+#else
+                SetConnectState( CONNECT_DISCONNECT );
+#endif
             }
         }
         break;
 
         //------------------------------------------------------
     case CONNECT_FAILED_WAIT:
+#ifndef TARGET_PC
         g_StateMgr.Reboot( REBOOT_MANAGE );
+#else
+        SetConnectState( CONNECT_DISCONNECT );
+#endif
         break;
         //------------------------------------------------------
     default:
@@ -877,12 +887,14 @@ void dlg_online_connect::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                         m_PopUpResult = DLG_POPUP_IDLE;
                     }
 
+#ifndef TARGET_PC
                     // fade in DNAS logo
                     m_bRenderLogo[LOGO_DNAS_OK]     = TRUE;
                     m_bIsFading[LOGO_DNAS_OK]       = TRUE;
                     m_bFadeIn[LOGO_DNAS_OK]         = TRUE;
                     m_LogoAlpha[LOGO_DNAS_OK]       = 0.0f;
                     m_FadeStep[LOGO_DNAS_OK]        = 256.0f / 0.8f;
+#endif
 
                     xwstring MessageText  = g_StringTableMgr( "ui", "IDS_ONLINE_PLEASE_WAIT" );
                     MessageText += "\n";
@@ -1027,8 +1039,12 @@ void dlg_online_connect::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                     case CANCEL_MANAGE:
                         if( Result==DLG_POPUP_YES )
                         {
+#ifndef TARGET_PC
                             g_StateMgr.Reboot( REBOOT_MANAGE );
                             ASSERT( FALSE );
+#else
+                            SetConnectState( CONNECT_DISCONNECT );
+#endif
                         }
                         else
                         {
@@ -1038,8 +1054,12 @@ void dlg_online_connect::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                     case CANCEL_RETRY_MANAGE:
                         if( Result==DLG_POPUP_YES )
                         {
+#ifndef TARGET_PC
                             g_StateMgr.Reboot( REBOOT_MANAGE );
                             ASSERT( FALSE );
+#else
+                            SetConnectState( CONNECT_DISCONNECT );
+#endif
                         }
                         else if( Result==DLG_POPUP_NO )
                         {
@@ -1612,6 +1632,16 @@ void dlg_online_connect::UpdateActivateInit( void )
     interface_info Info;
 
     net_GetInterfaceInfo(-1,Info);
+
+#ifdef TARGET_PC
+    m_Info   = Info;
+    m_Done   = FALSE;
+    m_Error  = 0;
+    m_Timeout = 0.0f;
+    SetConnectState( CONNECT_MATCH_INIT );
+    return;
+#endif
+
     if( Info.Address == 0 )
     {
         s32 Count;
@@ -1867,9 +1897,12 @@ void dlg_online_connect::UpdateAuthMachine( void )
     // is more than one user account, and the player needs to provide input, or needs to be presented
     // with other options (such as boot-to-dash etc).
     //
-    // wait for logo to fade in
+
+#ifndef TARGET_PC
+    // wait for logo to fade in	
     if( m_bIsFading[LOGO_DNAS_OK] )
         return;
+#endif
 
     if( g_MatchMgr.IsBusy() )
     {
@@ -1936,11 +1969,13 @@ void dlg_online_connect::UpdateAuthMachine( void )
                     m_PopUp->Close();
                     m_PopUp=NULL;
                 }
+#ifndef TARGET_PC
                 // fade out DNAS logo
                 m_bIsFading[LOGO_DNAS_OK]       = TRUE;
                 m_bFadeIn[LOGO_DNAS_OK]         = FALSE;
                 m_LogoAlpha[LOGO_DNAS_OK]       = 255.0f;
                 m_FadeStep[LOGO_DNAS_OK]        = 256.0f / 0.8f;
+#endif
             }
             break;
         case AUTH_STAT_SELECT_USER:
@@ -2000,14 +2035,16 @@ void dlg_online_connect::UpdateAuthMachine( void )
             break;
         }
 
+#ifndef TARGET_PC
         if( g_MatchMgr.GetAuthStatus() != AUTH_STAT_CONNECTED )
         {
-            // fade in DNAS failed logo
+            // fade in DNAS failed logo			
             m_bIsFading[LOGO_DNAS_ERROR]    = TRUE;
             m_bFadeIn[LOGO_DNAS_ERROR]      = TRUE;
             m_bRenderLogo[LOGO_DNAS_ERROR]  = TRUE;
             m_LogoAlpha[LOGO_DNAS_ERROR]    = 0.0f;
             m_FadeStep[LOGO_DNAS_ERROR]     = 256.0f / 0.267f;
         }
+#endif
     }
 }
