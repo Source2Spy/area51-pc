@@ -471,7 +471,6 @@ void dlg_online_main::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     }
     else
     {
-#if defined(TARGET_PS2)
         //
         // There are several stages to this check. First, we need to wait until the HDD unit is ready.
         // Then, we load the version information from the HDD unit and compare this against the current
@@ -538,6 +537,5 @@ void dlg_online_main::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             ASSERT( FALSE );
             break;
         }
-#endif // defined(TARGET_PS2)
     }
 }
