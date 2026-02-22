@@ -91,8 +91,8 @@ gpiStartProfileSearch(
 	rcode = connect(data->sock, (struct sockaddr *)&address, sizeof(struct sockaddr_in));
 	if(rcode == SOCKET_ERROR)
 	{
-//		int error = GOAGetLastError(data->sock);
-//      if((error != WSAEWOULDBLOCK) && (error != WSAEINPROGRESS))
+		int error = GOAGetLastError(data->sock);
+		if((error != WSAEWOULDBLOCK) && (error != WSAEINPROGRESS))
 		{
 			CallbackFatalError(connection, GP_NETWORK_ERROR, GP_NETWORK, "There was an error connecting a socket.");
 		}

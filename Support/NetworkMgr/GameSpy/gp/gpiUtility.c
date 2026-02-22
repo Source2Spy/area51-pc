@@ -355,7 +355,6 @@ gpiCheckSocketConnect(
   int * state
 )
 {
-#if 0
 	int aWriteFlag  = 0;
 	int aExceptFlag = 0;
 	int aReturnCode = 0;
@@ -390,28 +389,6 @@ gpiCheckSocketConnect(
 		}
 	}
 
-#else
-    // need to attempt to connect socket again.
-    struct hostent* host;
-    int             rcode;
-    struct sockaddr_in address;
-#define GPI_CONNECTION_MANAGER_PORT    29900
-
-    host = gethostbyname( GPConnectionManagerHostname );
-    memset(&address, 0, sizeof(address));
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = *(unsigned int *)host->h_addr_list[0];
-    assert(address.sin_addr.s_addr != 0);
-    address.sin_port = htons(GPI_CONNECTION_MANAGER_PORT);
-    rcode = connect(sock, (struct sockaddr*)&address,sizeof(struct sockaddr_in));
-    if( rcode!=SOCKET_ERROR )
-    {
-        *state = GPI_CONNECTED;
-        return GP_NO_ERROR;
-    }
-    (void)state;
-    (void)connection;
-#endif
 	// Not connected yet.
 	/////////////////////
 	*state = GPI_NOT_CONNECTED;
