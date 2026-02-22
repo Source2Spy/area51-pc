@@ -61,13 +61,6 @@ enum connect_mode
     CONNECT_MODE_AUTH_USER,
 };
 
-enum dnas_logos
-{
-    LOGO_DNAS_OK = 0,
-    LOGO_DNAS_ERROR,
-    NUM_DNAS_LOGOS,
-};
-
 enum cancel_mode
 {
     CANCEL_MANAGE,
@@ -149,17 +142,7 @@ protected:
     s32                 m_RenderDelay;
 
     cancel_mode         m_CancelMode;
-    connect_states      m_RetryDestination;
-
-    // DNAS logo controls
-    s32                 m_DNASIconID[NUM_DNAS_LOGOS];
-    xbool               m_bRenderLogo[NUM_DNAS_LOGOS];
-    xbool               m_bIsFading[NUM_DNAS_LOGOS];
-    xbool               m_bFadeIn[NUM_DNAS_LOGOS];
-    f32                 m_FadeStep[NUM_DNAS_LOGOS];
-    f32                 m_LogoAlpha[NUM_DNAS_LOGOS];
-
-    
+    connect_states      m_RetryDestination; 
 };
 
 //==============================================================================

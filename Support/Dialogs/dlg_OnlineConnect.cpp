@@ -4,8 +4,6 @@
 //
 //=========================================================================
 
-// TODO: GS: Rework this file for PC platform.
-
 #include "entropy.hpp"
 
 #include "ui\ui_text.hpp"
@@ -183,22 +181,6 @@ xbool dlg_online_connect::Create( s32                        UserID,
     // initialize connect state
     m_ConnectState = CONNECT_IDLE;
 
-    // load bitmaps
-    m_DNASIconID[LOGO_DNAS_OK]    = g_UiMgr->LoadBitmap( "DNAS_OK",     "UI_DNAS_OK.xbmp"      );
-    m_DNASIconID[LOGO_DNAS_ERROR] = g_UiMgr->LoadBitmap( "DNAS_ERROR",  "UI_DNAS_ERROR.xbmp"   );
-
-    // initialize DNAS logo controls
-    m_bRenderLogo[LOGO_DNAS_OK]     = FALSE;
-    m_bIsFading[LOGO_DNAS_OK]       = FALSE;
-    m_bFadeIn[LOGO_DNAS_OK]         = FALSE;
-    m_LogoAlpha[LOGO_DNAS_OK]       = 0.0f;
-
-    m_bRenderLogo[LOGO_DNAS_ERROR]  = FALSE;
-    m_bIsFading[LOGO_DNAS_ERROR]    = FALSE;
-    m_bFadeIn[LOGO_DNAS_ERROR]      = FALSE;
-    m_LogoAlpha[LOGO_DNAS_ERROR]    = 0.0f;
-
-
     // disable highlight
     g_UiMgr->DisableScreenHighlight();
     m_Position = Position;
@@ -223,10 +205,6 @@ void dlg_online_connect::Destroy( void )
 
     // kill screen wipe
     g_UiMgr->ResetScreenWipe();
-
-    // unload bitmaps
-    g_UiMgr->UnloadBitmap( "DNAS_OK"    );
-    g_UiMgr->UnloadBitmap( "DNAS_ERROR" );
 }
 
 //=========================================================================
@@ -242,8 +220,7 @@ void dlg_online_connect::Render( s32 ox, s32 oy )
     s32     YRes;
 
     eng_GetRes( XRes, YRes );
-    // Nasty hack to force PS2 to draw to rb.l = 0
-    rb.Set( -1, 0, XRes, YRes );
+
     g_UiMgr->RenderGouraudRect( rb, xcolor(0,0,0,180),
         xcolor(0,0,0,180),
         xcolor(0,0,0,180),
@@ -295,42 +272,6 @@ void dlg_online_connect::Render( s32 ox, s32 oy )
 
     // render the normal dialog stuff
     ui_dialog::Render( ox, oy );
-
-    // render DNAS logos
-    s32 tempW = (m_CurrPos.l + m_CurrPos.r) / 2;
-#if defined(TARGET_PS2)
-    xbool PalMode;
-    irect textPos;
-    eng_GetPALMode( PalMode );
-    if( PalMode )
-    {
-        textPos.Set( tempW-150, 370, tempW+150, 50 );
-    }
-    else
-    {
-        textPos.Set( tempW-150, 320, tempW+150, 50 );
-    }
-#else
-	irect textPos;
-	textPos.Set( tempW-150, 320, tempW+150, 50 );
-#endif	
-
-    // Now render any logos that should be on screen.
-    rb.l = tempW - 64;
-    rb.r = tempW + 64;
-    rb.t = m_CurrPos.t + 10;
-    rb.b = m_CurrPos.t + 10 + 128;
-
-    for( s32 l=0; l<NUM_DNAS_LOGOS; l++ )
-    {
-        if( m_bRenderLogo[l] )
-        {
-            xcolor LogoColor( 255, 255, 255, (u8)m_LogoAlpha[l] );
-            g_UiMgr->RenderBitmap( m_DNASIconID[l], rb, LogoColor );
-            g_UiMgr->RenderText_Wrap( 1, textPos, ui_font::h_center|ui_font::v_top, xcolor(255,252,204,(u8)m_LogoAlpha[l]), g_StringTableMgr("ui", "IDS_DNAS_SONY_MESSAGE") );
-        }
-    }
-
 
     // render the glow bar
     g_UiMgr->RenderGlowBar();
@@ -491,25 +432,14 @@ void dlg_online_connect::OnPadSelect( ui_win* pWin )
             }
             else
             {
-#ifndef TARGET_PC
-                g_StateMgr.Reboot( REBOOT_NEWUSER );
-                // create a new user account
-                // XBOX- exit game and go to dashboard
-                ASSERTS( FALSE ,"Boot to XBOX Dashboard here" );
-#else
                 SetConnectState( CONNECT_DISCONNECT );
-#endif
             }
         }
         break;
 
         //------------------------------------------------------
     case CONNECT_FAILED_WAIT:
-#ifndef TARGET_PC
-        g_StateMgr.Reboot( REBOOT_MANAGE );
-#else
         SetConnectState( CONNECT_DISCONNECT );
-#endif
         break;
         //------------------------------------------------------
     default:
@@ -625,53 +555,6 @@ void dlg_online_connect::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     }
     else
     {
-        // update DNAS logo fading
-        for( s32 l=0; l<NUM_DNAS_LOGOS; l++ )
-        {
-            if( m_bIsFading[l] )
-            {
-                if( m_bFadeIn[l] )
-                {
-                    // fade in
-                    m_LogoAlpha[l] += (m_FadeStep[l] * DeltaTime );
-
-                    if( m_LogoAlpha[l] >= 255.0f )
-                    {
-                        m_LogoAlpha[l] = 255.0f;
-
-                        if( l == LOGO_DNAS_ERROR )
-                        {
-                            // now fade out 
-                            m_bIsFading[LOGO_DNAS_OK]       = TRUE;
-                            m_bFadeIn[LOGO_DNAS_OK]         = FALSE;
-                            m_LogoAlpha[LOGO_DNAS_OK]       = 255;
-                            m_FadeStep[LOGO_DNAS_OK]        = 256.0f / 0.8f;
-
-                            m_bIsFading[LOGO_DNAS_ERROR]    = TRUE;
-                            m_bFadeIn[LOGO_DNAS_ERROR]      = FALSE;
-                            m_LogoAlpha[LOGO_DNAS_ERROR]    = 255;
-                            m_FadeStep[LOGO_DNAS_ERROR]     = 256.0f / 0.8f;
-                        }
-                        else
-                        {
-                            m_bIsFading[l] = FALSE;
-                        }
-                    }
-                }
-                else
-                {
-                    // fade out
-                    m_LogoAlpha[l] -= (m_FadeStep[l] * DeltaTime );
-
-                    if( m_LogoAlpha[l] <= 0.0f )
-                    {
-                        m_LogoAlpha[l]   = 0.0f;
-                        m_bIsFading[l]   = FALSE;
-                        m_bRenderLogo[l] = FALSE;
-                    }
-                }
-            }
-        }
         if( g_StateMgr.IsBackgroundThreadRunning() )
         {
             // update the glow bar
@@ -683,7 +566,7 @@ void dlg_online_connect::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         {
             m_PopUp = NULL;
         }
-        if( ( g_UiMgr->IsWipeActive() == FALSE ) && ( m_bIsFading[LOGO_DNAS_OK] == FALSE ) && ( m_bIsFading[LOGO_DNAS_ERROR] == FALSE ) )
+        if( ( g_UiMgr->IsWipeActive() == FALSE ) )
         {
             // window is scaled to correct size - do the main update
             switch( m_ConnectState )
@@ -762,9 +645,6 @@ void dlg_online_connect::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                         if ( (m_Error==ATTACH_STATUS_CONFIGURED) ||
                             (m_Error==ATTACH_STATUS_ATTACHED) )
                         {
-                            net_ActivateConfig(TRUE);
-                            // This will force us to load a patch from the memory card if it is present.
-                            //*** This is only for PS2 ***
                             SetConnectState( ACTIVATE_WAIT_DHCP );
                         }
                         else
@@ -887,15 +767,6 @@ void dlg_online_connect::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                         m_PopUpResult = DLG_POPUP_IDLE;
                     }
 
-#ifndef TARGET_PC
-                    // fade in DNAS logo
-                    m_bRenderLogo[LOGO_DNAS_OK]     = TRUE;
-                    m_bIsFading[LOGO_DNAS_OK]       = TRUE;
-                    m_bFadeIn[LOGO_DNAS_OK]         = TRUE;
-                    m_LogoAlpha[LOGO_DNAS_OK]       = 0.0f;
-                    m_FadeStep[LOGO_DNAS_OK]        = 256.0f / 0.8f;
-#endif
-
                     xwstring MessageText  = g_StringTableMgr( "ui", "IDS_ONLINE_PLEASE_WAIT" );
                     MessageText += "\n";
                     MessageText += g_StringTableMgr( "ui", "IDS_ONLINE_CONNECT_AUTHENTICATING" );
@@ -997,14 +868,6 @@ void dlg_online_connect::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                     xstring LabelText( g_StringTableMgr( "ui", m_LabelText ) );
                     xwstring ErrorText( xfs(LabelText, m_LastErrorCode ) );
                     xwstring Title( g_StringTableMgr( "ui", "IDS_SIGN_IN") );
-                    // ** HACK ALERT **
-                    // This is a hack to make sure the error dialog title matches the type of error.
-                    // if the error message says "DNAS Error", we change the default title text 
-                    // from "Network Error" to "DNAS Error". 
-                    if( ErrorText.Find( g_StringTableMgr( "ui", "IDS_DNAS_ERROR")) != -1 )
-                    {
-                        Title = g_StringTableMgr( "ui", "IDS_DNAS_ERROR" );
-                    }
 
                     if( m_PopUp==NULL )
                     {
@@ -1039,12 +902,8 @@ void dlg_online_connect::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                     case CANCEL_MANAGE:
                         if( Result==DLG_POPUP_YES )
                         {
-#ifndef TARGET_PC
-                            g_StateMgr.Reboot( REBOOT_MANAGE );
-                            ASSERT( FALSE );
-#else
                             SetConnectState( CONNECT_DISCONNECT );
-#endif
+                            ASSERT( FALSE );						
                         }
                         else
                         {
@@ -1054,12 +913,8 @@ void dlg_online_connect::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                     case CANCEL_RETRY_MANAGE:
                         if( Result==DLG_POPUP_YES )
                         {
-#ifndef TARGET_PC
-                            g_StateMgr.Reboot( REBOOT_MANAGE );
-                            ASSERT( FALSE );
-#else
                             SetConnectState( CONNECT_DISCONNECT );
-#endif
+                            ASSERT( FALSE );	
                         }
                         else if( Result==DLG_POPUP_NO )
                         {
@@ -1089,15 +944,6 @@ void dlg_online_connect::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                     xwstring ErrorText( xfs(LabelText, m_LastErrorCode ) );
                     xwstring Title( g_StringTableMgr( "ui", "IDS_SIGN_IN") );
 
-                    // ** HACK ALERT **
-                    // This is a hack to make sure the error dialog title matches the type of error.
-                    // if the error message says "DNAS Error", we change the default title text 
-                    // from "Network Error" to "DNAS Error". 
-                    if( ErrorText.Find( g_StringTableMgr( "ui", "IDS_DNAS_ERROR")) != -1 )
-                    {
-                        Title = g_StringTableMgr( "ui", "IDS_DNAS_ERROR" );
-                    }
-
                     ASSERT( m_PopUp==NULL );
                     if( m_PopUp )
                     {
@@ -1123,7 +969,6 @@ void dlg_online_connect::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                     m_pNavText->SetFlag(ui_win::WF_VISIBLE, FALSE);
                     g_StateMgr.KillFrontEndMusic();
                     g_StateMgr.StartBackgroundRendering();
-                    net_ActivateConfig( FALSE );
                     g_NetworkMgr.SetOnline( FALSE );
                     g_StateMgr.StopBackgroundRendering();
                     //
@@ -1290,7 +1135,6 @@ void dlg_online_connect::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                 //------------------------------------------
             case CONNECT_DONE:
 
-                if( m_LogoAlpha[LOGO_DNAS_OK] <= 0.0f )
                 {
                     ASSERT( m_PopUp==NULL );
                     irect r(0,0,300,160);
@@ -1407,6 +1251,7 @@ void dlg_online_connect::RefreshUserList( void )
 
 //=========================================================================
 // Will give option of managing or dropping back to main menu
+
 void dlg_online_connect::Failed( const char* pFailureReason, s32 ErrorCode, cancel_mode CancelMode, connect_states RetryDestination )
 {
     (void)ErrorCode;
@@ -1427,6 +1272,7 @@ void dlg_online_connect::Failed( const char* pFailureReason, s32 ErrorCode, canc
 }
 
 //=========================================================================
+
 void dlg_online_connect::SetConnectState( connect_states State )
 {
     LOG_MESSAGE( "dlg_online_connect::SetConnectState","State transition from %s to %s",StateName( m_ConnectState ), StateName( State ) );
@@ -1435,6 +1281,7 @@ void dlg_online_connect::SetConnectState( connect_states State )
 }
 
 //=========================================================================
+
 const char* dlg_online_connect::StateName( connect_states State )
 {
     switch( State )
@@ -1475,6 +1322,7 @@ const char* dlg_online_connect::StateName( connect_states State )
 //=========================================================================
 // Right now, this is only ever used to make sure we start user authentication
 // instead of initial machine authentication.
+
 void dlg_online_connect::Configure( connect_mode ConnectMode )
 {
     switch( ConnectMode )
@@ -1491,7 +1339,7 @@ void dlg_online_connect::Configure( connect_mode ConnectMode )
         break;
     case CONNECT_MODE_CONNECT:
         // Set up default unique id from the hardware ID prior to
-        // getting authentication from DNAS.
+        // connecting to the matchmaker.
         SetConnectState( CONNECT_INIT );
         break;
     default:
@@ -1500,6 +1348,7 @@ void dlg_online_connect::Configure( connect_mode ConnectMode )
 }
 
 //=========================================================================
+
 s32 dlg_online_connect::PopulateConfigurationList( void )
 {
     // We go through our list of potential devices holding the configuration, then we add
@@ -1589,6 +1438,7 @@ s32 dlg_online_connect::PopulateConfigurationList( void )
 }
 
 //=========================================================================
+
 void dlg_online_connect::UpdateConnectInit( void )
 {
     if( g_NetworkMgr.IsOnline() )
@@ -1627,11 +1477,14 @@ void dlg_online_connect::UpdateConnectInit( void )
 }
 
 //=========================================================================
+
 void dlg_online_connect::UpdateActivateInit( void )
 {
     interface_info Info;
 
     net_GetInterfaceInfo(-1,Info);
+
+// Later, TODO
 
 #ifdef TARGET_PC
     m_Info   = Info;
@@ -1770,6 +1623,7 @@ void dlg_online_connect::UpdateActivateInit( void )
 
 
 //=========================================================================
+
 void dlg_online_connect::UpdateAuthUser( void )
 {
     //
@@ -1889,6 +1743,7 @@ void dlg_online_connect::UpdateAuthUser( void )
 }
 
 //=========================================================================
+
 void dlg_online_connect::UpdateAuthMachine( void )
 {
     //
@@ -1897,12 +1752,6 @@ void dlg_online_connect::UpdateAuthMachine( void )
     // is more than one user account, and the player needs to provide input, or needs to be presented
     // with other options (such as boot-to-dash etc).
     //
-
-#ifndef TARGET_PC
-    // wait for logo to fade in	
-    if( m_bIsFading[LOGO_DNAS_OK] )
-        return;
-#endif
 
     if( g_MatchMgr.IsBusy() )
     {
@@ -1969,13 +1818,6 @@ void dlg_online_connect::UpdateAuthMachine( void )
                     m_PopUp->Close();
                     m_PopUp=NULL;
                 }
-#ifndef TARGET_PC
-                // fade out DNAS logo
-                m_bIsFading[LOGO_DNAS_OK]       = TRUE;
-                m_bFadeIn[LOGO_DNAS_OK]         = FALSE;
-                m_LogoAlpha[LOGO_DNAS_OK]       = 255.0f;
-                m_FadeStep[LOGO_DNAS_OK]        = 256.0f / 0.8f;
-#endif
             }
             break;
         case AUTH_STAT_SELECT_USER:
@@ -2009,20 +1851,9 @@ void dlg_online_connect::UpdateAuthMachine( void )
         case AUTH_STAT_URGENT_MESSAGE:
             SetConnectState( CONNECT_REQUIRED_MESSAGE );
             break;
-        case AUTH_STAT_CANNOT_CONNECT:            // DNAS failure on ps2, xbox may have other error problem.
-            //
+        case AUTH_STAT_CANNOT_CONNECT:
             {
-#if 0
-                s32 ErrorCode = g_MatchMgr.GetConnectErrorCode();
-                if( (ErrorCode>-800) && (ErrorCode<=-700) )
-                {
-                    Failed( g_MatchMgr.GetConnectErrorMessage(), g_MatchMgr.GetConnectErrorCode(), CANCEL_MANAGE );
-                }
-                else
-#endif
-                {
-                    Failed( g_MatchMgr.GetConnectErrorMessage(), g_MatchMgr.GetConnectErrorCode(), CANCEL_RETRY_MANAGE );
-                }
+                Failed( g_MatchMgr.GetConnectErrorMessage(), g_MatchMgr.GetConnectErrorCode(), CANCEL_RETRY_MANAGE );
             }
             break;
         case AUTH_STAT_DISCONNECTED:
@@ -2030,21 +1861,8 @@ void dlg_online_connect::UpdateAuthMachine( void )
             break;
         default:
             ASSERT( FALSE );
-            //Failed( "IDS_SIGN_IN_NO_CONNECTION" );
             Failed( "IDS_ONLINE_CONNECT_MATCHMAKER_FAILED" );
             break;
         }
-
-#ifndef TARGET_PC
-        if( g_MatchMgr.GetAuthStatus() != AUTH_STAT_CONNECTED )
-        {
-            // fade in DNAS failed logo			
-            m_bIsFading[LOGO_DNAS_ERROR]    = TRUE;
-            m_bFadeIn[LOGO_DNAS_ERROR]      = TRUE;
-            m_bRenderLogo[LOGO_DNAS_ERROR]  = TRUE;
-            m_LogoAlpha[LOGO_DNAS_ERROR]    = 0.0f;
-            m_FadeStep[LOGO_DNAS_ERROR]     = 256.0f / 0.267f;
-        }
-#endif
     }
 }
