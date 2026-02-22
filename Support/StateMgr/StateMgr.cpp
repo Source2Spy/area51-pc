@@ -4928,21 +4928,7 @@ void state_mgr::UpdateOnlineConnect( void )
                     // set nickname
                     player_profile& ActiveProfile = GetActiveProfile( GetProfileListIndex(0) );
                     g_MatchMgr.SetNickname( ActiveProfile.GetProfileName() );
-
-#ifdef TARGET_XBOX
                     SetState( SM_ONLINE_AUTHENTICATE );
-#else
-                    if( ActiveProfile.m_bAgeVerified )
-                    {
-                        // authenticate this user account
-                        SetState( SM_ONLINE_AUTHENTICATE );
-                    }
-                    else
-                    {
-                        // verify age of profile user
-                        SetState( SM_ONLINE_COPA );
-                    }
-#endif
                 }
                 else
                 {
@@ -5009,20 +4995,7 @@ void state_mgr::UpdateOnlineProfileSelect( void )
         {
             case DIALOG_STATE_SELECT:
             {
-#ifdef TARGET_XBOX
                 SetState( SM_ONLINE_AUTHENTICATE );
-#else
-                if( GetActiveProfile(0).m_bAgeVerified )
-                {
-                    // authenticate this user account
-                    SetState( SM_ONLINE_AUTHENTICATE );
-                }
-                else
-                {
-                    // verify age of profile user
-                    SetState( SM_ONLINE_COPA );
-                }
-#endif
             }
             break;
 
@@ -12285,21 +12258,7 @@ void state_mgr::UpdateOnlineMemcardSelect( void )
 
         if( DialogState == DIALOG_STATE_SELECT )
         {
-#ifdef TARGET_XBOX
             SetState( SM_ONLINE_AUTHENTICATE );
-#else
-            // save profile was successful
-            if( GetActiveProfile(0).m_bAgeVerified )
-            {
-                // authenticate this user account
-                SetState( SM_ONLINE_AUTHENTICATE );
-            }
-            else
-            {
-                // verify age of profile user
-                SetState( SM_ONLINE_COPA );
-            }
-#endif
         }
         if( DialogState == DIALOG_STATE_BACK )
         {
