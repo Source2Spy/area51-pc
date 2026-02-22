@@ -5072,14 +5072,7 @@ void state_mgr::UpdateOnlineProfileOptions( void )
 
                     case IDC_PROFILE_OPTIONS_ACCEPT:
                     {
-                    #ifdef TARGET_PC
-                        SetState( SM_ONLINE_MAIN_MENU );
-                    #elif (defined TARGET_XBOX)
                         SetState( SM_ONLINE_AUTHENTICATE );
-                    #else
-                        // go to memcard select to save the profile
-                        SetState( SM_ONLINE_MEMCARD_SELECT );  
-                    #endif
                     }
                     break;
                 }
