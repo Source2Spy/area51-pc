@@ -772,36 +772,5 @@
       <Filter>Downloader\zlib</Filter>
     </ClInclude>
     <ClInclude Include="NetworkMgr.hpp" />
-    <ClInclude Include="Blender.hpp" />
-    <ClInclude Include="Blowfish.h" />
-    <ClInclude Include="DebugTicker.hpp" />
-    <ClInclude Include="Dh.hpp" />
-    <ClInclude Include="GameSpy\available.h" />
-    <ClInclude Include="GameSpy\callbackprototypes.hpp" />
-    <ClInclude Include="GameSpy\callbacks.hpp" />
-    <ClInclude Include="GameSpy\darray.h" />
-    <ClInclude Include="GameSpy\EntropyAbstraction.h" />
-    <ClInclude Include="GameSpy\hashtable.h" />
-    <ClInclude Include="GameSpy\md5.h" />
-    <ClInclude Include="GameSpy\nonport.h" />
-    <ClInclude Include="GameSpy\stringutil.h" />
-    <ClInclude Include="int.h" />
-    <ClInclude Include="integer.h" />
-    <ClInclude Include="MatchMgr.hpp" />
-    <ClInclude Include="Move.hpp" />
-    <ClInclude Include="MoveMgr.hpp" />
-    <ClInclude Include="MsgQueue.hpp" />
-    <ClInclude Include="NetObj.hpp" />
-    <ClInclude Include="NetObjMgr.hpp" />
-    <ClInclude Include="NetPickup.hpp" />
-    <ClInclude Include="NetPlayer.hpp" />
-    <ClInclude Include="NetRocket.hpp" />
-    <ClInclude Include="ServerVersion.hpp" />
-    <ClInclude Include="Voice\Headset.hpp" />
-    <ClInclude Include="Voice\Logitech\Include\liblgaud.h" />
-    <ClInclude Include="Voice\Logitech\Include\liblgcodec.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Voice\Logitech\Lib\liblgaud.lib" />
   </ItemGroup>
 </Project>
