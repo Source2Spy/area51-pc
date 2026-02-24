@@ -1300,7 +1300,7 @@ void match_mgr::EnterState( match_mgr_state NewState )
             }
             else
             {
-                NNBeginNegotiationWithSocket( (SOCKET)m_pSocket, m_SessionID, 1, gamespy_nat_progress, gamespy_nat_complete, this );
+                NNBeginNegotiationWithSocket( m_pSocket->GetHandle(), m_SessionID, 1, gamespy_nat_progress, gamespy_nat_complete, this );
             }
         }
         break;
@@ -1932,24 +1932,24 @@ void match_mgr::SetState( match_mgr_state NewState )
             m_RegistrationComplete = TRUE;
             m_UpdateRegistration   = FALSE;
             QueryError = qr2_init_socket(   
-                NULL,                   // query record?
-                (SOCKET)m_pSocket,      // Local Socket
-                m_pSocket->GetPort(),   // Local Port
-                GAMESPY_GAMENAME,       // Game Name
-                GAMESPY_SECRETKEY,      // Secret Key
-#if defined( ENABLE_LAN_LOOKUP )
-                SBFalse,                // Is Public
-#else
-                SBTrue,                 // Is Public
-#endif
-                SBTrue,                 // Perform NAT negotiation
-                gamespy_serverkey,      // Server key probe
-                gamespy_playerkey,      // Player key probe
-                gamespy_teamkey,        // Team key probe
-                gamespy_keylist,        // Give our list of keys?
-                gamespy_count,          // Player counts?
-                gamespy_adderror,       // Some error?
-                this);                  // User data
+                NULL,                           // query record?
+                m_pSocket->GetHandle(),         // Local Socket
+                m_pSocket->GetPort(),           // Local Port
+                GAMESPY_GAMENAME,               // Game Name
+                GAMESPY_SECRETKEY,              // Secret Key
+#if defined( ENABLE_LAN_LOOKUP )                
+                SBFalse,                        // Is Public
+#else                                           
+                SBTrue,                         // Is Public
+#endif                                          
+                SBTrue,                         // Perform NAT negotiation
+                gamespy_serverkey,              // Server key probe
+                gamespy_playerkey,              // Player key probe
+                gamespy_teamkey,                // Team key probe
+                gamespy_keylist,                // Give our list of keys?
+                gamespy_count,                  // Player counts?
+                gamespy_adderror,               // Some error?
+                this);                          // User data
 
             qr2_register_natneg_callback( NULL, gamespy_nat_negotiate );
             qr2_register_publicaddress_callback( NULL, gamespy_public_address );

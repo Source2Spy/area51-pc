@@ -421,8 +421,7 @@ void gamespy_adderror( qr2_error_t error, gsi_char *errmsg, void *userdata )
     match_mgr& MatchMgr = *(match_mgr*)userdata;
     LOG_ERROR("gamespy_adderror","Server registration returned: 0x%08x, %s", error, errmsg );
     (void)MatchMgr;
-    //if( (error==e_qrnochallengeerror)||(error==e_qrconnerror)||(error==e_qrdnserror) )
-    if( (error==e_qrconnerror)||(error==e_qrdnserror) )	
+    if( (error==e_qrnochallengeerror)||(error==e_qrconnerror)||(error==e_qrdnserror) )
     {
         g_ActiveConfig.SetExitReason( GAME_EXIT_NETWORK_DOWN );
     }

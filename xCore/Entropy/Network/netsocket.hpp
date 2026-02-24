@@ -37,6 +37,8 @@ public:
         void            SetBlocking         ( xbool Block );
         xbool           GetBlocking         ( void )          const;
 
+        s32             GetHandle           ( void )          const     { return m_Socket;                  };
+
   const net_address&    GetAddress          ( void )          const     { return m_Address;                 };
 
         // Port Binding
