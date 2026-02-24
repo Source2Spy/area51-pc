@@ -432,6 +432,7 @@ void gamespy_adderror( qr2_error_t error, gsi_char *errmsg, void *userdata )
 }
 
 //==============================================================================
+
 void gamespy_error( GPConnection* pConnection, GPErrorArg* pError, void* pParam )
 {
     (void)pConnection;
@@ -444,6 +445,7 @@ void gamespy_error( GPConnection* pConnection, GPErrorArg* pError, void* pParam 
 }
 
 //==============================================================================
+
 static void FormServerInfo( SBServer server, s32 Index, server_info& Response, const net_address& MyPublic )
 {
     xbool       HasPrivateAddress;
@@ -504,6 +506,7 @@ static void FormServerInfo( SBServer server, s32 Index, server_info& Response, c
 }
 
 //==============================================================================
+
 void gamespy_server_query(ServerBrowser sb, SBCallbackReason reason, SBServer server, void* pInstance)
 {
     match_mgr& MatchMgr = *(match_mgr*)pInstance;
@@ -601,6 +604,7 @@ void gamespy_server_query(ServerBrowser sb, SBCallbackReason reason, SBServer se
 }
 
 //==============================================================================
+
 void gamespy_indirect_server_query(ServerBrowser sb, SBCallbackReason reason, SBServer server, void* pInstance)
 {
     match_mgr& MatchMgr = *(match_mgr*)pInstance;
@@ -641,6 +645,7 @@ void gamespy_indirect_server_query(ServerBrowser sb, SBCallbackReason reason, SB
 }
 
 //==============================================================================
+
 void gamespy_extended_info_query(ServerBrowser sb, SBCallbackReason reason, SBServer pServer, void* pInstance)
 {
     s32 nTeams;
@@ -700,6 +705,7 @@ void gamespy_extended_info_query(ServerBrowser sb, SBCallbackReason reason, SBSe
 }
 
 //==============================================================================
+
 void gamespy_connect( GPConnection*, GPConnectResponseArg * arg, void * param )
 {
     match_mgr& MatchMgr = *(match_mgr*)param;
@@ -719,6 +725,7 @@ void gamespy_connect( GPConnection*, GPConnectResponseArg * arg, void * param )
 }
 
 //==============================================================================
+
 void gamespy_emailcheck( GPConnection*, GPIsValidEmailResponseArg* pArg, void* pThis )
 {
     match_mgr& MatchMgr = *(match_mgr*)pThis;
@@ -746,6 +753,7 @@ void gamespy_emailcheck( GPConnection*, GPIsValidEmailResponseArg* pArg, void* p
 }
 
 //==============================================================================
+
 void gamespy_nat_negotiate( int cookie, void* userdata )
 {
     match_mgr& MatchMgr = *(match_mgr*)userdata;
@@ -753,10 +761,11 @@ void gamespy_nat_negotiate( int cookie, void* userdata )
 
     ASSERT( MatchMgr.m_LocalIsServer );
     LOG_MESSAGE("gamespy_nat_negotiate","Received NAT negotiation cookie 0x%08x",cookie);
-    NNBeginNegotiationWithSocket( (SOCKET)MatchMgr.m_pSocket, cookie, 0, gamespy_nat_progress, gamespy_nat_complete, userdata );
+    NNBeginNegotiationWithSocket( MatchMgr.m_pSocket->GetHandle(), cookie, 0, gamespy_nat_progress, gamespy_nat_complete, userdata );
 }
 
 //==============================================================================
+
 void    gamespy_nat_progress ( NegotiateState state, void *userdata )
 {
     (void)state;
@@ -767,16 +776,16 @@ void    gamespy_nat_progress ( NegotiateState state, void *userdata )
 }
 
 //==============================================================================
+
 void    gamespy_nat_complete ( NegotiateResult result, SOCKET gamesocket, struct sockaddr_in *remoteaddr, void *userdata )
 {
     match_mgr& MatchMgr = *(match_mgr*)userdata;
-    net_socket* pLocalSocket = (net_socket*)gamesocket;
-    (void)pLocalSocket;
+    (void)gamesocket;
     if( result == nr_success )
     {
         net_address Remote( ntohl(remoteaddr->sin_addr.s_addr), ntohs(remoteaddr->sin_port) );
-#if defined(X_LOGGING)		
-        LOG_MESSAGE("gamespy_nat_complete","Result: %s, Local game socket:%s, Remote Socket:%s", GetName(result), pLocalSocket->GetStrAddress(), Remote.GetStrAddress() );
+#if defined(X_LOGGING)
+        LOG_MESSAGE("gamespy_nat_complete","Result: %s, Local game socket:%s, Remote Socket:%s", GetName(result), MatchMgr.m_pSocket->GetStrAddress(), Remote.GetStrAddress() );
 #endif
         if( MatchMgr.m_LocalIsServer == FALSE )
         {
@@ -801,6 +810,7 @@ void    gamespy_nat_complete ( NegotiateResult result, SOCKET gamesocket, struct
 }
 
 //==============================================================================
+
 void gamespy_getinfo_response(GPConnection* pConnection, GPGetInfoResponseArg* pResponse, void* pArg)
 {
     s32             Index;
@@ -828,6 +838,7 @@ void gamespy_getinfo_response(GPConnection* pConnection, GPGetInfoResponseArg* p
 }
 
 //==============================================================================
+
 void gamespy_buddy_request( GPConnection* pConnection, GPRecvBuddyRequestArg* pRequest,   void* pInstance )
 {
     match_mgr& MatchMgr = *(match_mgr*)pInstance;
@@ -884,6 +895,7 @@ void gamespy_buddy_request( GPConnection* pConnection, GPRecvBuddyRequestArg* pR
 }
 
 //==============================================================================
+
 void gamespy_buddy_status ( GPConnection* pConnection, GPRecvBuddyStatusArg* pStatus, void* pInstance )
 {
     match_mgr& MatchMgr = *(match_mgr*)pInstance;
@@ -1043,6 +1055,7 @@ void gamespy_buddy_status ( GPConnection* pConnection, GPRecvBuddyStatusArg* pSt
 }
 
 //==============================================================================
+
 void gamespy_buddy_invite ( GPConnection* pConnection, GPRecvGameInviteArg* pInvite, void* pInstance )
 {
     match_mgr& MatchMgr = *(match_mgr*)pInstance;
@@ -1069,6 +1082,7 @@ void gamespy_buddy_invite ( GPConnection* pConnection, GPRecvGameInviteArg* pInv
 }
 
 //==============================================================================
+
 void gamespy_motd_complete( GPConnection* pConnection, GPProfileSearchResponseArg* pInvite, void* pInstance )
 {
     match_mgr& MatchMgr = *(match_mgr*)pInstance;
@@ -1080,6 +1094,7 @@ void gamespy_motd_complete( GPConnection* pConnection, GPProfileSearchResponseAr
 }
 
 //==============================================================================
+
 void gamespy_public_address( unsigned int ip, unsigned short port, void* userdata )
 {
     match_mgr& MatchMgr = *(match_mgr*)userdata;
@@ -1100,6 +1115,7 @@ void gamespy_public_address( unsigned int ip, unsigned short port, void* userdat
 }
 
 //==============================================================================
+
 void gamespy_security_complete( GPConnection* pConnection, GPProfileSearchResponseArg* pResponse, void* pInstance )
 {
     match_mgr& MatchMgr = *(match_mgr*)pInstance;
