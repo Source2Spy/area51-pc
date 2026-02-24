@@ -25,7 +25,7 @@
 
 // You are dead, not big suprise!
 // (ofc this is temp solution)
-#define DEAD_SPY
+//#define DEAD_SPY
 
 //=========================================================================
 //  Main Menu Dialog
