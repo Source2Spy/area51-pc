@@ -271,7 +271,7 @@ void network_mgr::Update( f32 DeltaTime )
     ExitReason   = g_ActiveConfig.GetExitReason();
 
 #if defined(TARGET_XBOX) || defined(TARGET_PC)
-    if( m_IsOnline && !m_LocalSocket.IsEmpty() )
+    if( m_IsOnline && m_LocalSocket.IsConnected() )
     {
         // Check for interface loss (cable pull, network down, duplicate login).
         interface_info Info;
@@ -282,7 +282,7 @@ void network_mgr::Update( f32 DeltaTime )
             g_ActiveConfig.SetExitReason( GAME_EXIT_NETWORK_DOWN );
         }
 
-        if( !m_LocalSocket.IsEmpty() &&
+        if( m_LocalSocket.IsConnected() &&
             ( ExitReason == GAME_EXIT_NETWORK_DOWN ||
               ExitReason == GAME_EXIT_DUPLICATE_LOGIN ) )
         {
@@ -295,7 +295,7 @@ void network_mgr::Update( f32 DeltaTime )
             xtimer t;
             t.Start();
 
-            while( m_LocalSocket.Receive( Remote, BitStream ) )
+            while( m_LocalSocket.IsConnected() && m_LocalSocket.Receive( Remote, BitStream ) )
             {
                 Used = FALSE;
 
