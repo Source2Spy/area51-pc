@@ -257,8 +257,8 @@ void network_mgr::Update( f32 DeltaTime )
 
     g_VoiceMgr.Update( DeltaTime );
 
-#if defined(TARGET_XBOX) || defined(TARGET_PC)
-    // PS2 runs the match manager on a separate thread; Xbox/PC do not.
+#if defined(TARGET_XBOX)
+    // PS2/PC runs the match manager on a separate thread; Xbox do not.
     g_MatchMgr.Update( DeltaTime );
 #endif
 
