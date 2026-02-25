@@ -1645,7 +1645,7 @@ void match_mgr::SetState( match_mgr_state NewState )
 #if defined(ENABLE_LAN_LOOKUP)
                                                 SBFalse,                            // viaMaster
 #else
-                                                SBTrue,                             // viaMaster
+                                                SBFalse,                            // viaMaster
 #endif
                                                 SBTrue,                             // async
                                                 SBTrue                              // fullUpdate
