@@ -1732,9 +1732,13 @@ void match_mgr::SetState( match_mgr_state NewState )
                 Result = ServerBrowserAuxUpdateIP(  m_pBrowser,                  // Browser object
                                                     Remote.GetStrIP(),           // Browser IP address in string format
                                                     Remote.GetPort(),            // Browser port number
+#if defined(ENABLE_LAN_LOOKUP)
+                                                    SBFalse,                     // viaMaster
+#else
                                                     SBTrue,                      // viaMaster
+#endif
                                                     SBTrue,                      // async
-                                                    SBFalse                      // fullUpdate 
+                                                    SBFalse                      // fullUpdate
                     );
                 LOG_MESSAGE("match_mgr::SetState","ServerBrowserAuxUpdateIP(%s) returned %d(%s)", Remote.GetStrAddress(), Result, ServerBrowserError( Result ) );
                 SetConnectStatus( MATCH_CONN_ACQUIRING_SERVERS );
@@ -1897,9 +1901,13 @@ void match_mgr::SetState( match_mgr_state NewState )
             Result = ServerBrowserAuxUpdateIP(  m_pBrowser,                         // Browser object
                                                 Config.Remote.GetStrIP(),           // Browser IP address in string format
                                                 Config.Remote.GetPort(),            // Browser port number
+#if defined(ENABLE_LAN_LOOKUP)
+                                                SBFalse,                            // viaMaster
+#else
                                                 SBTrue,                             // viaMaster
+#endif
                                                 SBTrue,                             // async
-                                                SBTrue                              // fullUpdate 
+                                                SBTrue                              // fullUpdate
                                               );
             LOG_MESSAGE("match_mgr::SetState","ServerBrowserAuxUpdateIP(%s) returned %d(%s)", Config.Remote.GetStrAddress(), Result, ServerBrowserError( Result ) );
 
