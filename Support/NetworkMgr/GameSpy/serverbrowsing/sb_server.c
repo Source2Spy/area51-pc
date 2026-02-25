@@ -20,10 +20,10 @@
 
 #ifndef EXTERN_REFSTR_HASH
 //global, shared unique value list
-#if defined(_WIN32) && !defined(_DLL) && !defined (_USRDLL) && !defined(_MANAGED)
-//for gmaster2b
-__declspec( thread ) 
-#endif
+//#if defined(_WIN32) && !defined(_DLL) && !defined (_USRDLL) && !defined(_MANAGED)
+////for gmaster2b
+//__declspec( thread ) 
+//#endif
 HashTable g_SBRefStrList = NULL;
 #endif
 

@@ -383,11 +383,7 @@ void  match_mgr::Update( f32 DeltaTime )
         return;
 
     if( m_pSocket->IsEmpty() )
-    {
-        Reset();
-        m_pSocket = NULL;
         return;
-    }
 
     m_AccumulatedTime += DeltaTime;
     m_NeedNewPing = TRUE;
@@ -2076,21 +2072,27 @@ xbool match_mgr::ReceivePacket( net_address& Remote, bitstream& Bitstream )
         return TRUE;
     }
 
-    if( (pData[0] == QR_MAGIC_1) && (pData[1] == QR_MAGIC_2) &&
-        m_LocalIsServer )
+    if( (pData[0] == QR_MAGIC_1) && (pData[1] == QR_MAGIC_2) )
     {
-        struct sockaddr_in sender;
-
         // Convert our internal addresses from host endian to network endian as the gamespy
         // libs require it to be network endian.
-        sender.sin_family = AF_INET;	
-        sender.sin_port = htons(Remote.GetPort());
-        sender.sin_addr.s_addr = htonl(Remote.GetIP());
         LockBrowser();
-        qr2_parse_query(NULL, (char*)Bitstream.GetDataPtr(), Bitstream.GetNBytes(), (sockaddr*)&sender);
+        xbool IsServer = m_LocalIsServer;
+        if( IsServer )
+        {
+            struct sockaddr_in sender;
+            sender.sin_family      = AF_INET;
+            sender.sin_port        = htons(Remote.GetPort());
+            sender.sin_addr.s_addr = htonl(Remote.GetIP());
+            qr2_parse_query(NULL, (char*)Bitstream.GetDataPtr(), Bitstream.GetNBytes(), (sockaddr*)&sender);
+        }
         UnlockBrowser();
-        LOG_MESSAGE("match_mgr::ReceivePacket","Packet forwarded to QR2, from:%s, Length:%d", Remote.GetStrAddress(), Length );
-        return TRUE;
+
+        if( IsServer )
+        {
+            LOG_MESSAGE("match_mgr::ReceivePacket","Packet forwarded to QR2, from:%s, Length:%d", Remote.GetStrAddress(), Length );
+            return TRUE;
+        }
     }
 
     return FALSE;

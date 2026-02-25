@@ -117,17 +117,19 @@ void network_mgr::SetOnline( xbool IsOnline )
     // -------------------------------------------------------------------------
     if( m_IsOnline && !IsOnline )
     {
-        if( !m_LocalSocket.IsEmpty() )
-        {
-            m_LocalSocket.Close();
-        }
-
 #if defined(TARGET_PS2)
+        if( !m_LocalSocket.IsEmpty() )
+            m_LocalSocket.Close();
+
         g_MatchMgr.Kill();
         net_Kill();
 #else
-        // Xbox / PC: just park the match manager; no full kill needed.
+        // Xbox / PC: just park the match manager; no full kill needed.	
+        g_MatchMgr.Reset();
         g_MatchMgr.SetState( MATCH_IDLE );
+
+        if( !m_LocalSocket.IsEmpty() )
+            m_LocalSocket.Close();
 #endif
     }
 
@@ -402,15 +404,7 @@ void network_mgr::BecomeServer( void )
 
     m_pServer = new game_server;
 
-    // A little hack here. We can tell whether or not we should have any client
-    // instances depending on whether or not we have a local network socket since
-    // a 'local' game will not have a network socket. This is to make sure that
-    // the server instance takes up less space when in an offline game. This will
-    // minimize offline memory footprint.
-    const xbool bIsOffline = ( g_ActiveConfig.GetPlayerCount() == 1 ) &&
-                             ( g_ActiveConfig.GetGameTypeID()  != GAME_CAMPAIGN );
-
-    if( m_LocalSocket.IsEmpty() || !bIsOffline )
+    if( m_LocalSocket.IsEmpty() )
     {
         m_pServer->Init( m_LocalSocket, g_ActiveConfig.GetPlayerCount(), 0 );
     }
