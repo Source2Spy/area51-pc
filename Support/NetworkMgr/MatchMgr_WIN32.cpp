@@ -322,61 +322,6 @@ void  match_mgr::Kill                ( void )
     }
 }
 
-// PC old code
-
-//void  match_mgr::Kill                ( void )
-//{
-//    if( m_Initialized )
-//    {
-//        ASSERT( AreListsLocked() == FALSE );
-//        LockLists();
-//        m_Initialized = FALSE;
-//        DisconnectFromMatchmaker();
-//
-//        if( m_Presence )
-//        {
-//            gpDisconnect( &m_Presence );
-//            gpDestroy( &m_Presence );
-//        }
-//        if( m_pBrowser )
-//        {
-//            ServerBrowserFree( m_pBrowser );
-//            m_pBrowser = NULL;
-//        }
-//
-//        xtimer timeout;
-//        timeout.Start();
-//        while( g_MatchMgr.IsBusy() )
-//        {
-//            x_DelayThread(10);
-//            if( timeout.ReadSec() > 1.0f )
-//            {
-//                ASSERTS(FALSE,"MatchMgr did not shutdown when killed");
-//                break;
-//            }
-//        }
-//        g_MatchMgr.SetState( MATCH_IDLE );
-//        delete m_pThread;
-//        m_pThread = NULL;
-//        UnlockLists();
-//        m_RecentPlayers.Clear();
-//        ResetServerList();
-//        m_Buddies.Clear();
-//        m_RecentPlayers.Clear();
-//        if( m_pMessageOfTheDayBuffer )
-//        {
-//            x_free( m_pMessageOfTheDayBuffer );
-//            m_pMessageOfTheDay = NULL;
-//            m_pMessageOfTheDayBuffer = NULL;
-//        }
-//        ReleasePatch();
-//    }
-//    else
-//    {
-//        SetState( MATCH_IDLE );
-//    }
-//}
-
 //==============================================================================
 
 extern "C" s32 MEM_totalunused(s32 pool=0);
@@ -419,30 +364,6 @@ void  match_mgr::Update( f32 DeltaTime )
         case ACQUIRE_EXTENDED_SERVER_INFO:
             SetState( MATCH_ACQUIRE_EXTENDED_INFO );
             break;
-
-    //-----------------------------------------------------
-
-        // Original PC code.
-
-        //case MATCH_ACQUIRE_BUDDIES:
-        //    SetState( MATCH_ACQUIRE_BUDDIES );
-        //    break;
-
-    //-----------------------------------------------------
-
-        // Original PC code.
-
-        //case MATCH_ACQUIRE_REGIONS:
-        //    ASSERT( FALSE );
-        //    break;
-
-    //-----------------------------------------------------
-
-        // Original PC code.
-
-        //case MATCH_ACQUIRE_LOBBIES:
-        //    ASSERT( FALSE );
-        //    break;
 
     //-----------------------------------------------------
 
@@ -857,22 +778,6 @@ void match_mgr::UpdateState( f32 DeltaTime)
 
         //-----------------------------------------------------
 
-    // Original PC code.
-
-    //case MATCH_ACQUIRE_REGIONS:
-    //    ReadRegions();
-    //    break;
-
-        //-----------------------------------------------------
-
-    // Original PC code.
-
-    //case MATCH_ACQUIRE_LOBBIES:
-    //    ASSERT(FALSE);
-    //    break;
-
-        //-----------------------------------------------------
-
     case MATCH_ACQUIRE_SERVERS:
         // 
         // Get server list from matchmaker.
@@ -962,31 +867,6 @@ void match_mgr::UpdateState( f32 DeltaTime)
             SetState( MATCH_IDLE );
         }
         break;
-
-        //-----------------------------------------------------
-
-    // Original PC code
-
-    //case MATCH_ACQUIRE_BUDDIES:
-    //    LocalLookups( DeltaTime );
-    //    RemoteLookups( DeltaTime );
-    //    if( x_strlen(m_BuddyList)==0 )
-    //    {
-    //        SetConnectStatus( MATCH_CONN_IDLE );
-    //    }
-    //
-    //    if( m_ConnectStatus == MATCH_CONN_IDLE )
-    //    {
-    //        // We're done
-    //        SetState( MATCH_IDLE );
-    //        break;
-    //    }
-    //    else if( m_ConnectStatus != MATCH_CONN_ACQUIRING_BUDDIES )
-    //    {
-    //        // An error occurred
-    //        SetState( MATCH_IDLE );
-    //    }
-    //    break;
 
         //-----------------------------------------------------
 
@@ -1382,13 +1262,6 @@ void match_mgr::EnterState( match_mgr_state NewState )
 
         //-----------------------------------------------------
 
-    // Original PC code.
-    //case MATCH_ACQUIRE_LOBBIES:
-    //case MATCH_ACQUIRE_REGIONS:
-        //break;
-
-        //-----------------------------------------------------
-
     default:
         break;
     }
@@ -1406,32 +1279,6 @@ void match_mgr::CheckVisibility(void)
 }
 
 //==============================================================================
-
-// Original PC code.
-
-//void match_mgr::StartAcquisition( match_acquire AcquisitionMode )
-//{
-//    LockLists();
-//    switch( AcquisitionMode )
-//    {
-//    case MATCH_ACQUIRE_SERVERS:
-//        ResetServerList();
-//        break;
-//    case MATCH_ACQUIRE_BUDDIES:
-//        break;
-//    case MATCH_ACQUIRE_REGIONS:
-//        break;
-//    case MATCH_ACQUIRE_LOBBIES:
-//        m_LobbyList.Clear();
-//        break;
-//    case ACQUIRE_EXTENDED_SERVER_INFO:
-//        break;
-//    default:
-//        ASSERT( FALSE );
-//    }
-//    m_PendingAcquisitionMode = AcquisitionMode;
-//    UnlockLists();
-//}
 
 void match_mgr::StartAcquisition( match_acquire AcquisitionMode )
 {
@@ -1451,33 +1298,6 @@ void match_mgr::StartAcquisition( match_acquire AcquisitionMode )
 }
 
 //==============================================================================
-
-// Original PC code.
-
-//xbool match_mgr::IsAcquireComplete( void )
-//{
-//    switch( m_AcquisitionMode )
-//    {
-//    case MATCH_ACQUIRE_SERVERS:
-//        return (m_State==MATCH_ACQUIRE_IDLE);
-//        break;
-//    case MATCH_ACQUIRE_BUDDIES:
-//        return (m_State==MATCH_IDLE);
-//        break;
-//    case MATCH_ACQUIRE_REGIONS:
-//        ASSERT( FALSE );
-//        break;
-//    case MATCH_ACQUIRE_LOBBIES:
-//        ASSERT( FALSE );
-//        break;
-//    default:
-//        //ASSERT( FALSE );
-//        // MAB: Removed because it takes a couple of frames for m_AcquisitionMode
-//        //      to get set after start acquisition has been called.
-//        break;
-//    }
-//    return FALSE;
-//}
 
 xbool match_mgr::IsAcquireComplete( void )
 {
@@ -1517,21 +1337,6 @@ void match_mgr::SetState( match_mgr_state NewState )
     {
 
         //------------------------------------------------------
-
-    // Original PC code.
-
-    //case MATCH_GET_MESSAGES:
-    //    if( m_MessageOfTheDayReceived == FALSE )
-    //    {
-    //        if( m_pMessageOfTheDay )
-    //        {
-    //            x_free( m_pMessageOfTheDay );
-    //            m_pMessageOfTheDay = NULL;
-    //        }
-    //        x_sprintf(m_DownloadFilename,"%s/%s_MOTD.txt",MANIFEST_LOCATION, x_GetLocaleString() );
-    //        InitDownload( m_DownloadFilename );
-    //    }
-    //    break;
 
     case MATCH_GET_MESSAGES:
         //if( m_MessageOfTheDayReceived == FALSE )
@@ -1582,25 +1387,6 @@ void match_mgr::SetState( match_mgr_state NewState )
 
     case MATCH_VALIDATE_PLAYER_NAME:
         break;
-
-        //------------------------------------------------------
-
-    // Original PC code.
-
-    //case MATCH_ACQUIRE_REGIONS:
-    //    SetConnectStatus( MATCH_CONN_ACQUIRING_LOBBIES );
-    //    m_LobbyList.Clear();
-    //    ConnectToMatchmaker(MATCH_ACQUIRE_REGIONS);
-    //    break;
-    //
-
-       //------------------------------------------------------
-
-    // Original PC code.
-
-    //case MATCH_ACQUIRE_LOBBIES:
-    //    m_LobbyList.Clear();
-    //    break;
 
         //------------------------------------------------------
 
@@ -1790,49 +1576,6 @@ void match_mgr::SetState( match_mgr_state NewState )
 
         //------------------------------------------------------
 
-    // Original PC code.
-
-    //case MATCH_ACQUIRE_BUDDIES:
-    //    if( x_strlen(m_BuddyList)!=0 )
-    //    {
-    //        SetTimeout( LOOKUP_RETRY_INTERVAL );
-    //
-    //        LockBrowser();
-    //        m_LookupTimeout = 0.0f;
-    //        if( m_pBrowser )
-    //        {
-    //            ServerBrowserFree( m_pBrowser );
-    //            m_pBrowser = NULL;
-    //        }
-    //        // Do we have a server browser object reinit?
-    //        ///**** THIS NEEDS TO BE CHANGED TO FORCE BUDDY UPDATE? *****
-    //        m_pBrowser = ServerBrowserNew ( GAMESPY_GAMENAME, GAMESPY_GAMENAME, GAMESPY_SECRETKEY, 0, 40, QVERSION_QR2, gamespy_server_query, this);
-    //        ASSERT( m_pBrowser );
-    //        if( m_pBrowser )
-    //        {
-    //            SBError Result;
-    //
-    //            Result = ServerBrowserUpdate(m_pBrowser, SBTrue, SBFalse, NULL, 0, m_BuddyList);
-    //            SetConnectStatus( MATCH_CONN_ACQUIRING_BUDDIES );
-    //            #ifdef X_LOGGING
-    //            LOG_MESSAGE("match_mgr::SetState","ServerBrowserUpdate(Buddies) returned %d(%s)", Result, ServerBrowserError( Result ) );
-    //            #endif
-    //
-    //        }
-    //        else
-    //        {
-    //            SetConnectStatus( MATCH_CONN_IDLE );
-    //        }
-    //        UnlockBrowser();
-    //
-    //    }
-    //    // The state callback will change the state back to idle when
-    //    // the buddy list acquisition is complete.
-    //
-    //    break;
-
-        //------------------------------------------------------
-
     case MATCH_ACQUIRE_LAN_SERVERS:
 #if defined(ENABLE_LAN_LOOKUP)
         LockBrowser();
@@ -1870,49 +1613,6 @@ void match_mgr::SetState( match_mgr_state NewState )
         break;
 
         //------------------------------------------------------
-
-    // Original PC code.
-
-    //case MATCH_INDIRECT_CONNECT:
-    //    SetConnectStatus( MATCH_CONN_ACQUIRING_SERVERS );
-    //    // Start a lookup to the matchmaking service about this particular server
-    //    SetTimeout( LOOKUP_RETRY_INTERVAL );
-    //    LockLists();
-    //    ResetServerList();
-    //    m_ExtendedServerInfoOwner = -1;
-    //    m_LookupTimeout = 0.0f;
-    //    UnlockLists();
-    //
-    //    LockBrowser();
-    //    if( m_pBrowser )
-    //    {
-    //        ServerBrowserFree( m_pBrowser );
-    //        m_pBrowser = NULL;
-    //    }
-    //    m_StateTimeout = 5.0f;
-    //    // Do we have a server browser object reinit?
-    //    m_pBrowser = ServerBrowserNew ( GAMESPY_GAMENAME, GAMESPY_GAMENAME, GAMESPY_SECRETKEY, 0, 40, QVERSION_QR2, gamespy_indirect_server_query, this);
-    //    ASSERT( m_pBrowser );
-    //    if( m_pBrowser )
-    //    {
-    //        SBError Result;
-    //
-    //        const server_info& Config = g_ActiveConfig.GetConfig();
-    //        Result = ServerBrowserAuxUpdateIP(  m_pBrowser,                         // Browser object
-    //                                            Config.Remote.GetStrIP(),           // Browser IP address in string format
-    //                                            Config.Remote.GetPort(),            // Browser port number
-    //                                            SBTrue,                             // viaMaster
-    //                                            SBTrue,                             // async
-    //                                            SBTrue                              // fullUpdate 
-    //                                          );
-    //        #ifdef X_LOGGING    
-    //        LOG_MESSAGE("match_mgr::SetState","ServerBrowserAuxUpdateIP(%s) returned %d(%s)", Config.Remote.GetStrAddress(), Result, ServerBrowserError( Result ) );
-    //        #endif
-    //        SetConnectStatus( MATCH_CONN_ACQUIRING_SERVERS );
-    //
-    //    }
-    //    UnlockBrowser();
-    //    break;
 
     case MATCH_INDIRECT_LOOKUP:
         // Start a lookup to the matchmaking service about this particular server
@@ -2107,40 +1807,6 @@ xbool match_mgr::ReceivePacket( net_address& Remote, bitstream& Bitstream )
 }
 
 //==============================================================================
-
-// Original PC code.
-
-//void match_mgr::AppendServer( const server_info& Response )
-//{
-//    s32 Index;
-//
-//    if( Response.Version != g_ServerVersion )
-//    {
-//        return;
-//    }
-//    // Search the server list to see if we already have an entry. If we do, then
-//    // just update the individual fields, otherwise append this entry to the main
-//    // list.
-//    LockLists();
-//
-//    Index = m_ServerList.Find( Response );
-//
-//    if( Index >=0 )
-//    {
-//        server_info* pServerInfo = GetServerInfo( Index );
-//
-//        s32 Flags = pServerInfo->Flags;
-//
-//        *pServerInfo = Response;
-//        pServerInfo->Flags = Flags;
-//    }
-//    else
-//    {
-//        
-//        AppendToServerList( Response );
-//    }
-//    UnlockLists();
-//}
 
 void match_mgr::AppendServer( const server_info& Response )
 {
