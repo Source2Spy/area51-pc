@@ -49,7 +49,7 @@
 //=========================================================================
 
 // GameSpy is dead, not big surprise
-#define ENABLE_LAN_LOOKUP
+//#define ENABLE_LAN_LOOKUP
 
 #define LABEL_STRING(x) case x: return ( #x );
 // Authentication data filename. This is short for obfuscation reason.
@@ -59,7 +59,7 @@ const s32 A51_MIDWAY_FPS_CATEGORY = 1010000032;
 const s32   GAMESPY_PRODUCT_ID  = 10588;
 const char* GAMESPY_GAMENAME    = "area51pc";
 const char* GAMESPY_SECRETKEY   = "mW73mq";
-const char* EMAIL_POSTFIX       = "a51";
+const char* EMAIL_POSTFIX       = "a51.com";
 
 extern s32 g_Changelist;
 
