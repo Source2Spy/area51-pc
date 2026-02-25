@@ -2014,6 +2014,7 @@ xbool match_mgr::ReceivePacket( net_address& Remote, bitstream& Bitstream )
 
         // Convert our internal addresses from host endian to network endian as the gamespy
         // libs require it to be network endian.
+        from.sin_family = AF_INET;		
         from.sin_port = htons(Remote.GetPort());
         from.sin_addr.s_addr = htonl(Remote.GetIP());
         LockBrowser();
@@ -2030,6 +2031,7 @@ xbool match_mgr::ReceivePacket( net_address& Remote, bitstream& Bitstream )
 
         // Convert our internal addresses from host endian to network endian as the gamespy
         // libs require it to be network endian.
+        sender.sin_family = AF_INET;	
         sender.sin_port = htons(Remote.GetPort());
         sender.sin_addr.s_addr = htonl(Remote.GetIP());
         LockBrowser();
