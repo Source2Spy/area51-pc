@@ -217,7 +217,7 @@ void game_server::ProcessLoginRequest( const net_address& Remote, netstream& Bit
         RefuseLogin( Remote, s_ForceRefusal );
     }
     BitStream.ReadS32       ( ServerVersion );
-    BitStream.ReadRangedS32 ( PlayerCount, 0, NET_MAX_PER_CLIENT-1 );
+    BitStream.ReadRangedS32 ( PlayerCount, 0, x_max(NET_MAX_PER_CLIENT-1, 1) );
     BitStream.ReadRangedS32 ( Skin, SKIN_BEGIN_PLAYERS, SKIN_END_PLAYERS );
     BitStream.ReadBits      ( UniqueId, NET_MAX_ID_LENGTH*8 );
     BitStream.ReadString    ( Password );

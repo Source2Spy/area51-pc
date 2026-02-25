@@ -621,7 +621,7 @@ void game_client::SendLoginRequest( void )
 
     BS.Open             ( CONN_PACKET_IDENTIFIER, CONN_PACKET_LOGIN_REQUEST );
     BS.WriteS32         ( g_ServerVersion );                   // Server version #
-    BS.WriteRangedS32   ( m_LocalPlayerCount, 0, NET_MAX_PER_CLIENT-1 );
+    BS.WriteRangedS32   ( m_LocalPlayerCount, 0, x_max(NET_MAX_PER_CLIENT-1, 1) );
     BS.WriteRangedS32   ( g_StateMgr.GetActiveProfile(g_StateMgr.GetProfileListIndex(0)).GetAvatarID(), SKIN_BEGIN_PLAYERS, SKIN_END_PLAYERS );
     BS.WriteBits        ( pUniqueId, NET_MAX_ID_LENGTH * 8 );
     BS.WriteString      ( g_PendingConfig.GetPassword() );
