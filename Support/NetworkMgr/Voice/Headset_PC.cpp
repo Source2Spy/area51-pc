@@ -10,6 +10,7 @@
 #endif
 
 #include "headset.hpp"
+#include "Speex.hpp"
 //
 // Even though the xbox voice code will be significantly different than PS2 voice code,
 // I am still including the Provide and Accept update functions as they will allow us
@@ -20,6 +21,19 @@
 //==============================================================================
 void headset::Init( xbool )
 {
+    // Set this temp stuff here.
+    m_EncodeBlockSize       = SPEEX8_BYTES_PER_EFRAME;
+    m_DecodeBlockSize       = SPEEX8_SAMPLES_PER_FRAME * (s32)sizeof(s16);
+    m_HeadsetCount          = 0;
+    m_HardwareEnabled       = FALSE;
+    m_IsTalking             = FALSE;
+    m_LoopbackEnabled       = FALSE;
+    m_VoiceBanned           = FALSE;
+    m_VoiceEnabled          = FALSE;
+    m_VoiceAudible          = FALSE;
+    m_VoiceThroughSpeaker   = FALSE;
+    m_pThread               = NULL;
+
     m_pEncodeBuffer = new u8[512];
     m_pDecodeBuffer = m_pEncodeBuffer+256;
     m_ReadFifo.Init(m_pEncodeBuffer,256);
@@ -44,4 +58,3 @@ void headset::Update( f32 DeltaTime )
 {
     (void)DeltaTime;
 }
-

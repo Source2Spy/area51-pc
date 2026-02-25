@@ -564,6 +564,7 @@
     <ClCompile Include="PainQueue.cpp" />
     <ClCompile Include="UpdateMgr.cpp" />
     <ClCompile Include="Voice\headset_common.cpp" />
+    <ClCompile Include="Voice\Headset_PC.cpp" />
     <ClCompile Include="Voice\lpc10.cpp" />
     <ClCompile Include="Voice\speex.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>

@@ -47,6 +47,38 @@ voice_mgr::~voice_mgr( void )
 void voice_mgr::Init( xbool LocalIsServer, xbool EnableHeadset )
 #if defined ( TARGET_PC )
 {
+    ASSERT(!m_Initialized);
+    m_LocalIsServer          = LocalIsServer;
+    m_Initialized            = TRUE;
+    m_PlayerNetSlot          = -1;
+    m_HeadsetEnabled         = FALSE;
+    m_LocalVoiceOwner        = -1;
+    m_CurrentTalkType        = TALK_GLOBAL;
+    m_LocalDesiredTalkMode   = TALK_NONE;
+    m_LocalDirtyMutedPlayers = TRUE;
+
+    m_Headset.Init( FALSE );
+
+    m_MaxSpeakers = 1;
+
+    for( s32 i = 0; i < NET_MAX_PLAYERS; i++ )
+    {
+        m_Speakers[ i ].PlayerNum      = i;
+        m_Speakers[ i ].ActualTalkMode = TALK_NOT_TALKING;
+        m_Speakers[ i ].TalkTime       = 0.0f;
+
+        m_SpeakerQueue[ i ] = m_Speakers + i;
+
+        for( s32 j = 0; j < 4; j++ )
+        {
+            m_Listeners[ i ].PlayerNum       = i;
+            m_Listeners[ i ].ListeningTo[ j ] = -1;
+        }
+
+        GameMgr.SetSpeaking( i, FALSE );
+    }
+
+    (void)EnableHeadset;
 }
 #endif
 #if defined ( TARGET_XBOX )
@@ -93,6 +125,11 @@ void voice_mgr::Init( xbool LocalIsServer, xbool EnableHeadset )
 void voice_mgr::Kill( void )
 #if defined ( TARGET_PC )
 {
+    if( m_Initialized )
+    {
+        m_Headset.Kill();
+        m_Initialized = FALSE;
+    }
 }
 #endif
 #if defined ( TARGET_XBOX )

@@ -463,6 +463,9 @@
       <Filter>Downloader\zlib</Filter>
     </ClCompile>
     <ClCompile Include="NetworkMgr.cpp" />
+    <ClCompile Include="Voice\Headset_PC.cpp">
+      <Filter>VoiceMgr</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ConnMgr.hpp">
