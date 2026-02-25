@@ -912,11 +912,38 @@ void match_mgr::UpdateState( f32 DeltaTime)
             SetState( MATCH_IDLE );
             UnlockBrowser();
         }
+        else if( m_StateTimeout <= 0.0f )
+        {
+            LOG_WARNING( "match_mgr::UpdateState", "MATCH_INDIRECT_LOOKUP timed out, master server did not respond." );
+            LockBrowser();
+            if( m_pBrowser )
+            {
+                ServerBrowserFree( m_pBrowser );
+                m_pBrowser = NULL;
+            }
+            g_ActiveConfig.SetExitReason( GAME_EXIT_SESSION_ENDED );
+            SetConnectStatus( MATCH_CONN_DISCONNECTED );
+            SetState( MATCH_IDLE );
+            UnlockBrowser();
+        }		
         break;
 
         //-----------------------------------------------------
 
     case MATCH_ACQUIRE_EXTENDED_INFO:
+        if( m_StateTimeout <= 0.0f )
+        {
+            LOG_WARNING( "match_mgr::UpdateState", "MATCH_ACQUIRE_EXTENDED_INFO timed out, master server did not respond." );
+            LockBrowser();
+            if( m_pBrowser )
+            {
+                ServerBrowserFree( m_pBrowser );
+                m_pBrowser = NULL;
+            }
+            SetConnectStatus( MATCH_CONN_DISCONNECTED );
+            SetState( MATCH_IDLE );
+            UnlockBrowser();
+        }	
         break;
 
         //-----------------------------------------------------
@@ -1741,7 +1768,17 @@ void match_mgr::SetState( match_mgr_state NewState )
                                                     SBFalse                      // fullUpdate
                     );
                 LOG_MESSAGE("match_mgr::SetState","ServerBrowserAuxUpdateIP(%s) returned %d(%s)", Remote.GetStrAddress(), Result, ServerBrowserError( Result ) );
-                SetConnectStatus( MATCH_CONN_ACQUIRING_SERVERS );
+                x_DebugMsg("match_mgr::SetState: ServerBrowserAuxUpdateIP(%s) returned %d(%s)", Remote.GetStrAddress(), Result, ServerBrowserError( Result ) );
+                if( Result == sbe_noerror )
+                {
+                    SetConnectStatus( MATCH_CONN_ACQUIRING_SERVERS );
+                }
+                else
+                {                  
+                    LOG_WARNING( "match_mgr::SetState", "MATCH_ACQUIRE_EXTENDED_INFO: AuxUpdateIP failed (%d), aborting.", Result );
+                    SetConnectStatus( MATCH_CONN_DISCONNECTED );
+                    m_StateTimeout = 0.0f;
+                }
             }
             UnlockBrowser();
         }
@@ -1910,6 +1947,13 @@ void match_mgr::SetState( match_mgr_state NewState )
                                                 SBTrue                              // fullUpdate
                                               );
             LOG_MESSAGE("match_mgr::SetState","ServerBrowserAuxUpdateIP(%s) returned %d(%s)", Config.Remote.GetStrAddress(), Result, ServerBrowserError( Result ) );
+            if( Result != sbe_noerror )
+            {
+                LOG_WARNING( "match_mgr::SetState", "MATCH_INDIRECT_LOOKUP: AuxUpdateIP failed (%d), aborting lookup.", Result );
+                g_ActiveConfig.SetExitReason( GAME_EXIT_SESSION_ENDED );
+                SetConnectStatus( MATCH_CONN_DISCONNECTED );
+                m_StateTimeout = 0.0f;
+            }			
 
         }
         UnlockBrowser();
