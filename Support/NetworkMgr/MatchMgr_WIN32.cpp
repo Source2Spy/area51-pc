@@ -193,11 +193,18 @@ void s_MatchPeriodicUpdater( s32, char** argv )
 {
     match_mgr& MatchMgr = (match_mgr&)*argv;
     xtimer deltatime;
+    xthread* pThread = x_GetCurrentThread();
 
     deltatime.Start();
 
-    while( TRUE )
+    while( pThread->IsActive() )
     {
+        if( MatchMgr.m_ForceShutdown )
+        {
+            ASSERT( pThread->IsActive() );
+            MatchMgr.m_ForceShutdown = FALSE;
+            break;
+        }
         MatchMgr.Update( deltatime.TripSec() );
         ASSERT( (MatchMgr.m_UpdateInterval>0) && (MatchMgr.m_UpdateInterval<100) );
         x_DelayThread( MatchMgr.m_UpdateInterval );
@@ -250,6 +257,7 @@ xbool match_mgr::Init( net_socket& Local, const net_address Broadcast )
 
     Delta.Start();
     Timeout = 0.0f;
+    m_ForceShutdown = FALSE;	
     m_pThread = new xthread( s_MatchPeriodicUpdater, "MatchMgr periodic Updater", 8192, 1, 1, (char**)this );
 
 #if defined(X_DEBUG) && defined(bwatson)

@@ -117,19 +117,15 @@ void network_mgr::SetOnline( xbool IsOnline )
     // -------------------------------------------------------------------------
     if( m_IsOnline && !IsOnline )
     {
-#if defined(TARGET_PS2)
         if( !m_LocalSocket.IsEmpty() )
+        {
             m_LocalSocket.Close();
-
+        }
+#if defined(TARGET_PS2) || defined(TARGET_PC)
         g_MatchMgr.Kill();
         net_Kill();
 #else
-        // Xbox / PC: just park the match manager; no full kill needed.	
-        g_MatchMgr.Reset();
         g_MatchMgr.SetState( MATCH_IDLE );
-
-        if( !m_LocalSocket.IsEmpty() )
-            m_LocalSocket.Close();
 #endif
     }
 
