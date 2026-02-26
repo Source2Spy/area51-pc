@@ -121,7 +121,7 @@ s32 audio_mp3_mgr::mp3_fetch_data( audio_stream* pStream, void* pBuffer, s32 nBy
 
     pStream->CursorMP3 = Current;
 
-    if( Previous < MP3_BUFFER_SIZE )
+    if( Previous <= MP3_BUFFER_SIZE )
     {
         bTransition = (Current > MP3_BUFFER_SIZE);
     }
@@ -344,6 +344,8 @@ void audio_mp3_mgr::Open( audio_stream* pStream )
     ASSERT( IsValidStream( pStream ) );
 
     pStream->CursorMP3 = 0;
+
+    x_memset( (void*)pStream->MainRAM[1], 0, MP3_BUFFER_SIZE );
 
     if( pStream->HandleMP3 )
     {
