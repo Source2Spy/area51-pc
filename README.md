@@ -17,23 +17,15 @@ The main goal is to get the source code into a buildable state on modern systems
 
 ## PC Code Issues
 
-1. **Audio System Malfunctions:**
-~~The Miles Sound System 6 implementation is very often causes crash, unstable. (Delete Voice.DFS for stability)~~ Probably fixed, the game now uses minimp3. But its still unstable and buggy.
-
-2. **Console UI (Incomplete Interface):**
+1. **Console UI (Incomplete Interface):**
 The PC version is currently using the console UI. This results in:
 
   - Missing PC-specific settings (graphics, keybindings, etc.)
 
   - Redundant console-only interface logic included in the build, which clutters the UI codebase.
 
-3. **Simple PC render:**
-A very basic DX11 renderer is implemented, without complex effects and shaders.
-
-4. **Unstable WebM decoding:**
-It's just poorly implemented so far, sorry.
-
-5. **Multiplayer & Network Stack Failure:** The network layer is completely broken. Multiplayer functionality is non-operational.
+2. **Simple PC render:**
+Distortion not working. And couple other effects....
 
 ## Building PC Code
 
