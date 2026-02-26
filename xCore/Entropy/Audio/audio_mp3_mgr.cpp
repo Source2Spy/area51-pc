@@ -345,8 +345,6 @@ void audio_mp3_mgr::Open( audio_stream* pStream )
 
     pStream->CursorMP3 = 0;
 
-    x_memset( (void*)pStream->MainRAM[1], 0, MP3_BUFFER_SIZE );
-
     if( pStream->HandleMP3 )
     {
         mp3_decoder_state* pOldState = (mp3_decoder_state*)pStream->HandleMP3;
