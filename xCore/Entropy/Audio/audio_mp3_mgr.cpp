@@ -123,7 +123,7 @@ s32 audio_mp3_mgr::mp3_fetch_data( audio_stream* pStream, void* pBuffer, s32 nBy
 
     if( Previous <= MP3_BUFFER_SIZE )
     {
-        bTransition = (Current > MP3_BUFFER_SIZE);
+        bTransition = (Current >= MP3_BUFFER_SIZE);
     }
     else
     {
