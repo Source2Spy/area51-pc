@@ -258,8 +258,13 @@ s32 audio_mp3_mgr::mp3_state_decode_frame( audio_stream* pStream, mp3_decoder_st
 
         if( FrameBytes <= 0 )
         {
-            FrameBytes = (BytesLeft > 0) ? 1 : 0;
-            SkipCount++;
+            if( State.EndOfStream ||
+                (State.InputCursor == 0 &&
+                 State.InputBytes >= (s32)sizeof( State.InputBuffer )) )
+            {
+                FrameBytes = (BytesLeft > 0) ? 1 : 0;
+                SkipCount++;
+            }
         }
         else
         {
@@ -428,7 +433,10 @@ void audio_mp3_mgr::Decode( audio_stream* pStream, s16* pBufferL, s16* pBufferR,
     {
         if( pState->SamplesAvailable <= 0 )
         {
-            if( mp3_state_decode_frame( pStream, *pState ) <= 0 )
+            g_AudioHardware.Unlock();
+            s32 Decoded = mp3_state_decode_frame( pStream, *pState );
+            g_AudioHardware.Lock();
+            if( Decoded <= 0 )
                 break;
         }
 
