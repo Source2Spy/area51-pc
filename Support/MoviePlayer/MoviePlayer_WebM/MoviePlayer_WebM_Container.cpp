@@ -64,17 +64,6 @@ xbool file_reader::Open(const char* pFilename)
 
     m_pFile = x_fopen(Path, "rb");
 
-    //if (!m_pFile && g_RscMgr.GetRootDirectory())
-    if (!m_pFile)
-    {
-        Path = pFilename;
-        if (Path.Find('.') == -1)
-        {
-            Path += ".webm";
-        }
-        m_pFile = x_fopen(Path, "rb");
-    }
-
     if (!m_pFile)
         return FALSE;
 
@@ -344,7 +333,7 @@ xbool container::SelectTracks(player_config& Config)
         {
             m_VideoTrack      = (s32)pTrack->GetNumber();
             Config.VideoTrack = m_VideoTrack;
-            Config.CodecId    = pTrack->GetCodecId();
+            Config.VideoCodecId = pTrack->GetCodecId();
 
             const mkvparser::VideoTrack* pVideo = static_cast<const mkvparser::VideoTrack*>(pTrack);
             Config.Width  = (s32)pVideo->GetWidth();
@@ -406,14 +395,10 @@ xbool container::AdvanceCluster(void)
         m_pCluster = m_pSegment->GetNext(m_pCluster);
     }
 
-    while (m_pCluster && m_pCluster->EOS())
+    if (!m_pCluster || m_pCluster->EOS())
     {
-        m_pCluster = m_pSegment->GetNext(m_pCluster);
-    }
-
-    if (!m_pCluster)
-    {
-        m_bEOF = TRUE;
+        m_bEOF    = TRUE;
+        m_pCluster = NULL;
         return FALSE;
     }
 

@@ -89,6 +89,7 @@ struct player_config
         AudioSampleRate = 0;
         AudioBitDepth   = 16;
         AudioCodecId.Clear();
+        VideoCodecId.Clear();
         AudioCodecPrivate.Clear();
     }
 
@@ -101,7 +102,7 @@ struct player_config
     f64         TimecodeScale;
     xbool       HasAudio;
     xbool       IsLooped;
-    xstring     CodecId;
+    xstring     VideoCodecId;
     xstring     AudioCodecId;
     s32         AudioChannels;
     s32         AudioSampleRate;
@@ -393,7 +394,7 @@ public:
     void            Pause               (void);
     void            Resume              (void);
 
-    xbitmap*        Decode              (void);
+    void            Render              (void);
 
 private:
     void            Shutdown            (void);
@@ -429,7 +430,7 @@ private:
     volatile xbool              m_bThreadExit;
     volatile xbool              m_bThreadRunning;
     volatile xbool              m_bThreadFinished;
-    xbool                       m_bPaused;
+    volatile xbool              m_bPaused;
     volatile xbool              m_bPlaybackActive;
     volatile xbool              m_bVideoEOF;
     volatile xbool              m_bThreadBusy;

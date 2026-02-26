@@ -76,13 +76,13 @@ void movie_player::Render(xbool InRenderLoop)
     {
         if (eng_Begin("Movie"))
         {
-            m_Private.Decode();
+            m_Private.Render();
             eng_End();
         }
     }
     else
     {
-        m_Private.Decode();
+        m_Private.Render();
     }
 #endif	
 }

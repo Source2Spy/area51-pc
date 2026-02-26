@@ -93,7 +93,7 @@ void video_decoder::Shutdown(void)
 
 xbool video_decoder::InitializeCodec(const player_config& Config)
 {
-    xstring CodecId = Config.CodecId;
+    xstring CodecId = Config.VideoCodecId;
     CodecId.MakeUpper();
 
     if (CodecId.Find("VP9") != -1)

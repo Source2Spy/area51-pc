@@ -41,7 +41,8 @@ using namespace movie_webm;
 
 namespace
 {
-    static const s32 MAX_OPUS_FRAME_MS = 120;
+    static const s32 MAX_OPUS_FRAME_MS       = 120;
+    static const s32 AUDIO_SUBMIT_TIMEOUT_MS = 500;
 }
 
 //==============================================================================
@@ -136,13 +137,7 @@ xbool audio_decoder::Initialize(const player_config& Config)
     m_CodecType     = CODEC_NONE;
     m_Channels      = (Config.AudioChannels > 0) ? Config.AudioChannels : 2;
     m_SampleRate    = (Config.AudioSampleRate > 0) ? Config.AudioSampleRate : 48000;
-    m_BitsPerSample = (Config.AudioBitDepth > 0) ? Config.AudioBitDepth : 16;
-    if (m_Channels <= 0)
-        m_Channels = 2;
-    if (m_SampleRate <= 0)
-        m_SampleRate = 48000;
-    if (m_BitsPerSample != 16)
-        m_BitsPerSample = 16;
+	m_BitsPerSample = 16; //m_BitsPerSample = (Config.AudioBitDepth > 0) ? Config.AudioBitDepth : 16;
 
     m_MaxFrameSamples = (m_SampleRate * MAX_OPUS_FRAME_MS) / 1000;
     if (m_MaxFrameSamples <= 0)
@@ -277,14 +272,13 @@ xbool audio_decoder::DecodeSample(const sample& Sample, mkvparser::IMkvReader* p
 
 void audio_decoder::SetVolume(f32 Volume)
 {
+    if (Volume < 0.0f) Volume = 0.0f;
+    if (Volume > 1.0f) Volume = 1.0f;
+
     m_Volume = Volume;
 
     if (m_pMasterVoice)
-    {
-        if (m_Volume < 0.0f) m_Volume = 0.0f;
-        if (m_Volume > 1.0f) m_Volume = 1.0f;
         m_pMasterVoice->SetVolume(m_Volume);
-    }
 }
 
 //==============================================================================
@@ -753,7 +747,7 @@ xbool audio_decoder::ParseVorbisPrivate(const player_config& Config)
         pCurrent += length;
     }
 
-    if (m_VorbisHeaders[0].GetCount() < 12)
+    if (m_VorbisHeaders[0].GetCount() < 16)
         return FALSE;
 
     const u8* pHeader = m_VorbisHeaders[0].GetPtr();
@@ -1016,9 +1010,20 @@ xbool audio_decoder::SubmitPCM(const s16* pSamples, s32 SampleCount)
     XAUDIO2_VOICE_STATE state;
     m_pSourceVoice->GetState(&state);
 
+    s32 waitMs = 0;
     while (state.BuffersQueued >= 6)
     {
+        if (waitMs >= AUDIO_SUBMIT_TIMEOUT_MS)
+        {
+            if (!m_bWarned)
+            {
+                x_DebugMsg("MoviePlayer_WebM: Audio submit timeout, dropping buffer.\n");
+                m_bWarned = TRUE;
+            }
+            return FALSE;
+        }
         x_DelayThread(1);
+        ++waitMs;
         m_pSourceVoice->GetState(&state);
     }
 

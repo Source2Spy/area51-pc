@@ -6,8 +6,6 @@
 //
 //==============================================================================
 
-//TODO: Rewrite ThreadLoop and PumpAudio code, its to bad.
-
 //==============================================================================
 //  PLATFORM CHECK
 //==============================================================================
@@ -291,10 +289,10 @@ void movie_private::Resume(void)
 
 //==============================================================================
 
-xbitmap* movie_private::Decode(void)
+void movie_private::Render(void)
 {
     if (!g_pd3dDevice)
-        return NULL;
+        return;
 
     m_RenderData.DataMutex.Enter();
 
@@ -308,14 +306,14 @@ xbitmap* movie_private::Decode(void)
             if (!CreateVideoTexture())
             {
                 m_RenderData.DataMutex.Exit();
-                return NULL;
+                return;
             }
         }
 
         if (!UpdateVideoTexture())
         {
             m_RenderData.DataMutex.Exit();
-            return NULL;
+            return;
         }
 
         m_RenderData.bHasNewFrame = FALSE;
@@ -327,8 +325,6 @@ xbitmap* movie_private::Decode(void)
     {
         RenderVideoFrame();
     }
-
-    return NULL;
 }
 
 //==============================================================================
@@ -377,150 +373,105 @@ void movie_private::ThreadLoop(void)
     if (!m_bPlaybackActive || m_bPaused)
         return;
 
-    m_bThreadBusy = TRUE;
-
-    if (m_LastVideoTime > 0.0)
+    struct busy_scope
     {
-        movie_webm::sample PeekSample;
-        if (m_Container.PeekSample(PeekSample) &&
-            PeekSample.Type == movie_webm::STREAM_TYPE_VIDEO &&
-            PeekSample.TimeSeconds < m_LastVideoTime - 0.5)
-        {
-            if (m_IsLooped)
-            {
-                ResetPlayback();
-            }
-            else
-            {
-                HandleEndOfStream();
-            }
-            m_bThreadBusy = FALSE;
-            return;
-        }
-    }
+        volatile xbool& m_bBusy;
+        busy_scope(volatile xbool& b) : m_bBusy(b) { m_bBusy = TRUE; }
+        ~busy_scope() { m_bBusy = FALSE; }
+    } guard(m_bThreadBusy);
 
     movie_webm::sample Sample;
-    xbool bUsingPendingVideo = FALSE;
 
     if (m_bHasPendingVideo)
     {
         Sample = m_PendingVideoSample;
-        bUsingPendingVideo = TRUE;
     }
     else
     {
         if (!m_Container.PeekSample(Sample))
         {
             HandleEndOfStream();
-            m_bThreadBusy = FALSE;
             return;
         }
     }
 
-    const f64 playbackTime = m_Clock.GetTime();
+    const f64 playbackTime  = m_Clock.GetTime();
+    const f64 frameDuration = (m_Config.FrameRate > 0.0f)
+                              ? (1.0 / (f64)m_Config.FrameRate) : (1.0 / 30.0);
 
-    if (!bUsingPendingVideo && Sample.Type == movie_webm::STREAM_TYPE_AUDIO)
+    if (Sample.Type == movie_webm::STREAM_TYPE_AUDIO)
     {
-        if (m_Config.HasAudio)
+        if (m_Config.HasAudio && (Sample.TimeSeconds > playbackTime + AUDIO_BUFFER_LEAD))
         {
-            const f64 targetTime = playbackTime + AUDIO_BUFFER_LEAD;
-            if (Sample.TimeSeconds > targetTime)
-            {
-                SleepMilliseconds(Sample.TimeSeconds - targetTime);
-                m_bThreadBusy = FALSE;
-                return;
-            }
+            SleepMilliseconds(Sample.TimeSeconds - (playbackTime + AUDIO_BUFFER_LEAD));
+            return;
         }
 
         if (!m_Container.ReadSample(Sample))
         {
             HandleEndOfStream();
-            m_bThreadBusy = FALSE;
             return;
         }
 
         if (m_Config.HasAudio)
-        {
             m_AudioDecoder.DecodeSample(Sample, m_Container.GetReader());
-        }
 
-        m_bThreadBusy = FALSE;
         return;
     }
 
     if (Sample.Type != movie_webm::STREAM_TYPE_VIDEO)
     {
-        if (!bUsingPendingVideo)
-        {
-            m_Container.ReadSample(Sample);
-        }
-        else
-        {
-            m_bHasPendingVideo = FALSE;
-        }
-        m_bThreadBusy = FALSE;
+        m_Container.ReadSample(Sample);
         return;
     }
 
-    const f64 delta = Sample.TimeSeconds - playbackTime;
-    if (delta > VIDEO_PRESENT_LEAD)
+    if (m_bHasPendingVideo)
     {
-        if (!bUsingPendingVideo)
-        {
-            if (!m_Container.ReadSample(Sample))
-            {
-                HandleEndOfStream();
-                m_bThreadBusy = FALSE;
-                return;
-            }
-            m_PendingVideoSample = Sample;
-            m_bHasPendingVideo = TRUE;
-        }
-
-        PumpAudio(Sample.TimeSeconds + AUDIO_BUFFER_LEAD);
-        SleepMilliseconds(delta - VIDEO_PRESENT_LEAD);
-        m_bThreadBusy = FALSE;
-        return;
+        m_bHasPendingVideo = FALSE;
     }
-
-    if (!bUsingPendingVideo)
+    else
     {
         if (!m_Container.ReadSample(Sample))
         {
             HandleEndOfStream();
-            m_bThreadBusy = FALSE;
             return;
         }
     }
-    else
+
+    const f64 delta = Sample.TimeSeconds - playbackTime;
+
+    if (delta > VIDEO_PRESENT_LEAD)
     {
-        m_bHasPendingVideo = FALSE;
+        m_PendingVideoSample = Sample;
+        m_bHasPendingVideo   = TRUE;
+        PumpAudio(Sample.TimeSeconds + AUDIO_BUFFER_LEAD);
+        SleepMilliseconds(delta - VIDEO_PRESENT_LEAD);
+        return;
+    }
+
+    if (delta < -frameDuration)
+    {
+        m_LastVideoTime = Sample.TimeSeconds;
+        PumpAudio(Sample.TimeSeconds + AUDIO_BUFFER_LEAD);
+        return;
     }
 
     if (!ProcessVideoSample(Sample))
-    {
-        m_bThreadBusy = FALSE;
         return;
-    }
 
     m_LastVideoTime = Sample.TimeSeconds;
 
     if (!m_IsLooped && m_Config.Duration > 0.0)
     {
-        f64 frameEpsilon = (m_Config.FrameRate > 0.0f) ? (1.0 / (f64)m_Config.FrameRate) : (1.0 / 30.0);
-        const f64 endThreshold = x_max(0.0, m_Config.Duration - frameEpsilon);
-
+        const f64 endThreshold = x_max(0.0, m_Config.Duration - frameDuration);
         if (Sample.TimeSeconds >= endThreshold)
         {
             HandleEndOfStream();
-            m_bThreadBusy = FALSE;
             return;
         }
     }
 
     PumpAudio(Sample.TimeSeconds + AUDIO_BUFFER_LEAD);
-
-    m_bThreadBusy = FALSE;
 }
 
 //==============================================================================
@@ -654,7 +605,7 @@ void movie_private::UpdateRenderBuffer(const movie_webm::sample& Sample)
 
 void movie_private::PumpAudio(f64 TargetTime)
 {
-    if (!m_bPlaybackActive)
+    if (!m_Config.HasAudio)
         return;
 
     while (m_bPlaybackActive)
@@ -664,9 +615,7 @@ void movie_private::PumpAudio(f64 TargetTime)
         if (!m_Container.PeekSample(Sample))
         {
             if (!m_bHasPendingVideo)
-            {
                 HandleEndOfStream();
-            }
             return;
         }
 
@@ -679,16 +628,11 @@ void movie_private::PumpAudio(f64 TargetTime)
         if (!m_Container.ReadSample(Sample))
         {
             if (!m_bHasPendingVideo)
-            {
                 HandleEndOfStream();
-            }
             return;
         }
 
-        if (m_Config.HasAudio)
-        {
-            m_AudioDecoder.DecodeSample(Sample, m_Container.GetReader());
-        }
+        m_AudioDecoder.DecodeSample(Sample, m_Container.GetReader());
     }
 }
 
