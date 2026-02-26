@@ -386,6 +386,10 @@ xbool audio_stream_mgr::WarmStream( audio_stream* pStream, io_request::callback_
         pStream->WaveformCursor  = 0;
         pStream->ARAMWriteBuffer = 0;
 
+        // And this too...
+        x_memset( (void*)pStream->MainRAM[0], 0, MP3_BUFFER_SIZE );
+        x_memset( (void*)pStream->MainRAM[1], 0, MP3_BUFFER_SIZE );
+
         // Check the callback
         if( pCallback == NULL )
         {
