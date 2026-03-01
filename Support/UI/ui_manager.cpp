@@ -1289,14 +1289,15 @@ s32 ui_manager::GetLineHeight( s32 iFont ) const
 
 void ui_manager::RenderRect( const irect& r, const xcolor& Color, xbool IsWire ) const
 {
-    draw_Rect( r, Color, IsWire );
+    draw_Rect( r, Color, IsWire, DRAW_UI_RTARGET );
 }
 
 //=========================================================================
 
 void ui_manager::RenderGouraudRect( const irect& r, const xcolor& c1, const xcolor& c2, const xcolor& c3, const xcolor& c4, xbool IsWire, xbool IsAdditive ) const
 {
-    draw_GouraudRect( r, c1, c2, c3, c4, IsWire, IsAdditive );
+    s32 drawFlags = DRAW_UI_RTARGET | (IsAdditive ? DRAW_BLEND_ADD : 0);
+    draw_GouraudRect( r, c1, c2, c3, c4, IsWire, drawFlags );
 }
 
 //=========================================================================

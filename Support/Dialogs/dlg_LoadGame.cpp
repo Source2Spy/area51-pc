@@ -1434,7 +1434,7 @@ void dlg_load_game::platform_FillScreen( xcolor C )
     s32 XRes, YRes;
     eng_GetRes( XRes, YRes );
     Rect.Set( 0, 0, XRes, YRes );
-    draw_Rect( Rect, C, FALSE );
+    draw_Rect( Rect, C, FALSE, DRAW_UI_RTARGET );
 #endif
 }
 

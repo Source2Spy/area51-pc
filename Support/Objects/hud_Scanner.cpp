@@ -752,7 +752,7 @@ void hud_scanner::RenderLoreBar( s32 AmountPercent )
     static xcolor HUD_LORE_BAR = xcolor(80, 150, 150, 30);
     static xcolor HUD_LORE_BAR_HIGH = xcolor(200, 80, 80, 200);
     xcolor bar = Interpolate(HUD_LORE_BAR, HUD_LORE_BAR_HIGH, AmountPercent / g_GeigerSize);
-    draw_GouraudRect(R, bar, bar, bar, bar, FALSE );
+    draw_GouraudRect(R, bar, bar, bar, bar, FALSE, DRAW_UI_RTARGET);
 
     // Has the bar went up? if so update the peak
     if( Y-BarLength < m_ScanPeak )
@@ -773,7 +773,7 @@ void hud_scanner::RenderLoreBar( s32 AmountPercent )
         m_ScanPeak-2
         );
 
-    draw_Rect(R, g_HudColor, FALSE);
+    draw_Rect(R, g_HudColor, FALSE, DRAW_UI_RTARGET);
     
 }
 //==============================================================================

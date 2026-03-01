@@ -149,7 +149,7 @@ void poly_cache::DisplayStats( void )
     s32 font = g_UiMgr->FindFont("small");
 
     Rect.Set( x-5, y, x + 150, y + (g_UiMgr->GetLineHeight(font) * 4) );
-    draw_Rect( Rect, xcolor(0,0,0,128), FALSE );
+    draw_Rect( Rect, xcolor(0,0,0,128), FALSE, DRAW_UI_RTARGET );
 
     xwstring Text1 = (const char*)xfs( "Cache Hit: %d", g_PolyCache.m_nCacheHits ); 
     g_UiMgr->TextSize( font, Rect, Text1, Text1.GetLength());

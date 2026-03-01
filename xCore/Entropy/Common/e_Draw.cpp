@@ -19,9 +19,10 @@
 
 void draw_Line( const vector3& P0,
                 const vector3& P1,
-                      xcolor   Color )
+                      xcolor   Color,
+                      u32      Flags )
 {
-    draw_Begin( DRAW_LINES );
+    draw_Begin( DRAW_LINES, Flags );
         draw_Color( Color );
         draw_Vertex( P0 );
         draw_Vertex( P1 );
@@ -35,7 +36,8 @@ void draw_Line( const vector3& P0,
 #if !defined( CONFIG_RETAIL ) || defined( TARGET_PC )
 
 void draw_BBox( const bbox&    BBox,
-                      xcolor   Color )
+                      xcolor   Color,
+                      u32      Flags )
 {
     static s16 Index[] = {1,5,5,7,7,3,3,1,0,4,4,6,6,2,2,0,3,2,7,6,5,4,1,0};
     vector3 P[8];
@@ -49,7 +51,7 @@ void draw_BBox( const bbox&    BBox,
     P[6].GetX() = BBox.Max.GetX();    P[6].GetY() = BBox.Max.GetY();    P[6].GetZ() = BBox.Min.GetZ();
     P[7].GetX() = BBox.Max.GetX();    P[7].GetY() = BBox.Max.GetY();    P[7].GetZ() = BBox.Max.GetZ();
 
-    draw_Begin( DRAW_LINES, DRAW_USE_ALPHA );
+    draw_Begin( DRAW_LINES, DRAW_USE_ALPHA | Flags );
         draw_Color( Color );
         draw_Verts( P, 8 );
         draw_Execute( Index, sizeof(Index)/sizeof(s16) );
@@ -62,8 +64,9 @@ void draw_BBox( const bbox&    BBox,
 
 #if !defined( CONFIG_RETAIL ) || defined( TARGET_PC )
 
-void draw_Volume ( const bbox&    BBox, 
-                         xcolor   Color )
+void draw_Volume ( const bbox&    BBox,
+                         xcolor   Color,
+                         u32      Flags )
 {
     vector3 BBoxCenter = BBox.GetCenter();
     vector3 P0( BBoxCenter );
@@ -72,7 +75,7 @@ void draw_Volume ( const bbox&    BBox,
     P1.GetZ() = BBox.Max.GetZ();
 
     vector3 BBoxSize = BBox.GetSize();
-    draw_Volume( P0, P1, BBoxSize.GetX()*0.5f, BBoxSize.GetY()*0.5f, Color );
+    draw_Volume( P0, P1, BBoxSize.GetX()*0.5f, BBoxSize.GetY()*0.5f, Color, Flags );
 }
 
 #endif // X_RETAIL
@@ -81,11 +84,12 @@ void draw_Volume ( const bbox&    BBox,
 
 #if !defined( CONFIG_RETAIL ) || defined( TARGET_PC )
 
-void draw_Volume ( const vector3& P0, 
-                   const vector3& P1, 
+void draw_Volume ( const vector3& P0,
+                   const vector3& P1,
                          f32      Width,
                          f32      Height,
-                         xcolor   Color )
+                         xcolor   Color,
+                         u32      Flags )
 {
     vector3 corners[8];
     vector3 slope = P0 - P1;
@@ -140,7 +144,7 @@ void draw_Volume ( const vector3& P0,
     corners[7] += P1;
     corners[7].GetY() -= Height;
 
-    draw_Begin( DRAW_QUADS , DRAW_USE_ALPHA | DRAW_NO_ZWRITE );
+    draw_Begin( DRAW_QUADS, DRAW_USE_ALPHA | DRAW_NO_ZWRITE | Flags );
     {
         draw_Color( Color );
        
@@ -191,12 +195,13 @@ void draw_Volume ( const vector3& P0,
 void draw_NGon( const vector3* pPoint,
                       s32      NPoints,
                       xcolor   Color,
-                      xbool    DoWire )
+                      xbool    DoWire,
+                      u32      Flags )
 {
     if( DoWire )
     {
         s32 P = NPoints-1;
-        draw_Begin(DRAW_LINES, DRAW_USE_ALPHA);
+        draw_Begin(DRAW_LINES, DRAW_USE_ALPHA | Flags);
             draw_Color(Color);
             for( s32 i=0; i<NPoints; i++ )
             {
@@ -208,7 +213,7 @@ void draw_NGon( const vector3* pPoint,
     }
     else
     {
-        draw_Begin(DRAW_TRIANGLES, DRAW_USE_ALPHA);
+        draw_Begin(DRAW_TRIANGLES, DRAW_USE_ALPHA | Flags);
             draw_Color(Color);
             for( s32 i=1; i<NPoints-1; i++ )
             {
@@ -228,7 +233,8 @@ void draw_NGon( const vector3* pPoint,
 
 void draw_Sphere( const vector3& Pos,
                         f32      Radius,
-                        xcolor   Color)
+                        xcolor   Color,
+                        u32      Flags )
 {
     #define A  0.8506f
     #define B  0.5257f
@@ -249,7 +255,7 @@ void draw_Sphere( const vector3& Pos,
     for( s32 i=0; i<12; i++ )
         P[i] = Pos + SphereV[i] * Radius;
 
-    draw_Begin( DRAW_LINES, DRAW_USE_ALPHA );
+    draw_Begin( DRAW_LINES, DRAW_USE_ALPHA | Flags );
         draw_Color( Color );
         draw_Verts( P, 12 );
         draw_Execute( Index, sizeof(Index)/sizeof(s16) );
@@ -263,7 +269,8 @@ void draw_Sphere( const vector3& Pos,
 #if !defined( CONFIG_RETAIL ) || defined( TARGET_PC )
 
 void draw_Marker( const vector3& Pos,
-                        xcolor   Color )
+                        xcolor   Color,
+                        u32      Flags )
 {
     (void)Pos;
     (void)Color;
@@ -289,7 +296,7 @@ void draw_Marker( const vector3& Pos,
     ScreenPos.GetY() -= Y0;
 
     // Draw away.
-    draw_Begin( DRAW_QUADS, DRAW_2D );
+    draw_Begin( DRAW_QUADS, DRAW_2D | Flags );
     {
         draw_Color( Color );
         draw_Vertex( ScreenPos.GetX(),   ScreenPos.GetY()-8, 0 );
@@ -318,7 +325,8 @@ void draw_Marker( const vector3& Pos,
 
 void draw_Point( const vector3& Pos,
                        xcolor   Color,
-                       s32      Size )
+                       s32      Size,
+                       u32      Flags )
 {
 /*
     s32 i;
@@ -357,7 +365,7 @@ void draw_Point( const vector3& Pos,
         //eng_ActivateView(i);
         
         // Draw away.
-        draw_Begin( DRAW_QUADS, DRAW_2D );
+        draw_Begin( DRAW_QUADS, DRAW_2D | Flags );
         {
             draw_Color( Color );
             draw_Vertex( ScreenPos.GetX()-Size, ScreenPos.GetY()-Size, 0 );
@@ -384,7 +392,8 @@ void draw_Point( const vector3& Pos,
 
 void draw_Frustum( const view&    View,
                          xcolor   Color,
-                         f32      Dist )
+                         f32      Dist,
+                         u32      Flags )
 {
     static s16 Index[8*2] = {0,1,0,2,0,3,0,4,1,2,2,3,3,4,4,1};
     vector3 P[6];
@@ -407,7 +416,7 @@ void draw_Frustum( const view&    View,
 
     P[5] = (P[1] + P[2] + P[3] + P[4]) * 0.25f;
 
-    draw_Begin( DRAW_LINES );
+    draw_Begin( DRAW_LINES, Flags );
         draw_Color( Color );
         draw_Verts( P, 5 );
         draw_Execute( Index, 8*2 );
@@ -423,9 +432,9 @@ void draw_Frustum( const view&    View,
 
 #if !defined( CONFIG_RETAIL ) || defined( TARGET_PC )
 
-void draw_Axis( f32 Size )
+void draw_Axis( f32 Size, u32 Flags )
 {
-    draw_Begin( DRAW_LINES );
+    draw_Begin( DRAW_LINES, Flags );
 
         draw_Color(XCOLOR_WHITE);   draw_Vertex(0,0,0);
         draw_Color(XCOLOR_RED);     draw_Vertex(Size,0,0);
@@ -466,12 +475,13 @@ void draw_Axis( f32 Size )
 void draw_Grid( const vector3& Corner,
                 const vector3& Edge1,
                 const vector3& Edge2,
-                      xcolor   Color, 
-                      s32      NSubdivisions )
+                      xcolor   Color,
+                      s32      NSubdivisions,
+                      u32      Flags )
 {
     s32 NWires = NSubdivisions+1;
 
-    draw_Begin( DRAW_LINES );
+    draw_Begin( DRAW_LINES, Flags );
     draw_Color( Color );
 
         for( s32 w=0; w<NWires; w++ )
@@ -606,7 +616,8 @@ void draw_Label( const vector3& Pos,
 
 void draw_Rect( const rect&    Rect,
                 xcolor         Color,
-                xbool          DoWire)
+                xbool          DoWire,
+                u32            Flags)
 {
     f32 Near = 0.001f;
 
@@ -614,14 +625,14 @@ void draw_Rect( const rect&    Rect,
     {
         if( (Rect.GetWidth() == 1) && (Rect.GetHeight() == 1) )
         {
-            draw_Begin( DRAW_POINTS, DRAW_2D|DRAW_USE_ALPHA|DRAW_NO_ZBUFFER );
+            draw_Begin( DRAW_POINTS, DRAW_2D | DRAW_USE_ALPHA | DRAW_NO_ZBUFFER | Flags );
             draw_Color( Color );
 
             draw_Vertex( Rect.Min.X, Rect.Min.Y, Near );
         }
         else
         {
-            draw_Begin( DRAW_LINES, DRAW_2D|DRAW_USE_ALPHA|DRAW_NO_ZBUFFER );
+            draw_Begin( DRAW_LINES, DRAW_2D | DRAW_USE_ALPHA | DRAW_NO_ZBUFFER | Flags);
             draw_Color( Color );
 
 
@@ -640,7 +651,7 @@ void draw_Rect( const rect&    Rect,
     }
     else
     {
-        draw_Begin( DRAW_QUADS, DRAW_2D|DRAW_USE_ALPHA|DRAW_NO_ZBUFFER|DRAW_CULL_NONE );
+        draw_Begin( DRAW_QUADS, DRAW_2D | DRAW_USE_ALPHA | DRAW_NO_ZBUFFER | DRAW_CULL_NONE | Flags );
         draw_Color( Color );
 
         draw_Vertex( Rect.Min.X, Rect.Min.Y, Near );
@@ -658,7 +669,8 @@ void draw_Rect( const rect&    Rect,
 
 void draw_Rect( const irect&   Rect,
                 xcolor         Color,
-                xbool          DoWire)
+                xbool          DoWire,
+                u32            Flags)
 {
     f32 Near = 0.001f;
 
@@ -666,14 +678,14 @@ void draw_Rect( const irect&   Rect,
     {
         if( (Rect.GetWidth() == 1) && (Rect.GetHeight() == 1) )
         {
-            draw_Begin( DRAW_POINTS, DRAW_2D|DRAW_USE_ALPHA|DRAW_NO_ZBUFFER|DRAW_UI_RTARGET );
+            draw_Begin( DRAW_POINTS, DRAW_2D | DRAW_USE_ALPHA | DRAW_NO_ZBUFFER | Flags );
             draw_Color( Color );
 
             draw_Vertex( (f32)Rect.l, (f32)Rect.t, Near );
         }
         else
         {
-            draw_Begin( DRAW_LINES, DRAW_2D|DRAW_USE_ALPHA|DRAW_NO_ZBUFFER|DRAW_UI_RTARGET );
+            draw_Begin( DRAW_LINES, DRAW_2D | DRAW_USE_ALPHA | DRAW_NO_ZBUFFER | Flags );
             draw_Color( Color );
 
 
@@ -692,7 +704,7 @@ void draw_Rect( const irect&   Rect,
     }
     else
     {
-        draw_Begin( DRAW_QUADS, DRAW_2D|DRAW_USE_ALPHA|DRAW_NO_ZBUFFER|DRAW_CULL_NONE|DRAW_UI_RTARGET );
+        draw_Begin( DRAW_QUADS, DRAW_2D | DRAW_USE_ALPHA | DRAW_NO_ZBUFFER | DRAW_CULL_NONE | Flags );
         draw_Color( Color );
 
         draw_Vertex( (f32)Rect.l, (f32)Rect.t, Near );
@@ -712,7 +724,7 @@ void draw_GouraudRect( const irect&   Rect,
                        const xcolor&  c3,
                        const xcolor&  c4,
                        xbool          DoWire,
-                       xbool          DoAdditive)
+                       u32            Flags)
 {
     f32 Near = 0.001f;
 
@@ -720,14 +732,14 @@ void draw_GouraudRect( const irect&   Rect,
     {
         if( (Rect.GetWidth() == 1) && (Rect.GetHeight() == 1) )
         {
-            draw_Begin( DRAW_POINTS, DRAW_2D|DRAW_USE_ALPHA|DRAW_NO_ZBUFFER|DRAW_UI_RTARGET );
+            draw_Begin( DRAW_POINTS, DRAW_2D | DRAW_USE_ALPHA | DRAW_NO_ZBUFFER | Flags );
 
             draw_Color( c1 );
             draw_Vertex( (f32)Rect.l, (f32)Rect.t, Near );
         }
         else
         {
-            draw_Begin( DRAW_LINES, DRAW_2D|DRAW_USE_ALPHA|DRAW_NO_ZBUFFER|DRAW_UI_RTARGET );
+            draw_Begin( DRAW_LINES, DRAW_2D | DRAW_USE_ALPHA | DRAW_NO_ZBUFFER | Flags );
 
             draw_Color( c1 );
             draw_Vertex( (f32)Rect.l    , (f32)Rect.t    , Near );
@@ -749,10 +761,7 @@ void draw_GouraudRect( const irect&   Rect,
     }
     else
     {
-        if (DoAdditive)
-            draw_Begin( DRAW_QUADS, DRAW_2D|DRAW_USE_ALPHA|DRAW_NO_ZBUFFER|DRAW_BLEND_ADD|DRAW_CULL_NONE|DRAW_UI_RTARGET );
-        else
-            draw_Begin( DRAW_QUADS, DRAW_2D|DRAW_USE_ALPHA|DRAW_NO_ZBUFFER|DRAW_CULL_NONE|DRAW_UI_RTARGET );
+        draw_Begin( DRAW_QUADS, DRAW_2D | DRAW_USE_ALPHA | DRAW_NO_ZBUFFER | DRAW_CULL_NONE | Flags );
 
         draw_Color( c1 );
         draw_Vertex( (f32)Rect.l, (f32)Rect.t, Near );

@@ -949,7 +949,8 @@ void zone_mgr::RenderMPZoneStates( void ) const
 
     draw_Rect( irect( s32(Rect.Min.X),s32(Rect.Min.Y),s32(Rect.Max.X),s32(Rect.Max.Y) ),
             GameMgr.GetZoneColor(),
-            FALSE );
+            FALSE,
+            DRAW_UI_RTARGET );
 
     g_RenderState.Set( D3DRS_STENCILENABLE,FALSE );
     xbox_SetBackSurfaceWithZ( FALSE );

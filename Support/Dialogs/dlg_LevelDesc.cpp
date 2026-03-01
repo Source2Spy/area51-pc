@@ -320,7 +320,7 @@ void dlg_level_desc::Render( s32 ox, s32 oy )
         pView->GetViewport( r );
         irect ir( (s32)r.Min.X, (s32)r.Min.Y, (s32)r.Max.X, (s32)r.Max.Y );
 
-        draw_Rect( ir, g_TextRectLoadScreen, FALSE );
+        draw_Rect( ir, g_TextRectLoadScreen, FALSE, DRAW_UI_RTARGET );
     }
 
     // render the normal ui dialog

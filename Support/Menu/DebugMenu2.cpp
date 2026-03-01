@@ -381,7 +381,7 @@ void debug_menu2::Render( void )
             #else
             rb.Set( 0, 0, XRes, YRes );
             #endif
-            draw_Rect( rb, xcolor(0,0,0,(u8)(255 * m_FadeAlpha)), FALSE );
+            draw_Rect( rb, xcolor(0,0,0,(u8)(255 * m_FadeAlpha)), FALSE, DRAW_UI_RTARGET );
 
             m_Pages[m_iActivePage]->Render();
 

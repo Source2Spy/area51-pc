@@ -914,7 +914,7 @@ void hud_object::RenderFrameRateInfo( void )
                 s32 font = g_UiMgr->FindFont("small");
 
                 Rect.Set( x, y, x + 160, y + (g_UiMgr->GetLineHeight(font) * 3) );
-                draw_Rect( Rect, xcolor(0,0,0,128), FALSE );
+                draw_Rect( Rect, xcolor(0,0,0,128), FALSE, DRAW_UI_RTARGET );
 
                 xwstring Text1 = (const char *)xfs( ">=30:%03d%%(%d)", (s32)(100.0f*(f32)m_FPSCount30/(f32)TotalCount), m_FPSCount30 );
                 g_UiMgr->TextSize( font, Rect, Text1, Text1.GetLength());

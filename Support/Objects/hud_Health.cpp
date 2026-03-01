@@ -888,7 +888,7 @@ void hud_health::RenderEQBar( s32 EQBar, s32 AmountPercent )
 
     static xcolor EQColor = xcolor(80, 150, 150, 30);
     static xcolor EQColorHigh = xcolor(80, 150, 150, 50);
-    draw_GouraudRect(R, EQColorHigh, EQColorHigh, EQColor, EQColor, FALSE );
+    draw_GouraudRect(R, EQColorHigh, EQColorHigh, EQColor, EQColor, FALSE, DRAW_UI_RTARGET );
 
     // Has the bar went up? if so update the peak
     if( Y-(HUD_VS_H-(BarLength)) < m_EQBarPeaks[EQBar] )
@@ -910,7 +910,7 @@ void hud_health::RenderEQBar( s32 EQBar, s32 AmountPercent )
         x_max( 0,m_EQBarPeaks[EQBar]-2 )
     );
 
-    draw_Rect(R, g_HudColor, FALSE);
+    draw_Rect(R, g_HudColor, FALSE, DRAW_UI_RTARGET);
 }
 
 //==============================================================================

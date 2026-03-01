@@ -114,7 +114,7 @@ void debug_menu_page_aiscript::OnPreRender( void )
         // render a black background for the text
         irect Rect;
         Rect.Set( kNameLeft, kTextTop, XRes-kNameLeft, kTextTop + LineHeight * NumLines );
-        draw_Rect( Rect, xcolor(0,0,0,128), FALSE );
+        draw_Rect( Rect, xcolor(0,0,0,128), FALSE, DRAW_UI_RTARGET );
 
         // render informative text for each of the actors...
         // NOTE: We are rendering the text visually from bottom to top. This will put

@@ -355,7 +355,7 @@ void stats_mgr::DrawBar(    stat_fields thisStat,
     // Draw.
     rect DrawRect;
     DrawRect.Set( corner1, corner2 );
-    draw_Rect( DrawRect, baseBar, FALSE );
+    draw_Rect( DrawRect, baseBar, FALSE, DRAW_UI_RTARGET );
     
     if(thisStat == k_stats_Vertices ||
        thisStat == k_stats_Polygons   ||
@@ -382,7 +382,7 @@ void stats_mgr::DrawBar(    stat_fields thisStat,
         tempCorner1.Y += (tempCorner2.Y -tempCorner1.Y) * calculatedScale;
             
         DrawRect.Set( tempCorner1, tempCorner2 );
-        draw_Rect( DrawRect, midBar, FALSE );
+        draw_Rect( DrawRect, midBar, FALSE, DRAW_UI_RTARGET );
         
         //////////////////////////////////////////////////////////////////////////
         //  Draw the Instant value
@@ -397,7 +397,7 @@ void stats_mgr::DrawBar(    stat_fields thisStat,
         tempCorner1.Y += (tempCorner2.Y -tempCorner1.Y) * calculatedScale;
 
         DrawRect.Set( tempCorner1, tempCorner2 );
-        draw_Rect( DrawRect, highBar, FALSE );        
+        draw_Rect( DrawRect, highBar, FALSE, DRAW_UI_RTARGET );        
 
         //////////////////////////////////////////////////////////////////////////
         //  Max Recent
@@ -412,7 +412,7 @@ void stats_mgr::DrawBar(    stat_fields thisStat,
         tempCorner2.Y = tempCorner1.Y + 3;
   
         DrawRect.Set( tempCorner1, tempCorner2 );
-        draw_Rect( DrawRect, XCOLOR_BLACK, FALSE );      
+        draw_Rect( DrawRect, XCOLOR_BLACK, FALSE, DRAW_UI_RTARGET );      
 
         //////////////////////////////////////////////////////////////////////////
         //  Min Recent
@@ -428,7 +428,7 @@ void stats_mgr::DrawBar(    stat_fields thisStat,
         tempCorner2.Y = tempCorner1.Y + 3;
   
         DrawRect.Set( tempCorner1, tempCorner2 );
-        draw_Rect( DrawRect, XCOLOR_PURPLE, FALSE );      
+        draw_Rect( DrawRect, XCOLOR_PURPLE, FALSE, DRAW_UI_RTARGET );      
     }
     
 #endif
@@ -613,7 +613,7 @@ void stats_mgr::DrawFPS(void)
     //draw base gray bars
     rect DrawRect;
     DrawRect.Set( CPUUpperLeft.X, CPUUpperLeft.Y, GSLowerRight.X, GSLowerRight.Y );
-    draw_Rect( DrawRect, xcolor(64,64,64,255), FALSE );
+    draw_Rect( DrawRect, xcolor(64,64,64,255), FALSE, DRAW_UI_RTARGET );
 
     // draw each of the timer stats
     temp1   = CPUUpperLeft;
@@ -624,14 +624,14 @@ void stats_mgr::DrawFPS(void)
         temp1.X = temp2.X;
         temp2.X = temp2.X + (CPULowerRight.X - CPUUpperLeft.X) * (percentTotalCPU*percents[i]);
         DrawRect.Set( temp1, temp2 );
-        draw_Rect( DrawRect, StatRenderInfo[i].BarColor, FALSE );
+        draw_Rect( DrawRect, StatRenderInfo[i].BarColor, FALSE, DRAW_UI_RTARGET );
     }
 
     // draw the vsync time
     temp1.X = temp2.X;
     temp2.X = temp2.X + (CPULowerRight.X - CPUUpperLeft.X) * (percentTotalCPU*fVSyncTime/fCPUStatTime);
     DrawRect.Set( temp1, temp2 );
-    draw_Rect( DrawRect, StatRenderInfo[k_stats_VSync].BarColor, FALSE );
+    draw_Rect( DrawRect, StatRenderInfo[k_stats_VSync].BarColor, FALSE, DRAW_UI_RTARGET );
 
     // draw each of the GPU time stats
     temp1   = GSUpperLeft;
@@ -642,7 +642,7 @@ void stats_mgr::DrawFPS(void)
         temp1.X = temp2.X;
         temp2.X = temp2.X + (GSLowerRight.X - GSUpperLeft.X) * (percentTotalGS*GPUPercents[i-k_stats_GSReset]);
         DrawRect.Set( temp1, temp2 );
-        draw_Rect( DrawRect, StatRenderInfo[i].BarColor, FALSE );
+        draw_Rect( DrawRect, StatRenderInfo[i].BarColor, FALSE, DRAW_UI_RTARGET );
     }
 
 /*
@@ -651,7 +651,7 @@ void stats_mgr::DrawFPS(void)
     temp2   = GSLowerRight;
     temp2.X = GSUpperLeft.X + (GSLowerRight.X - GSUpperLeft.X) * percentTotalGS;
     DrawRect.Set( temp1, temp2 );
-    draw_Rect( DrawRect, xcolor(180,180,180,255), FALSE );
+    draw_Rect( DrawRect, xcolor(180,180,180,255), FALSE, DRAW_UI_RTARGET );
     */
 
     // draw the notches across
@@ -664,7 +664,7 @@ void stats_mgr::DrawFPS(void)
         temp1.X -=1;
         temp2.X = temp1.X +2;
         DrawRect.Set( temp1, temp2 );
-        draw_Rect( DrawRect, xcolor(0,0,0,255), FALSE );
+        draw_Rect( DrawRect, xcolor(0,0,0,255), FALSE, DRAW_UI_RTARGET );
     }
 
     if(  m_bShowNumbers )
@@ -698,13 +698,13 @@ void stats_mgr::DrawCPULegend( void )
     for ( s32 i = 0; i < k_stats_NumTimerStats; i++ )
     {
         x_printfxy( 16, YOffset++, StatRenderInfo[i].pName );
-        draw_Rect( DrawRect, StatRenderInfo[i].BarColor, FALSE );
+        draw_Rect( DrawRect, StatRenderInfo[i].BarColor, FALSE, DRAW_UI_RTARGET );
         DrawRect.t += kCharHeight;
         DrawRect.b += kCharHeight;
     }
 
     x_printfxy( 16, YOffset++, StatRenderInfo[k_stats_VSync].pName );
-    draw_Rect( DrawRect, StatRenderInfo[k_stats_VSync].BarColor, FALSE );
+    draw_Rect( DrawRect, StatRenderInfo[k_stats_VSync].BarColor, FALSE, DRAW_UI_RTARGET );
     DrawRect.t += kCharHeight;
     DrawRect.b += kCharHeight;
 #endif
@@ -725,7 +725,7 @@ void stats_mgr::DrawGPULegend( void )
     for ( s32 i = k_stats_GSReset; i <= k_stats_GPUUnknown; i++ )
     {
         x_printfxy( 16, YOffset++, StatRenderInfo[i].pName );
-        draw_Rect( DrawRect, StatRenderInfo[i].BarColor, FALSE );
+        draw_Rect( DrawRect, StatRenderInfo[i].BarColor, FALSE, DRAW_UI_RTARGET );
         DrawRect.t += kCharHeight;
         DrawRect.b += kCharHeight;
     }

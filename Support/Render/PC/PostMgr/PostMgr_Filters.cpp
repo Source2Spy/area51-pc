@@ -104,7 +104,7 @@ void post_mgr::ExecuteScreenFade( void )
     Rect.b = m_PostViewB;
 
     state_SetBlend( STATE_BLEND_ALPHA );
-    draw_Rect( Rect, m_Simple.FadeColor, FALSE );
+    draw_Rect( Rect, m_Simple.FadeColor, FALSE, DRAW_UI_RTARGET );
 }
 
 //==============================================================================

@@ -115,7 +115,7 @@ void hud_vote::OnRender( player* pPlayer )
                         (s32)B
                      );
         RenderLine( pNay, LeftBox, Opacity, Color, 1, ui_font::h_right | ui_font::v_center );
-        //draw_Rect(LeftBox,XCOLOR_RED,TRUE);
+        //draw_Rect(LeftBox,XCOLOR_RED,TRUE,DRAW_UI_RTARGET);
 
         // TOP
         Color = XCOLOR_GREY; 

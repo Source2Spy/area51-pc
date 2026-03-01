@@ -237,7 +237,7 @@ void debug_menu_page_multiplayer::OnPreRender( void )
                                 (s32)  (Stats.MaxBitsTotal >> 3));
 
             Rect.Set( x - 4, y, x + 320, y + g_UiMgr->GetLineHeight(font) * 10 );
-            draw_Rect( Rect, xcolor(0,0,0,128), FALSE );
+            draw_Rect( Rect, xcolor(0,0,0,128), FALSE, DRAW_UI_RTARGET );
         }
         
         if( g_NetworkMgr.IsClient() )
@@ -287,7 +287,7 @@ void debug_menu_page_multiplayer::OnPreRender( void )
                 (s32)(g_NetworkMgr.GetClientObject().m_ConnMgr.m_StatsDebug.MaxBitsPainQueue >> 3));
 
             Rect.Set( x - 4, y, x + 320, y + g_UiMgr->GetLineHeight(font) * 12 );
-            draw_Rect( Rect, xcolor(0,0,0,128), FALSE );
+            draw_Rect( Rect, xcolor(0,0,0,128), FALSE, DRAW_UI_RTARGET );
         }
 
         RenderText( strPackets   , x, y, font, Rect );   y += 10;

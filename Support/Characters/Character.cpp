@@ -2515,7 +2515,7 @@ void character::SetupDebugTextBlock( s32 nLines, s32 nCharsWide, xcolor Color )
         (s32) m_ScreenBlockCursor.Y, 
         (s32)(m_ScreenBlockCursor.X + Width), 
         (s32)(m_ScreenBlockCursor.Y + Height) );
-    draw_Rect( R, Color, FALSE );
+    draw_Rect( R, Color, FALSE, DRAW_UI_RTARGET );
 
     m_nPreviousRequestedLines = 0;
 }

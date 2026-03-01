@@ -151,7 +151,7 @@ void debug_menu_page_localization::OnRenderActive( void )
                 Rect.Translate(Xpos, Ypos);
 
                 if( bCharOutline )
-                    draw_Rect( Rect, xcolor(128,128,128) );
+                    draw_Rect( Rect, xcolor(128,128,128), TRUE, DRAW_UI_RTARGET );
                 pFont->RenderText( Rect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), wc );
 
                 Xpos += Rect.GetWidth() + Spacing;
@@ -180,7 +180,7 @@ void debug_menu_page_localization::OnRenderActive( void )
                 Rect.Translate(Xpos, Ypos);
 
                 if( bCharOutline )
-                    draw_Rect( Rect, xcolor(128,128,128) );
+                    draw_Rect( Rect, xcolor(128,128,128), TRUE, DRAW_UI_RTARGET );
                 pFont->RenderText( Rect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), wc );
 
                 Xpos += Rect.GetWidth() + Spacing;

@@ -131,19 +131,19 @@ void hud_info_box::OnRender( player* pPlayer )
             // Fade Out
             Rect.Set( (s32)(Pos.GetX() + 2)-8,(s32)(Pos.GetY() + 1), 
                       (s32)(Pos.GetX() + 2),  (s32)(Pos.GetY() + 17) );
-            draw_GouraudRect(Rect,xcolor(0,31,0,0),xcolor(0,31,0,0),SCORE_RECT_COLOR_GREEN,SCORE_RECT_COLOR_GREEN,FALSE);
+            draw_GouraudRect(Rect,xcolor(0,31,0,0),xcolor(0,31,0,0),SCORE_RECT_COLOR_GREEN,SCORE_RECT_COLOR_GREEN,FALSE,DRAW_UI_RTARGET );
 
             // Back Drop
             Rect.Set( (s32)(Pos.GetX() + 2),                                                  (s32)(Pos.GetY() + 1), 
                       (s32)(Pos.GetX() + LineWidthSeg1 + LineWidthSeg2 + LineWidthSeg3 - 2),  (s32)(Pos.GetY() + 17) );
-            draw_Rect(Rect, SCORE_RECT_COLOR_GREEN, FALSE);
+            draw_Rect(Rect, SCORE_RECT_COLOR_GREEN, FALSE, DRAW_UI_RTARGET);
 
             // Seg 1
             Rect.Set( (s32)(Pos.GetX() + 2),                 (s32)(Pos.GetY() + 1), 
                       (s32)(Pos.GetX() + LineWidthSeg1 - 2)-4, (s32)(Pos.GetY() + 17) );
 
             xcolor textColor( XCOLOR_WHITE );
-            //draw_Rect(Rect, xcolor(0,255,0,80), TRUE);
+            //draw_Rect(Rect, xcolor(0,255,0,80), TRUE, DRAW_UI_RTARGET);
             if( x_wstrlen(m_ScoreString_Col1[i]) )
             {                
                 RenderLine( m_ScoreString_Col1[ i ],  Rect, 255, textColor, 1, ui_font::h_right |ui_font::v_bottom, FALSE );
@@ -152,7 +152,7 @@ void hud_info_box::OnRender( player* pPlayer )
             // Seg 2
             Rect.Set( (s32)(Pos.GetX() + LineWidthSeg1 + 2),                 (s32)(Pos.GetY() + 1), 
                       (s32)(Pos.GetX() + LineWidthSeg1 + LineWidthSeg2 - 2), (s32)(Pos.GetY() + 17) );
-            //draw_Rect(Rect, xcolor(255,0,0,180), TRUE);
+            //draw_Rect(Rect, xcolor(255,0,0,180), TRUE, DRAW_UI_RTARGET);
             if( x_wstrlen(m_ScoreString_Col2[i]) )
             {                
                 RenderLine( m_ScoreString_Col2[ i ],  Rect, 255, textColor, 1, ui_font::h_left|ui_font::v_bottom, FALSE );
@@ -161,7 +161,7 @@ void hud_info_box::OnRender( player* pPlayer )
             // Seg 3
             Rect.Set( (s32)(Pos.GetX() + LineWidthSeg1 + LineWidthSeg2 + 2),                 (s32)(Pos.GetY() + 1), 
                       (s32)(Pos.GetX() + LineWidthSeg1 + LineWidthSeg2 + LineWidthSeg3 - 2), (s32)(Pos.GetY() + 17) );
-            //draw_Rect(Rect, xcolor(255,255,0,180), TRUE);
+            //draw_Rect(Rect, xcolor(255,255,0,180), TRUE, DRAW_UI_RTARGET);
             if( x_wstrlen(m_ScoreString_Col3[i]) )
             {               
                 RenderLine( m_ScoreString_Col3[ i ],  Rect, 255, textColor, 1, ui_font::h_right|ui_font::v_bottom, FALSE );
@@ -170,7 +170,7 @@ void hud_info_box::OnRender( player* pPlayer )
             // End Flare
             Rect.Set( (s32)(Pos.GetX() + LineWidthSeg1 + LineWidthSeg2 + LineWidthSeg3 - 2),   (s32)(Pos.GetY() + 1), 
                       (s32)(Pos.GetX() + LineWidthSeg1 + LineWidthSeg2 + LineWidthSeg3 - 2)+8, (s32)(Pos.GetY() + 17) );
-            draw_GouraudRect(Rect,SCORE_RECT_COLOR_GREEN,SCORE_RECT_COLOR_GREEN,xcolor(0,180,0,80),xcolor(0,180,0,80),FALSE);
+            draw_GouraudRect(Rect,SCORE_RECT_COLOR_GREEN,SCORE_RECT_COLOR_GREEN,xcolor(0,180,0,80),xcolor(0,180,0,80),FALSE,DRAW_UI_RTARGET );
 
             // Bright side line.
             irect rLine;
@@ -178,7 +178,7 @@ void hud_info_box::OnRender( player* pPlayer )
                         Rect.l+8, Rect.t,
                         Rect.l+7, Rect.b
                      );
-            draw_Rect(rLine,g_HudColor,TRUE);
+            draw_Rect(rLine,g_HudColor,TRUE,DRAW_UI_RTARGET);
 
             Pos.GetY()+=16; // Line Feed
         }
@@ -230,7 +230,7 @@ void hud_info_box::OnRender( player* pPlayer )
         }
 
         // Back fill
-        draw_Rect(Rect, SCORE_RECT_COLOR_GREEN, FALSE);
+        draw_Rect(Rect, SCORE_RECT_COLOR_GREEN, FALSE, DRAW_UI_RTARGET);
 
         // Text
         RenderLine( ClockStr, Rect, 255, TextColor, 1, ui_font::h_right|ui_font::v_top, FALSE );
@@ -238,17 +238,17 @@ void hud_info_box::OnRender( player* pPlayer )
         // End Flare ( bright side )
         Rect.Set( (s32)(ClockBarPos.GetX() + TimeStringWidth),    (s32)(ClockBarPos.GetY() + 1.0f), 
                   (s32)(ClockBarPos.GetX() + TimeStringWidth)+8,  (s32)(ClockBarPos.GetY() + 18 + 1.0f) );
-        draw_GouraudRect(Rect,SCORE_RECT_COLOR_GREEN,SCORE_RECT_COLOR_GREEN,xcolor(0,180,0,80),xcolor(0,180,0,80),FALSE);
+        draw_GouraudRect(Rect,SCORE_RECT_COLOR_GREEN,SCORE_RECT_COLOR_GREEN,xcolor(0,180,0,80),xcolor(0,180,0,80),FALSE,DRAW_UI_RTARGET);
 
         // Bright side line.
         irect rLine;
         rLine.Set(Rect.l+8,Rect.t,Rect.l+7,Rect.b);
-        draw_Rect(rLine,g_HudColor,TRUE);
+        draw_Rect(rLine,g_HudColor,TRUE,DRAW_UI_RTARGET);
 
         // Fade Out
         Rect.Set( (s32)(ClockBarPos.GetX()-8),    (s32)(ClockBarPos.GetY() + 1.0f), 
                   (s32)(ClockBarPos.GetX()),      (s32)(ClockBarPos.GetY() + 18 + 1.0f) );
-        draw_GouraudRect(Rect,xcolor(0,31,0,0),xcolor(0,31,0,0),SCORE_RECT_COLOR_GREEN,SCORE_RECT_COLOR_GREEN,FALSE);
+        draw_GouraudRect(Rect,xcolor(0,31,0,0),xcolor(0,31,0,0),SCORE_RECT_COLOR_GREEN,SCORE_RECT_COLOR_GREEN,FALSE,DRAW_UI_RTARGET);
 
         Pos.GetY()+=16; // Line Feed
     }

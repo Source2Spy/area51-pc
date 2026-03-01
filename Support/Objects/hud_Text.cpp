@@ -236,7 +236,7 @@ void hud_text::OnRender( player* pPlayer )
             greenColor = CHAT_RECT_COLOR_GREEN;
             greenColor.A = RectAlpha;
 
-            draw_Rect( iRect, greenColor, FALSE);
+            draw_Rect( iRect, greenColor, FALSE, DRAW_UI_RTARGET);
 
             // blended end
             irect iFadeOut;
@@ -244,7 +244,7 @@ void hud_text::OnRender( player* pPlayer )
             iFadeOut.r = iFadeOut.l+8;
             iFadeOut.t = iRect.t;
             iFadeOut.b = iRect.b;
-            draw_GouraudRect(iFadeOut,greenColor,greenColor,xcolor(0,31,0,0),xcolor(0,31,0,0),FALSE);
+            draw_GouraudRect(iFadeOut,greenColor,greenColor,xcolor(0,31,0,0),xcolor(0,31,0,0),FALSE,DRAW_UI_RTARGET);
 
             // blended start
             irect iFadeIn;
@@ -252,12 +252,12 @@ void hud_text::OnRender( player* pPlayer )
             iFadeIn.r = iRect.l;
             iFadeIn.t = iRect.t;
             iFadeIn.b = iRect.b;
-            draw_GouraudRect(iFadeIn,xcolor(0,180,0,80),xcolor(0,180,0,80),greenColor,greenColor,FALSE);
+            draw_GouraudRect(iFadeIn,xcolor(0,180,0,80),xcolor(0,180,0,80),greenColor,greenColor,FALSE,DRAW_UI_RTARGET);
 
             // Bright side line.
             irect rLine;
             rLine.Set(iRect.l-8,iRect.t,iRect.l-7,iRect.b);
-            draw_Rect(rLine,g_HudColor,TRUE);
+            draw_Rect(rLine,g_HudColor,TRUE,DRAW_UI_RTARGET);
 
             // text
             iRect.t-=1;
@@ -353,7 +353,7 @@ void hud_text::OnRender( player* pPlayer )
             greenColor.A = RectAlpha;
 
             // full rect area
-            draw_Rect( iRect, greenColor, FALSE);
+            draw_Rect( iRect, greenColor, FALSE, DRAW_UI_RTARGET);
 
             // blended end
             irect iFadeOut;
@@ -361,7 +361,7 @@ void hud_text::OnRender( player* pPlayer )
             iFadeOut.r = iFadeOut.l+8;
             iFadeOut.t = iRect.t;
             iFadeOut.b = iRect.b;
-            draw_GouraudRect(iFadeOut,greenColor,greenColor,xcolor(0,31,0,0),xcolor(0,31,0,0),FALSE);
+            draw_GouraudRect(iFadeOut,greenColor,greenColor,xcolor(0,31,0,0),xcolor(0,31,0,0),FALSE,DRAW_UI_RTARGET);
 
             // blended Start
             irect iFadeIn;
@@ -369,12 +369,12 @@ void hud_text::OnRender( player* pPlayer )
             iFadeIn.r = iRect.l;
             iFadeIn.t = iRect.t;
             iFadeIn.b = iRect.b;
-            draw_GouraudRect(iFadeIn,xcolor(0,180,0,80),xcolor(0,180,0,80),greenColor,greenColor,FALSE);
+            draw_GouraudRect(iFadeIn,xcolor(0,180,0,80),xcolor(0,180,0,80),greenColor,greenColor,FALSE,DRAW_UI_RTARGET);
 
             // Bright side line.
             irect rLine;
             rLine.Set(iRect.l-8,iRect.t,iRect.l-7,iRect.b);
-            draw_Rect(rLine,g_HudColor,TRUE);
+            draw_Rect(rLine,g_HudColor,TRUE,DRAW_UI_RTARGET);
 
             // text
             iRect.t-=1;

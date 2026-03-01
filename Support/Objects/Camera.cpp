@@ -441,7 +441,7 @@ void camera::RenderViewBegin( const irect& Viewport, s32 VramID )
     if( eng_Begin("camera::RenderViewBegin") )
     {
         draw_ClearZBuffer(Viewport) ; 
-        draw_Rect(Viewport, XCOLOR_BLACK, FALSE) ;
+        draw_Rect(Viewport, XCOLOR_BLACK, FALSE, DRAW_UI_RTARGET) ;
         eng_End() ;
     }
 #endif // X_EDITOR
@@ -940,7 +940,7 @@ void camera::RenderEditorView( void )
     // Render red border
     if( eng_Begin() )    
     {
-        draw_Rect( Viewport, XCOLOR_RED, TRUE );
+        draw_Rect( Viewport, XCOLOR_RED, TRUE, DRAW_UI_RTARGET );
         eng_End();
     }
 }

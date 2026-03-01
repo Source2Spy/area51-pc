@@ -215,57 +215,68 @@ void    draw_SpriteUV   ( const vector3& Position,  // Hot spot (3D Center)
 // Single call to render a single line
 void    draw_Line       ( const vector3& P0,
                           const vector3& P1,
-                                xcolor   Color = XCOLOR_WHITE );
+                                xcolor   Color = XCOLOR_WHITE,
+                                u32      Flags = 0 );
 
 // Renders a wire bbox 
 void    draw_BBox       ( const bbox&    BBox,
-                                xcolor   Color = XCOLOR_WHITE );
+                                xcolor   Color = XCOLOR_WHITE,
+                                u32      Flags = 0 );
 
 // Renders a volume given an two end points
-void    draw_Volume     ( const vector3& P0, 
-                          const vector3& P1, 
+void    draw_Volume     ( const vector3& P0,
+                          const vector3& P1,
                                 f32      Width,
                                 f32      Height,
-                                xcolor   Color = XCOLOR_WHITE );
+                                xcolor   Color = XCOLOR_WHITE,
+                                u32      Flags = 0 );
 
 // Renders a volume given a BBox
-void    draw_Volume     ( const bbox&    BBox, 
-                                xcolor   Color = XCOLOR_WHITE );
+void    draw_Volume     ( const bbox&    BBox,
+                                xcolor   Color = XCOLOR_WHITE,
+                                u32      Flags = 0 );
 
 // Renders a wire sphere
 void    draw_Sphere     ( const vector3& Pos,
                                 f32      Radius,
-                                xcolor   Color = XCOLOR_WHITE );
+                                xcolor   Color = XCOLOR_WHITE,
+                                u32      Flags = 0 );
 
 // Renders a wire or solid ngon
 void    draw_NGon       ( const vector3* pPoint,
                                 s32      NPoints,
                                 xcolor   Color = XCOLOR_WHITE,
-                                xbool    DoWire = TRUE );
+                                xbool    DoWire = TRUE,
+                                u32      Flags = 0 );
 
 // Renders always-visible solid rect on screen showing where point is in world
 void    draw_Marker     ( const vector3& Pos,
-                                xcolor   Color = XCOLOR_WHITE );
+                                xcolor   Color = XCOLOR_WHITE,
+                                u32      Flags = 0 );
 
 // Renders always-visible solid rect on screen showing where point is in world
 void    draw_Point      ( const vector3& Pos,
                                 xcolor   Color = XCOLOR_WHITE,
-                                s32      Size  = 2 );
+                                s32      Size  = 2,
+                                u32      Flags = 0 );
 
 // Renders a wire pyramid extending along the edges of the frustum
 void    draw_Frustum    ( const view&    View,
                                 xcolor   Color = XCOLOR_RED,
-                                f32      Dist = 100.0f );
+                                f32      Dist  = 100.0f,
+                                u32      Flags = 0 );
 
 // Renders a wire axis where RGB=XYZ
-void    draw_Axis       (       f32      Size = 1.0f );
+void    draw_Axis       (       f32      Size  = 1.0f,
+                                u32      Flags = 0 );
 
 // Renders a wire grid starting at corner and stretching the lengths of the edges
 void    draw_Grid       ( const vector3& Corner,
                           const vector3& Edge1,
                           const vector3& Edge2,
-                                xcolor   Color = XCOLOR_WHITE, 
-                                s32      NSubdivisions = 8 );
+                                xcolor   Color = XCOLOR_WHITE,
+                                s32      NSubdivisions = 8,
+                                u32      Flags = 0 );
 
 // Renders a text message centered on a 3D point if visible
 void    draw_Label      ( const vector3& Pos,
@@ -275,14 +286,16 @@ void    draw_Label      ( const vector3& Pos,
 // Single call to render a single rect
 void    draw_Rect       ( const rect&    Rect,
                           xcolor         Color = XCOLOR_WHITE,
-                          xbool          DoWire = TRUE);
+                          xbool          DoWire = TRUE,
+                          u32            Flags = 0 );
 
 #endif // !defined( CONFIG_RETAIL
 
 // Single call to render a single rect
 void    draw_Rect       ( const irect&   Rect,
                           xcolor         Color = XCOLOR_WHITE,
-                          xbool          DoWire = TRUE);
+                          xbool          DoWire = TRUE,
+                          u32            Flags = 0 );
 
 // Single call to render a single rect
 void    draw_GouraudRect( const irect&   Rect,
@@ -291,7 +304,7 @@ void    draw_GouraudRect( const irect&   Rect,
                           const xcolor & c3,
                           const xcolor & c4,
                           xbool          DoWire = TRUE,
-                          xbool          DoAdditive = FALSE);
+                          u32            Flags = 0 );
 
 
 // Single call to set the z buffer to a value (1.0f = far clip, 0 = near clip)
@@ -307,7 +320,6 @@ void    draw_FillZBuffer  ( const irect& Rect ) ;
 //==============================================================================
 #endif // E_DRAW_HPP
 //==============================================================================
-
 
 
 

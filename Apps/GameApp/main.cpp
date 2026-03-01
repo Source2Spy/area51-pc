@@ -726,7 +726,7 @@ void RenderGame( void )
 
             if( !g_StateMgr.IsPaused() && eng_Begin( "Kill last rect" ) )
             {
-                draw_Rect( irect( 0,YRes/2-2,XRes,YRes/2+2 ),XCOLOR_BLACK,FALSE );
+                draw_Rect( irect( 0,YRes/2-2,XRes,YRes/2+2 ),XCOLOR_BLACK,FALSE,DRAW_UI_RTARGET);
                 eng_End( );
             }
         }
@@ -749,9 +749,9 @@ void RenderGame( void )
 
             if( !g_StateMgr.IsPaused() && eng_Begin( "Kill last rect" ) )
             {
-                //draw_Rect( irect( XRes/2  ,YRes/2  ,XRes    ,YRes     ),XCOLOR_BLACK,FALSE ); // missing square
-                draw_Rect( irect( 0       ,YRes/2-2,XRes    ,YRes/2+2 ),XCOLOR_BLACK,FALSE ); // horizontal line
-                draw_Rect( irect( XRes/2-2,0       ,XRes/2+2,YRes/2+2 ),XCOLOR_BLACK,FALSE ); // vertical line
+                //draw_Rect( irect( XRes/2  ,YRes/2  ,XRes    ,YRes     ),XCOLOR_BLACK,FALSE,DRAW_UI_RTARGET ); // missing square
+                draw_Rect( irect( 0       ,YRes/2-2,XRes    ,YRes/2+2 ),XCOLOR_BLACK,FALSE,DRAW_UI_RTARGET ); // horizontal line
+                draw_Rect( irect( XRes/2-2,0       ,XRes/2+2,YRes/2+2 ),XCOLOR_BLACK,FALSE,DRAW_UI_RTARGET ); // vertical line
                 eng_End( );
             }
         }
@@ -778,8 +778,8 @@ void RenderGame( void )
 
             if( !g_StateMgr.IsPaused() && eng_Begin( "Kill last rect" ) )
             {
-                draw_Rect( irect( 0       ,YRes/2-2,XRes    ,YRes/2+2 ),XCOLOR_BLACK,FALSE ); // horizontal line
-                draw_Rect( irect( XRes/2-2,0       ,XRes/2+2,YRes     ),XCOLOR_BLACK,FALSE ); // vertical line
+                draw_Rect( irect( 0       ,YRes/2-2,XRes    ,YRes/2+2 ),XCOLOR_BLACK,FALSE,DRAW_UI_RTARGET ); // horizontal line
+                draw_Rect( irect( XRes/2-2,0       ,XRes/2+2,YRes     ),XCOLOR_BLACK,FALSE,DRAW_UI_RTARGET ); // vertical line
                 eng_End( );
             }
         }

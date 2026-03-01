@@ -184,7 +184,7 @@ void debug_menu_page_general::OnPreRender ( void )
         Rect.Translate(XRes - 270, 25);
         #endif
 
-        draw_Rect( Rect, xcolor(0,0,0,128), FALSE );
+        draw_Rect( Rect, xcolor(0,0,0,128), FALSE, DRAW_UI_RTARGET );
         g_UiMgr->RenderText( font, Rect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), posText );
     }
 
@@ -198,7 +198,7 @@ void debug_menu_page_general::OnPreRender ( void )
         s32 x = XRes/2-50;
         s32 y = 50;
         Rect.Set(x - 4, y, x + 230, y + g_UiMgr->GetLineHeight(font) * 4);
-        draw_Rect( Rect, xcolor(0,0,0,128), FALSE );
+        draw_Rect( Rect, xcolor(0,0,0,128), FALSE, DRAW_UI_RTARGET );
 
         // Show resolutions
         xwstring Text;
@@ -218,7 +218,7 @@ void debug_menu_page_general::OnPreRender ( void )
         s32 x = XRes/2-50;
         s32 y = 50;
         Rect.Set(x - 4, y, x + 230, y + g_UiMgr->GetLineHeight(font) * 4);
-        draw_Rect( Rect, xcolor(0,0,0,128), FALSE );
+        draw_Rect( Rect, xcolor(0,0,0,128), FALSE, DRAW_UI_RTARGET );
 
         // heading
         g_UiMgr->RenderText( font, Rect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), xwstring( "BACK + DPad_R/L or White/Black" ) );
@@ -244,7 +244,7 @@ void debug_menu_page_general::OnPreRender ( void )
         s32 x = XRes/2-50;
         s32 y = 50;
         Rect.Set(x - 4, y, x + 230, y + g_UiMgr->GetLineHeight(font) * 4);
-        draw_Rect( Rect, xcolor(0,0,0,128), FALSE );
+        draw_Rect( Rect, xcolor(0,0,0,128), FALSE, DRAW_UI_RTARGET );
 
         // vertex memory pool
         u32 VertexRAM = g_VertFactory.GetGeneralPool().GetFree();
@@ -319,7 +319,7 @@ void debug_menu_page_general::OnPreRender ( void )
         #endif
         s32 y = 50;
         Rect.Set(x - 4, y, x + 230, y + g_UiMgr->GetLineHeight(font) * 4);
-        draw_Rect( Rect, xcolor(0,0,0,128), FALSE );
+        draw_Rect( Rect, xcolor(0,0,0,128), FALSE, DRAW_UI_RTARGET );
 
         //zone #
         if( pPlayer )
