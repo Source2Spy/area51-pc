@@ -182,6 +182,8 @@ void post_mgr::glow_resources::ResetFrame( void )
     bPendingComposite = FALSE;
 }
 
+//==============================================================================
+
 xbool post_mgr::glow_resources::ResizeIfNeeded( u32 SourceWidth, u32 SourceHeight )
 {
     if( SourceWidth == 0 || SourceHeight == 0 )
@@ -240,15 +242,15 @@ xbool post_mgr::glow_resources::ResizeIfNeeded( u32 SourceWidth, u32 SourceHeigh
 
     if( g_pd3dContext )
     {
-        const f32 clearColor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-        g_pd3dContext->ClearRenderTargetView( Downsample[0].pRenderTargetView, clearColor );
-        g_pd3dContext->ClearRenderTargetView( Downsample[1].pRenderTargetView, clearColor );
-        g_pd3dContext->ClearRenderTargetView( Downsample[2].pRenderTargetView, clearColor );
-        g_pd3dContext->ClearRenderTargetView( Blur[0].pRenderTargetView, clearColor );
-        g_pd3dContext->ClearRenderTargetView( Blur[1].pRenderTargetView, clearColor );
-        g_pd3dContext->ClearRenderTargetView( Composite.pRenderTargetView, clearColor );
-        g_pd3dContext->ClearRenderTargetView( Accum.pRenderTargetView, clearColor );
-        g_pd3dContext->ClearRenderTargetView( History.pRenderTargetView, clearColor );
+        static const f32 clearColor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };	
+        rtarget_ClearColor( Downsample[0], clearColor );
+        rtarget_ClearColor( Downsample[1], clearColor );
+        rtarget_ClearColor( Downsample[2], clearColor );
+        rtarget_ClearColor( Blur[0], clearColor );
+        rtarget_ClearColor( Blur[1], clearColor );
+        rtarget_ClearColor( Composite, clearColor );
+        rtarget_ClearColor( Accum, clearColor );
+        rtarget_ClearColor( History, clearColor );
     }
 
     BufferWidth = halfW;

@@ -181,6 +181,8 @@ xbool               rtarget_PopTargets          ( void );
 
 // Clear functions
 void                rtarget_Clear               ( u32 ClearFlags, const f32* pColor = NULL, f32 Depth = 1.0f, u8 Stencil = 0 );
+void                rtarget_ClearColor          ( const rtarget& Target, const f32* pColor );
+void                rtarget_ClearDepthStencil   ( const rtarget& Target, u32 ClearFlags, f32 Depth = 1.0f, u8 Stencil = 0 );
 
 //==============================================================================
 #endif // D3DENG_RTARGET_HPP

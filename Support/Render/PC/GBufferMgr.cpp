@@ -236,23 +236,23 @@ void gbuffer_mgr::ClearGBuffer( void )
         return;
 
     // Albedo
-    static const f32 clearAlbedo[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-    g_pd3dContext->ClearRenderTargetView(m_GBufferTarget[0].pRenderTargetView, clearAlbedo);
+    static const f32 clearAlbedo[4]    = { 0.0f, 0.0f, 0.0f, 0.0f };
+    rtarget_ClearColor( m_GBufferTarget[0], clearAlbedo );
 
     // Normals
-    static const f32 clearNormal[4] = { 0.5f, 0.5f, 1.0f, 0.0f };
-    g_pd3dContext->ClearRenderTargetView(m_GBufferTarget[1].pRenderTargetView, clearNormal);
+    static const f32 clearNormal[4]    = { 0.5f, 0.5f, 1.0f, 0.0f };
+    rtarget_ClearColor( m_GBufferTarget[1], clearNormal );
 
     // Depth info
     static const f32 clearDepthInfo[4] = { 1.0f, 0.0f, 0.0f, 0.0f };
-    g_pd3dContext->ClearRenderTargetView(m_GBufferTarget[2].pRenderTargetView, clearDepthInfo);
+    rtarget_ClearColor( m_GBufferTarget[2], clearDepthInfo );
 
     // Glow
-    static const f32 clearGlow[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-    g_pd3dContext->ClearRenderTargetView(m_GBufferTarget[3].pRenderTargetView, clearGlow);
+    static const f32 clearGlow[4]      = { 0.0f, 0.0f, 0.0f, 0.0f };
+    rtarget_ClearColor( m_GBufferTarget[3], clearGlow );
 
     // Depth-stencil
-    g_pd3dContext->ClearDepthStencilView(m_GBufferDepth.pDepthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+    rtarget_ClearDepthStencil( m_GBufferDepth, RTARGET_CLEAR_DEPTH | RTARGET_CLEAR_STENCIL, 1.0f, 0 );
 }
 
 //==============================================================================

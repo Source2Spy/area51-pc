@@ -1208,3 +1208,31 @@ void rtarget_Clear( u32 ClearFlags, const f32* pColor, f32 Depth, u8 Stencil )
         g_pd3dContext->ClearDepthStencilView( s_TargetCache.pCurrentDSV, d3dClearFlags, Depth, Stencil );
     }
 }
+
+//==============================================================================
+
+void rtarget_ClearColor( const rtarget& Target, const f32* pColor )
+{
+    if( !g_pd3dContext || !Target.pRenderTargetView )
+        return;
+
+    f32 defaultColor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+    g_pd3dContext->ClearRenderTargetView( Target.pRenderTargetView, pColor ? pColor : defaultColor );
+}
+
+//==============================================================================
+
+void rtarget_ClearDepthStencil( const rtarget& Target, u32 ClearFlags, f32 Depth, u8 Stencil )
+{
+    if( !g_pd3dContext || !Target.pDepthStencilView )
+        return;
+
+    UINT d3dClearFlags = 0;
+    if( ClearFlags & RTARGET_CLEAR_DEPTH )
+        d3dClearFlags |= D3D11_CLEAR_DEPTH;
+    if( ClearFlags & RTARGET_CLEAR_STENCIL )
+        d3dClearFlags |= D3D11_CLEAR_STENCIL;
+
+    if( d3dClearFlags )
+        g_pd3dContext->ClearDepthStencilView( Target.pDepthStencilView, d3dClearFlags, Depth, Stencil );
+}
