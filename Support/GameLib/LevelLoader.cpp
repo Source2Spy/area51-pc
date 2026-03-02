@@ -987,7 +987,7 @@ xbool level_loader::LoadContent( const map_entry& MapEntry )
         ASSERT( x_stristr( s_pArchive->GetMemberFilename(i*2+1), ".000" ) != NULL );
         xbool Result;
 
-        Result = g_IOFSMgr.MountFileSystemRAM( s_pArchive->GetMemberFilename(i*2), (void*)s_pArchive->GetMemberData(i*2), (void*)s_pArchive->GetMemberData(i*2+1) );
+        Result = g_IOFSMgr.MountFileSystemRAM( s_pArchive->GetMemberFilename(i*2), (void*)s_pArchive->GetMemberData(i*2), s_pArchive->GetMemberLength(i*2), (void*)s_pArchive->GetMemberData(i*2+1) );
         ASSERT( Result );
     }
     x_MemSanity();

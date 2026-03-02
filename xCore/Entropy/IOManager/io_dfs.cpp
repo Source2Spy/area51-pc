@@ -14,30 +14,16 @@
 #include "io_dfs.hpp"
 
 //==============================================================================
-//  STRUCTS AND DEFINES
-//==============================================================================
-
-extern u16 crc16Table[];
-#define crc16ApplyByte( v, crc ) (u16)((crc << 8) ^  crc16Table[((crc >> 8) ^ (v)) & 255])
-
-//------------------------------------------------------------------------------
-
-struct dfs_emulated_entry
-{
-    xstring RelPath;
-    u32     Length;
-    u32     PathOffset;
-    u32     Name1Offset;
-    u32     ExtOffset;
-};
-
-//==============================================================================
 //  IMPLEMENTATION
 //==============================================================================
 
 dfs_header* dfs_InitHeaderFromRawPtr( void* pRawHeaderData, s32 Length )
 {
-    (void)Length;
+    ASSERT( pRawHeaderData );
+    ASSERT( Length >= (s32)sizeof(dfs_header) );	
+    if( !pRawHeaderData || Length < (s32)sizeof(dfs_header) )
+        return NULL;
+
     dfs_header* pHeader = (dfs_header*)pRawHeaderData;
 
     // Endian swap the header...
@@ -58,6 +44,23 @@ dfs_header* dfs_InitHeaderFromRawPtr( void* pRawHeaderData, s32 Length )
     {
         dfs_file* pEntry;
         s32       i;
+
+        // Validate counts.
+        ASSERT( pHeader->nFiles        >= 0 );
+        ASSERT( pHeader->nSubFiles     >= 0 );
+        ASSERT( pHeader->StringsLength >= 0 );	
+        if( pHeader->nFiles < 0 || pHeader->nSubFiles < 0 || pHeader->StringsLength < 0 )
+            return NULL;
+
+        u32 SubFileEnd = (u32)pHeader->pSubFileTable + (u32)pHeader->nSubFiles * sizeof(dfs_subfile);
+        u32 FilesEnd   = (u32)pHeader->pFiles        + (u32)pHeader->nFiles    * sizeof(dfs_file);
+        u32 StringsEnd = (u32)pHeader->pStrings      + (u32)pHeader->StringsLength;
+
+        ASSERT( SubFileEnd <= (u32)Length );
+        ASSERT( FilesEnd   <= (u32)Length );
+        ASSERT( StringsEnd <= (u32)Length );
+        if( SubFileEnd > (u32)Length || FilesEnd > (u32)Length || StringsEnd > (u32)Length )
+            return NULL;
 
         // Now fixup the offsets in the header.
         u32 BaseAddr = (u32)pHeader;
@@ -100,58 +103,69 @@ dfs_header* dfs_InitHeaderFromRawPtr( void* pRawHeaderData, s32 Length )
 
 //==============================================================================
 
-#ifdef TARGET_PC
-static 
-void dfs_CollectFiles( const char* pRootPath, const char* pRelativePath, xarray<dfs_emulated_entry>& Entries )
+void dfs_DumpFileListing( const dfs_header* pHeader, const char* pFileName )
 {
-    char SearchPath[X_MAX_PATH];
-    WIN32_FIND_DATA FindData;
-    HANDLE hFind;
-
-    if( pRelativePath && *pRelativePath )
-        x_sprintf( SearchPath, "%s\\%s\\*", pRootPath, pRelativePath );
-    else
-        x_sprintf( SearchPath, "%s\\*", pRootPath );
-
-    hFind = FindFirstFile( SearchPath, &FindData );
-    if( hFind == INVALID_HANDLE_VALUE )
-        return;
-
-    do
+    X_FILE* f;
+    f = x_fopen( pFileName, "w+t" );
+    if( f )
     {
-        if( (FindData.cFileName[0] == '.') &&
-            ((FindData.cFileName[1] == 0) || ((FindData.cFileName[1] == '.') && (FindData.cFileName[2] == 0))) )
+        dfs_file*   pEntry  = pHeader->pFiles;
+
+        for( s32 i=0 ; i<pHeader->nFiles ; i++, pEntry++ )
         {
-            continue;
+            x_fprintf( f,"%8d\t%8d\t%8d\t%s\t%s%s\t%s\n",
+                i,
+                pEntry->Length,
+                pEntry->DataOffset,
+                pHeader->pStrings + (u32)pEntry->PathNameOffset,
+                pHeader->pStrings + (u32)pEntry->FileNameOffset1,
+                pHeader->pStrings + (u32)pEntry->FileNameOffset2,
+                pHeader->pStrings + (u32)pEntry->ExtNameOffset);
         }
 
-        if( FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY )
-        {
-            char NextRelative[X_MAX_PATH];
-            if( pRelativePath && *pRelativePath )
-                x_sprintf( NextRelative, "%s\\%s", pRelativePath, FindData.cFileName );
-            else
-                x_sprintf( NextRelative, "%s", FindData.cFileName );
-
-            dfs_CollectFiles( pRootPath, NextRelative, Entries );
-        }
-        else
-        {
-            dfs_emulated_entry& Entry = Entries.Append();
-            if( pRelativePath && *pRelativePath )
-                Entry.RelPath = xfs( "%s\\%s", pRelativePath, FindData.cFileName );
-            else
-                Entry.RelPath = FindData.cFileName;
-
-            Entry.Length = FindData.nFileSizeLow;
-            Entry.PathOffset  = 0;
-            Entry.Name1Offset = 0;
-            Entry.ExtOffset   = 0;
-        }
-    } while( FindNextFile( hFind, &FindData ) );
-
-    FindClose( hFind );
+        x_fclose( f );
+    }
 }
+
+//==============================================================================
+
+void dfs_BuildFileName( const dfs_header* pHeader, s32 iFile, char* pFileName )
+{
+    ASSERT( (iFile>=0) && (iFile<pHeader->nFiles) );
+
+    dfs_file*   pEntry  = &pHeader->pFiles[ iFile ];
+
+    x_sprintf(pFileName,"%s%s%s%s",
+        pHeader->pStrings + (u32)pEntry->PathNameOffset,
+        pHeader->pStrings + (u32)pEntry->FileNameOffset1,
+        pHeader->pStrings + (u32)pEntry->FileNameOffset2,
+        pHeader->pStrings + (u32)pEntry->ExtNameOffset);
+}
+
+//==============================================================================
+// DFS EMULATION
+//==============================================================================
+
+#ifdef TARGET_PC
+struct dfs_emulated_entry
+{
+    xstring RelPath;
+    u32     Length;
+    xstring Path;
+    xstring Name;
+    xstring Ext;
+    u32     PathOffset;
+    u32     Name1Offset;
+    u32     ExtOffset;
+};
+
+//------------------------------------------------------------------------------
+
+struct dfs_string_entry
+{
+    xstring Str;
+    u32     Offset;
+};
 #endif
 
 //==============================================================================
@@ -201,13 +215,94 @@ void dfs_SplitRelativePath( const char* pRelativePath, xstring& Path, xstring& N
 
 //==============================================================================
 
+#ifdef TARGET_PC
+
+static 
+u32 dfs_FindOrAddString( xarray<dfs_string_entry>& Table, u32& StringsLength, const xstring& Str )
+{
+    if( Str.GetLength() == 0 )
+        return 0;
+
+    for( s32 i = 0; i < Table.GetCount(); i++ )
+    {
+        if( Table[i].Str == Str )
+            return Table[i].Offset;
+    }
+
+    dfs_string_entry& Entry = Table.Append();
+    Entry.Str    = Str;
+    Entry.Offset = StringsLength;
+    StringsLength += (u32)Str.GetLength() + 1;
+    return Entry.Offset;
+}
+#endif
+
+//==============================================================================
+
+#ifdef TARGET_PC
+static 
+void dfs_CollectFiles( const char* pRootPath, const char* pRelativePath, xarray<dfs_emulated_entry>& Entries )
+{
+    char SearchPath[X_MAX_PATH];
+    WIN32_FIND_DATA FindData;
+    HANDLE hFind;
+
+    if( pRelativePath && *pRelativePath )
+        x_sprintf( SearchPath, "%s\\%s\\*", pRootPath, pRelativePath );
+    else
+        x_sprintf( SearchPath, "%s\\*", pRootPath );
+
+    hFind = FindFirstFile( SearchPath, &FindData );
+    if( hFind == INVALID_HANDLE_VALUE )
+        return;
+
+    do
+    {
+        if( (FindData.cFileName[0] == '.') &&
+            ((FindData.cFileName[1] == 0) || ((FindData.cFileName[1] == '.') && (FindData.cFileName[2] == 0))) )
+        {
+            continue;
+        }
+
+        if( FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY )
+        {
+            char NextRelative[X_MAX_PATH];
+            if( pRelativePath && *pRelativePath )
+                x_sprintf( NextRelative, "%s\\%s", pRelativePath, FindData.cFileName );
+            else
+                x_sprintf( NextRelative, "%s", FindData.cFileName );
+
+            dfs_CollectFiles( pRootPath, NextRelative, Entries );
+        }
+        else
+        {
+            dfs_emulated_entry& Entry = Entries.Append();
+            if( pRelativePath && *pRelativePath )
+                Entry.RelPath = xfs( "%s\\%s", pRelativePath, FindData.cFileName );
+            else
+                Entry.RelPath = FindData.cFileName;
+
+            ASSERT( FindData.nFileSizeHigh == 0 );  // Files >4 GB not supported.
+            Entry.Length = FindData.nFileSizeLow;
+            Entry.PathOffset  = 0;
+            Entry.Name1Offset = 0;
+            Entry.ExtOffset   = 0;
+        }
+    } while( FindNextFile( hFind, &FindData ) );
+
+    FindClose( hFind );
+}
+#endif
+
+//==============================================================================
+
 dfs_header* dfs_BuildHeaderFromDirectory( const char* pRootPath )
 {
 #ifdef TARGET_PC
     xarray<dfs_emulated_entry> Entries;
+    xarray<dfs_string_entry>   StringTable;
     u32 TotalDataSize = 0;
     u32 StringsLength = 1;
-    u32 EmptyOffset   = 0;
     s32 i;
 
     if( (pRootPath == NULL) || (*pRootPath == 0) )
@@ -218,33 +313,14 @@ dfs_header* dfs_BuildHeaderFromDirectory( const char* pRootPath )
     if( Entries.GetCount() == 0 )
         return NULL;
 
+    // Split paths, cache results, and build deduplicated string table.
     for( i=0 ; i<Entries.GetCount() ; i++ )
     {
-        xstring Path;
-        xstring Name;
-        xstring Ext;
+        dfs_SplitRelativePath( Entries[i].RelPath, Entries[i].Path, Entries[i].Name, Entries[i].Ext );
 
-        dfs_SplitRelativePath( Entries[i].RelPath, Path, Name, Ext );
-
-        Entries[i].PathOffset  = EmptyOffset;
-        Entries[i].Name1Offset = EmptyOffset;
-        Entries[i].ExtOffset   = EmptyOffset;
-
-        if( Path.GetLength() > 0 )
-        {
-            Entries[i].PathOffset = StringsLength;
-            StringsLength += Path.GetLength() + 1;
-        }
-        if( Name.GetLength() > 0 )
-        {
-            Entries[i].Name1Offset = StringsLength;
-            StringsLength += Name.GetLength() + 1;
-        }
-        if( Ext.GetLength() > 0 )
-        {
-            Entries[i].ExtOffset = StringsLength;
-            StringsLength += Ext.GetLength() + 1;
-        }
+        Entries[i].PathOffset  = dfs_FindOrAddString( StringTable, StringsLength, Entries[i].Path );
+        Entries[i].Name1Offset = dfs_FindOrAddString( StringTable, StringsLength, Entries[i].Name );
+        Entries[i].ExtOffset   = dfs_FindOrAddString( StringTable, StringsLength, Entries[i].Ext  );
 
         TotalDataSize += Entries[i].Length;
     }
@@ -276,45 +352,31 @@ dfs_header* dfs_BuildHeaderFromDirectory( const char* pRootPath )
     pHeader->pChecksums    = NULL;
     pHeader->pStrings      = (char*)     (pBuffer + HeaderSize + SubFileSize + FileSize);
 
+    // Offset is set one past total data size as an end of data sentinel.
     pHeader->pSubFileTable[0].Offset        = TotalDataSize + 1;
     pHeader->pSubFileTable[0].ChecksumIndex = 0;
 
     pHeader->pStrings[0] = 0;
 
-    u32 Offset = 1;
-    u32 DataOffset = 0;
+    // Write deduplicated string table.
+    for( i=0 ; i<StringTable.GetCount() ; i++ )
+    {
+        const dfs_string_entry& SE = StringTable[i];
+        x_memcpy( pHeader->pStrings + SE.Offset, (const char*)SE.Str, SE.Str.GetLength() + 1 );
+    }
 
+    // Write file entries using cached offsets from first pass.
+    u32 DataOffset = 0;
     for( i=0 ; i<Entries.GetCount() ; i++ )
     {
         dfs_file& File = pHeader->pFiles[i];
-        xstring Path;
-        xstring Name;
-        xstring Ext;
-
-        dfs_SplitRelativePath( Entries[i].RelPath, Path, Name, Ext );
 
         File.PathNameOffset  = Entries[i].PathOffset;
         File.FileNameOffset1 = Entries[i].Name1Offset;
-        File.FileNameOffset2 = EmptyOffset;
+        File.FileNameOffset2 = 0;
         File.ExtNameOffset   = Entries[i].ExtOffset;
         File.DataOffset      = DataOffset;
         File.Length          = Entries[i].Length;
-
-        if( Entries[i].PathOffset == Offset )
-        {
-            x_memcpy( pHeader->pStrings + Offset, (const char*)Path, Path.GetLength() + 1 );
-            Offset += Path.GetLength() + 1;
-        }
-        if( Entries[i].Name1Offset == Offset )
-        {
-            x_memcpy( pHeader->pStrings + Offset, (const char*)Name, Name.GetLength() + 1 );
-            Offset += Name.GetLength() + 1;
-        }
-        if( Entries[i].ExtOffset == Offset )
-        {
-            x_memcpy( pHeader->pStrings + Offset, (const char*)Ext, Ext.GetLength() + 1 );
-            Offset += Ext.GetLength() + 1;
-        }
 
         DataOffset += Entries[i].Length;
     }
@@ -325,46 +387,3 @@ dfs_header* dfs_BuildHeaderFromDirectory( const char* pRootPath )
     return NULL;
 #endif
 }
-
-//==============================================================================
-
-void dfs_DumpFileListing( const dfs_header* pHeader, const char* pFileName )
-{
-    X_FILE* f;
-    f = x_fopen( pFileName, "w+t" );
-    if( f )
-    {
-        dfs_file*   pEntry  = pHeader->pFiles;
-
-        for( s32 i=0 ; i<pHeader->nFiles ; i++, pEntry++ )
-        {
-            x_fprintf( f,"%8d\t%8d\t%8d\t%s\t%s%s\t%s\n",
-                i,
-                pEntry->Length,
-                pEntry->DataOffset,
-                pHeader->pStrings + (u32)pEntry->PathNameOffset,
-                pHeader->pStrings + (u32)pEntry->FileNameOffset1,
-                pHeader->pStrings + (u32)pEntry->FileNameOffset2,
-                pHeader->pStrings + (u32)pEntry->ExtNameOffset);
-        }
-
-        x_fclose( f );
-    }
-}
-
-//==============================================================================
-
-void dfs_BuildFileName( const dfs_header* pHeader, s32 iFile, char* pFileName )
-{
-    ASSERT( (iFile>=0) && (iFile<pHeader->nFiles) );
-
-    dfs_file*   pEntry  = &pHeader->pFiles[ iFile ];
-
-    x_sprintf(pFileName,"%s%s%s%s",
-        pHeader->pStrings + (u32)pEntry->PathNameOffset,
-        pHeader->pStrings + (u32)pEntry->FileNameOffset1,
-        pHeader->pStrings + (u32)pEntry->FileNameOffset2,
-        pHeader->pStrings + (u32)pEntry->ExtNameOffset);
-}
-
-//==============================================================================

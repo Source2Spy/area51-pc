@@ -103,7 +103,7 @@ public:
     xbool               Init                    ( void );
     void                Kill                    ( void );
     xbool               MountFileSystem         ( const char* pPathName, s32 SearchPriority );
-    xbool               MountFileSystemRAM      ( const char* pPathName, void* pHeaderData, void* pRawData );
+    xbool               MountFileSystemRAM      ( const char* pPathName, void* pHeaderData, s32 HeaderLength, void* pRawData );
     xbool               UnmountFileSystem       ( const char* pPathName );
     void                EnableChecksum          ( void* pOpenFile, xbool bEnable );
     io_open_file*       Open                    ( const char* pPathName, const char* pMode );

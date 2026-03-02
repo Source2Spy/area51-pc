@@ -431,7 +431,7 @@ void io_fs::Kill( void )
 
 //==============================================================================
 
-xbool io_fs::MountFileSystemRAM( const char* pPathName, void* pHeaderData, void* pRawData  )
+xbool io_fs::MountFileSystemRAM( const char* pPathName, void* pHeaderData, s32 HeaderLength, void* pRawData )
 {
     dfs_header* pHeader = NULL;
     xbool       bSuccess = FALSE;
@@ -451,7 +451,7 @@ xbool io_fs::MountFileSystemRAM( const char* pPathName, void* pHeaderData, void*
     x_DebugMsg( "FS: reading DFS header for '%s'\n", pCleanFilename );
 #endif
 
-    pHeader = dfs_InitHeaderFromRawPtr(pHeaderData,0);
+    pHeader = dfs_InitHeaderFromRawPtr(pHeaderData,HeaderLength);
     if( pHeader )
     {
         s32 FileIndex;
@@ -1073,7 +1073,7 @@ xbool io_fs::SearchDFS( const char* pPathName, io_device_file* &DeviceFile, u32 
             // Does this one match?
             if( CompareFile( pPathName, DeviceFile, Offset, Length, SubFile, iPlus, pRAM ) )
             {
-                m_CurrentDFSIndex = iMinus;
+                m_CurrentDFSIndex = iPlus;
                 return TRUE;
             }
             else
@@ -1504,7 +1504,6 @@ s32 io_fs::Read( io_open_file* pOpenFile, byte* pBuffer, s32 Bytes )
                 {
                     dfs_header* pHeader = (dfs_header*)pOpenFile->pDeviceFile->pHeader;
                     SectorSize = pHeader->SectorSize;
-                    SectorSize = 32768;
                 }
 
                 SectorByte   = PhysicalByte - (PhysicalByte % SectorSize);
@@ -1518,8 +1517,6 @@ s32 io_fs::Read( io_open_file* pOpenFile, byte* pBuffer, s32 Bytes )
                     // Only try so many times before bailing...
                     if( ReadAttempts > m_Retries )
                     {
-                        while( 1 )
-                            x_DelayThread( 1 );
                         ASSERT( 0 );
                         goto Error;
                     }
@@ -1588,7 +1585,7 @@ s32 io_fs::Write( io_open_file* pOpenFile, const byte* pBuffer, s32 Bytes )
     // Setup counters
     s32 BytesLeft    = Bytes;
     s32 BytesWritten = 0;
-    s32 Offset       = pOpenFile->Offset;
+    s32 Offset       = pOpenFile->Offset + pOpenFile->Position;
     s32 BlockSize;
 
     // Acquire a cache. 
@@ -1627,10 +1624,10 @@ s32 io_fs::Write( io_open_file* pOpenFile, const byte* pBuffer, s32 Bytes )
     // Successful?
     if( pRequest->GetStatus() == io_request::COMPLETED )
     {
-        pOpenFile->Offset += Bytes;
-        if( pOpenFile->Offset > pOpenFile->Length )
+        pOpenFile->Position += Bytes;
+        if( pOpenFile->Position > pOpenFile->Length )
         {
-            pOpenFile->Length = pOpenFile->Offset;
+            pOpenFile->Length = pOpenFile->Position;
         }
         // All good!
         Result = Bytes;
