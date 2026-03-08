@@ -97,7 +97,10 @@ void proj_texture_mgr::AddProjLight( const matrix4&  L2W,
                                      f32             Length,
                                      texture::handle Texture )
 {
-    ASSERT( m_NLightProjections < MAX_PROJ_LIGHTS );	
+    if( Texture.GetPointer() == NULL )
+        return;
+
+    ASSERT( m_NLightProjections < MAX_PROJ_LIGHTS );
     SetupProjection( m_LightProjections[m_NLightProjections], L2W, FOV, Length, Texture );
     m_NLightProjections++;
 }
@@ -109,6 +112,9 @@ void proj_texture_mgr::AddProjShadow( const matrix4&  L2W,
                                       f32             Length,
                                       texture::handle Texture )
 {
+    if( Texture.GetPointer() == NULL )
+        return;
+
     ASSERT( m_NShadowProjections < MAX_PROJ_SHADOWS );
     SetupProjection( m_ShadowProjections[m_NShadowProjections], L2W, FOV, Length, Texture );
     m_NShadowProjections++;
