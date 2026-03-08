@@ -70,10 +70,8 @@ union shad_sortkey
 
 //-----------------------------------------------------------------------------
 
-#ifdef TARGET_PC
+#ifdef X_EDITOR
     xbool g_bZPriming;
-#else
-#error Unknown Target!	
 #endif
 
 //-----------------------------------------------------------------------------
@@ -135,9 +133,7 @@ struct render_instance
 
 #ifdef TARGET_PC
     xhandle         hDList;
-#else
-#error Unknown Target!	
-#endif
+#endif // TARGET_PC
 };
 
 //-----------------------------------------------------------------------------
@@ -158,9 +154,7 @@ struct private_instance
 #ifdef TARGET_PC
     xarray<xhandle> RigidDList;
     xbool           IsLit;
-#else
-#error Unknown Target!	
-#endif
+#endif // TARGET_PC
 };
 
 //-----------------------------------------------------------------------------
@@ -173,9 +167,7 @@ struct private_geom
 
 #ifdef TARGET_PC
     xarray<xhandle> SkinDList;
-#else
-#error Unknown Target!	
-#endif
+#endif // TARGET_PC
 };
 
 //-----------------------------------------------------------------------------
@@ -220,12 +212,7 @@ static const s32 kMaxTexAnims            = 2048;
 static const s32 kMaxTexAnimInstances    = 1024;
 static const s32 kMaxRegisteredTexAnims  = 1024;
 static const s32 kMaxDistortedInstances  = 16;
-
-#ifdef TARGET_PC
 static const s32 kMaxRenderedInstances   = 32768;
-#else
-#error Unknown Target!	
-#endif
 
 // arrays for rendering everything
 static s32                          s_LoHashMark;   // below this needs sorting
@@ -1570,8 +1557,6 @@ void render::AddRigidInstanceSimple( hgeom_inst     hInst,
 
             #ifdef TARGET_PC
             Inst.hDList = RegisteredInst.RigidDList[(s32)SubMesh.iDList];
-            #else
-            #error Unknown Target!	
             #endif
         }
     }
@@ -1707,8 +1692,6 @@ void render::AddRigidInstance( hgeom_inst     hInst,
 
             #ifdef TARGET_PC
             Inst.hDList = RegisteredInst.RigidDList[(s32)SubMesh.iDList];
-			#else
-            #error Unknown Target!	
             #endif
 
             // handle fading geometry
@@ -1730,8 +1713,6 @@ void render::AddRigidInstance( hgeom_inst     hInst,
                 ZPrimeInst.OverrideMat      = 1;
                 #ifdef TARGET_PC
                 ZPrimeInst.hDList           = Inst.hDList;
-                #else
-                #error Unknown Target!	
                 #endif
             }
         }
@@ -1877,8 +1858,6 @@ void render::AddRigidInstance( hgeom_inst        hInst,
 
             #ifdef TARGET_PC
             Inst.hDList = RegisteredInst.RigidDList[(s32)SubMesh.iDList];
-            #else
-            #error Unknown Target!	
             #endif
 
             // handle fading geometry
@@ -1900,8 +1879,6 @@ void render::AddRigidInstance( hgeom_inst        hInst,
                 ZPrimeInst.OverrideMat      = 1;
                 #ifdef TARGET_PC
                 ZPrimeInst.hDList           = Inst.hDList;
-                #else
-                #error Unknown Target!	
                 #endif
             }
         }
@@ -2006,8 +1983,6 @@ void render::AddSkinInstance( hgeom_inst     hInst,
             #ifdef TARGET_PC
             private_geom& PrivateGeom = s_lRegisteredGeoms(pGeom->m_hGeom);
             Inst.hDList               = PrivateGeom.SkinDList[(s32)SubMesh.iDList];
-            #else
-            #error Unknown Target!	
             #endif
 
             // handle fading geometry
@@ -2029,8 +2004,6 @@ void render::AddSkinInstance( hgeom_inst     hInst,
                 ZPrimeInst.OverrideMat      = 1;
                 #ifdef TARGET_PC
                 ZPrimeInst.hDList           = Inst.hDList;
-                #else
-                #error Unknown Target!	
                 #endif
             }
         }
@@ -2140,8 +2113,6 @@ void render::AddSkinInstanceDistorted( hgeom_inst        hInst,
             #ifdef TARGET_PC
             private_geom& PrivateGeom = s_lRegisteredGeoms(pGeom->m_hGeom);
             Inst.hDList               = PrivateGeom.SkinDList[(s32)SubMesh.iDList];
-            #else
-            #error Unknown Target!	
             #endif
         }
     }
@@ -2690,9 +2661,7 @@ void render::AddSkinCaster( render::hgeom_inst hInst,
 
                 #ifdef TARGET_PC
                 private_geom&  PrivateGeom = s_lRegisteredGeoms(pGeom->m_hGeom);
-                Inst.hDList                = PrivateGeom.SkinDList[(s32)SubMesh.iDList];
-                #else
-                #error Unknown Target!	
+                Inst.hDList                = PrivateGeom.SkinDList[(s32)SubMesh.iDList];	
                 #endif
             }
         }
@@ -2766,8 +2735,6 @@ void render::AddRigidReceiverSimple( render::hgeom_inst hInst,
 
             #ifdef TARGET_PC
             Inst.hDList = RegisteredInst.RigidDList[(s32)SubMesh.iDList];
-            #else
-            #error Unknown Target!	
             #endif
         }
     }

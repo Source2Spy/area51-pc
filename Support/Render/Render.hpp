@@ -417,9 +417,7 @@ private:
     };
 
 public:
-#ifdef TARGET_XBOX
-    vert_factory::handle m_hColors;
-#elif defined(TARGET_PC)
+#if defined(TARGET_PC)
     u32*                 m_hColors;
 #endif
 };
@@ -450,7 +448,7 @@ inline void color_info::FileIO( fileio& File )
 
 inline void color_info::Init( void )
 {
-#if defined(TARGET_XBOX) || defined(TARGET_PC)
+#if defined(TARGET_PC)
     m_hColors = 0;
     m_Usage   = kUse32;
 #else 
