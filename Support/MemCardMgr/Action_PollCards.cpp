@@ -215,11 +215,7 @@ void MemCardMgr::MC_STATE_TRAWL_DIRS_WAIT( void )
                 for( ProfileID=i=0;i<n;i++ )
                 {
                     xstring String (DirList[i].FileName);
-#ifdef TARGET_XBOX
-                    if(String.Find( "Profile " ) != -1 )
-#elif defined(TARGET_PC)
                     if(( String.Find( m_SavePrefix ) != -1 ) && ( String.Find( "A510" ) != -1 ))
-#endif
                     {
                         profile_info& Info = InfoList.Append();
                         Info.ProfileID     = ProfileID++;
@@ -265,11 +261,7 @@ void MemCardMgr::MC_STATE_GET_PROFILE_NAMES( void )
     if( m_iDir < Pending.InfoList.GetCount())
     {
         ChangeState( __id MC_STATE_GET_PROFILE_NAMES_WAIT );
-#ifdef TARGET_XBOX
-        g_MemcardMgr.AsyncSetDirectory( Pending.InfoList[m_iDir].Dir );
-#elif defined(TARGET_PC)
-        g_MemcardMgr.AsyncSetDirectory( "" ); //We dont using folders on PC.
-#endif
+        g_MemcardMgr.AsyncSetDirectory( "" ); //g_MemcardMgr.AsyncSetDirectory( Pending.InfoList[m_iDir].Dir ); //We dont using folders on PC.
         return;
     }
 
@@ -303,9 +295,7 @@ void MemCardMgr::MC_STATE_GET_PROFILE_NAMES_WAIT( void )
 
     case kFAILURE:
         Info.bDamaged = true;
-#ifdef TARGET_XBOX
         Pending.ErrorCode = 0;
-#endif
         // keep looking
         ChangeState( __id MC_STATE_PROFILE_NAME_WAIT );
         break;
@@ -396,11 +386,7 @@ void MemCardMgr::MC_STATE_PROFILE_NAME_WAIT( void )
 
 void MemCardMgr::MC_STATE_FIND_SETTINGS( void )
 {
-#ifdef TARGET_XBOX
-        g_MemcardMgr.AsyncSetDirectory( "Game Settings" );
-#elif defined(TARGET_PC)
-        g_MemcardMgr.AsyncSetDirectory( "" ); //We dont using folders on PC.
-#endif
+    g_MemcardMgr.AsyncSetDirectory( "" ); //g_MemcardMgr.AsyncSetDirectory( "Game Settings" ); //We dont using folders on PC.
     ChangeState( __id MC_STATE_FIND_SETTINGS_WAIT );
 }
 
@@ -423,6 +409,7 @@ void MemCardMgr::MC_STATE_FIND_SETTINGS_WAIT( void )
             // set settings found for this card
             m_bCardHasSettings[m_iCard] = TRUE;
         }
+        break;
 
     case kFAILURE:
     case kRESET:

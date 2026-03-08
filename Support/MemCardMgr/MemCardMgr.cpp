@@ -113,8 +113,8 @@ MemCardMgr::MemCardMgr( void )
     m_iProfile    = -1;
     m_iDir        =  0;
     m_iPlayer     = -1;
-    m_PollTurn[0] =  0;
-    m_PollTurn[1] =  0;
+    for( s32 i=0; i<MAX_CARD_SLOTS; i++ )
+        m_PollTurn[i] = 0;
     m_iCard       =  0;
     m_iSlot       = -1;
 
@@ -580,8 +580,8 @@ void MemCardMgr::Clear( void )
         }
         Active.InfoList.Clear();
     }
-    m_CardManifest[0].Clear();
-    m_CardManifest[1].Clear();
+    for( s32 k=0; k<MAX_CARD_SLOTS; k++ )
+        m_CardManifest[k].Clear();
     m_Manifest.Clear();
     g_MemcardHardware.InvalidateFileList();
 }

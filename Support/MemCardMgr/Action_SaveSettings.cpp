@@ -123,21 +123,12 @@ void MemCardMgr::MC_STATE_CREATE_SETTINGS( void )
 {
     condition& Pending = GetPendingCondition( m_iCard );
 
-#if defined(TARGET_XBOX)
-    // make sure that we have enough space on the xbox
-    if( Pending.BytesFree < g_StateMgr.GetSettingsSaveSize() )
-    {
-        ChangeState( __id MC_STATE_CREATE_PROFILE_FAILED );
-        return;
-    }
-#elif defined(TARGET_PC)
     // make sure that we have enough space on the PC
     if( Pending.BytesFree < g_StateMgr.GetSettingsSaveSize() )
     {
         ChangeState( __id MC_STATE_CREATE_PROFILE_FAILED );
         return;
     }
-#endif
 
     if( ! Pending.ErrorCode )
     {
@@ -145,9 +136,9 @@ void MemCardMgr::MC_STATE_CREATE_SETTINGS( void )
         // display warning message
         const xwchar* pText;
 
-#ifdef TARGET_XBOX
+#ifdef TARGET_PC
         pText = g_StringTableMgr( "ui", "MC_SAVING_SETTINGS_XBOX" );
-#elif defined(TARGET_PC)      
+#else   
         pText = g_StringTableMgr( "ui", "MC_SAVING_SETTINGS_XBOX" );
 #endif
         WarningBox(
@@ -155,12 +146,9 @@ void MemCardMgr::MC_STATE_CREATE_SETTINGS( void )
             pText,
             FALSE
             );
-
-#if defined(TARGET_XBOX)
-        g_MemcardMgr.AsyncCreateDirectory( "Game Settings" );
-#elif defined(TARGET_PC)
+			
+        //g_MemcardMgr.AsyncCreateDirectory( "Game Settings" );
         g_MemcardMgr.AsyncSetDirectory( "" ); //We dont using settings folders on PC.
-#endif
         ChangeState( __id MC_STATE_CREATE_SETTINGS_CREATE_DIR_WAIT );
 
         return;
@@ -224,11 +212,8 @@ void MemCardMgr::MC_STATE_SAVE_SETTINGS( void )
 
         // Before we can save settings, or a patch, we need to switch to that directory and
         // create it if necessary.
-#if defined(TARGET_XBOX)
-        g_MemcardMgr.AsyncSetDirectory( "Game Settings" );
-#elif defined(TARGET_PC)
+        //g_MemcardMgr.AsyncSetDirectory( "Game Settings" );
         g_MemcardMgr.AsyncSetDirectory( "" ); //We dont using settings folders on PC.
-#endif
         ChangeState( __id MC_STATE_SAVE_SETTINGS_SET_DIR_WAIT );
     }
     else
@@ -335,34 +320,19 @@ void MemCardMgr::MC_STATE_SAVE_SETTINGS_FAILED(void)
         SecondOption, 
         FALSE );
 #elif defined(TARGET_PC)
-    m_BlocksRequired = ( (g_StateMgr.GetSettingsSaveSize() - Pending.BytesFree) + 1023 ) / 1024;
+    s32 saveSize = g_StateMgr.GetProfileSaveSize();
+    m_BlocksRequired = ( Pending.BytesFree < saveSize ) ? ( (saveSize - Pending.BytesFree) + 1023 ) / 1024 : 0;
+
     MessageText = xwstring( xfs( (const char*)xstring(g_StringTableMgr( "ui", "MC_NOT_ENOUGH_FREE_SPACE_SLOT1_SETTINGS_XBOX" )), m_BlocksRequired ) );
-
-    PopUpBox( 
-        g_StringTableMgr( "ui", "IDS_MEMCARD_HEADER" ),
-        MessageText, 
-        NavText, 
-        TRUE, 
-        FALSE, 
-        FALSE );
-#endif
-
-#if defined(TARGET_PC1)
-    u32 settingsSaveSize = g_StateMgr.GetSettingsSaveSize();
-    m_BlocksRequired = ((settingsSaveSize - Pending.BytesFree) + 1023) / 1024;
-
-    MessageText = xwstring(xfs((const char*)xstring(g_StringTableMgr("ui", "MC_NOT_ENOUGH_FREE_SPACE_SLOT1_SETTINGS_XBOX")), m_BlocksRequired));
-    MessageText += xwstring(xfs("\n\nDEBUG: BytesFree=%u, SaveSize=%u", Pending.BytesFree, settingsSaveSize));
-    NavText = g_StringTableMgr("ui", "IDS_OK");
+    NavText     = g_StringTableMgr( "ui", "IDS_OK" );
 
     PopUpBox(
-        g_StringTableMgr("ui", "IDS_DISK_SPACE_HEADER"),
+        g_StringTableMgr( "ui", "IDS_MEMCARD_HEADER" ),
         MessageText,
         NavText,
         TRUE,
         FALSE,
-        FALSE
-    );
+        FALSE );
 #endif
 
     FlushStateStack();
@@ -379,45 +349,21 @@ void MemCardMgr::MC_STATE_SAVE_SETTINGS_FAILED_WAIT(void)
     // wait for user response
     condition& Pending = GetPendingCondition( m_iCard );
 
-#ifdef TARGET_XBOX
-    switch( m_MessageResult )
-    {
-    case DLG_POPUP_IDLE:
-        return;
-
-    case DLG_POPUP_NO:
-        // free blocks
-        // If the player chose to go to the Dash, go to memory area
-        LD_LAUNCH_DASHBOARD LaunchDash;
-        LaunchDash.dwReason = XLD_LAUNCH_DASHBOARD_MEMORY;
-        // This value will be returned to the title via XGetLaunchInfo
-        // in the LD_FROM_DASHBOARD struct when the Dashboard reboots
-        // into the title. If not required, set to zero.
-        LaunchDash.dwContext = 0;
-        // Specify the logical drive letter of the region where
-        // data needs to be removed; either T or U.
-        LaunchDash.dwParameter1 = DWORD( 'U' );
-        // Specify the number of 16-KB blocks that are needed to save settings (in total)
-        LaunchDash.dwParameter2 = ( g_StateMgr.GetSettingsSaveSize() + 16383 ) / 16384;
-        // Launch the Xbox Dashboard
-        XLaunchNewImage( NULL, (PLAUNCH_DATA)(&LaunchDash) );
-        break;
-
-    case DLG_POPUP_YES:
-        // continue without saving
-        Pending.bCancelled = TRUE;
-        break;
-    }
-#elif defined(TARGET_PC)
     switch( m_MessageResult )
     {
     case DLG_MCMESSAGE_IDLE:
         return;
-        default:
-            Pending.bCancelled = TRUE;
-            break;
+
+    case DLG_MCMESSAGE_NO:
+        // continue without saving
+        Pending.bCancelled = TRUE;
+        break;
+
+    case DLG_MCMESSAGE_YES:
+        // retry
+        break;
     }
-#endif
+
     // finish processing
     PopState();
 }
@@ -472,7 +418,7 @@ void MemCardMgr::MC_ACTION_SAVE_SETTINGS( void )
     m_iCard = g_StateMgr.GetSettingsCardSlot();
     // range check
     ASSERT( m_iCard >= 0 );
-    ASSERT( m_iCard < 2 );
+    ASSERT( m_iCard < MAX_CARD_SLOTS  );
 
     // push states
     PushState( __id MC_STATE_MOUNT                 );
@@ -492,7 +438,7 @@ void MemCardMgr::MC_ACTION_CREATE_SETTINGS( void )
     m_iCard = g_StateMgr.GetSettingsCardSlot();
     // range check
     ASSERT( m_iCard >= 0 );
-    ASSERT( m_iCard < 2 );
+    ASSERT( m_iCard < MAX_CARD_SLOTS  );
 
     // push states
     PushState( __id MC_STATE_MOUNT                 );
@@ -512,7 +458,7 @@ void MemCardMgr::MC_ACTION_OVERWRITE_SETTINGS( void )
     m_iCard = g_StateMgr.GetSettingsCardSlot();
     // range check
     ASSERT( m_iCard >= 0 );
-    ASSERT( m_iCard < 2 );
+    ASSERT( m_iCard < MAX_CARD_SLOTS );
 
     // push states
     PushState( __id MC_STATE_MOUNT                      );

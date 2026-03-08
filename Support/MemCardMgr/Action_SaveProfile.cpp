@@ -58,11 +58,7 @@ void MemCardMgr::MC_STATE_SAVE_PROFILE( void )
             pText,
             FALSE
         );
-#ifdef TARGET_XBOX
-        g_MemcardMgr.AsyncSetDirectory( m_PreservedProfile[m_iPlayer].Dir );
-#elif defined(TARGET_PC)
-        g_MemcardMgr.AsyncSetDirectory( "" ); //We dont using settings folders on PC.
-#endif
+        g_MemcardMgr.AsyncSetDirectory( "" ); //g_MemcardMgr.AsyncSetDirectory( m_PreservedProfile[m_iPlayer].Dir ); //We dont using settings folders on PC.
         m_bForcePoll[m_iCard] = true;
 
         return;
@@ -173,7 +169,8 @@ void MemCardMgr::MC_STATE_SAVE_PROFILE_FAILED(void)
         SecondOption, 
         FALSE );
 #elif defined(TARGET_PC)
-    m_BlocksRequired = ( (g_StateMgr.GetProfileSaveSize() - Pending.BytesFree) + 1023 ) / 1024;
+    s32 saveSize = g_StateMgr.GetProfileSaveSize();
+    m_BlocksRequired = ( Pending.BytesFree < saveSize ) ? ( (saveSize - Pending.BytesFree) + 1023 ) / 1024 : 0;
    
     MessageText = xwstring(xfs((const char*)xstring(g_StringTableMgr("ui", "MC_NOT_ENOUGH_FREE_SPACE_SLOT1_PROFILE_XBOX")), m_BlocksRequired));
     NavText = g_StringTableMgr("ui", "IDS_OK");
@@ -350,28 +347,23 @@ void MemCardMgr::MC_STATE_OVERWRITE_PROFILE( void )
     condition& Pending = GetPendingCondition(m_PreservedProfile[m_iPlayer].CardID);
     if( ! Pending.ErrorCode )
     {
-        ChangeState( __id MC_STATE_SAVE_PROFILE_SET_DIR_WAIT );
+        // Note: m_iProfile is deprecated.	
+        // Use ProfileID from PreservedProfile as the index into InfoList.
+        s32 iProfile = m_PreservedProfile[m_iPlayer].ProfileID;
 
-        //  "Saving data.  Do not remove memory card"
-        //  "(8MB) (for Playstation®2) in MEMORY CARD"
-        //  "slot 1, reset, or switch off the console."
-
-        const xwchar* pText;
-        if( ! m_PreservedProfile[m_iPlayer].CardID )
-            pText = g_StringTableMgr( "ui", "MC_OVERWRITE_DATA_SLOT1" );
-        else
-            pText = g_StringTableMgr( "ui", "MC_OVERWRITE_DATA_SLOT2" );
-        WarningBox(
-            g_StringTableMgr( "ui", "IDS_MEMCARD_HEADER"   ),  
-            pText,
-            FALSE
-            );
-
-        if( GetCondition(m_PreservedProfile[m_iPlayer].CardID).InfoList.GetCount() >= m_iProfile )
+        if( GetCondition(m_PreservedProfile[m_iPlayer].CardID).InfoList.GetCount() > iProfile )
         {
-            m_PreservedProfile[m_iPlayer] = GetCondition(m_PreservedProfile[m_iPlayer].CardID).InfoList[m_iProfile];
-            ChangeState( __id MC_STATE_OVERWRITE_SUCCESS );
-            return;
+            // Pull Dir/CardID/ProfileID from the existing entry so we overwrite
+            // the correct file, then stamp in the new profile data fields.
+            profile_info& existing = GetCondition(m_PreservedProfile[m_iPlayer].CardID).InfoList[iProfile];
+            m_PreservedProfile[m_iPlayer].Dir       = existing.Dir;
+            m_PreservedProfile[m_iPlayer].CardID    = existing.CardID;
+            m_PreservedProfile[m_iPlayer].ProfileID = existing.ProfileID;
+
+            player_profile& Profile = g_StateMgr.GetPendingProfile();
+            m_PreservedProfile[m_iPlayer].Ver  = Profile.GetVersion();
+            m_PreservedProfile[m_iPlayer].Name = xwstring(Profile.GetProfileName());
+            m_PreservedProfile[m_iPlayer].Hash = Profile.GetHash();
         }
         else
         {
@@ -379,13 +371,22 @@ void MemCardMgr::MC_STATE_OVERWRITE_PROFILE( void )
             return;
         }
 
-        // update fields in preserved profile with the correct info
-        player_profile& Profile      = g_StateMgr.GetPendingProfile();
-        m_PreservedProfile[m_iPlayer].Ver       = Profile.GetVersion();
-        m_PreservedProfile[m_iPlayer].Name      = xwstring(Profile.GetProfileName());
-        m_PreservedProfile[m_iPlayer].Hash      = Profile.GetHash();
-        m_bForcePoll[m_iCard]        = true;
+        const xwchar* pText;
+        if( ! m_PreservedProfile[m_iPlayer].CardID )
+            pText = g_StringTableMgr( "ui", "MC_OVERWRITE_DATA_SLOT1" );
+        else
+            pText = g_StringTableMgr( "ui", "MC_OVERWRITE_DATA_SLOT2" );
+        WarningBox(
+            g_StringTableMgr( "ui", "IDS_MEMCARD_HEADER" ),
+            pText,
+            FALSE
+            );
 
+        // Proceed to the same write path as MC_STATE_SAVE_PROFILE.
+        // MC_STATE_SAVE_PROFILE_SET_DIR_WAIT will call AsyncWriteFile.
+        ChangeState( __id MC_STATE_SAVE_PROFILE_SET_DIR_WAIT );
+        g_MemcardMgr.AsyncSetDirectory( "" ); //g_MemcardMgr.AsyncSetDirectory( m_PreservedProfile[m_iPlayer].Dir ); //We dont using settings folders on PC.
+        m_bForcePoll[m_iCard] = true;
         return;
     }
     else

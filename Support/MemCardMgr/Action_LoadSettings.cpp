@@ -39,20 +39,16 @@
 
 void MemCardMgr::MC_STATE_LOAD_SETTINGS( void )
 {
-    //condition& Pending = GetPendingCondition(m_iCard);
+    condition& Pending = GetPendingCondition(m_iCard);
 
-    //if( Pending.ErrorCode )
-    //{
-    //    // don't try to load the settings if we hit an error already
-    //    PopState();
-    //}
-    //else
+    if( Pending.ErrorCode )
     {
-#ifdef TARGET_XBOX
-        g_MemcardMgr.AsyncSetDirectory( "Game Settings" );
-#elif defined(TARGET_PC)
-        g_MemcardMgr.AsyncSetDirectory( "" ); //We dont using settings folders on PC.
-#endif
+        // don't try to load the settings if we hit an error already
+        PopState();
+    }
+    else
+    {
+        g_MemcardMgr.AsyncSetDirectory( "" ); //g_MemcardMgr.AsyncSetDirectory( "Game Settings" ); //We dont using settings folders on PC.
         ChangeState( __id MC_STATE_LOAD_SETTINGS_SET_DIR_WAIT );
     }
 }
@@ -86,11 +82,7 @@ void MemCardMgr::MC_STATE_LOAD_SETTINGS_SET_DIR_WAIT( void )
     case kFAILURE:
     case kRESET:
         // We don't care if the settings are not found.
-        #ifdef TARGET_XBOX
         Pending.ErrorCode = FALSE;
-        #else
-        Pending.bFileNotFound = 0;
-        #endif
         break;
 
     default:
@@ -124,10 +116,6 @@ void MemCardMgr::MC_STATE_LOAD_SETTINGS_READ_WAIT( void )
                 // during the initial boot check.
                 if( (pSettings->GetDateStamp() > Active.GetDateStamp()) || (Active.HasChanged()) )
                 {
-#ifdef TARGET_XBOX
-                    f32 Brightness = (f32(pSettings->GetBrightness())/100.0f);
-                    xbox_SetBrightness( Brightness );
-#endif
                     g_StateMgr.SetSettingsCardSlot( 0 );
                     
                     // update the settings
@@ -149,11 +137,7 @@ void MemCardMgr::MC_STATE_LOAD_SETTINGS_READ_WAIT( void )
     case kFAILURE:
     case kRESET:
         // We don't care if the settings are not found.
-        #ifdef TARGET_XBOX
         Pending.ErrorCode = FALSE;
-        #else
-        Pending.bFileNotFound = 0;
-        #endif
         break;
 
 

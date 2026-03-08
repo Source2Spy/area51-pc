@@ -39,21 +39,12 @@ void MemCardMgr::MC_STATE_CREATE_PROFILE( void )
 {
     condition& Pending = GetPendingCondition(m_PreservedProfile[m_iPlayer].CardID);
 
-#if defined(TARGET_XBOX)
-    // make sure that we have enough space on the xbox
-    if( Pending.BytesFree < g_StateMgr.GetProfileSaveSize() )
-    {
-        ChangeState( __id MC_STATE_CREATE_PROFILE_FAILED );
-        return;
-    }
-#elif defined(TARGET_PC)
     // make sure that we have enough space on the PC
     if( Pending.BytesFree < g_StateMgr.GetProfileSaveSize() )
     {
         ChangeState( __id MC_STATE_CREATE_PROFILE_FAILED );
         return;
     }
-#endif
 
     // handle unformatted cards ***********************************************
 
@@ -90,11 +81,7 @@ void MemCardMgr::MC_STATE_CREATE_PROFILE( void )
         for( i=0; i<Condition.InfoList.GetCount(); i++ )
         {
             m_PreservedProfile[m_iPlayer].ProfileID = i;
-#if defined(TARGET_XBOX)
-            m_PreservedProfile[m_iPlayer].Dir = xfs( "Profile %s",g_StateMgr.GetPendingProfile().GetProfileName() );
-#elif defined(TARGET_PC)
             m_PreservedProfile[m_iPlayer].Dir = xfs("%sA51%05d", m_SavePrefix, m_PreservedProfile[m_iPlayer].ProfileID );
-#endif
             if( Condition.InfoList[i].Dir != m_PreservedProfile[m_iPlayer].Dir )
             {
                 Found = TRUE;
@@ -104,11 +91,7 @@ void MemCardMgr::MC_STATE_CREATE_PROFILE( void )
         if( !Found )
         {
             m_PreservedProfile[m_iPlayer].ProfileID = Condition.InfoList.GetCount();
-#if defined(TARGET_XBOX)
-            m_PreservedProfile[m_iPlayer].Dir = xfs( "Profile %s",g_StateMgr.GetPendingProfile().GetProfileName() );
-#elif defined(TARGET_PC)
             m_PreservedProfile[m_iPlayer].Dir = xfs( "%sA51%05d", m_SavePrefix, m_PreservedProfile[m_iPlayer].ProfileID );
-#endif
         }
 
         ChangeState( __id MC_STATE_CREATE_PROFILE_CREATE_DIR_WAIT );
@@ -137,11 +120,7 @@ void MemCardMgr::MC_STATE_CREATE_PROFILE( void )
         );
 
         // Create directory ...................................................
-#ifdef TARGET_XBOX
-        g_MemcardMgr.AsyncCreateDirectory( m_PreservedProfile[m_iPlayer].Dir );
-#elif defined(TARGET_PC)
-        g_MemcardMgr.AsyncSetDirectory( "" ); //We dont using settings folders on PC.
-#endif
+        g_MemcardMgr.AsyncSetDirectory( "" ); //g_MemcardMgr.AsyncCreateDirectory( m_PreservedProfile[m_iPlayer].Dir ); //We dont using settings folders on PC.
         return;
     }
     PopState();
@@ -161,11 +140,7 @@ void MemCardMgr::MC_STATE_CREATE_PROFILE_CREATE_DIR_WAIT( void )
         case kSUCCESS:
         {
             ChangeState( __id MC_STATE_CREATE_PROFILE_SET_DIR_WAIT );
-#ifdef TARGET_XBOX
-        g_MemcardMgr.AsyncSetDirectory( m_PreservedProfile[m_iPlayer].Dir );
-#elif defined(TARGET_PC)
-        g_MemcardMgr.AsyncSetDirectory( "" ); //We dont using settings folders on PC.
-#endif
+            g_MemcardMgr.AsyncSetDirectory( "" ); //g_MemcardMgr.AsyncSetDirectory( m_PreservedProfile[m_iPlayer].Dir ); //We dont using settings folders on PC.
             return;
         }
 
@@ -254,7 +229,8 @@ void MemCardMgr::MC_STATE_CREATE_PROFILE_FAILED( void )
         TRUE, 
         FALSE );
 #elif defined(TARGET_PC)  
-    m_BlocksRequired = ( (g_StateMgr.GetProfileSaveSize() - Pending.BytesFree) + 1023 ) / 1024;
+    s32 saveSize = g_StateMgr.GetProfileSaveSize();
+    m_BlocksRequired = ( Pending.BytesFree < saveSize ) ? ( (saveSize - Pending.BytesFree) + 1023 ) / 1024 : 0;
    
     MessageText = xwstring(xfs((const char*)xstring(g_StringTableMgr("ui", "MC_NOT_ENOUGH_FREE_SPACE_SLOT1_XBOX")), m_BlocksRequired));
     NavText = g_StringTableMgr("ui", "IDS_OK");
@@ -282,36 +258,6 @@ void MemCardMgr::MC_STATE_CREATE_PROFILE_FAILED_WAIT( void )
     // wait for user response
     condition& Pending = GetPendingCondition(m_PreservedProfile[m_iPlayer].CardID);
 
-#ifdef TARGET_XBOX
-    switch( m_MessageResult )
-    {
-    case DLG_POPUP_IDLE:
-        return;
-
-    case DLG_POPUP_NO:
-        // free blocks
-        // If the player chose to go to the Dash, go to memory area
-        LD_LAUNCH_DASHBOARD LaunchDash;
-        LaunchDash.dwReason = XLD_LAUNCH_DASHBOARD_MEMORY;
-        // This value will be returned to the title via XGetLaunchInfo
-        // in the LD_FROM_DASHBOARD struct when the Dashboard reboots
-        // into the title. If not required, set to zero.
-        LaunchDash.dwContext = 0;
-        // Specify the logical drive letter of the region where
-        // data needs to be removed; either T or U.
-        LaunchDash.dwParameter1 = DWORD( 'U' );
-        // Specify the number of 16-KB blocks that are needed to save the profile (in total)
-        LaunchDash.dwParameter2 = ( g_StateMgr.GetProfileSaveSize() + 16383 ) / 16384;
-        // Launch the Xbox Dashboard
-        XLaunchNewImage( NULL, (PLAUNCH_DATA)(&LaunchDash) );
-        break;
-
-    case DLG_POPUP_YES:
-        // continue without saving
-        Pending.bCancelled = TRUE;
-        break;
-    }
-#else
     switch( m_MessageResult )
     {
     case DLG_MCMESSAGE_IDLE:
@@ -326,7 +272,7 @@ void MemCardMgr::MC_STATE_CREATE_PROFILE_FAILED_WAIT( void )
         // retry
         break;
     }
-#endif
+
     // finish processing
     PopState();
 }

@@ -45,11 +45,7 @@ void MemCardMgr::MC_STATE_LOAD_PROFILE_SET_DIR( void )
         // get profile info from front condition ..............................
         // preserve object for later ..................................
         ChangeState( __id MC_STATE_LOAD_PROFILE_SET_DIR_WAIT );
-#ifdef TARGET_XBOX
-        g_MemcardMgr.AsyncSetDirectory( m_PreservedProfile[m_iPlayer].Dir );
-#elif defined(TARGET_PC)
-        g_MemcardMgr.AsyncSetDirectory( "" ); //We dont using settings folders on PC.
-#endif
+        g_MemcardMgr.AsyncSetDirectory( "" ); //g_MemcardMgr.AsyncSetDirectory( m_PreservedProfile[m_iPlayer].Dir ); //We dont using settings folders on PC.
         return;
     }
     else
@@ -151,14 +147,14 @@ void MemCardMgr::MC_STATE_LOAD_PROFILE_FAILED( void )
     condition& Pending = GetPendingCondition(m_PreservedProfile[m_iPlayer].CardID);
     const xwchar* pText;
 
-    //if( Pending.bDamaged )
-    //{
-    //    if( ! m_PreservedProfile[m_iPlayer].CardID )
-    //        pText = g_StringTableMgr( "ui", "MC_LOAD_FAILED_FAULTY_SLOT1" );
-    //    else
-    //        pText = g_StringTableMgr( "ui", "MC_LOAD_FAILED_FAULTY_SLOT2" );
-    //}
-    //else 
+    if( Pending.bDamaged )
+    {
+        if( ! m_PreservedProfile[m_iPlayer].CardID )
+            pText = g_StringTableMgr( "ui", "MC_LOAD_FAILED_FAULTY_SLOT1" );
+        else
+            pText = g_StringTableMgr( "ui", "MC_LOAD_FAILED_FAULTY_SLOT2" );
+    }
+    else 
     if( Pending.bFileNotFound )
     {
         if( ! m_PreservedProfile[m_iPlayer].CardID )

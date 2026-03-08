@@ -145,8 +145,6 @@ void MemCardMgr::MC_CHECK_CARD_HOLD( void )
     ChangeState( __id MC_CHECK_CARD_WAIT );
 }
 
-
-
 //==---------------------------------------------------------------------------
 
 void MemCardMgr::MC_CHECK_CARD_WAIT( void )
@@ -252,11 +250,7 @@ void MemCardMgr::MC_STATE_BOOT_CHECK_WAIT( void )
                 for( ProfileID=i=0;i<n;i++ )
                 {
                     xstring String (DirList[i].FileName);
-#ifdef TARGET_XBOX
-                    if(String.Find( "Profile " ) != -1 )
-#else
                     if(( String.Find( m_SavePrefix ) != -1 ) && ( String.Find( "A510" ) != -1 ))
-#endif
                     {
                         profile_info& Info = InfoList.Append();
                         Info.ProfileID     = ProfileID++;
@@ -408,7 +402,7 @@ void MemCardMgr::MC_STATE_UNMOUNT_WAIT( void )
 void MemCardMgr::MC_STATE_BOOT_ACTION_DONE( void )
 {
     condition& Condition0 = GetPendingCondition(0); // (we've already flipped conditions)
-#if defined( TARGET_PC ) || defined( TARGET_XBOX )
+#if defined( TARGET_PC )
     condition& Condition1 = Condition0;
 #else
     condition& Condition1 = GetPendingCondition(1);
