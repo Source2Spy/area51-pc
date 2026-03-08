@@ -931,7 +931,7 @@ u32 memcard_hardware::GetFreeSpace(void)
 
     GetDiskFreeSpaceEx
     (
-        "C:\\",
+        NULL,                // NULL use current working directory.
         &FreeBytesAvailable,
         &TotalNumberOfBytes,
         &TotalNumberOfFreeBytes

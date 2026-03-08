@@ -716,19 +716,6 @@ void dlg_profile_options::OnPadSelect( ui_win* pWin )
 
                 if( PendingProfile.HasChanged() )
                 {
-#ifdef TARGET_XBOX
-                    if( GameMgr.GameInProgress() && g_NetworkMgr.IsOnline() )
-                    {
-                        // don't save to memcard whilst an online game is in progress
-
-                        // update the changes in the profile
-                        g_StateMgr.ActivatePendingProfile( TRUE ); // Mark Dirty
-
-                        // return to pause menu
-                        m_State = DIALOG_STATE_ACTIVATE;
-                    }
-                    else
-#endif
                     {
                         // changes have been made - prompt to save
                         irect r = g_UiMgr->GetUserBounds( g_UiUserID );
@@ -968,19 +955,6 @@ void dlg_profile_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             m_pButtonCreate         ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pNavText              ->SetFlag(ui_win::WF_VISIBLE, TRUE);
 
-#ifdef TARGET_XBOX
-            {
-                if( g_MatchMgr.GetAuthStatus() == AUTH_STAT_CONNECTED )
-                {
-                    m_pButtonOnlineStatus->SetFlag( ui_win::WF_DISABLED, FALSE );
-                }
-                else
-                {
-                    m_pButtonOnlineStatus->SetFlag( ui_win::WF_DISABLED, TRUE  );
-                }
-            }
-#endif
-
             s32 iControl = g_StateMgr.GetCurrentControl();
 
             if( m_bCreate )
@@ -1055,40 +1029,6 @@ void dlg_profile_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                     }
                 }
                 break;
-
-#ifdef TARGET_XBOX
-                case OPTIONS_POPUP_XBOX_FREE_BLOCKS:
-                {
-                    if( m_PopUpResult == DLG_POPUP_YES )
-                    {
-                        // continue without saving
-                        // update the changes in the profile
-                        g_StateMgr.ActivatePendingProfile();
-
-                        // continue onward
-                        g_AudioMgr.Play( "Select_Norm" );
-                        m_State = DIALOG_STATE_ACTIVATE;
-                    }
-                    else
-                    {
-                        // If the player chose to go to the Dash, go to memory area
-                        LD_LAUNCH_DASHBOARD LaunchDash;
-                        LaunchDash.dwReason = XLD_LAUNCH_DASHBOARD_MEMORY;
-                        // This value will be returned to the title via XGetLaunchInfo
-                        // in the LD_FROM_DASHBOARD struct when the Dashboard reboots
-                        // into the title. If not required, set to zero.
-                        LaunchDash.dwContext = 0;
-                        // Specify the logical drive letter of the region where
-                        // data needs to be removed; either T or U.
-                        LaunchDash.dwParameter1 = DWORD( 'U' );
-                        // Specify the number of 16-KB blocks that need to be freed
-                        LaunchDash.dwParameter2 = ( g_StateMgr.GetProfileSaveSize() + 16383 ) / 16384;
-                        // Launch the Xbox Dashboard
-                        XLaunchNewImage( NULL, (PLAUNCH_DATA)(&LaunchDash) );
-                    }
-                }
-                break;
-#endif
 
                 case OPTIONS_POPUP_PROFILE_HAS_CHANGED:
                 {
