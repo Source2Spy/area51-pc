@@ -34,18 +34,20 @@ static struct texture_loader : public rsc_loader
         switch ( pTexture->m_Bitmap.GetFormat() )
         {
 
-        #ifdef TARGET_PC
         case xbitmap::FMT_32_ARGB_8888:
         case xbitmap::FMT_32_URGB_8888:
         case xbitmap::FMT_16_ARGB_4444:
         case xbitmap::FMT_16_ARGB_1555:
         case xbitmap::FMT_16_URGB_1555:
         case xbitmap::FMT_16_RGB_565:
+
+        #ifdef TARGET_PC	
         case xbitmap::FMT_DXT1:
         case xbitmap::FMT_DXT3:
         case xbitmap::FMT_DXT5:
+        #endif	
+
             break;
-        #endif
 
         default:
             x_throw( "Invalid texture format." );
