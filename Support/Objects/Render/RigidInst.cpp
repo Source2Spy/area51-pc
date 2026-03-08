@@ -68,129 +68,32 @@ static struct rigid_color : public rsc_loader
     {
         MEMORY_OWNER( "RIGID COLOR DATA" );
         fileio File;
-        return File.PreLoad( FP );
+        return( File.PreLoad( FP ) );
     }
 
     //-------------------------------------------------------------------------
 
     virtual void* Resolve( void* pData )
     {
-        fileio::resolve* pResolve = (fileio::resolve*)pData;
-        ASSERT( pResolve );
+        fileio              File;
+        color_info*   pRigidColor = NULL;
 
-        byte*           pStatic    = pResolve->pStatic;
-        byte*           pDynamic   = pResolve->pDynamic;
-        fileio::ref*    pTable     = pResolve->pTable;
-        const s32       nPointers  = pResolve->nPointers;
+        File.Resolved( (fileio::resolve*)pData, pRigidColor );
+        // The XBOX and PC uses 32 bit color and PS2 is using 16 bit.
 
-        struct color_info_disk
-        {
-            s32 Count;
-            s32 Pointer;
-        };
-
-        s32             nColors      = 0;
-        const byte*     pColorSrc    = NULL;
-        s32             elementSize  = 0;
-
-        if( pStatic )
-        {
-            const color_info_disk* pDisk = (const color_info_disk*)pStatic;
-            nColors = pDisk->Count;
-        }
-
-        const fileio::ref* pColorRef = NULL;
-
-        if( (nColors > 0) && pTable && (nPointers > 0) )
-        {
-            for( s32 i = 0; i < nPointers; ++i )
-            {
-                const fileio::ref& Ref = pTable[i];
-                if( Ref.Count == nColors )
-                {
-                    pColorRef = &Ref;
-                    break;
-                }
-            }
-
-            if( pColorRef )
-            {
-                switch( pColorRef->Flags )
-                {
-                case 3:
-                    pColorSrc = &pStatic[ pColorRef->PointingAT ];
-                    break;
-
-                case 1:
-                case 0:
-                    pColorSrc = &pDynamic[ pColorRef->PointingAT ];
-                    break;
-
-                default:
-                    x_DebugMsg( "RigidInst: Resolve: Unsupported pointer flags %d\n", pColorRef->Flags );
-                    break;
-                }
-
-                if( pColorSrc && (pColorRef->Flags == 3) )
-                {
-                    const byte* pColorEnd = (const byte*)pTable;
-                    s32         Available = (s32)( pColorEnd - pColorSrc );
-
-                    if( Available >= nColors * (s32)sizeof(u32) )
-                    {
-                        elementSize = sizeof(u32);
-                    }
-                    else
-                    {
-                        x_DebugMsg( "RigidInst: Resolve: Invalid color buffer (Count:%d, Bytes:%d)\n", nColors, Available );
-                        nColors = 0;
-                        pColorSrc = NULL;
-                    }
-                }
-                else if( pColorSrc )
-                {
-                    elementSize = sizeof(u32);
-                }
-            }
-            else
-            {
-                x_DebugMsg( "RigidInst: Resolve: Unable to find color table ref (Count:%d)\n", nColors );
-                nColors   = 0;
-                pColorSrc = NULL;
-            }
-        }
-
-        color_info* pDst = new color_info;
-        pDst->SetCount( nColors );
-
-        if( (nColors > 0) && pColorSrc )
-        {
-            u32* pColor = (u32*)x_malloc( nColors * sizeof(u32) );
-            ASSERT( pColor );
-            x_memmove( pColor, (const u32*)pColorSrc, nColors * sizeof(u32) );
-            pDst->Set( pColor );
-        }
-        else
-        {
-            pDst->Set( (void*)NULL );
-        }
-
-        delete[] pStatic;
-        delete[] pDynamic;
-
-        return pDst;
+        return( pRigidColor );
     }
 
     //-------------------------------------------------------------------------
 
     virtual void Unload( void* pData )
     {
-        color_info* pRigidColor = (color_info*)pData;
-        
-        void* pColor = *pRigidColor;        
-        if( pColor )
-            x_free( pColor );    
-        
+        color_info* pRigidColor=( color_info* )pData;
+    #ifdef TARGET_XBOX
+        delete pRigidColor->m_hColors;
+    #elif defined(TARGET_PC)
+        delete[] pRigidColor->m_hColors;
+    #endif
         delete pRigidColor;
     }
 
@@ -231,13 +134,12 @@ const void* rigid_inst::GetColorTable( platform PlatformType ) const
 {
     if( m_pRigidColor )
     {
-        if( PlatformType == PLATFORM_XBOX )
+        if( PlatformType == PLATFORM_XBOX || PlatformType == PLATFORM_PC )
             return(( u32* )m_pRigidColor )+m_iColor;
         else if ( PlatformType == PLATFORM_PS2 )
             return(( u16* )m_pRigidColor )+m_iColor;
-        else if ( PlatformType == PLATFORM_PC )
-            return(( u32* )m_pRigidColor )+m_iColor;
         else
+            ASSERT(FALSE);
             return(0);
     }
     return NULL;
@@ -249,9 +151,16 @@ const void* rigid_inst::GetColorTable( void ) const
 {
     if( !m_pRigidColor )
         return NULL;
-    
+
+#if defined(TARGET_XBOX) || defined(TARGET_PC)
     u32* pCol=( u32* )m_pRigidColor;
-    
+#elif defined(TARGET_PS2)
+    u16* pCol=( u16* )m_pRigidColor;
+#else
+    ASSERT(FALSE);
+    return(0);
+#endif
+
     return( pCol+m_iColor );
 }
 

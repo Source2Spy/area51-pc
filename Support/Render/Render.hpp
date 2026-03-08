@@ -415,6 +415,13 @@ private:
         u16 *       m_pColor16;   // 16-bit color
         void*       m_pVoid;
     };
+
+public:
+#ifdef TARGET_XBOX
+    vert_factory::handle m_hColors;
+#elif defined(TARGET_PC)
+    u32*                 m_hColors;
+#endif
 };
 
 //=========================================================================
@@ -426,7 +433,7 @@ inline void color_info::FileIO( fileio& File )
     switch( m_Usage )
     {
         case kUse32:
-            File.Static( m_pColor32,m_nColors );
+            File.Dynamic( m_pColor32,m_nColors ); // GS: Idk PC is dynamic or static, so this code is controversial. Bur probably dynamic, yeah.
             break;
 
         case kUse16:
@@ -443,7 +450,12 @@ inline void color_info::FileIO( fileio& File )
 
 inline void color_info::Init( void )
 {
+#if defined(TARGET_XBOX) || defined(TARGET_PC)
+    m_hColors = 0;
     m_Usage   = kUse32;
+#else 
+    m_Usage   = kUnknown;	
+#endif
     m_nColors = 0;
     m_pVoid   = 0;
 }

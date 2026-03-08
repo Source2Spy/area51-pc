@@ -311,6 +311,14 @@ static void                 CalcVMatOffsets         ( s32* VMatOffsets,
 color_info::color_info( fileio& File )
 {
     (void)File;
+#if defined(TARGET_XBOX)
+    m_hColors  = g_VertFactory.Create( "Vertex colours", m_nColors*sizeof(u32), m_pVoid );
+    m_pColor32 = (u32*)m_hColors->m_Ptr;
+#elif defined(TARGET_PC)
+    m_hColors  = new u32[ m_nColors ];
+    x_memmove( m_hColors, m_pVoid, m_nColors * sizeof(u32) );
+    m_pColor32 = m_hColors;
+#endif
 }
 
 //=============================================================================
