@@ -767,36 +767,6 @@ void dlg_profile_options::OnPadSelect( ui_win* pWin )
 
 //=========================================================================
 
-#ifdef TARGET_XBOX
-void dlg_profile_options::OnProfileCreateCB( void )
-{
-    MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( 0 );
-
-    // If the save was successful OR user continues WITHOUT saving
-    if( Condition.SuccessCode )
-    {
-        // continue without saving?
-        if( !Condition.bCancelled )
-        {
-            // saved ok
-            g_StateMgr.SetProfileNotSaved( g_StateMgr.GetPendingProfileIndex(), FALSE );
-        }
-
-        // update the changes in the profile
-        g_StateMgr.ActivatePendingProfile();
-        g_AudioMgr.Play( "Select_Norm" );
-
-        // continue to campaign menu
-        m_State = DIALOG_STATE_SELECT;
-    }
-    else
-    {
-        // save unsuccessful - return to profile select screen
-        g_AudioMgr.Play( "Backup" );
-        m_State = DIALOG_STATE_BACK;  
-    }
-}
-#else
 void dlg_profile_options::OnProfileCreateCB( void )
 {
     MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( 0 );
@@ -832,7 +802,6 @@ void dlg_profile_options::OnProfileCreateCB( void )
         m_State = DIALOG_STATE_BACK;
     }
 }
-#endif
 
 //=========================================================================
 

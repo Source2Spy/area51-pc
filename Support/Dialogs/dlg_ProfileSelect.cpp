@@ -393,29 +393,8 @@ void dlg_profile_select::OnPadSelect( ui_win* pWin )
         // check for bad profile
         if( m_pProfileList->GetSelectedItemData( 1 ) != PROFILE_OK )
         {
-#ifdef TARGET_XBOX
-            // open damaged profile popup
-            irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-            m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL|ui_win::WF_USE_ABSOLUTE );
-            m_PopUpType = POPUP_TYPE_DAMAGED_PROFILE;
-
-            // set nav text
-            xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_OK" ));
-            m_pNavText->SetFlag(ui_win::WF_VISIBLE, FALSE);
-
-            m_PopUp->Configure( g_StringTableMgr( "ui", "IDS_NULL" ), 
-                TRUE, 
-                FALSE, 
-                FALSE, 
-                g_StringTableMgr( "ui", "IDS_DAMAGED_PROFILE_MSG_XBOX" ),
-                navText,
-                &m_PopUpResult );
-
-            return;            
-#else
             g_AudioMgr.Play( "InvalidEntry" );
             return;
-#endif
         }
 
         // get the profile index from the list
@@ -493,55 +472,10 @@ void dlg_profile_select::OnPadSelect( ui_win* pWin )
                 // clear the selected profile
                 g_StateMgr.ClearSelectedProfile( 0 );
 
-                // Xbox intercepts this keypress so it can prompt the user
-                // to go to the dashboard to free up space.
-                #ifdef TARGET_XBOX
-                {
-                    MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition(0);
-                    if( Condition.BytesFree < g_StateMgr.GetProfileSaveSize() )
-                    {
-                        // open confirmation dialog
-                        irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-                        m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL|ui_win::WF_USE_ABSOLUTE );
-                        m_PopUpType = POPUP_XBOX_FREE_MORE_BLOCKS;
-
-                        // set nav text
-                        xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_DONT_FREE_BLOCKS" ));
-                        navText += g_StringTableMgr( "ui", "IDS_NAV_FREE_MORE_BLOCKS" );
-                        m_pNavText->SetFlag(ui_win::WF_VISIBLE, FALSE);
-
-                        // calculate blocks required
-                        m_BlocksRequired = ( (g_StateMgr.GetProfileSaveSize() - Condition.BytesFree) + 16383 ) / 16384;
-
-                        if( x_GetLocale() == XL_LANG_ENGLISH )
-                        {
-                            r.SetWidth(380);
-                            r.SetHeight(125);
-                        }
-                        else
-                        {
-                            r.SetWidth(400);
-                            r.SetHeight(145);
-                        }
-                        m_PopUp->Configure( r, g_StringTableMgr( "ui", "IDS_MEMCARD_HEADER" ), 
-                                            TRUE, 
-                                            TRUE, 
-                                            FALSE, 
-                                            xwstring( xfs( (const char*)xstring(g_StringTableMgr( "ui", "MC_NOT_ENOUGH_FREE_SPACE_SLOT1_XBOX" )), m_BlocksRequired ) ),
-                                            navText,
-                                            &m_PopUpResult );
-                        return;
-                    }
-                }
-                #endif
-
                 // open a VK to enter the profile name
                 irect   r = m_pManager->GetUserBounds( m_UserID );
                 ui_dlg_vkeyboard* pVKeyboard = (ui_dlg_vkeyboard*)m_pManager->OpenDialog( m_UserID, "ui_vkeyboard", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_INPUTMODAL|ui_win::WF_USE_ABSOLUTE );
                 pVKeyboard->Configure( TRUE );
-#ifdef TARGET_XBOX
-                pVKeyboard->ConfigureForProfile();
-#endif
                 pVKeyboard->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_CREATE" ) );
                 pVKeyboard->ConnectString( &m_ProfileName, SM_PROFILE_NAME_LENGTH );
                 pVKeyboard->SetReturn( &m_ProfileEntered, &m_ProfileOk );
@@ -584,14 +518,13 @@ void dlg_profile_select::OnPadBack( ui_win* pWin )
             x_DelayThread( 1 );
         }
 
-#ifdef TARGET_PS2
         // check for backing out during online connect phase
         if( g_StateMgr.GetState() == SM_ONLINE_PROFILE_SELECT )
         {
             CreateBackupPopup();
             return;
         }
-#endif
+
         // Clear the poll callback
         g_AudioMgr.Play("Backup");
         g_UIMemCardMgr.ClearCallback();
@@ -750,9 +683,6 @@ void dlg_profile_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             m_pInfoCreationDate ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pInfoModifiedDate ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pNavText          ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-
-            // Xbox requires slightly different messaging
-            #ifdef TARGET_XBOX
             {
                 s32 index = m_pProfileList->GetSelectedItemData();
                 if( index >= m_CreateIndex )
@@ -763,8 +693,6 @@ void dlg_profile_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                     m_pInfoModifiedDate->SetFlag(ui_win::WF_VISIBLE, FALSE);
                 }
             }
-            #endif
-
             GotoControl( (ui_control*)m_pProfileList );
             g_UiMgr->SetScreenHighlight( m_pProfileList->GetPosition() );
         }
@@ -858,58 +786,6 @@ void dlg_profile_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                     break;
 
                 ///////////////////////////////////////////////////////////////
-
-                #ifdef TARGET_XBOX
-
-                case POPUP_TYPE_DAMAGED_PROFILE:
-                    // nothing to do
-                    break;
-
-                case POPUP_XBOX_FREE_MORE_BLOCKS:
-                {
-                    if( m_PopUpResult == DLG_POPUP_YES )
-                    {
-                        // open a VK to enter the profile name
-                        irect r = m_pManager->GetUserBounds( m_UserID );
-                        ui_dlg_vkeyboard* pVKeyboard = (ui_dlg_vkeyboard*)m_pManager->OpenDialog( m_UserID, "ui_vkeyboard", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_INPUTMODAL|ui_win::WF_USE_ABSOLUTE );
-                        pVKeyboard->Configure( TRUE );
-#ifdef TARGET_XBOX
-                        pVKeyboard->ConfigureForProfile();
-#endif
-                        pVKeyboard->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_CREATE" ) );
-                        pVKeyboard->ConnectString( &m_ProfileName, SM_PROFILE_NAME_LENGTH );
-                        pVKeyboard->SetReturn( &m_ProfileEntered, &m_ProfileOk );
-
-                        // update nav text
-                        xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_SELECT" ));
-                        navText += g_StringTableMgr( "ui", "IDS_NAV_DELETE" );
-                        navText += g_StringTableMgr( "ui", "IDS_NAV_BACK" );
-                        if( m_Type == PROFILE_SELECT_MANAGE )
-                        {
-                            navText += g_StringTableMgr( "ui", "IDS_NAV_EDIT" );
-                        }
-                        m_pNavText->SetLabel( navText );
-                    }
-                    else
-                    {
-                        // If the player chose to go to the Dash, go to memory area
-                        LD_LAUNCH_DASHBOARD LaunchDash;
-                        LaunchDash.dwReason = XLD_LAUNCH_DASHBOARD_MEMORY;
-                        // This value will be returned to the title via XGetLaunchInfo
-                        // in the LD_FROM_DASHBOARD struct when the Dashboard reboots
-                        // into the title. If not required, set to zero.
-                        LaunchDash.dwContext = 0;
-                        // Specify the logical drive letter of the region where
-                        // data needs to be removed; either T or U.
-                        LaunchDash.dwParameter1 = DWORD( 'U' );
-                        // Specify the number of 16-KB blocks that need to be freed
-                        LaunchDash.dwParameter2 = ( g_StateMgr.GetProfileSaveSize() + 16383 ) / 16384;
-                        // Launch the Xbox Dashboard
-                        XLaunchNewImage( NULL, (PLAUNCH_DATA)(&LaunchDash) );
-                    }
-                    break;
-                }
-                #endif
 
                 default:
                     ASSERT(0);
@@ -1102,34 +978,9 @@ void dlg_profile_select::RefreshProfileList( void )
         // Handle display for "Create New" option
         m_pProfileDetails->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_CREATE_NEW" ) );
 
-#if defined(TARGET_XBOX)
-            m_pProfileDetails->SetLabel( g_StringTableMgr( "ui", "IDS_HARD_DISK_TITLE" ) );
-            MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition(0);
-            u32 nBlocksFree = (u32)(Condition.BytesFree/16384);
-
-            if( nBlocksFree <= 50000 )
-            {
-                xwstring Msg( xfs("%d ",nBlocksFree) );
-                if (nBlocksFree == 1)
-                    Msg += g_StringTableMgr( "ui", "IDS_XBOX_LIVE_BLOCK_FREE" );
-                else
-                    Msg += g_StringTableMgr( "ui", "IDS_XBOX_LIVE_BLOCKS_FREE" );
-                m_pCardSlot->SetLabel( Msg );
-            }
-            else
-            {
-                xwstring Msg( xfs("50000+ ") );
-                Msg += g_StringTableMgr( "ui", "IDS_XBOX_LIVE_BLOCKS_FREE" );
-                m_pCardSlot->SetLabel( Msg );
-            }
-            m_pCreationDate     ->SetFlag(WF_VISIBLE, FALSE);
-            m_pModifiedDate     ->SetFlag(WF_VISIBLE, FALSE);
-            m_pInfoCreationDate ->SetFlag(WF_VISIBLE, FALSE);
-            m_pInfoModifiedDate ->SetFlag(WF_VISIBLE, FALSE);
-
-#elif defined(TARGET_PC)
+#if defined(TARGET_PC)
             m_pProfileDetails->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_INFO" ) );
-            m_pCardSlot         ->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_SAVE_LOCATION_PC" ) ); //TEMP
+            m_pCardSlot         ->SetLabel( g_StringTableMgr( "ui", "IDS_NULL" ) ); //TEMP
             m_pCreationDate     ->SetFlag(WF_VISIBLE, FALSE);
             m_pModifiedDate     ->SetFlag(WF_VISIBLE, FALSE);
             m_pInfoCreationDate ->SetFlag(WF_VISIBLE, FALSE);
@@ -1156,9 +1007,7 @@ void dlg_profile_select::RefreshProfileList( void )
 
             m_pProfileDetails->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_INFO" ) );
 
-#if defined(TARGET_XBOX)
-                m_pCardSlot->SetLabel( g_StringTableMgr( "ui", "IDS_HARD_DISK_TITLE" ) );
-#elif defined(TARGET_PC)
+#if defined(TARGET_PC)
                 m_pCardSlot->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_SAVE_LOCATION_PC" ) ); //TEMP
 #else 
                 if( ProfileNames[SelIndex]->CardID == 0 )
@@ -1175,11 +1024,7 @@ void dlg_profile_select::RefreshProfileList( void )
             const xwchar* Month;
 
             // Creation Date
-#ifdef TARGET_PS2
-            TimeStamp = eng_SplitJSTDate( ProfileNames[SelIndex]->CreationDate );
-#else
             TimeStamp = eng_SplitDate( ProfileNames[SelIndex]->CreationDate );
-#endif
             Month = g_StringTableMgr( "ui", (const char*)xfs("IDS_MONTH%d", TimeStamp.Month));
             xwstring CreateStamp(xfs("%02i:%02i:%02i ",TimeStamp.Hour, TimeStamp.Minute, TimeStamp.Second));
             CreateStamp += Month;
@@ -1187,11 +1032,7 @@ void dlg_profile_select::RefreshProfileList( void )
             m_pInfoCreationDate->SetLabel(CreateStamp);
 
             // Modification Date
-#ifdef TARGET_PS2
-            TimeStamp = eng_SplitJSTDate( ProfileNames[SelIndex]->ModifiedDate );
-#else
             TimeStamp = eng_SplitDate( ProfileNames[SelIndex]->ModifiedDate );
-#endif
             Month = g_StringTableMgr( "ui", (const char*)xfs("IDS_MONTH%d", TimeStamp.Month));
             xwstring ModStamp(xfs("%02i:%02i:%02i ",TimeStamp.Hour, TimeStamp.Minute, TimeStamp.Second));
             ModStamp += Month;
@@ -1221,10 +1062,10 @@ void dlg_profile_select::RefreshProfileList( void )
 
 void dlg_profile_select::OnLoadProfileCB( void )
 {
-#ifdef TARGET_PS2
-    MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( m_iCard );
+#ifdef TARGET_PС
+    MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( 0 );	
 #else
-    MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( 0 );
+    MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( m_iCard );
 #endif
 
     // if the load was successful
@@ -1263,10 +1104,10 @@ void dlg_profile_select::OnLoadProfileCB( void )
 
 void dlg_profile_select::OnDeleteProfileCB( void )
 {
-#ifdef TARGET_PS2
-    MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( m_iCard );
+#ifdef TARGET_PС
+    MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( 0 );	
 #else
-    MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( 0 );
+    MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( m_iCard );
 #endif
 
     // if the delete was successful
@@ -1293,10 +1134,10 @@ void dlg_profile_select::OnDeleteProfileCB( void )
 
 void dlg_profile_select::OnSaveProfileCB( void )
 {
-#ifdef TARGET_PS2
-    MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( m_iCard );
+#ifdef TARGET_PС
+    MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( 0 );	
 #else
-    MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( 0 );
+    MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( m_iCard );
 #endif
 
     // if the save was successful (OR user wants to continue without saving)

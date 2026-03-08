@@ -1,13 +1,12 @@
-// 
-// 
+//=========================================================================
 // 
 // dlg_PressStart.cpp
 // 
-// 
+//=========================================================================
 
-//
+//=========================================================================
 // Includes
-//
+//=========================================================================
 
 #include "entropy.hpp"
 
@@ -132,43 +131,6 @@ void dlg_press_start::EnableStartButton( void )
 }
 
 //=========================================================================
-#ifdef TARGET_XBOX
-xbool dlg_press_start::ValidateSettings( void )
-{
-    if( g_UIMemCardMgr.FoundSettings() )
-    {
-        if( g_StateMgr.GetSettingsCardSlot() == -1 )
-        {
-            // open damaged settings popup
-            irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-            m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL|ui_win::WF_USE_ABSOLUTE );
-            m_PopUpType = POPUP_BAD_SETTINGS;
-
-            // set nav text
-            xwstring navText(g_StringTableMgr( "ui", "IDS_NULL" )); //IDS_NAV_OK
-
-            m_PopUp->Configure( g_StringTableMgr( "ui", "IDS_NULL" ), 
-                TRUE, 
-                FALSE, 
-                FALSE, 
-                g_StringTableMgr( "ui", "IDS_DAMAGED_SETTINGS_MSG_XBOX" ),
-                navText,
-                &m_PopUpResult );
-
-            m_pLogoBitmap       ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-            m_pFrameBitmap      ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-            m_pButtonPressStart ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-
-            m_State = DIALOG_STATE_WAIT_FOR_MEMCARD;
-
-            // bad settings data
-            return FALSE;
-        }
-    }
-
-    return TRUE;
-}
-#endif
 
 s32 s_PressStartVoiceID = 0;
 
@@ -244,11 +206,6 @@ void dlg_press_start::Destroy( void )
 
     g_AudioMgr.Release( s_PressStartVoiceID, 0.0f );
 
-#ifdef TARGET_PS2
-    // wait until we finish drawing before we unload the logo bitmap
-    DLIST.Flush();
-    DLIST.WaitForTasks();
-#endif
     // unload logo bitmap
     g_UiMgr->UnloadBitmap( "logo" );
 }
@@ -298,7 +255,6 @@ void dlg_press_start::OnPadSelect( ui_win* pWin )
             m_pButtonPressStart->SetLabel( g_StringTableMgr( "ui", "IDS_PRESS_START_TEXT" ) );
             m_pLogoBitmap->SetFlag(ui_win::WF_VISIBLE, FALSE);
         }
-#if defined( TARGET_PC ) || defined( TARGET_PS2 )
         else
         {
             // set state
@@ -308,7 +264,6 @@ void dlg_press_start::OnPadSelect( ui_win* pWin )
             g_StateMgr.CloseMovie();
             g_StateMgr.PlayMovie( "MenuBackground", TRUE, TRUE );
         }
-#endif
      }
 }
 
@@ -337,80 +292,6 @@ void dlg_press_start::OnPadHelp( ui_win* pWin )
             // stop the movie
             g_StateMgr.CloseMovie();
 
-#ifdef TARGET_XBOX
-            // check HDD errors
-            xbool bFoundProfile = g_UIMemCardMgr.FoundProfile();
-            xbool bFoundSettings = g_UIMemCardMgr.FoundSettings();
-            if( !( bFoundProfile && bFoundSettings ) )
-            {
-                MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( 0 );
-
-                if( Condition.bIsFull || Condition.bInsufficientSpace )
-                {
-                    xwstring MessageText;
-                    s32 BlocksToFree;
-
-                    if( bFoundSettings )
-                    {
-                        m_BlocksRequired = ( g_StateMgr.GetProfileSaveSize() + 16383 ) / 16384;
-                        BlocksToFree     = ( (g_StateMgr.GetProfileSaveSize() - Condition.BytesFree) + 16383 ) / 16384;
-                        MessageText = xwstring( xfs( (const char*)xstring(g_StringTableMgr( "ui", "MC_NOT_ENOUGH_FREE_SPACE_SLOT1_XBOX" )), BlocksToFree ) );
-                    }
-                    else if( bFoundProfile )
-                    {
-                        m_BlocksRequired = ( g_StateMgr.GetSettingsSaveSize() + 16383 ) / 16384;
-                        BlocksToFree     = ( (g_StateMgr.GetSettingsSaveSize() - Condition.BytesFree) + 16383 ) / 16384;
-                        MessageText = xwstring( xfs( (const char*)xstring(g_StringTableMgr( "ui", "MC_NOT_ENOUGH_FREE_SPACE_SLOT1_SETTINGS_XBOX" )), BlocksToFree ) );
-                    }
-                    else
-                    {
-                        m_BlocksRequired = ( g_StateMgr.GetSettingsSaveSize() + g_StateMgr.GetProfileSaveSize() + 16383 ) / 16384;
-                        BlocksToFree     = ( ( g_StateMgr.GetSettingsSaveSize() + g_StateMgr.GetProfileSaveSize() - Condition.BytesFree) + 16383 ) / 16384;
-                        MessageText = xwstring( xfs( (const char*)xstring(g_StringTableMgr( "ui", "MC_NOT_ENOUGH_FREE_SPACE_SLOT1_ALL_XBOX" )), BlocksToFree ) );
-                    }
-
-                    xwstring NavText = g_StringTableMgr( "ui", "IDS_NAV_DONT_FREE_BLOCKS" );
-                    NavText += g_StringTableMgr( "ui", "IDS_NAV_FREE_MORE_BLOCKS" );
-
-                    irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-                    m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  g_UiUserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|ui_win::WF_INPUTMODAL|ui_win::WF_USE_ABSOLUTE );
-                    m_PopUpType = POPUP_NO_SPACE;
-
-                    irect Size( 0, 0, 400, 240 );
-                    if( x_GetLocale() == XL_LANG_ENGLISH )
-                    {
-                        Size.SetWidth(400);
-                        Size.SetHeight(240);
-                    }
-                    else
-                    {
-                        Size.SetWidth(400);
-                        Size.SetHeight(145);
-                    }                    
-
-                    m_PopUp->Configure( 
-                        Size,
-                        g_StringTableMgr( "ui", "IDS_MEMCARD_HEADER" ), 
-                        TRUE, 
-                        TRUE, 
-                        FALSE, 
-                        MessageText,
-                        NavText,
-                        &m_PopUpResult );
-
-                    m_pLogoBitmap       ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-                    m_pFrameBitmap      ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-                    m_pButtonPressStart ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-
-                    m_State = DIALOG_STATE_WAIT_FOR_MEMCARD;
-                    return;
-                }
-            }
-
-            // check validity of settings file
-            if( ValidateSettings() == FALSE )
-                return;
-#endif
             // set state
             m_State             = DIALOG_STATE_SELECT;
             m_CurrentControl    = IDC_PRESS_START;
@@ -426,63 +307,6 @@ void dlg_press_start::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
     (void)pWin;
     (void)DeltaTime;
-
-#ifdef TARGET_XBOX
-    if( m_PopUp )
-    {
-        if( m_PopUpType == POPUP_NO_SPACE )
-        {
-            switch( m_PopUpResult )
-            {
-            case DLG_POPUP_IDLE:
-                // wait for response
-                return;
-
-            case DLG_POPUP_YES:
-                // continue without saving
-
-                // check validity of settings file
-                if( ValidateSettings() == FALSE )
-                    return;
-
-                // settings valid, continue on.
-                m_State             = DIALOG_STATE_SELECT;
-                m_CurrentControl    = IDC_PRESS_START;
-                g_StateMgr.PlayMovie( "MenuBackGround", TRUE, TRUE );
-                return;
-
-            case DLG_POPUP_NO:
-                // free blocks
-                // If the player chose to go to the Dash, go to memory area
-                LD_LAUNCH_DASHBOARD LaunchDash;
-                LaunchDash.dwReason = XLD_LAUNCH_DASHBOARD_MEMORY;
-                // This value will be returned to the title via XGetLaunchInfo
-                // in the LD_FROM_DASHBOARD struct when the Dashboard reboots
-                // into the title. If not required, set to zero.
-                LaunchDash.dwContext = 0;
-                // Specify the logical drive letter of the region where
-                // data needs to be removed; either T or U.
-                LaunchDash.dwParameter1 = DWORD( 'U' );
-                // Specify the number of 16-KB blocks that are needed (in total)
-                LaunchDash.dwParameter2 = m_BlocksRequired;
-                // Launch the Xbox Dashboard
-                XLaunchNewImage( NULL, (PLAUNCH_DATA)(&LaunchDash) );
-                break;
-            }
-        }
-        else
-        {
-            if( m_PopUpResult != DLG_POPUP_IDLE )
-            {
-                // settings valid, continue on.
-                m_State             = DIALOG_STATE_SELECT;
-                m_CurrentControl    = IDC_PRESS_START;
-                g_StateMgr.PlayMovie( "MenuBackGround", TRUE, TRUE );
-                return;
-            }
-        }
-    }
-#endif
 
 #if defined( TARGET_PC )
     if( m_bPlayDemo )
@@ -507,11 +331,7 @@ void dlg_press_start::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             m_pButtonPressStart->SetLabel( g_StringTableMgr( "ui", "IDS_DEMO_MODE" ) );
             m_pLogoBitmap->SetFlag(ui_win::WF_VISIBLE, TRUE);
             g_StateMgr.CloseMovie();
-#ifdef TARGET_XBOX
-            g_StateMgr.PlayMovie( "attract", TRUE, TRUE );
-#else
             g_StateMgr.PlayMovie( "attract", FALSE, FALSE );
-#endif
         }
     }
 #endif
