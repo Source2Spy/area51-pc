@@ -140,7 +140,6 @@ const void* rigid_inst::GetColorTable( platform PlatformType ) const
             return(( u16* )m_pRigidColor )+m_iColor;
         else
             ASSERT(FALSE);
-            return(0);
     }
     return NULL;
 }
