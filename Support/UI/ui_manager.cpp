@@ -971,13 +971,21 @@ void ui_manager::RenderElement( s32 iElement, const irect& Position, s32 State, 
 
     // Render all the parts of the element
     ie  = State * (pElement->cx*pElement->cy);
-    p.Y = (f32)Position.t;
+
+    // Center single-tile elements within postion
+    if( pElement->cy == 1 )
+        p.Y = (f32)Position.t + (f32)(Position.GetHeight() - pElement->r[ie].GetHeight()) / 2.0f;
+    else
+        p.Y = (f32)Position.t;
 
     // Loop on y
     for( iy=0 ; iy<pElement->cy ; iy++ )
     {
         // Reset x position
-        p.X = (f32)Position.l;
+        if( pElement->cx == 1 )
+            p.X = (f32)Position.l + (f32)(Position.GetWidth() - pElement->r[ie].GetWidth()) / 2.0f;
+        else
+            p.X = (f32)Position.l;
 
         // Set Height
         if( (pElement->cy == 3) && (iy == 1) )
@@ -2987,8 +2995,8 @@ void ui_manager::InitGlowBar ( void )
 
     m_GlowPos.l     = m_GlowStartX;
     m_GlowPos.t     = m_CurrScreenSize.t;
-    m_GlowPos.r     = 16;
-    m_GlowPos.b     = 7;
+    m_GlowPos.r     = m_GlowStartX + 16;
+    m_GlowPos.b     = m_CurrScreenSize.t + 7;
 
     m_GlowSpeed     = 120;
     m_GlowOnTop     = TRUE;
@@ -3035,16 +3043,20 @@ void ui_manager::UpdateGlowBar( f32 deltaTime )
     if (m_GlowOnTop)
     {
         m_GlowPos.l += (s32)((m_GlowSpeed * deltaTime) + 0.5f);
+        m_GlowPos.r  = m_GlowPos.l + 16;
 
         if (m_GlowPos.l > m_GlowEndX)
         {
             m_GlowPos.l = m_GlowEndX;
+            m_GlowPos.r = m_GlowEndX + 16;
             m_GlowPos.t = m_CurrScreenSize.b - 7;
+            m_GlowPos.b = m_CurrScreenSize.b;
             m_GlowOnTop = FALSE;
         }
         else if (m_GlowPos.l < m_GlowStartX)
         {
             m_GlowPos.l = m_GlowStartX;
+            m_GlowPos.r = m_GlowStartX + 16;
 
             for (s32 i=0; i<8; i++)
             {
@@ -3056,16 +3068,20 @@ void ui_manager::UpdateGlowBar( f32 deltaTime )
     else
     {
         m_GlowPos.l -= (s32)((m_GlowSpeed * deltaTime) + 0.5f);
+        m_GlowPos.r  = m_GlowPos.l + 16;
 
         if (m_GlowPos.l < m_GlowStartX)
         {
             m_GlowPos.l = m_GlowStartX;
+            m_GlowPos.r = m_GlowStartX + 16;
             m_GlowPos.t = m_CurrScreenSize.t;
+            m_GlowPos.b = m_CurrScreenSize.t + 7;
             m_GlowOnTop = TRUE;
         }
         else if (m_GlowPos.l > m_GlowEndX)
         {
             m_GlowPos.l = m_GlowEndX;
+            m_GlowPos.r = m_GlowEndX + 16;
 
             for (s32 i=0; i<8; i++)
             {

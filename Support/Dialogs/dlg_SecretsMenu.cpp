@@ -51,6 +51,8 @@ enum controls
     IDC_NAV_TEXT,
 };
 
+//-------------------------------------------------------------------------
+
 ui_manager::control_tem SecretsMenuControls[] = 
 {
     // Frames.
@@ -69,17 +71,13 @@ ui_manager::control_tem SecretsMenuControls[] =
     { IDC_SECRETS_TEXT_2,      "IDS_NULL",    "text",        48, 278,  90,  16, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_SECRETS_TEXT_3,      "IDS_NULL",    "text",        48, 294,  90,  16, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
-#ifdef TARGET_PS2
-    { IDC_SECRETS_BLACKOUT,    "IDS_NULL",    "blankbox",    -9, -24, 513, 448, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_USE_ABSOLUTE },
-#else
     { IDC_SECRETS_BLACKOUT,    "IDS_NULL",    "blankbox",  -113, -40, 722, 480, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_USE_ABSOLUTE },
-#endif
-
     { IDC_SECRETS_TEXTBOX,     "IDS_NULL",    "textbox",     60, 240, 376,  93, 0, 2, 5, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
     { IDC_NAV_TEXT,         "IDS_NULL",    "text",         0,   0,   0,   0, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 };
 
+//-------------------------------------------------------------------------
 
 ui_manager::dialog_tem SecretsMenuDialog =
 {

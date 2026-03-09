@@ -48,6 +48,8 @@ enum controls
     IDC_ONLINE_HOST_NAV_TEXT,
 };
 
+//-------------------------------------------------------------------------
+
 ui_manager::control_tem OnlineHostOptionsControls[] = 
 {
     // Frames.
@@ -58,17 +60,19 @@ ui_manager::control_tem OnlineHostOptionsControls[] =
     { IDC_ONLINE_HOST_MAP_SCALING,          "IDS_HOST_MAP_SCALING",     "text",    40, 180, 220, 40,  0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_ONLINE_HOST_FFIRE,                "IDS_HOST_FRIENDLY_FIRE",   "text",    40, 215, 220, 40,  0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
-    { IDC_ONLINE_HOST_PLAYER_SELECTOR,      "IDS_NULL",                 "combo",  300,  49, 150, 40,  0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_ONLINE_HOST_SCORE_SELECTOR,       "IDS_NULL",                 "combo",  300,  84, 150, 40,  0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_ONLINE_HOST_TIME_SELECTOR,        "IDS_NULL",                 "combo",  300, 119, 150, 40,  0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_ONLINE_HOST_VOTE_SELECTOR,        "IDS_NULL",                 "combo",  300, 154, 150, 40,  0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_ONLINE_HOST_SCALING_SELECTOR,     "IDS_NULL",                 "combo",  300, 189, 150, 40,  0, 4, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_ONLINE_HOST_FFIRE_SELECTOR,       "IDS_NULL",                 "combo",  300, 224, 150, 40,  0, 5, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_ONLINE_HOST_PLAYER_SELECTOR,      "IDS_NULL",                 "combo",  300,  40, 150, 40,  0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_ONLINE_HOST_SCORE_SELECTOR,       "IDS_NULL",                 "combo",  300,  75, 150, 40,  0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_ONLINE_HOST_TIME_SELECTOR,        "IDS_NULL",                 "combo",  300, 110, 150, 40,  0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_ONLINE_HOST_VOTE_SELECTOR,        "IDS_NULL",                 "combo",  300, 145, 150, 40,  0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_ONLINE_HOST_SCALING_SELECTOR,     "IDS_NULL",                 "combo",  300, 180, 150, 40,  0, 4, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_ONLINE_HOST_FFIRE_SELECTOR,       "IDS_NULL",                 "combo",  300, 215, 150, 40,  0, 5, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+
     { IDC_ONLINE_HOST_CONTINUE,             "IDS_HOST_CONTINUE",        "button",  40, 285, 220, 40,  0, 6, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
     { IDC_ONLINE_HOST_NAV_TEXT,             "IDS_NULL",                 "text",     0,   0,   0,  0,  0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 };
 
+//-------------------------------------------------------------------------
 
 ui_manager::dialog_tem OnlineHostOptionsDialog =
 {

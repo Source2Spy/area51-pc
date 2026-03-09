@@ -48,6 +48,8 @@ enum controls
     IDC_ONLINE_HOST_NAV_TEXT,
 };
 
+//-------------------------------------------------------------------------
+
 ui_manager::control_tem OnlineHostControls[] = 
 {
     // Frames.
@@ -58,17 +60,19 @@ ui_manager::control_tem OnlineHostControls[] =
     { IDC_ONLINE_HOST_VOICE,                "IDS_HOST_VOICE_ENABLED",   "text",    40, 180, 100, 40,  0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_ONLINE_HOST_PRIVATE,              "IDS_HOST_PRIVATE_SERVER",  "text",    40, 215, 100, 40,  0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
-    { IDC_ONLINE_HOST_USER_SERVER,          "IDS_HOST_SERVER_NAME",     "edit",   240,  50, 210, 40,  0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_ONLINE_HOST_USER_PASSWORD,        "IDS_HOST_PASSWORD",        "edit",   240,  85, 210, 40,  0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_ONLINE_HOST_TYPE_SELECTOR,        "IDS_NULL",                 "combo",  230, 119, 230, 40,  0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_ONLINE_HOST_MUTATION_SELECTOR,    "IDS_NULL",                 "combo",  230, 154, 230, 40,  0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_ONLINE_HOST_VOICE_SELECTOR,       "IDS_NULL",                 "combo",  230, 189, 230, 40,  0, 4, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_ONLINE_HOST_PRIVATE_SELECTOR,     "IDS_NULL",                 "combo",  230, 224, 230, 40,  0, 5, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_ONLINE_HOST_USER_SERVER,          "IDS_HOST_SERVER_NAME",     "edit",   240,  40, 210, 40,  0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_ONLINE_HOST_USER_PASSWORD,        "IDS_HOST_PASSWORD",        "edit",   240,  75, 210, 40,  0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_ONLINE_HOST_TYPE_SELECTOR,        "IDS_NULL",                 "combo",  230, 110, 230, 40,  0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_ONLINE_HOST_MUTATION_SELECTOR,    "IDS_NULL",                 "combo",  230, 145, 230, 40,  0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_ONLINE_HOST_VOICE_SELECTOR,       "IDS_NULL",                 "combo",  230, 180, 230, 40,  0, 4, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_ONLINE_HOST_PRIVATE_SELECTOR,     "IDS_NULL",                 "combo",  230, 215, 230, 40,  0, 5, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+
     { IDC_ONLINE_HOST_CONTINUE,             "IDS_HOST_CONTINUE",        "button",  40, 285, 220, 40,  0, 6, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
     { IDC_ONLINE_HOST_NAV_TEXT,             "IDS_NULL",                 "text",     0,   0,   0,  0,  0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 };
 
+//-------------------------------------------------------------------------
 
 ui_manager::dialog_tem OnlineHostDialog =
 {
@@ -317,12 +321,7 @@ void dlg_online_host::Render( s32 ox, s32 oy )
     {
         s32 XRes, YRes;
         eng_GetRes(XRes, YRes);
-#ifdef TARGET_PS2
-        // Nasty hack to force PS2 to draw to rb.l = 0
-        rb.Set( -1, 0, XRes, YRes );
-#else
         rb.Set( 0, 0, XRes, YRes );
-#endif
         g_UiMgr->RenderGouraudRect(rb, xcolor(0,0,0,180),
             xcolor(0,0,0,180),
             xcolor(0,0,0,180),

@@ -34,6 +34,7 @@ enum controls
     IDC_HEADSET_NAV_TEXT,
 };
 
+//-------------------------------------------------------------------------
 
 ui_manager::control_tem ProfileHeadsetControls[] = 
 {
@@ -42,14 +43,15 @@ ui_manager::control_tem ProfileHeadsetControls[] =
     { IDC_HEADSET_VOLUME_SPEAKER_TEXT,  "IDS_SPEAKER_VOLUME",           "text",      40,  75, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_HEADSET_VOLUME_MIC_TEXT,      "IDS_MIC_VOLUME",               "text",      40, 110, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
-    { IDC_HEADSET_TOGGLE_HEADSET,       "IDS_NULL",                     "combo",    280,  55, 140, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_HEADSET_VOLUME_SPEAKER,       "IDS_NULL",                     "slider",   290,  90, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_HEADSET_VOLUME_MIC,           "IDS_NULL",                     "slider",   290, 125, 120, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_HEADSET_TOGGLE_HEADSET,       "IDS_NULL",                     "combo",    290,  40, 140, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_HEADSET_VOLUME_SPEAKER,       "IDS_NULL",                     "slider",   300,  75, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_HEADSET_VOLUME_MIC,           "IDS_NULL",                     "slider",   300, 110, 120, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
     { IDC_HEADSET_RESTORE_DEFAULTS,     "IDS_OPTIONS_RESTORE_DEFAULTS", "button",    40, 285, 220, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_HEADSET_NAV_TEXT,             "IDS_NULL",                     "text",       0,   0,   0,  0, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 };
 
+//-------------------------------------------------------------------------
 
 ui_manager::dialog_tem ProfileHeadsetDialog =
 {
@@ -166,11 +168,7 @@ xbool dlg_profile_headset::Create( s32                        UserID,
     // initialize headset audio toggle
     m_pToggleHeadsetAudio->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV | ui_combo::CB_CHANGE_ON_SELECT );
 
-    // On XBox we must not have the option to turn OFF the headset
-    #ifndef TARGET_XBOX
     m_pToggleHeadsetAudio->AddItem    ( g_StringTableMgr( "ui", "IDS_OFF"         ), HEADSET_DISABLED         );
-    #endif
-
     m_pToggleHeadsetAudio->AddItem    ( g_StringTableMgr( "ui", "IDS_HEADSET"     ), HEADSET_HEADSET_ONLY     );
     m_pToggleHeadsetAudio->AddItem    ( g_StringTableMgr( "ui", "IDS_TV_SPEAKERS" ), HEADSET_THROUGH_SPEAKERS );
 
@@ -239,12 +237,7 @@ void dlg_profile_headset::Render( s32 ox, s32 oy )
     {
 	    s32 XRes, YRes;
         eng_GetRes(XRes, YRes);
-#ifdef TARGET_PS2
-        // Nasty hack to force PS2 to draw to rb.l = 0
-        rb.Set( -1, 0, XRes, YRes );
-#else
         rb.Set( 0, 0, XRes, YRes );
-#endif
         g_UiMgr->RenderGouraudRect(rb, xcolor(0,0,0,180),
                                     xcolor(0,0,0,180),
                                     xcolor(0,0,0,180),

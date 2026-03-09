@@ -160,7 +160,10 @@ void ui_edit::Render( s32 ox, s32 oy )
         //m_pManager->RenderText( m_Font, rt, ui_font::h_center|ui_font::v_center|ui_font::clip_ellipsis|ui_font::clip_l_justify, TextColor2, m_Label );
         //rt.Translate( -1, -1 );
         //m_pManager->RenderText( m_Font, rt, ui_font::h_center|ui_font::v_center|ui_font::clip_ellipsis|ui_font::clip_l_justify, TextColor1, m_Label );
-        rt.Translate( 0, -10 );
+		
+        // Stupid hack
+        //rt.Translate( 0, -10 );
+
         m_pManager->RenderText( m_Font, rt, ui_font::h_center|ui_font::v_center|ui_font::clip_ellipsis|ui_font::clip_l_justify, xcolor(255,252,204,255), m_Label );
 
         // Clear the clip window

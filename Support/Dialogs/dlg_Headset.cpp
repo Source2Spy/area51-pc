@@ -34,6 +34,7 @@ enum controls
     IDC_HEADSET_NAV_TEXT,
 };
 
+//-------------------------------------------------------------------------
 
 ui_manager::control_tem HeadsetControls_PAL[] = 
 {
@@ -42,13 +43,16 @@ ui_manager::control_tem HeadsetControls_PAL[] =
     { IDC_HEADSET_VOLUME_SPEAKER_TEXT,  "IDS_SPEAKER_VOLUME",           "text",      40,  75, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_HEADSET_VOLUME_MIC_TEXT,      "IDS_MIC_VOLUME",               "text",      40, 110, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
-    { IDC_HEADSET_TOGGLE_HEADSET,       "IDS_NULL",                     "combo",    225,  55, 202, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_HEADSET_VOLUME_SPEAKER,       "IDS_NULL",                     "slider",   270,  90, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_HEADSET_VOLUME_MIC,           "IDS_NULL",                     "slider",   270, 125, 120, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_HEADSET_TOGGLE_HEADSET,       "IDS_NULL",                     "combo",    290,  40, 202, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_HEADSET_VOLUME_SPEAKER,       "IDS_NULL",                     "slider",   300,  75, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_HEADSET_VOLUME_MIC,           "IDS_NULL",                     "slider",   300, 110, 120, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     
     { IDC_HEADSET_BUTTON_ACCEPT,        "IDS_PROFILE_OPTIONS_ACCEPT",   "button",    40, 285, 220, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+
     { IDC_HEADSET_NAV_TEXT,             "IDS_NULL",                     "text",       0,   0,   0,  0, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 };
+
+//-------------------------------------------------------------------------
 
 ui_manager::control_tem HeadsetControls_ENG[] = 
 {
@@ -57,14 +61,16 @@ ui_manager::control_tem HeadsetControls_ENG[] =
     { IDC_HEADSET_VOLUME_SPEAKER_TEXT,  "IDS_SPEAKER_VOLUME",           "text",      40,  75, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_HEADSET_VOLUME_MIC_TEXT,      "IDS_MIC_VOLUME",               "text",      40, 110, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
-    { IDC_HEADSET_TOGGLE_HEADSET,       "IDS_NULL",                     "combo",    280,  55, 140, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_HEADSET_VOLUME_SPEAKER,       "IDS_NULL",                     "slider",   290,  90, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_HEADSET_VOLUME_MIC,           "IDS_NULL",                     "slider",   290, 125, 120, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_HEADSET_TOGGLE_HEADSET,       "IDS_NULL",                     "combo",    290,  40, 140, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_HEADSET_VOLUME_SPEAKER,       "IDS_NULL",                     "slider",   300,  75, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_HEADSET_VOLUME_MIC,           "IDS_NULL",                     "slider",   300, 110, 120, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
     { IDC_HEADSET_BUTTON_ACCEPT,        "IDS_PROFILE_OPTIONS_ACCEPT",   "button",    40, 285, 220, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+
     { IDC_HEADSET_NAV_TEXT,             "IDS_NULL",                     "text",       0,   0,   0,  0, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 };
 
+//-------------------------------------------------------------------------
 
 ui_manager::dialog_tem HeadsetDialog =
 {
@@ -202,9 +208,7 @@ xbool dlg_headset::Create( s32                        UserID,
     // initialize headset audio toggle
     m_pToggleHeadsetAudio->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV | ui_combo::CB_CHANGE_ON_SELECT );
 
-    #ifndef TARGET_XBOX
     m_pToggleHeadsetAudio->AddItem( g_StringTableMgr( "ui", "IDS_OFF"         ), HEADSET_DISABLED           );
-    #endif
     m_pToggleHeadsetAudio->AddItem( g_StringTableMgr( "ui", "IDS_HEADSET"     ), HEADSET_HEADSET_ONLY       );
     m_pToggleHeadsetAudio->AddItem( g_StringTableMgr( "ui", "IDS_TV_SPEAKERS" ), HEADSET_THROUGH_SPEAKERS   );
 
@@ -275,12 +279,7 @@ void dlg_headset::Render( s32 ox, s32 oy )
     {
 	    s32 XRes, YRes;
         eng_GetRes(XRes, YRes);
-#ifdef TARGET_PS2
-        // Nasty hack to force PS2 to draw to rb.l = 0
-        rb.Set( -1, 0, XRes, YRes );
-#else
         rb.Set( 0, 0, XRes, YRes );
-#endif
         g_UiMgr->RenderGouraudRect(rb, xcolor(0,0,0,180),
                                     xcolor(0,0,0,180),
                                     xcolor(0,0,0,180),
@@ -433,13 +432,6 @@ void dlg_headset::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             m_pVolumeSpeakerText        ->SetFlag( ui_win::WF_VISIBLE, TRUE );
             m_pVolumeMicText            ->SetFlag( ui_win::WF_VISIBLE, TRUE );
             m_pNavText                  ->SetFlag( ui_win::WF_VISIBLE, TRUE );
-
-            #ifdef TARGET_XBOX
-            m_pVolumeMic                ->SetFlag( ui_win::WF_VISIBLE, FALSE );
-            m_pVolumeMic                ->SetFlag( ui_win::WF_DISABLED,TRUE  );
-            m_pVolumeMicText            ->SetFlag( ui_win::WF_VISIBLE, FALSE );
-            m_pVolumeMicText            ->SetFlag( ui_win::WF_DISABLED,TRUE  );
-            #endif
 
             GotoControl( (ui_control*)m_pToggleHeadsetAudio );
             m_pToggleHeadsetAudio->SetFlag(WF_HIGHLIGHT, TRUE);        

@@ -45,6 +45,8 @@ enum controls
     IDC_JOIN_FILTER_NAV_TEXT,
 };
 
+//-------------------------------------------------------------------------
+
 ui_manager::control_tem JoinFilterControls_SPA[] = 
 {
     // Frames.
@@ -54,15 +56,18 @@ ui_manager::control_tem JoinFilterControls_SPA[] =
     { IDC_JOIN_FILTER_PASSWORD,               "IDS_HOST_PASSWORD",        "text",    40, 160, 100, 40,  0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_JOIN_FILTER_HEADSET,                "IDS_HOST_VOICE_ENABLED",   "text",    40, 200, 100, 40,  0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
-    { IDC_JOIN_FILTER_GAME_TYPE_SELECTOR,     "IDS_NULL",                 "combo",  190,  49, 230, 40,  0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_JOIN_FILTER_NUM_PLAYERS_SELECTOR,   "IDS_NULL",                 "combo",  300,  89, 120, 40,  0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_JOIN_FILTER_MUTATION_MODE_SELECTOR, "IDS_NULL",                 "combo",  207, 129, 213, 40,  0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_JOIN_FILTER_PASSWORD_SELECTOR,      "IDS_NULL",                 "combo",  300, 169, 120, 40,  0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_JOIN_FILTER_HEADSET_SELECTOR,       "IDS_NULL",                 "combo",  300, 209, 120, 40,  0, 4, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_JOIN_FILTER_GAME_TYPE_SELECTOR,     "IDS_NULL",                 "combo",  190,  40, 230, 40,  0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_JOIN_FILTER_NUM_PLAYERS_SELECTOR,   "IDS_NULL",                 "combo",  300,  80, 120, 40,  0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_JOIN_FILTER_MUTATION_MODE_SELECTOR, "IDS_NULL",                 "combo",  207, 120, 213, 40,  0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_JOIN_FILTER_PASSWORD_SELECTOR,      "IDS_NULL",                 "combo",  300, 160, 120, 40,  0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_JOIN_FILTER_HEADSET_SELECTOR,       "IDS_NULL",                 "combo",  300, 200, 120, 40,  0, 4, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+
     { IDC_JOIN_FILTER_CONTINUE,               "IDS_JOIN_FILTER_CONTINUE", "button",  50, 292, 100, 40,  0, 5, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
     { IDC_JOIN_FILTER_NAV_TEXT,               "IDS_NULL",                 "text",     0,   0,   0,  0,  0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 };
+
+//-------------------------------------------------------------------------
 
 ui_manager::control_tem JoinFilterControls_PAL[] = 
 {
@@ -73,15 +78,18 @@ ui_manager::control_tem JoinFilterControls_PAL[] =
     { IDC_JOIN_FILTER_PASSWORD,               "IDS_HOST_PASSWORD",        "text",    40, 160, 100, 40,  0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_JOIN_FILTER_HEADSET,                "IDS_HOST_VOICE_ENABLED",   "text",    40, 200, 100, 40,  0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
-    { IDC_JOIN_FILTER_GAME_TYPE_SELECTOR,     "IDS_NULL",                 "combo",  220,  49, 205, 40,  0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_JOIN_FILTER_NUM_PLAYERS_SELECTOR,   "IDS_NULL",                 "combo",  220,  89, 205, 40,  0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_JOIN_FILTER_MUTATION_MODE_SELECTOR, "IDS_NULL",                 "combo",  220, 129, 205, 40,  0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_JOIN_FILTER_PASSWORD_SELECTOR,      "IDS_NULL",                 "combo",  220, 169, 205, 40,  0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_JOIN_FILTER_HEADSET_SELECTOR,       "IDS_NULL",                 "combo",  220, 209, 205, 40,  0, 4, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_JOIN_FILTER_GAME_TYPE_SELECTOR,     "IDS_NULL",                 "combo",  220,  40, 205, 40,  0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_JOIN_FILTER_NUM_PLAYERS_SELECTOR,   "IDS_NULL",                 "combo",  220,  80, 205, 40,  0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_JOIN_FILTER_MUTATION_MODE_SELECTOR, "IDS_NULL",                 "combo",  220, 120, 205, 40,  0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_JOIN_FILTER_PASSWORD_SELECTOR,      "IDS_NULL",                 "combo",  220, 160, 205, 40,  0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_JOIN_FILTER_HEADSET_SELECTOR,       "IDS_NULL",                 "combo",  220, 200, 205, 40,  0, 4, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+
     { IDC_JOIN_FILTER_CONTINUE,               "IDS_JOIN_FILTER_CONTINUE", "button",  50, 292, 100, 40,  0, 5, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
     { IDC_JOIN_FILTER_NAV_TEXT,               "IDS_NULL",                 "text",     0,   0,   0,  0,  0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 };
+
+//-------------------------------------------------------------------------
 
 ui_manager::control_tem JoinFilterControls_ENG[] = 
 {
@@ -92,16 +100,18 @@ ui_manager::control_tem JoinFilterControls_ENG[] =
     { IDC_JOIN_FILTER_PASSWORD,               "IDS_HOST_PASSWORD",        "text",    50, 160, 100, 40,  0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_JOIN_FILTER_HEADSET,                "IDS_HOST_VOICE_ENABLED",   "text",    50, 200, 100, 40,  0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
-    { IDC_JOIN_FILTER_GAME_TYPE_SELECTOR,     "IDS_NULL",                 "combo",  240,  49, 180, 40,  0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_JOIN_FILTER_NUM_PLAYERS_SELECTOR,   "IDS_NULL",                 "combo",  240,  89, 180, 40,  0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_JOIN_FILTER_MUTATION_MODE_SELECTOR, "IDS_NULL",                 "combo",  240, 129, 180, 40,  0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_JOIN_FILTER_PASSWORD_SELECTOR,      "IDS_NULL",                 "combo",  240, 169, 180, 40,  0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_JOIN_FILTER_HEADSET_SELECTOR,       "IDS_NULL",                 "combo",  240, 209, 180, 40,  0, 4, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_JOIN_FILTER_GAME_TYPE_SELECTOR,     "IDS_NULL",                 "combo",  240,  40, 180, 40,  0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_JOIN_FILTER_NUM_PLAYERS_SELECTOR,   "IDS_NULL",                 "combo",  240,  80, 180, 40,  0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_JOIN_FILTER_MUTATION_MODE_SELECTOR, "IDS_NULL",                 "combo",  240, 120, 180, 40,  0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_JOIN_FILTER_PASSWORD_SELECTOR,      "IDS_NULL",                 "combo",  240, 160, 180, 40,  0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_JOIN_FILTER_HEADSET_SELECTOR,       "IDS_NULL",                 "combo",  240, 200, 180, 40,  0, 4, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+
     { IDC_JOIN_FILTER_CONTINUE,               "IDS_JOIN_FILTER_CONTINUE", "button",  50, 292, 100, 40,  0, 5, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
     { IDC_JOIN_FILTER_NAV_TEXT,               "IDS_NULL",                 "text",     0,   0,   0,  0,  0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 };
 
+//-------------------------------------------------------------------------
 
 ui_manager::dialog_tem JoinFilterDialog =
 {

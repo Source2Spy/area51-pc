@@ -48,6 +48,8 @@ enum controls
     IDC_ONLINE_LEVEL_SELECT_NAV_TEXT,
 };
 
+//-------------------------------------------------------------------------
+
 enum popup_message
 {
     POPUP_EMPTY_LIST,
@@ -55,14 +57,20 @@ enum popup_message
     POPUP_SAVE_SETTINGS,
 };
 
+//-------------------------------------------------------------------------
+
 ui_manager::control_tem OnlineLevelSelectControls[] = 
 {
     // Frames.
     { IDC_ONLINE_LEVEL_SELECT_LISTBOX,   "IDS_MAP_NAME",    "listbox",   40,  40, 180, 222,  0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_ONLINE_LEVEL_SELECT_CYCLE,     "IDS_MAP_CYCLE",   "listbox",  240,  40, 180, 222,  1, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+	
     { IDC_ONLINE_LEVEL_SELECT_LAUNCH,    "IDS_LAUNCH",      "button",    40, 285, 220,  40,  0, 1, 2, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+	
     { IDC_ONLINE_LEVEL_SELECT_NAV_TEXT,  "IDS_NULL",        "text",       0,   0,   0,   0,  0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 };
+
+//-------------------------------------------------------------------------
 
 ui_manager::dialog_tem OnlineLevelSelectDialog =
 {

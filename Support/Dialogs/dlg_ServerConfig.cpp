@@ -34,9 +34,11 @@ ui_manager::control_tem ServerConfigControls[] =
     { IDC_SERVER_CONFIG_RESTART_MAP,	"IDS_CONFIG_RESTART_MAP",           "button",  110, 145, 120, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_SERVER_CONFIG_RECONFIGURE,	"IDS_CONFIG_RECONFIGURE_SERVER",    "button",  110, 180, 120, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_SERVER_CONFIG_SHUTDOWN,	    "IDS_CONFIG_SHUTDOWN_SERVER",       "button",  110, 215, 120, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+	
 	{ IDC_SERVER_CONFIG_NAV_TEXT,       "IDS_NULL",                         "text",      0,   0,   0,  0, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 };
 
+//-------------------------------------------------------------------------
 
 ui_manager::dialog_tem ServerConfigDialog =
 {

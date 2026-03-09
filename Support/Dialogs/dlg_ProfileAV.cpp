@@ -25,28 +25,18 @@ enum controls
     IDC_AV_VOLUME_SFX_TEXT,
     IDC_AV_VOLUME_MUSIC_TEXT,
     IDC_AV_VOLUME_SPEECH_TEXT,
-#ifdef TARGET_PS2
-    IDC_AV_TOGGLE_SPEAKER_TEXT,
-#endif
-#ifdef TARGET_XBOX
-    IDC_AV_BRIGHTNESS_TEXT,
-#endif
 
     IDC_AV_VOLUME_SFX,
     IDC_AV_VOLUME_MUSIC,
     IDC_AV_VOLUME_SPEECH,
-#ifdef TARGET_PS2
-    IDC_AV_TOGGLE_SPEAKER,
-#endif
+
     IDC_AV_HEADSET_TEST,
-#ifdef TARGET_XBOX
-    IDC_AV_BRIGHTNESS,
-#endif
     IDC_AV_RESTORE_DEFAULTS,
 
     IDC_AV_NAV_TEXT,
 };
 
+//-------------------------------------------------------------------------
 
 ui_manager::control_tem ProfileAVControls[] = 
 {
@@ -54,28 +44,18 @@ ui_manager::control_tem ProfileAVControls[] =
     { IDC_AV_VOLUME_SFX_TEXT,       "IDS_OPTIONS_SFX_VOLUME",       "text",      40,  40, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_AV_VOLUME_MUSIC_TEXT,     "IDS_OPTIONS_MUSIC_VOLUME",     "text",      40,  75, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_AV_VOLUME_SPEECH_TEXT,    "IDS_OPTIONS_SPEECH_VOLUME",    "text",      40, 110, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-#if defined(TARGET_PS2)
-    { IDC_AV_TOGGLE_SPEAKER_TEXT,   "IDS_OPTIONS_MONO_STEREO",      "text",      40, 145, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-#elif defined(TARGET_XBOX)
-    { IDC_AV_BRIGHTNESS_TEXT,       "IDS_OPTIONS_BRIGHTNESS",       "text",      40, 160, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-#endif
 
-    { IDC_AV_VOLUME_SFX,            "IDS_NULL",                     "slider",   290,  55, 120, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_AV_VOLUME_MUSIC,          "IDS_NULL",                     "slider",   290,  90, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_AV_VOLUME_SPEECH,         "IDS_NULL",                     "slider",   290, 125, 120, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-#if defined(TARGET_PS2)
-    { IDC_AV_TOGGLE_SPEAKER,        "IDS_NULL",                     "combo",    280, 154, 140, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_AV_VOLUME_SFX,            "IDS_NULL",                     "slider",   320,  40, 120, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_AV_VOLUME_MUSIC,          "IDS_NULL",                     "slider",   320,  75, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_AV_VOLUME_SPEECH,         "IDS_NULL",                     "slider",   320, 110, 120, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+	
     { IDC_AV_HEADSET_TEST,          "IDS_OPTIONS_HEADSET_TEST",     "button",    40, 180, 220, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-#elif defined TARGET_XBOX
-    { IDC_AV_BRIGHTNESS,            "IDS_NULL",                     "slider",   290, 170, 120, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_AV_HEADSET_TEST,          "IDS_OPTIONS_HEADSET_TEST",     "button",    40, 216, 220, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-#else
-    { IDC_AV_HEADSET_TEST,          "IDS_OPTIONS_HEADSET_TEST",     "button",    40, 180, 220, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-#endif
     { IDC_AV_RESTORE_DEFAULTS,      "IDS_OPTIONS_RESTORE_DEFAULTS", "button",    40, 285, 220, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+
     { IDC_AV_NAV_TEXT,              "IDS_NULL",                     "text",       0,   0,   0,  0, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 };
 
+//-------------------------------------------------------------------------
 
 ui_manager::dialog_tem ProfileAVDialog =
 {
@@ -156,25 +136,12 @@ xbool dlg_profile_av::Create( s32                        UserID,
     m_pVolumeSFX                = (ui_slider*)  FindChildByID( IDC_AV_VOLUME_SFX           );    
     m_pVolumeMusic	            = (ui_slider*)  FindChildByID( IDC_AV_VOLUME_MUSIC         );
     m_pVolumeSpeech	            = (ui_slider*)  FindChildByID( IDC_AV_VOLUME_SPEECH        );
-#ifdef TARGET_XBOX
-    m_pBrightness               = (ui_slider*)  FindChildByID( IDC_AV_BRIGHTNESS           );
-    m_pBrightness->SetValue( s32( xbox_GetBrightness()*f32(UI_MAX_BRIGHTNESS_RANGE)) );
-#endif
-#ifdef TARGET_PS2
-    m_pToggleSpeakerSetup	    = (ui_combo*)   FindChildByID( IDC_AV_TOGGLE_SPEAKER       );  
-#endif
     m_pHeadsetTest              = (ui_button*)  FindChildByID( IDC_AV_HEADSET_TEST         );
     m_pRestoreDefaults          = (ui_button*)  FindChildByID( IDC_AV_RESTORE_DEFAULTS     );
 
     m_pVolumeSFXText	        = (ui_text*)    FindChildByID( IDC_AV_VOLUME_SFX_TEXT      );
     m_pVolumeMusicText	        = (ui_text*)    FindChildByID( IDC_AV_VOLUME_MUSIC_TEXT    );
     m_pVolumeSpeechText	        = (ui_text*)    FindChildByID( IDC_AV_VOLUME_SPEECH_TEXT   );
-#ifdef TARGET_PS2
-    m_pToggleSpeakerSetupText	= (ui_text*)    FindChildByID( IDC_AV_TOGGLE_SPEAKER_TEXT  );
-#endif
-#ifdef TARGET_XBOX
-    m_pBrightnessText	        = (ui_text*)    FindChildByID( IDC_AV_BRIGHTNESS_TEXT      );
-#endif
     m_pNavText                  = (ui_text*)    FindChildByID( IDC_AV_NAV_TEXT             );
 
     GotoControl( (ui_control*)m_pVolumeSFX );
@@ -185,55 +152,26 @@ xbool dlg_profile_av::Create( s32                        UserID,
     m_pVolumeSFX    ->SetRange( 0, 100 );
     m_pVolumeMusic  ->SetRange( 0, 100 );
     m_pVolumeSpeech ->SetRange( 0, 100 );
-#ifdef TARGET_XBOX
-    m_pBrightness   ->SetRange( 0, 100 );
-#endif
 
     // switch off the controls to start
     m_pVolumeSFX                ->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pVolumeMusic              ->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pVolumeSpeech             ->SetFlag( ui_win::WF_VISIBLE, FALSE );
-#ifdef TARGET_XBOX
-    m_pBrightness               ->SetFlag( ui_win::WF_VISIBLE, FALSE );
-#endif
-#ifdef TARGET_PS2
-    m_pToggleSpeakerSetup       ->SetFlag( ui_win::WF_VISIBLE, FALSE );
-#endif
     m_pHeadsetTest              ->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pRestoreDefaults          ->SetFlag( ui_win::WF_VISIBLE, FALSE );
 
     m_pVolumeSFXText            ->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pVolumeMusicText          ->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pVolumeSpeechText         ->SetFlag( ui_win::WF_VISIBLE, FALSE );
-#ifdef TARGET_PS2
-    m_pToggleSpeakerSetupText   ->SetFlag( ui_win::WF_VISIBLE, FALSE );
-#endif
-#ifdef TARGET_XBOX
-    m_pBrightnessText           ->SetFlag( ui_win::WF_VISIBLE, FALSE );
-#endif
     m_pNavText                  ->SetFlag( ui_win::WF_VISIBLE, FALSE );
 
     m_pVolumeSFXText            ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
     m_pVolumeMusicText          ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
     m_pVolumeSpeechText         ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
-#ifdef TARGET_PS2
-    m_pToggleSpeakerSetupText   ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
-#endif
-#ifdef TARGET_XBOX
-    m_pBrightnessText           ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
-#endif
 
     // set button alignment
     m_pHeadsetTest              ->SetFlag( ui_win::WF_BUTTON_LEFT, TRUE );
     m_pRestoreDefaults          ->SetFlag( ui_win::WF_BUTTON_LEFT, TRUE );
-
-#ifdef TARGET_PS2
-    // initialize the speaker setup toggle    
-    m_pToggleSpeakerSetup->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV | ui_combo::CB_CHANGE_ON_SELECT );
-    m_pToggleSpeakerSetup->AddItem  ( g_StringTableMgr( "ui", "IDS_MONO"     ), SPEAKERS_MONO              );
-    m_pToggleSpeakerSetup->AddItem  ( g_StringTableMgr( "ui", "IDS_STEREO"   ), SPEAKERS_STEREO            );
-    m_pToggleSpeakerSetup->AddItem  ( g_StringTableMgr( "ui", "IDS_PROLOGIC" ), SPEAKERS_PROLOGIC          );
-#endif
 
     // set up nav text
     xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_SELECT" ));
@@ -249,13 +187,6 @@ xbool dlg_profile_av::Create( s32                        UserID,
     m_pVolumeSFX    ->SetValue( Settings.GetVolume( VOLUME_SFX    ) );
     m_pVolumeMusic  ->SetValue( Settings.GetVolume( VOLUME_MUSIC  ) );
     m_pVolumeSpeech ->SetValue( Settings.GetVolume( VOLUME_SPEECH ) );
-#ifdef TARGET_XBOX
-    m_pBrightness   ->SetValue( Settings.GetBrightness() );
-#endif
-
-#ifdef TARGET_PS2
-    m_pToggleSpeakerSetup->SetSelection( Settings.GetSpeakerSet() );
-#endif
 
     // initialize screen scaling
     InitScreenScaling( Position );
@@ -308,12 +239,7 @@ void dlg_profile_av::Render( s32 ox, s32 oy )
     {
 	    s32 XRes, YRes;
         eng_GetRes(XRes, YRes);
-#ifdef TARGET_PS2
-        // Nasty hack to force PS2 to draw to rb.l = 0
-        rb.Set( -1, 0, XRes, YRes );
-#else
         rb.Set( 0, 0, XRes, YRes );
-#endif
         g_UiMgr->RenderGouraudRect(rb, xcolor(0,0,0,180),
                                     xcolor(0,0,0,180),
                                     xcolor(0,0,0,180),
@@ -415,27 +341,8 @@ void dlg_profile_av::OnNotify( ui_win* pWin, ui_win* pSender, s32 Command, void*
                     SpeechVoiceID = g_AudioMgr.Play("Voice_Slider");
                 }
             }
-            #ifdef TARGET_XBOX
-            else if( pSender == (ui_win*)m_pBrightness )
-            {
-                s32 Brightness = m_pBrightness->GetValue();
-                xbox_SetBrightness( f32(Brightness)/f32(UI_MAX_BRIGHTNESS_RANGE) );
-                Settings.SetBrightness( Brightness );
-            }
-            #endif
         }
         break;
-
-        #ifdef TARGET_PS2
-        case WN_COMBO_SELCHANGE:
-        {
-            if ( pSender == (ui_win*)m_pToggleSpeakerSetup )
-            {
-                Settings.SetSpeakerSet( m_pToggleSpeakerSetup->GetSelectedItemData() );
-            }
-        }
-        break;
-        #endif
 
         default:
             break;
@@ -471,14 +378,6 @@ void dlg_profile_av::OnPadSelect( ui_win* pWin )
             m_pVolumeSFX    ->SetValue( Settings.GetVolume( VOLUME_SFX    ) );
             m_pVolumeMusic  ->SetValue( Settings.GetVolume( VOLUME_MUSIC  ) );
             m_pVolumeSpeech ->SetValue( Settings.GetVolume( VOLUME_SPEECH ) );
-
-#ifdef TARGET_PS2
-            m_pToggleSpeakerSetup->SetSelection( Settings.GetSpeakerSet() );
-#endif
-#ifdef TARGET_XBOX
-            m_pVolumeSpeech ->SetValue( Settings.GetBrightness() );
-#endif
-
         }
     }
 }
@@ -514,23 +413,11 @@ void dlg_profile_av::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             m_pVolumeSFX                ->SetFlag( ui_win::WF_VISIBLE, TRUE );
             m_pVolumeMusic              ->SetFlag( ui_win::WF_VISIBLE, TRUE );
             m_pVolumeSpeech             ->SetFlag( ui_win::WF_VISIBLE, TRUE );
-#ifdef TARGET_PS2
-            m_pToggleSpeakerSetup       ->SetFlag( ui_win::WF_VISIBLE, TRUE );
-#endif
-#ifdef TARGET_XBOX
-            m_pBrightness               ->SetFlag( ui_win::WF_VISIBLE, TRUE );
-#endif
             m_pRestoreDefaults          ->SetFlag( ui_win::WF_VISIBLE, TRUE );
 
             m_pVolumeSFXText            ->SetFlag( ui_win::WF_VISIBLE, TRUE );
             m_pVolumeMusicText          ->SetFlag( ui_win::WF_VISIBLE, TRUE );
             m_pVolumeSpeechText         ->SetFlag( ui_win::WF_VISIBLE, TRUE );
-#ifdef TARGET_PS2
-            m_pToggleSpeakerSetupText   ->SetFlag( ui_win::WF_VISIBLE, TRUE );
-#endif
-#ifdef TARGET_XBOX
-            m_pBrightnessText           ->SetFlag( ui_win::WF_VISIBLE, TRUE );
-#endif
             m_pNavText                  ->SetFlag( ui_win::WF_VISIBLE, TRUE );
 
             if( m_pHeadsetTest->GetFlags( ui_win::WF_DISABLED ) == FALSE )
@@ -575,34 +462,12 @@ void dlg_profile_av::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     }
     else
         m_pVolumeSpeechText->SetLabelColor( xcolor(126,220,60,255) );
-    
-#ifdef TARGET_PS2
-    if( m_pToggleSpeakerSetup->GetFlags(WF_HIGHLIGHT) )
-    {
-        highLight = 3;
-        m_pToggleSpeakerSetupText->SetLabelColor( xcolor(255,252,204,255) );
-        g_UiMgr->SetScreenHighlight( m_pToggleSpeakerSetupText->GetPosition() );
-    }
-    else
-        m_pToggleSpeakerSetupText->SetLabelColor( xcolor(126,220,60,255) );
-#endif
        
     if( m_pHeadsetTest->GetFlags(WF_HIGHLIGHT) )
     {
         highLight = 4;
         g_UiMgr->SetScreenHighlight( m_pHeadsetTest->GetPosition() );
     }
-
-#ifdef TARGET_XBOX
-    if( m_pBrightness->GetFlags(WF_HIGHLIGHT) )
-    {
-        highLight = 5;
-        m_pBrightnessText->SetLabelColor( xcolor(255,252,204,255) );
-        g_UiMgr->SetScreenHighlight( m_pBrightnessText->GetPosition() );
-    }
-    else
-        m_pBrightnessText->SetLabelColor( xcolor(126,220,60,255) );
-#endif
 
     if( m_pRestoreDefaults->GetFlags(WF_HIGHLIGHT) )
     {

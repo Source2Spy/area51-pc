@@ -42,30 +42,33 @@ enum controls
     IDC_CONTROLS_NAV_TEXT,
 };
 
+//-------------------------------------------------------------------------
 
 ui_manager::control_tem ProfileControlsControls[] = 
 {
     // Frames.
     { IDC_CONTROLS_INVERTY_TEXT,        "IDS_OPTIONS_TOGGLE_INVERTY",   "text",      40,  40, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_CONTROLS_SENSITIVITY_X_TEXT,  "IDS_OPTIONS_SENSITIVITY_X",    "text",      40,  70, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_CONTROLS_SENSITIVITY_Y_TEXT,  "IDS_OPTIONS_SENSITIVITY_Y",    "text",      40, 100, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_CONTROLS_CROUCH_TEXT,         "IDS_OPTIONS_TOGGLE_CROUCH",    "text",      40, 130, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    //{ IDC_CONTROLS_LOOK_TEXT,           "IDS_OPTIONS_LOOKSPRING",       "text",      40, 160, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_CONTROLS_VIBRATION_TEXT,      "IDS_OPTIONS_VIBRATION",        "text",      40, 160, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_CONTROLS_AUTO_SWITCH_TEXT,    "IDS_OPTIONS_AUTO_SWITCH",      "text",      40, 190, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_CONTROLS_SENSITIVITY_X_TEXT,  "IDS_OPTIONS_SENSITIVITY_X",    "text",      40,  75, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_CONTROLS_SENSITIVITY_Y_TEXT,  "IDS_OPTIONS_SENSITIVITY_Y",    "text",      40, 110, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_CONTROLS_CROUCH_TEXT,         "IDS_OPTIONS_TOGGLE_CROUCH",    "text",      40, 145, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    //{ IDC_CONTROLS_LOOK_TEXT,           "IDS_OPTIONS_LOOKSPRING",       "text",      40, 180, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },	
+    { IDC_CONTROLS_VIBRATION_TEXT,      "IDS_OPTIONS_VIBRATION",        "text",      40, 180, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_CONTROLS_AUTO_SWITCH_TEXT,    "IDS_OPTIONS_AUTO_SWITCH",      "text",      40, 215, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
-    { IDC_CONTROLS_TOGGLE_INVERTY,      "IDS_NULL",                     "check",    343,  55, 120, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_CONTROLS_SENSITIVITY_X,       "IDS_NULL",                     "slider",   290,  85, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_CONTROLS_SENSITIVITY_Y,       "IDS_NULL",                     "slider",   290, 115, 120, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_CONTROLS_TOGGLE_CROUCH,       "IDS_NULL",                     "check",    343, 145, 120, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    //{ IDC_CONTROLS_TOGGLE_LOOK,         "IDS_NULL",                     "check",    343, 175, 120, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_CONTROLS_TOGGLE_VIBRATION,    "IDS_NULL",                     "check",    343, 175, 120, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_CONTROLS_TOGGLE_AUTO_SWITCH,  "IDS_NULL",                     "check",    343, 205, 120, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_CONTROLS_TOGGLE_INVERTY,      "IDS_NULL",                     "check",    300,  40, 120, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_CONTROLS_SENSITIVITY_X,       "IDS_NULL",                     "slider",   300,  75, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_CONTROLS_SENSITIVITY_Y,       "IDS_NULL",                     "slider",   300, 110, 120, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_CONTROLS_TOGGLE_CROUCH,       "IDS_NULL",                     "check",    300, 145, 120, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    //{ IDC_CONTROLS_TOGGLE_LOOK,         "IDS_NULL",                     "check",    300, 180, 120, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },	
+    { IDC_CONTROLS_TOGGLE_VIBRATION,    "IDS_NULL",                     "check",    300, 180, 120, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_CONTROLS_TOGGLE_AUTO_SWITCH,  "IDS_NULL",                     "check",    300, 215, 120, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+
     { IDC_CONTROLS_BUTTON_ACCEPT,       "IDS_PROFILE_OPTIONS_ACCEPT",   "button",    40, 285, 220, 40, 0, 7, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
     { IDC_CONTROLS_NAV_TEXT,            "IDS_NULL",                     "text",       0,   0,   0,  0, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 };
 
+//-------------------------------------------------------------------------
 
 ui_manager::dialog_tem ProfileControlsDialog =
 {
@@ -258,12 +261,7 @@ void dlg_profile_controls::Render( s32 ox, s32 oy )
     {
         s32 XRes, YRes;
         eng_GetRes(XRes, YRes);
-#ifdef TARGET_PS2
-        // Nasty hack to force PS2 to draw to rb.l = 0
-        rb.Set( -1, 0, XRes, YRes );
-#else
         rb.Set( 0, 0, XRes, YRes );
-#endif
         g_UiMgr->RenderGouraudRect(rb, xcolor(0,0,0,180),
                                     xcolor(0,0,0,180),
                                     xcolor(0,0,0,180),

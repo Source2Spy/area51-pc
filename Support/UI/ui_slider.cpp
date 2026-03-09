@@ -130,7 +130,10 @@ void ui_slider::Render( s32 ox, s32 oy )
 
         // Determine Bar & Thumb positions and render
         irect r2 = r;
-        r2.t += 7; 
+
+        // Stupid hack
+        //r2.t += 1; 
+
         //r2.t = (r.t+r.b)/2 - 2;
         //r2.b = r2.t + 4;
         if( m_Max > m_Min )

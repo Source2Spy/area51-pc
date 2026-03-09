@@ -31,12 +31,16 @@ enum
     OPTIONS_POPUP_PROFILE_HAS_CHANGED,
 };
 
+//-------------------------------------------------------------------------
+
 // x, y, w, h
 s32 s_EDX = 80;
 s32 s_EDW = 140;
 
 s32 s_PDX = 100;
 s32 s_PDW = 185;
+
+//-------------------------------------------------------------------------
 
 ui_manager::control_tem ProfileOptionsControls_PAL[] = 
 {
@@ -48,17 +52,19 @@ ui_manager::control_tem ProfileOptionsControls_PAL[] =
     { IDC_PROFILE_OPTIONS_ACCEPT,           "IDS_PROFILE_OPTIONS_ACCEPT",       "button",   s_PDX,  285,    s_PDW, 40, 0, 8, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
     { IDC_PROFILE_DIFFICULTY_BBOX,          "IDS_PROFILE_SELECT_DIFFICULTY",    "blankbox", 63,      120,     265, 70, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE | ui_win::WF_STATIC },
-    { IDC_PROFILE_DIFFICULTY_SELECT,        "IDS_NULL",                         "combo",    100,     150,   s_PDW, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_PROFILE_DIFFICULTY_SELECT,        "IDS_NULL",                         "combo",    100,     140,   s_PDW, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
     { IDC_PROFILE_STATUS_BBOX,              "IDS_PROFILE_SELECT_ONLINE_STATUS", "blankbox", 65,      160,     260, 70, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE | ui_win::WF_STATIC },
-    { IDC_PROFILE_STATUS_SELECT,            "IDS_NULL",                         "combo",    85,      190,     220, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_PROFILE_STATUS_SELECT,            "IDS_NULL",                         "combo",    85,      180,     220, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
     { IDC_PROFILE_AUTOSAVE_BBOX,            "IDS_PROFILE_SELECT_AUTOSAVE",      "blankbox", 30,      200,     326, 70, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE | ui_win::WF_STATIC },
-    { IDC_PROFILE_AUTOSAVE_SELECT,          "IDS_NULL",                         "combo",    45,      230,     295, 40, 0, 7, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_PROFILE_AUTOSAVE_SELECT,          "IDS_NULL",                         "combo",    45,      220,     295, 40, 0, 7, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
     { IDC_PROFILE_OPTIONS_NAV_TEXT,         "IDS_NULL",                         "text",      0,        0,       0,  0, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
 };
+
+//-------------------------------------------------------------------------
 
 ui_manager::control_tem ProfileOptionsControls_ENG[] =
 {
@@ -70,16 +76,18 @@ ui_manager::control_tem ProfileOptionsControls_ENG[] =
     { IDC_PROFILE_OPTIONS_ACCEPT,           "IDS_PROFILE_OPTIONS_ACCEPT",       "button",   s_EDX,  285,    s_EDW, 40, 0, 8, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
     { IDC_PROFILE_DIFFICULTY_BBOX,          "IDS_PROFILE_SELECT_DIFFICULTY",    "blankbox", 50,      120,     200,   70, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE | ui_win::WF_STATIC },
-    { IDC_PROFILE_DIFFICULTY_SELECT,        "IDS_NULL",                         "combo",    s_EDX,   150,   s_EDW, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_PROFILE_DIFFICULTY_SELECT,        "IDS_NULL",                         "combo",    s_EDX,   140,   s_EDW, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
     { IDC_PROFILE_STATUS_BBOX,              "IDS_PROFILE_SELECT_ONLINE_STATUS", "blankbox", 50,      160,     200, 70, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE | ui_win::WF_STATIC },
-    { IDC_PROFILE_STATUS_SELECT,            "IDS_NULL",                         "combo",    70,      190,     160, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_PROFILE_STATUS_SELECT,            "IDS_NULL",                         "combo",    70,      180,     160, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
     { IDC_PROFILE_AUTOSAVE_BBOX,            "IDS_PROFILE_SELECT_AUTOSAVE",      "blankbox", 45,      200,     210, 70, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE | ui_win::WF_STATIC },
-    { IDC_PROFILE_AUTOSAVE_SELECT,          "IDS_NULL",                         "combo",    55,      230,     190, 40, 0, 7, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_PROFILE_AUTOSAVE_SELECT,          "IDS_NULL",                         "combo",    55,      220,     190, 40, 0, 7, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
     { IDC_PROFILE_OPTIONS_NAV_TEXT,         "IDS_NULL",                         "text",      0,        0,       0,  0, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 };
+
+//-------------------------------------------------------------------------
 
 ui_manager::dialog_tem ProfileOptionsDialog =
 {

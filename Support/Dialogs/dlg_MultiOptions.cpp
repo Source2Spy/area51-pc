@@ -53,6 +53,7 @@ enum controls
     IDC_MULTI_OPTIONS_NAV_TEXT,
 };
 
+//-------------------------------------------------------------------------
 
 ui_manager::control_tem MultiOptionsControls[] = 
 {
@@ -64,17 +65,19 @@ ui_manager::control_tem MultiOptionsControls[] =
     { IDC_MULTI_OPTIONS_GAME_TYPE,          "IDS_HOST_GAME_TYPE",       "text",    40, 145, 100, 40,  0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 #endif
 
-    { IDC_MULTI_OPTIONS_TIME_SELECTOR,      "IDS_NULL",                 "combo",  230,  49, 200, 40,  0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_MULTI_OPTIONS_SCORE_SELECTOR,     "IDS_NULL",                 "combo",  230,  84, 200, 40,  0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_MULTI_OPTIONS_TIME_SELECTOR,      "IDS_NULL",                 "combo",  230,  40, 200, 40,  0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_MULTI_OPTIONS_SCORE_SELECTOR,     "IDS_NULL",                 "combo",  230,  75, 200, 40,  0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 #if defined (ALLOW_EXTENDED_OPTIONS)
-    { IDC_MULTI_OPTIONS_MUTATION_SELECTOR,  "IDS_NULL",                 "combo",  230, 119, 200, 40,  0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_MULTI_OPTIONS_TYPE_SELECTOR,      "IDS_NULL",                 "combo",  230, 154, 200, 40,  0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_MULTI_OPTIONS_MUTATION_SELECTOR,  "IDS_NULL",                 "combo",  230, 110, 200, 40,  0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_MULTI_OPTIONS_TYPE_SELECTOR,      "IDS_NULL",                 "combo",  230, 145, 200, 40,  0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 #endif
+
     { IDC_MULTI_OPTIONS_CONTINUE,           "IDS_HOST_CONTINUE",        "button",  40, 285, 180, 40,  0, 4, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
     { IDC_MULTI_OPTIONS_NAV_TEXT,           "IDS_NULL",                 "text",     0,   0,   0,  0,  0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 };
 
+//-------------------------------------------------------------------------
 
 ui_manager::dialog_tem MultiOptionsDialog =
 {

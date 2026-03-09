@@ -54,7 +54,8 @@ enum controls
     IDC_PLAYERS_NAV_TEXT,
 };
 
- 
+//-------------------------------------------------------------------------
+
 ui_manager::control_tem OnlinePlayersControls[] = 
 {
     // Frames.
@@ -79,6 +80,7 @@ ui_manager::control_tem OnlinePlayersControls[] =
     { IDC_PLAYERS_NAV_TEXT, "IDS_NULL",             "text",         0,   0,   0,   0, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 };
 
+//-------------------------------------------------------------------------
 
 ui_manager::dialog_tem OnlinePlayersDialog =
 {
