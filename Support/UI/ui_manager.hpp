@@ -214,22 +214,22 @@ public:
         button                  ButtonRB;
 
         button                  DPadUp            [INPUT_MAX_CONTROLLER_COUNT];
-        button                  DPadDown        [INPUT_MAX_CONTROLLER_COUNT];
-        button                  DPadLeft        [INPUT_MAX_CONTROLLER_COUNT];
-        button                  DPadRight        [INPUT_MAX_CONTROLLER_COUNT];
-        button                  PadSelect        [INPUT_MAX_CONTROLLER_COUNT];
-        button                  PadBack            [INPUT_MAX_CONTROLLER_COUNT];
-        button                  PadDelete        [INPUT_MAX_CONTROLLER_COUNT];
-        button                  PadActivate     [INPUT_MAX_CONTROLLER_COUNT];   
-        //button                  PadHelp            [INPUT_MAX_CONTROLLER_COUNT];
-        //button                  PadShoulderL    [INPUT_MAX_CONTROLLER_COUNT];
-        //button                  PadShoulderR    [INPUT_MAX_CONTROLLER_COUNT];
-        //button                  PadShoulderL2    [INPUT_MAX_CONTROLLER_COUNT];
-        //button                  PadShoulderR2    [INPUT_MAX_CONTROLLER_COUNT];
-        //button                  LStickUp        [INPUT_MAX_CONTROLLER_COUNT];
-        //button                  LStickDown        [INPUT_MAX_CONTROLLER_COUNT];
-        //button                  LStickLeft        [INPUT_MAX_CONTROLLER_COUNT];
-        //button                  LStickRight        [INPUT_MAX_CONTROLLER_COUNT];      
+        button                  DPadDown          [INPUT_MAX_CONTROLLER_COUNT];
+        button                  DPadLeft          [INPUT_MAX_CONTROLLER_COUNT];
+        button                  DPadRight         [INPUT_MAX_CONTROLLER_COUNT];
+        button                  PadSelect         [INPUT_MAX_CONTROLLER_COUNT];
+        button                  PadBack           [INPUT_MAX_CONTROLLER_COUNT];
+        button                  PadDelete         [INPUT_MAX_CONTROLLER_COUNT];
+        button                  PadActivate       [INPUT_MAX_CONTROLLER_COUNT];   
+        button                  PadHelp           [INPUT_MAX_CONTROLLER_COUNT];
+        button                  PadShoulderL      [INPUT_MAX_CONTROLLER_COUNT];
+        button                  PadShoulderR      [INPUT_MAX_CONTROLLER_COUNT];
+        button                  PadShoulderL2     [INPUT_MAX_CONTROLLER_COUNT];
+        button                  PadShoulderR2     [INPUT_MAX_CONTROLLER_COUNT];
+        button                  LStickUp          [INPUT_MAX_CONTROLLER_COUNT];
+        button                  LStickDown        [INPUT_MAX_CONTROLLER_COUNT];
+        button                  LStickLeft        [INPUT_MAX_CONTROLLER_COUNT];
+        button                  LStickRight       [INPUT_MAX_CONTROLLER_COUNT];      
 
         xarray<ui_dialog*>      DialogStack;
     };

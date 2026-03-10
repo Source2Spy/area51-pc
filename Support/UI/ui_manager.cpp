@@ -1767,28 +1767,27 @@ xbool ui_manager::ProcessInput( f32 DeltaTime, s32 UserID )
             if ( g_MonkeyOptions.Enabled && g_MonkeyOptions.ModeEnabled[MONKEY_MENUMONKEY] )
             {
 #ifndef X_RELEASE
-                //UpdateButton( pUser->DPadUp[i],         g_Monkey.GetUIButtonValue( MONKEY_UI_UP ),          DeltaTime);                    
-                //UpdateButton( pUser->DPadDown[i],       g_Monkey.GetUIButtonValue( MONKEY_UI_DOWN ),        DeltaTime);
-                //UpdateButton( pUser->DPadLeft[i],       g_Monkey.GetUIButtonValue( MONKEY_UI_LEFT ),        DeltaTime);
-                //UpdateButton( pUser->DPadRight[i],      g_Monkey.GetUIButtonValue( MONKEY_UI_RIGHT ),       DeltaTime);
-                //UpdateButton( pUser->PadSelect[i],      g_Monkey.GetUIButtonValue( MONKEY_UI_SELECT ),      DeltaTime);
-                //UpdateButton( pUser->PadBack[i],        g_Monkey.GetUIButtonValue( MONKEY_UI_BACK ),        DeltaTime);
-                //UpdateButton( pUser->PadDelete[i],      g_Monkey.GetUIButtonValue( MONKEY_UI_DELETE ),      DeltaTime);
-                //UpdateButton( pUser->PadActivate[i],    g_Monkey.GetUIButtonValue( MONKEY_UI_ACTIVATE ),    DeltaTime);
-                //UpdateButton( pUser->PadShoulderL[i],   g_Monkey.GetUIButtonValue( MONKEY_UI_SHOULDERL ),   DeltaTime);
-                //UpdateButton( pUser->PadShoulderR[i],   g_Monkey.GetUIButtonValue( MONKEY_UI_SHOULDERR ),   DeltaTime);
-                //UpdateButton( pUser->PadShoulderL2[i],  g_Monkey.GetUIButtonValue( MONKEY_UI_SHOULDERL2 ),  DeltaTime);
-                //UpdateButton( pUser->PadShoulderR2[i],  g_Monkey.GetUIButtonValue( MONKEY_UI_SHOULDERR2 ),  DeltaTime);
-                //UpdateButton( pUser->PadHelp[i],        g_Monkey.GetUIButtonValue( MONKEY_UI_HELP ),        DeltaTime);
-                x_throw ("INTERVELOP!" );
+                UpdateButton( pUser->DPadUp[i],         g_Monkey.GetUIButtonValue( MONKEY_UI_UP ),          DeltaTime);                    
+                UpdateButton( pUser->DPadDown[i],       g_Monkey.GetUIButtonValue( MONKEY_UI_DOWN ),        DeltaTime);
+                UpdateButton( pUser->DPadLeft[i],       g_Monkey.GetUIButtonValue( MONKEY_UI_LEFT ),        DeltaTime);
+                UpdateButton( pUser->DPadRight[i],      g_Monkey.GetUIButtonValue( MONKEY_UI_RIGHT ),       DeltaTime);
+                UpdateButton( pUser->PadSelect[i],      g_Monkey.GetUIButtonValue( MONKEY_UI_SELECT ),      DeltaTime);
+                UpdateButton( pUser->PadBack[i],        g_Monkey.GetUIButtonValue( MONKEY_UI_BACK ),        DeltaTime);
+                UpdateButton( pUser->PadDelete[i],      g_Monkey.GetUIButtonValue( MONKEY_UI_DELETE ),      DeltaTime);
+                UpdateButton( pUser->PadActivate[i],    g_Monkey.GetUIButtonValue( MONKEY_UI_ACTIVATE ),    DeltaTime);
+                UpdateButton( pUser->PadShoulderL[i],   g_Monkey.GetUIButtonValue( MONKEY_UI_SHOULDERL ),   DeltaTime);
+                UpdateButton( pUser->PadShoulderR[i],   g_Monkey.GetUIButtonValue( MONKEY_UI_SHOULDERR ),   DeltaTime);
+                UpdateButton( pUser->PadShoulderL2[i],  g_Monkey.GetUIButtonValue( MONKEY_UI_SHOULDERL2 ),  DeltaTime);
+                UpdateButton( pUser->PadShoulderR2[i],  g_Monkey.GetUIButtonValue( MONKEY_UI_SHOULDERR2 ),  DeltaTime);
+                UpdateButton( pUser->PadHelp[i],        g_Monkey.GetUIButtonValue( MONKEY_UI_HELP ),        DeltaTime);
 #endif
             }
             else
             {
-                UpdateButton( pUser->DPadUp[i],    (input_IsPressed( INPUT_KBD_UP,    i ) || input_IsPressed( INPUT_KBD_W, i )), DeltaTime );
-                UpdateButton( pUser->DPadDown[i],  (input_IsPressed( INPUT_KBD_DOWN,  i ) || input_IsPressed( INPUT_KBD_S, i )), DeltaTime );
-                UpdateButton( pUser->DPadLeft[i],  (input_IsPressed( INPUT_KBD_LEFT,  i ) || input_IsPressed( INPUT_KBD_A, i )), DeltaTime );
-                UpdateButton( pUser->DPadRight[i], (input_IsPressed( INPUT_KBD_RIGHT, i ) || input_IsPressed( INPUT_KBD_D, i )), DeltaTime );
+                UpdateButton( pUser->DPadUp[i],    input_IsPressed( INPUT_KBD_UP,    i ), DeltaTime );
+                UpdateButton( pUser->DPadDown[i],  input_IsPressed( INPUT_KBD_DOWN,  i ), DeltaTime );
+                UpdateButton( pUser->DPadLeft[i],  input_IsPressed( INPUT_KBD_LEFT,  i ), DeltaTime );
+                UpdateButton( pUser->DPadRight[i], input_IsPressed( INPUT_KBD_RIGHT, i ), DeltaTime );
                 
                 UpdateButton( pUser->PadSelect[i],     input_WasPressed( INPUT_KBD_RETURN, i ), DeltaTime );
                 UpdateButton( pUser->PadBack[i],       input_WasPressed( INPUT_KBD_ESCAPE, i ), DeltaTime );
@@ -1845,11 +1844,11 @@ xbool ui_manager::ProcessInput( f32 DeltaTime, s32 UserID )
             s32 PadBack         = 0;
             s32 PadDelete       = 0;
             s32 PadActivate     = 0;            
-            //s32 PadShoulderL    = 0;
-            //s32 PadShoulderR    = 0;
-            //s32 PadShoulderL2   = 0;
-            //s32 PadShoulderR2   = 0;        
-            //s32 PadHelp         = 0;               
+            s32 PadShoulderL    = 0;
+            s32 PadShoulderR    = 0;
+            s32 PadShoulderL2   = 0;
+            s32 PadShoulderR2   = 0;        
+            s32 PadHelp         = 0;               
             {
 #if !defined(X_RETAIL)
                 bInProcessInput = TRUE;
@@ -1877,25 +1876,25 @@ xbool ui_manager::ProcessInput( f32 DeltaTime, s32 UserID )
                     PadBack         = pUser->PadBack[i].nPresses;
                     PadDelete       = pUser->PadDelete[i].nPresses;
                     PadActivate     = pUser->PadActivate[i].nPresses;               
-                    //PadShoulderL    = pUser->PadShoulderL[i].nPresses + pUser->PadShoulderL[i].nRepeats;
-                    //PadShoulderR    = pUser->PadShoulderR[i].nPresses + pUser->PadShoulderR[i].nRepeats;
-                    //PadShoulderL2   = pUser->PadShoulderL2[i].nPresses + pUser->PadShoulderL2[i].nRepeats;
-                    //PadShoulderR2   = pUser->PadShoulderR2[i].nPresses + pUser->PadShoulderR2[i].nRepeats;
-					//
-                    //PadHelp         = pUser->PadHelp[i].nPresses;
-					//
-                    //pDPadUp         += pUser->LStickUp[i].nPresses;
-                    //pDPadDown       += pUser->LStickDown[i].nPresses;
-                    //pDPadLeft       += pUser->LStickLeft[i].nPresses;
-                    //pDPadRight      += pUser->LStickRight[i].nPresses;
-                    //rDPadUp         += pUser->LStickUp[i].nRepeats;
-                    //rDPadDown       += pUser->LStickDown[i].nRepeats;
-                    //rDPadLeft       += pUser->LStickLeft[i].nRepeats;
-                    //rDPadRight      += pUser->LStickRight[i].nRepeats;
-                    //tDPadUp         += pUser->LStickUp[i].nPresses    + pUser->LStickUp[i].nRepeats;
-                    //tDPadDown       += pUser->LStickDown[i].nPresses  + pUser->LStickDown[i].nRepeats;
-                    //tDPadLeft       += pUser->LStickLeft[i].nPresses  + pUser->LStickLeft[i].nRepeats;
-                    //tDPadRight      += pUser->LStickRight[i].nPresses + pUser->LStickRight[i].nRepeats;
+                    PadShoulderL    = pUser->PadShoulderL[i].nPresses + pUser->PadShoulderL[i].nRepeats;
+                    PadShoulderR    = pUser->PadShoulderR[i].nPresses + pUser->PadShoulderR[i].nRepeats;
+                    PadShoulderL2   = pUser->PadShoulderL2[i].nPresses + pUser->PadShoulderL2[i].nRepeats;
+                    PadShoulderR2   = pUser->PadShoulderR2[i].nPresses + pUser->PadShoulderR2[i].nRepeats;
+					
+                    PadHelp         = pUser->PadHelp[i].nPresses;
+					
+                    pDPadUp         += pUser->LStickUp[i].nPresses;
+                    pDPadDown       += pUser->LStickDown[i].nPresses;
+                    pDPadLeft       += pUser->LStickLeft[i].nPresses;
+                    pDPadRight      += pUser->LStickRight[i].nPresses;
+                    rDPadUp         += pUser->LStickUp[i].nRepeats;
+                    rDPadDown       += pUser->LStickDown[i].nRepeats;
+                    rDPadLeft       += pUser->LStickLeft[i].nRepeats;
+                    rDPadRight      += pUser->LStickRight[i].nRepeats;
+                    tDPadUp         += pUser->LStickUp[i].nPresses    + pUser->LStickUp[i].nRepeats;
+                    tDPadDown       += pUser->LStickDown[i].nPresses  + pUser->LStickDown[i].nRepeats;
+                    tDPadLeft       += pUser->LStickLeft[i].nPresses  + pUser->LStickLeft[i].nRepeats;
+                    tDPadRight      += pUser->LStickRight[i].nPresses + pUser->LStickRight[i].nRepeats;
 
                     // send commands for each controller
                     s_EndDialogCount=0;
@@ -1940,29 +1939,29 @@ xbool ui_manager::ProcessInput( f32 DeltaTime, s32 UserID )
                     { 
                         Iterate = TRUE; pWin->OnPadActivate( pWin ); 
                     }                
-                    //if( !Iterate && PadHelp     && !s_EndDialogCount ) 
-                    //{ 
-                    //    Iterate = TRUE; pWin->OnPadHelp    ( pWin ); 
-                    //}
-					//
-                    //// Issue window calls for pad shoulders
-                    //if( PadShoulderL && !s_EndDialogCount ) 
-                    //{ 
-                    //    pWin->OnPadShoulder ( pWin, -1 ); 
-                    //}
-                    //else if( PadShoulderR && !s_EndDialogCount ) 
-                    //{ 
-                    //    pWin->OnPadShoulder ( pWin,  1 ); 
-                    //};
-					//
-                    //if( PadShoulderL2 && !s_EndDialogCount ) 
-                    //{ 
-                    //    pWin->OnPadShoulder2( pWin, -1 ); 
-                    //}
-                    //else if( PadShoulderR2 && !s_EndDialogCount )
-                    //{ 
-                    //    pWin->OnPadShoulder2( pWin,  1 ); 
-                    //}
+                    if( !Iterate && PadHelp     && !s_EndDialogCount ) 
+                    { 
+                        Iterate = TRUE; pWin->OnPadHelp    ( pWin ); 
+                    }
+					
+                    // Issue window calls for pad shoulders
+                    if( PadShoulderL && !s_EndDialogCount ) 
+                    { 
+                        pWin->OnPadShoulder ( pWin, -1 ); 
+                    }
+                    else if( PadShoulderR && !s_EndDialogCount ) 
+                    { 
+                        pWin->OnPadShoulder ( pWin,  1 ); 
+                    };
+					
+                    if( PadShoulderL2 && !s_EndDialogCount ) 
+                    { 
+                        pWin->OnPadShoulder2( pWin, -1 ); 
+                    }
+                    else if( PadShoulderR2 && !s_EndDialogCount )
+                    { 
+                        pWin->OnPadShoulder2( pWin,  1 ); 
+                    }
                     s_EndDialogCount=0;
                 }
 #if !defined(X_RETAIL)
@@ -2016,12 +2015,12 @@ void ui_manager::DisableUserInput( void )
             pUser->DPadUp[j]      .Clear();
             pUser->PadSelect[j]   .Clear();
             pUser->PadBack[j]     .Clear();   
-            //pUser->LStickDown[j]  .Clear();
-            //pUser->LStickLeft[j]  .Clear();
-            //pUser->LStickRight[j] .Clear();
-            //pUser->LStickUp[j]    .Clear();
-            //pUser->PadShoulderL[j].Clear();
-            //pUser->PadShoulderR[j].Clear();         
+            pUser->LStickDown[j]  .Clear();
+            pUser->LStickLeft[j]  .Clear();
+            pUser->LStickRight[j] .Clear();
+            pUser->LStickUp[j]    .Clear();
+            pUser->PadShoulderL[j].Clear();
+            pUser->PadShoulderR[j].Clear();         
         }
     }
 }
