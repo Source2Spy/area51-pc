@@ -477,7 +477,7 @@ void dlg_profile_select::OnPadSelect( ui_win* pWin )
                 ui_dlg_vkeyboard* pVKeyboard = (ui_dlg_vkeyboard*)m_pManager->OpenDialog( m_UserID, "ui_vkeyboard", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_INPUTMODAL|ui_win::WF_USE_ABSOLUTE );
                 pVKeyboard->Configure( TRUE );
 #ifdef TARGET_PC
-                pVKeyboard->SetGamepadMode( input_GetJoystickCount() > 0 );
+                pVKeyboard->SetGamepadMode( input_GetPadCount() > 0 );
 #endif				
                 pVKeyboard->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_CREATE" ) );
                 pVKeyboard->ConnectString( &m_ProfileName, SM_PROFILE_NAME_LENGTH );

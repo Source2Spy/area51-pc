@@ -22,53 +22,76 @@
 
 #define DIRECTINPUT_VERSION  0x0800
 #include "dinput.h"
+#include "xinput.h"
+#pragma comment( lib, "xinput.lib" )
 
 //==============================================================================
 // DEFINES
 //==============================================================================
 
-#define MAX_DEVICES      8          // Maximun number of device per type
-#define REFRESH_RATE    15          // times a second. 30
-#define MAX_STATES      64          // ( REFRESH_RATE - MAX_STATES ) is how 
-                                    // long we can go without loosing info. 16
-#define MAX_EVENTS      64          // This is how long DirectX can go 
-                                    // before loosing input. 16
+#define MAX_DEVICES      8          // Maximum number of devices per type
+#define REFRESH_RATE    15          // Times per second
+#define MAX_STATES      64          // ( REFRESH_RATE - MAX_STATES ) is how long we can go without losing info
+#define MAX_EVENTS      64          // How long DirectX can go before losing input
 
-enum device_flags
-{
-    DEVICE_FLG_PS2_PAD = (1<<0),
-    DEVICE_FLG_SOYO_PS2_PAD = (1<<1),
-    DEVICE_FLG_DUALSHOCK_CONVERTER_PS2_PAD = (1<<2),
-    DEVICE_FLG_PSX_USB_PAD = (1<<3),
-};
-
-enum digital_type
-{
-    DIGITAL_ON         = (1<<0),
-    DIGITAL_DEBAUNCE   = (1<<1),
-};
-
-enum
-{
-    DIGITAL_COUNT_PCPAD  = INPUT_PC__ANALOG     - INPUT_PC__DIGITAL,
-    DIGITAL_COUNT_PS2PAD = 32,
-    DIGITAL_COUNT_MOUSE  = INPUT_MOUSE__ANALOG  - INPUT_MOUSE__DIGITAL,
-    DIGITAL_COUNT_KBD    = INPUT_KBD__END       - INPUT_KBD__DIGITAL,
-
-    ANALOG_COUNT_PCPAD   = INPUT_PC__END        - INPUT_PC__ANALOG,
-    ANALOG_COUNT_PS2PAD  = 32,
-    ANALOG_COUNT_MOUSE   = INPUT_MOUSE__END     - INPUT_MOUSE__ANALOG,
-};
+// Intensity lost per second during rumble decay.
+#ifdef X_RETAIL
+#   define RUMBLE_DECAY_RATE 2.4f
+#else
+    static f32 RUMBLE_DECAY_RATE = 2.4f;
+#endif
 
 //==============================================================================
 // TYPES
 //==============================================================================
 
+enum digital_type
+{
+    DIGITAL_ON       = (1<<0),
+    DIGITAL_DEBAUNCE = (1<<1),
+};
+
+//-------------------------------------------------------------------------
+
+enum feedback_type
+{
+    RT_NO_RUMBLE,
+    RT_INTENSITY,
+    RT_DECAY,
+};
+
+//-------------------------------------------------------------------------
+
+struct rumble_controller
+{
+    feedback_type  Type;
+    f32            Intensity;
+    f32            DurationSec;
+    xbool          Enabled;
+};
+
+//-------------------------------------------------------------------------
+
+enum
+{
+    DIGITAL_COUNT_MOUSE    = INPUT_MOUSE__ANALOG           - INPUT_MOUSE__DIGITAL,
+    DIGITAL_COUNT_KBD      = INPUT_KBD__END                - INPUT_KBD__DIGITAL,
+
+    ANALOG_COUNT_MOUSE     = INPUT_MOUSE__END              - INPUT_MOUSE__ANALOG,
+
+    XBOX_DIGITAL_COUNT     = INPUT_XBOX__DIGITAL_BUTTONS_END - INPUT_XBOX__DIGITAL_BUTTONS_BEGIN - 1,
+    XBOX_ANALOG_BTN_COUNT  = INPUT_XBOX__ANALOG_BUTTONS_END  - INPUT_XBOX__ANALOG_BUTTONS_BEGIN  - 1,
+    XBOX_STICK_COUNT       = INPUT_XBOX__STICKS_END          - INPUT_XBOX__STICKS_BEGIN           - 1,
+};
+
+//-------------------------------------------------------------------------
+
 struct device
 {
     IDirectInputDevice8*    pDevice;
-    u32                     Flags;
 };
+
+//-------------------------------------------------------------------------
 
 struct input_mouse
 {
@@ -76,30 +99,31 @@ struct input_mouse
     f32     Anolog [ ANALOG_COUNT_MOUSE  ];
 };
 
+//-------------------------------------------------------------------------
+
 struct input_keyboard
 {
     byte    Digital[ DIGITAL_COUNT_KBD ];
 };
 
-struct input_pc_pad
+//-------------------------------------------------------------------------
+
+struct input_xbox_pad
 {
-    byte    Digital[ DIGITAL_COUNT_PCPAD ];
-    f32     Anolog [ ANALOG_COUNT_PCPAD  ];
+    byte    Digital  [ XBOX_DIGITAL_COUNT    ];  // START, BACK, DPAD, L/R_STICK
+    byte    AnalogBtn[ XBOX_ANALOG_BTN_COUNT ];  // LB, RB, A, B, X, Y, LT, RT (digital state)
+    f32     Trigger  [ 2 ];                      // LT, RT analog (0..1)
+    f32     Stick    [ XBOX_STICK_COUNT      ];  // LS_X, LS_Y, RS_X, RS_Y (-1..1)
 };
 
-struct input_ps2_pad
-{
-    byte    Digital[ DIGITAL_COUNT_PS2PAD ];
-    f32     Anolog [ ANALOG_COUNT_PS2PAD  ];
-};
+//-------------------------------------------------------------------------
 
 struct state
 {
-    s64                 TimeStamp;
-    input_keyboard      Keyboard[ MAX_DEVICES ];
-    input_mouse         Mouse   [ MAX_DEVICES ];
-    input_pc_pad        PCPad   [ MAX_DEVICES ];
-    input_ps2_pad       PS2Pad  [ MAX_DEVICES ];
+    s64             TimeStamp;
+    input_keyboard  Keyboard[ MAX_DEVICES    ];
+    input_mouse     Mouse   [ MAX_DEVICES    ];
+    input_xbox_pad  XboxPad [ XUSER_MAX_COUNT];
 };
 
 //==============================================================================
@@ -108,45 +132,47 @@ struct state
 
 static struct
 {
-    HWND                    Window;
-    IDirectInput8*          pDInput;
-    MSG                     Msg;
-    xbool                   bProcessEvents;
+    HWND            Window;
+    IDirectInput8*  pDInput;
+    MSG             Msg;
+    xbool           bProcessEvents;
 
-    s32                     nMouses;
-    s32                     nKeyboards;
-    s32                     nJoysticks;
+    s32             nMouses;
+    s32             nKeyboards;
 
-    device                  Mouse   [ MAX_DEVICES ];
-    device                  Keyboard[ MAX_DEVICES ];
-    device                  Joystick[ MAX_DEVICES ];
+    device          Mouse   [ MAX_DEVICES ];
+    device          Keyboard[ MAX_DEVICES ];
 
-    s32                     nPCPads;
-    s32                     PCPadDevice [ MAX_DEVICES ];
+    s32             KeybdDevice[ MAX_DEVICES ];
+    s32             MouseDevice[ MAX_DEVICES ];
 
-    s32                     nPS2Pads;
-    s32                     PS2PadDevice[ MAX_DEVICES ];
+    xbool           bExclusive;
+    xbool           bForeground;
+    xbool           bImmediate;
+    xbool           bDisableWindowsKey;
 
-    s32                     KeybdDevice [ MAX_DEVICES ];
-    s32                     MouseDevice [ MAX_DEVICES ];
+    state           State[ MAX_STATES ];
+    s32             nStates;
+    s32             iState;
+    s32             iStateNext;
 
-    xbool                   bExclusive;
-    xbool                   bForeground;
-    xbool                   bImmediate;
-    xbool                   bDisableWindowsKey;
+    s64             CurrentTimeFrame;
+    s64             LastTimeFrame;
+    s64             TicksPerRefresh;
 
-    state                   State[ MAX_STATES ];
-    s32                     nStates;
-    s32                     iState;
-    s32                     iStateNext;
+    xbool           ExitApp;
 
-    s64                     CurrentTimeFrame;
-    s64                     LastTimeFrame;
-    s64                     TicksPerRefresh;
-
-    xbool                   ExitApp;
+    xbool           bXboxConnected[ XUSER_MAX_COUNT ];
 
 } s_Input = {0};
+
+//-------------------------------------------------------------------------
+
+static struct
+{
+    rumble_controller Controller[ XUSER_MAX_COUNT ];
+    xbool             Suppress;
+} s_Rumble;
 
 //==============================================================================
 // FUNCTIONS
@@ -154,158 +180,89 @@ static struct
 
 static dxerr CreateMouse   ( device& Device, const DIDEVICEINSTANCE* pInstance, s32 SampleBufferSize );
 static dxerr CreateKeyboard( device& Device, const DIDEVICEINSTANCE* pInstance, s32 SampleBufferSize );
-static dxerr CreateJoystick( device& Device, const DIDEVICEINSTANCE* pInstance, s32 SampleBufferSize );
-        void d3deng_KillInput( void );
+void   d3deng_KillInput    ( void );
 
 static xbool s_DoNotProcessWindowsMessages = FALSE;
 
 //=========================================================================
 
-static 
+static
 void ClearDebounce( state& State )
 {
     s32 i;
 
-    //
-    // Clear all the debounce for the PCPads
-    // 
-    for( i=0; i<s_Input.nPCPads; i++ )
+    // Clear all the debounce for the XInput
+    for( i = 0; i < XUSER_MAX_COUNT; i++ )
     {
-        for( s32 d=0; d<DIGITAL_COUNT_PCPAD; d++ )
-        {
-            State.PCPad[i].Digital[d] &= ~DIGITAL_DEBAUNCE;
-        }
+        for( s32 d = 0; d < XBOX_DIGITAL_COUNT; d++ )
+            State.XboxPad[i].Digital  [d] &= ~DIGITAL_DEBAUNCE;
+        for( s32 d = 0; d < XBOX_ANALOG_BTN_COUNT; d++ )
+            State.XboxPad[i].AnalogBtn[d] &= ~DIGITAL_DEBAUNCE;
     }
 
-    //
-    // Clear all the debounce for the PS2Pads
-    // 
-    for( i=0; i<s_Input.nPS2Pads; i++ )
-    {
-        for( s32 d=0; d<DIGITAL_COUNT_PS2PAD; d++ )
-        {
-            State.PS2Pad[i].Digital[d] &= ~DIGITAL_DEBAUNCE;
-        }
-
-        // Since allot of the keys in this joystick as tought to
-        // be anolog we builded a debounce on it call 0.001f
-        // so we must clear that fractional bit in here
-        // make sure to skip the atual joysticks in the pad.
-        for( s32 a=0; a<ANALOG_COUNT_PS2PAD; a++ )// - 5; a++ )
-        {
-            if( a >= (INPUT_PS2_STICK_LEFT_X-INPUT_PS2_BTN_L2) && a <= (INPUT_PS2_STICK_RIGHT_Y-INPUT_PS2_BTN_L2) )
-            {
-                // Nothing to debounce
-            }
-            else
-            if( (State.PS2Pad[i].Anolog[a] - 1) >= 0 )
-                State.PS2Pad[i].Anolog[a] = 1;
-            else
-                State.PS2Pad[i].Anolog[a] = 0;
-        }
-    }
-
-    //
     // Clear all the debounce for the Mouse
-    // 
-    for( i=0; i<s_Input.nMouses; i++ )
+    for( i = 0; i < s_Input.nMouses; i++ )
     {
-        for( s32 d=0; d<DIGITAL_COUNT_MOUSE; d++ )
-        {
+        for( s32 d = 0; d < DIGITAL_COUNT_MOUSE; d++ )
             State.Mouse[i].Digital[d] &= ~DIGITAL_DEBAUNCE;
-        }
 
-        // All the mouse anolog are relative so they need to be 
-        // clean up everytime.
-        for( s32 a=0; a<ANALOG_COUNT_MOUSE; a++ )
-        {
+        for( s32 a = 0; a < ANALOG_COUNT_MOUSE; a++ )
             State.Mouse[i].Anolog[a] = 0;
-        }
     }
 
-
-    //
     // Clear all the debounce for the Keyboard
-    // 
-    for( i=0; i<s_Input.nKeyboards; i++ )
-    {
-        for( s32 d=0; d<DIGITAL_COUNT_KBD; d++ )
-        {
+    for( i = 0; i < s_Input.nKeyboards; i++ )
+        for( s32 d = 0; d < DIGITAL_COUNT_KBD; d++ )
             State.Keyboard[i].Digital[d] &= ~DIGITAL_DEBAUNCE;
-        }
-    }
 }
 
 //=========================================================================
 
-static 
+static
 void PageFlipQueue( void )
 {
-    //
     //  Clear all the time stamps
-    //
-    for( s32 i=0; i<MAX_STATES; i++ )
-    {
+    for( s32 i = 0; i < MAX_STATES; i++ )
         s_Input.State[ i ].TimeStamp = 0;
-    }
 
-    //
     // Prepare the first event in the queue
-    //
     if( s_Input.bImmediate )
     {
-        s_Input.State[ 0 ].TimeStamp = s_Input.CurrentTimeFrame;    
+        s_Input.State[ 0 ].TimeStamp = s_Input.CurrentTimeFrame;
     }
     else
     {
-        //
-        // Copy the previous old state
-        //
+        // Copy the previous old state		
         ASSERT( s_Input.nStates > 0 );
-        s_Input.State[ 0 ] = s_Input.State[ (s_Input.nStates-1) ];
-
-        //
-        // Update the time to our old one to make sure that we don't loose precision
-        //
-        s_Input.State[ 0 ].TimeStamp = s_Input.LastTimeFrame;
+        // Update the time to our old one to make sure that we don't loose precision		
+        s_Input.State[ 0 ]            = s_Input.State[ s_Input.nStates - 1 ];
+        s_Input.State[ 0 ].TimeStamp  = s_Input.LastTimeFrame;
     }
 
-    //
-    // Clear the events
-    //
-    s_Input.iState      = 0;
+    s_Input.iState     = 0;
     s_Input.nStates     = 1;        // We always have at least one state
-    s_Input.iStateNext  = 0;        
+    s_Input.iStateNext = 0;
 
-
-    //
     // Make sure that all the debounces are clear
-    //
     ClearDebounce( s_Input.State[0] );
 }
 
 //=========================================================================
 
-static 
+static
 state& GetState( s64 TimeStamp )
 {
     s32 i = 0;
 
-    //
     // Try to find the right state
-    //
-//    DebugMessage( "%f, %f %f\n", (f64)ABS( TimeStamp - s_Input.LastTimeFrame ), (f64)TimeStamp, (f64)s_Input.LastTimeFrame );
-
-    while( TimeStamp > ( s_Input.State[ i ].TimeStamp + s_Input.TicksPerRefresh )  ) 
+    while( TimeStamp > ( s_Input.State[ i ].TimeStamp + s_Input.TicksPerRefresh ) )
     {
-        //
-        // Make sure that the next time interval is initialize
-        //
+        // Make sure that the next time interval is initialize		
         i++;
         ASSERT( i < MAX_STATES );
-        if( s_Input.State[ i ].TimeStamp == 0)
-        {            
-            // Copy the previous time frame
+        // Copy the previous time frame		
+        if( s_Input.State[ i ].TimeStamp == 0 )
+        {
             s_Input.State[ i ]            = s_Input.State[ i-1 ];
             s_Input.State[ i ].TimeStamp += s_Input.TicksPerRefresh;
 
@@ -324,22 +281,17 @@ state& GetState( s64 TimeStamp )
 
 //=========================================================================
 
-static 
-BOOL CALLBACK EnumKeyboardCallback( const DIDEVICEINSTANCE* pdidInstance,
-                                    VOID* pContext )
+static
+BOOL CALLBACK EnumKeyboardCallback( const DIDEVICEINSTANCE* pdidInstance, VOID* pContext )
 {
-    dxerr Error;
-
     // Is the main keyboard? If so then do some quick nothing.
-//    if( GUID_SysKeyboard == pdidInstance ) {}
-
+    //if( GUID_SysKeyboard == pdidInstance ) {}	
+    dxerr Error = CreateKeyboard( s_Input.Keyboard[ s_Input.nKeyboards ], pdidInstance, MAX_EVENTS );
+	
     // If it failed, then we can't use this Keyboard. (Maybe the user unplugged
-    // it while we were in the middle of enumerating it.)
-    Error = CreateKeyboard( s_Input.Keyboard[ s_Input.nKeyboards ], pdidInstance, MAX_EVENTS );
-    if( !FAILED(Error) ) 
-    {
+    // it while we were in the middle of enumerating it.)	
+    if( !FAILED( Error ) )
         s_Input.nKeyboards++;
-    }
 
     // If it failed, then we can't use this keyboard. (Maybe the user unplugged
     // it while we were in the middle of enumerating it.)
@@ -348,23 +300,17 @@ BOOL CALLBACK EnumKeyboardCallback( const DIDEVICEINSTANCE* pdidInstance,
 
 //=========================================================================
 
-static 
-BOOL CALLBACK EnumMouseCallback( const DIDEVICEINSTANCE* pdidInstance,
-                                 VOID* pContext )
+static
+BOOL CALLBACK EnumMouseCallback( const DIDEVICEINSTANCE* pdidInstance, VOID* pContext )
 {
-    dxerr Error;
-
     // Is the main mouse If so then do some quick nothing.
-    //if( GUID_SysMouse == pdidInstance ) {}
-
-    Error = CreateMouse( s_Input.Mouse[ s_Input.nMouses ], pdidInstance, MAX_EVENTS );
-
+    //if( GUID_SysMouse == pdidInstance ) {}	
+    dxerr Error = CreateMouse( s_Input.Mouse[ s_Input.nMouses ], pdidInstance, MAX_EVENTS );
+	
     // If it failed, then we can't use this Mouse. (Maybe the user unplugged
-    // it while we were in the middle of enumerating it.)
-    if( !FAILED(Error) ) 
-    {
+    // it while we were in the middle of enumerating it.)	
+    if( !FAILED( Error ) )
         s_Input.nMouses++;
-    }
 
     // If it failed, then we can't use this keyboard. (Maybe the user unplugged
     // it while we were in the middle of enumerating it.)
@@ -373,52 +319,21 @@ BOOL CALLBACK EnumMouseCallback( const DIDEVICEINSTANCE* pdidInstance,
 
 //=========================================================================
 
-static 
-BOOL CALLBACK EnumJoysticksCallback( const DIDEVICEINSTANCE* pdidInstance,
-                                     VOID* pContext )
-{
-    dxerr Error;
-
-    Error = CreateJoystick( s_Input.Joystick[ s_Input.nJoysticks ], pdidInstance, MAX_EVENTS );
-
-    // If it failed, then we can't use this joystick. (Maybe the user unplugged
-    // it while we were in the middle of enumerating it.)
-    if( !FAILED(Error) ) 
-    {
-        s_Input.nJoysticks++;
-    }
-
-    // If it failed, then we can't use this keyboard. (Maybe the user unplugged
-    // it while we were in the middle of enumerating it.)
-    return DIENUM_CONTINUE;
-}
-
-
-
-//=========================================================================
-
-static 
+static
 dxerr CreateMouse( device& Device, const DIDEVICEINSTANCE* pInstance, s32 SampleBufferSize )
 {
-    dxerr   Error;
-    DWORD   dwCoopFlags;
+    dxerr Error;
+    DWORD dwCoopFlags;
 
     // Detrimine where the buffer would like to be allocated 
-    if( s_Input.bExclusive )
-        dwCoopFlags = DISCL_EXCLUSIVE;
-    else
-        dwCoopFlags = DISCL_NONEXCLUSIVE;
+    dwCoopFlags  = s_Input.bExclusive  ? DISCL_EXCLUSIVE    : DISCL_NONEXCLUSIVE;
+    dwCoopFlags |= s_Input.bForeground ? DISCL_FOREGROUND   : DISCL_BACKGROUND;
 
-    if( s_Input.bForeground )
-        dwCoopFlags |= DISCL_FOREGROUND;
-    else
-        dwCoopFlags |= DISCL_BACKGROUND;
-    
     // Obtain an interface to the system mouse device.
     Error = s_Input.pDInput->CreateDevice( pInstance->guidInstance, &Device.pDevice, NULL );
     if( FAILED( Error ) )
         return Error;
-    
+
     // Set the data format to "mouse format" - a predefined data format 
     //
     // A data format specifies which controls on a device we
@@ -429,7 +344,7 @@ dxerr CreateMouse( device& Device, const DIDEVICEINSTANCE* pInstance, s32 Sample
     Error = Device.pDevice->SetDataFormat( &c_dfDIMouse2 );
     if( FAILED( Error ) )
         return Error;
-    
+
     // Set the cooperativity level to let DirectInput know how
     // this device should interact with the system and with other
     // DirectInput applications_Input.
@@ -438,13 +353,11 @@ dxerr CreateMouse( device& Device, const DIDEVICEINSTANCE* pInstance, s32 Sample
     {
         d3deng_KillInput();
         MessageBox( s_Input.Window, "SetCooperativeLevel() returned DIERR_UNSUPPORTED.\n"
-                              "For security reasons, background exclusive Mouse\n"
-                              "access is not allowed.", 
-                              "Mouse", MB_OK );
+                                    "For security reasons, background exclusive Mouse\n"
+                                    "access is not allowed.", "Mouse", MB_OK );
         return Error;
     }
-
-    if( FAILED(Error) )
+    if( FAILED( Error ) )
         return Error;
 
     if( !s_Input.bImmediate )
@@ -481,21 +394,15 @@ dxerr CreateMouse( device& Device, const DIDEVICEINSTANCE* pInstance, s32 Sample
 
 //=========================================================================
 
-static 
+static
 dxerr CreateKeyboard( device& Device, const DIDEVICEINSTANCE* pInstance, s32 SampleBufferSize )
 {
-    dxerr   Error;
-    DWORD   dwCoopFlags;
+    dxerr Error;
+    DWORD dwCoopFlags;
 
-    if( s_Input.bExclusive )
-        dwCoopFlags = DISCL_EXCLUSIVE;
-    else
-        dwCoopFlags = DISCL_NONEXCLUSIVE;
-
-    if( s_Input.bForeground )
-        dwCoopFlags |= DISCL_FOREGROUND;
-    else
-        dwCoopFlags |= DISCL_BACKGROUND;
+    // Detrimine where the buffer would like to be allocated 
+    dwCoopFlags  = s_Input.bExclusive  ? DISCL_EXCLUSIVE    : DISCL_NONEXCLUSIVE;
+    dwCoopFlags |= s_Input.bForeground ? DISCL_FOREGROUND   : DISCL_BACKGROUND;
 
     // Disabling the windows key is only allowed only if we are in foreground nonexclusive
     if( s_Input.bDisableWindowsKey && !s_Input.bExclusive && s_Input.bForeground )
@@ -505,7 +412,7 @@ dxerr CreateKeyboard( device& Device, const DIDEVICEINSTANCE* pInstance, s32 Sam
     Error = s_Input.pDInput->CreateDevice( pInstance->guidInstance, &Device.pDevice, NULL );
     if( FAILED( Error ) )
         return Error;
-    
+
     // Set the data format to "keyboard format" - a predefined data format 
     //
     // A data format specifies which controls on a device we
@@ -516,7 +423,7 @@ dxerr CreateKeyboard( device& Device, const DIDEVICEINSTANCE* pInstance, s32 Sam
     Error = Device.pDevice->SetDataFormat( &c_dfDIKeyboard );
     if( FAILED( Error ) )
         return Error;
-    
+
     // Set the cooperativity level to let DirectInput know how
     // this device should interact with the system and with other
     // DirectInput applications_Input.
@@ -524,13 +431,12 @@ dxerr CreateKeyboard( device& Device, const DIDEVICEINSTANCE* pInstance, s32 Sam
     if( Error == DIERR_UNSUPPORTED && !s_Input.bForeground && s_Input.bExclusive )
     {
         d3deng_KillInput();
-        MessageBox( s_Input.Window,"SetCooperativeLevel() returned DIERR_UNSUPPORTED.\n"
-                                   "For security reasons, background exclusive keyboard\n"
-                                   "access is not allowed.", "Keyboard", MB_OK );
+        MessageBox( s_Input.Window, "SetCooperativeLevel() returned DIERR_UNSUPPORTED.\n"
+                                    "For security reasons, background exclusive keyboard\n"
+                                    "access is not allowed.", "Keyboard", MB_OK );
         return Error;
     }
-
-    if( FAILED(Error) )
+    if( FAILED( Error ) )
         return Error;
 
     if( !s_Input.bImmediate )
@@ -544,8 +450,8 @@ dxerr CreateKeyboard( device& Device, const DIDEVICEINSTANCE* pInstance, s32 Sam
         // Set the buffer size to DINPUT_BUFFERSIZE (defined above) elements_Input.
         //
         // The buffer size is a DWORD property associated with the device.
-        DIPROPDWORD dipdw;
 
+        DIPROPDWORD dipdw;
         dipdw.diph.dwSize       = sizeof(DIPROPDWORD);
         dipdw.diph.dwHeaderSize = sizeof(DIPROPHEADER);
         dipdw.diph.dwObj        = 0;
@@ -568,279 +474,38 @@ dxerr CreateKeyboard( device& Device, const DIDEVICEINSTANCE* pInstance, s32 Sam
 
 //=========================================================================
 
-static 
-BOOL CALLBACK EnumAxesCallback( const DIDEVICEOBJECTINSTANCE* pdidoi,
-                                VOID* pContext )
-{
-    IDirectInputDevice8*    pDevice = (IDirectInputDevice8*)pContext;
-
-    //
-    // Set the range
-    //
-    DIPROPRANGE diprg; 
-    diprg.diph.dwSize       = sizeof(DIPROPRANGE); 
-    diprg.diph.dwHeaderSize = sizeof(DIPROPHEADER); 
-    diprg.diph.dwHow        = DIPH_BYID; 
-    diprg.diph.dwObj        = pdidoi->dwType; // Specify the enumerated axis
-    diprg.lMin              = -1000; 
-    diprg.lMax              = +1000; 
-    
-	// Set the range for the axis
-	if( FAILED( pDevice->SetProperty( DIPROP_RANGE, &diprg.diph ) ) )
-		return DIENUM_STOP;
-
-/*
-    //
-    // Set the dead zone
-    //
-    DIPROPRANGE diprg; 
-    diprg.diph.dwSize       = sizeof(DIPROPRANGE); 
-    diprg.diph.dwHeaderSize = sizeof(DIPROPHEADER); 
-    diprg.diph.dwHow        = DIPH_BYID; 
-    diprg.diph.dwObj        = pdidoi->dwType; // Specify the enumerated axis
-    diprg.lMin              = -1000; 
-    diprg.lMax              = +1000; 
-    
-	// Set the range for the axis
-	if( FAILED( pDevice->SetProperty( DIPROP_DEADZONE, &diprg.diph ) ) )
-		return DIENUM_STOP;
-*/
-
-    return DIENUM_CONTINUE;
-}    
-
-//=========================================================================
-
-static 
-dxerr CreateJoystick( device& Device, const DIDEVICEINSTANCE* pInstance, s32 SampleBufferSize )
-{
-    dxerr Error;
-    DWORD   dwCoopFlags;
-
-    if( s_Input.bExclusive )
-        dwCoopFlags = DISCL_EXCLUSIVE;
-    else
-        dwCoopFlags = DISCL_NONEXCLUSIVE;
-
-    if( s_Input.bForeground )
-        dwCoopFlags |= DISCL_FOREGROUND;
-    else
-        dwCoopFlags |= DISCL_BACKGROUND;
-
-    // Obtain an interface to the joystick device.
-    Error = s_Input.pDInput->CreateDevice( pInstance->guidInstance, &Device.pDevice, NULL );
-    if( FAILED( Error ) )
-        return Error;
-
-    // Set the data format to "simple joystick" - a predefined data format 
-    //
-    // A data format specifies which controls on a device we are interested in,
-    // and how they should be reported. This tells DInput that we will be
-    // passing a DIJOYSTATE2 structure to IDirectInputDevice::GetDeviceState().
-    Error = Device.pDevice->SetDataFormat( &c_dfDIJoystick2 );
-    if( FAILED( Error ) )
-        return Error;
-
-    // Set the cooperative level to let DInput know how this device should
-    // interact with the system and with other DInput applications.
-    Error = Device.pDevice->SetCooperativeLevel( s_Input.Window, dwCoopFlags );
-    if( Error == DIERR_UNSUPPORTED && !s_Input.bForeground && s_Input.bExclusive )
-    {
-        d3deng_KillInput();
-        MessageBox( s_Input.Window,"SetCooperativeLevel() returned DIERR_UNSUPPORTED.\n"
-                                   "For security reasons, background exclusive joystick\n"
-                                   "access is not allowed.", "Keyboard", MB_OK );
-        return Error;
-    }
-    if( Error == E_INVALIDARG )
-    {
-        d3deng_KillInput();
-        MessageBox( s_Input.Window,"SetCooperativeLevel() returned DIERR_INVALIDPARAM.\n"
-                                   "Invalid parameter", "Joystick", MB_OK );
-        return Error;
-    }
-    if( Error == E_HANDLE )
-    {
-        d3deng_KillInput();
-        MessageBox( s_Input.Window,"SetCooperativeLevel() returned E_HANDLE.\n"
-                                   "Invalid window handle", "Joystick", MB_OK );
-        return Error;
-    }
-    
-    if( FAILED(Error) )
-        return Error;
-
-    if( !s_Input.bImmediate )
-    {
-        // IMPORTANT STEP TO USE BUFFERED DEVICE DATA!
-        //
-        // DirectInput uses unbuffered I/O (buffer size = 0) by default.
-        // If you want to read buffered data, you need to set a nonzero
-        // buffer size.
-        //
-        // Set the buffer size to DINPUT_BUFFERSIZE (defined above) elements_Input.
-        //
-        // The buffer size is a DWORD property associated with the device.
-        DIPROPDWORD dipdw;
-
-        dipdw.diph.dwSize       = sizeof(DIPROPDWORD);
-        dipdw.diph.dwHeaderSize = sizeof(DIPROPHEADER);
-        dipdw.diph.dwObj        = 0;
-        dipdw.diph.dwHow        = DIPH_DEVICE;
-        dipdw.dwData            = SampleBufferSize; // Arbitary buffer size
-
-        Error = Device.pDevice->SetProperty( DIPROP_BUFFERSIZE, &dipdw.diph );
-        if( FAILED( Error ) )
-            return Error;
-    }
-
-    // Determine how many axis the joystick has (so we don't error out setting
-    // properties for unavailable axis)
-    DIDEVCAPS               DeviceCaps;
-    DeviceCaps.dwSize = sizeof(DIDEVCAPS);
-    Error = Device.pDevice->GetCapabilities( &DeviceCaps );
-    if( FAILED( Error ) )
-        return Error;
-
-    // Enumerate the axes of the joyctick and set the range of each axis. Note:
-    // we could just use the defaults, but we're just trying to show an example
-    // of enumerating device objects (axes, buttons, etc.).
-    Error = Device.pDevice->EnumObjects( EnumAxesCallback, (VOID*)Device.pDevice, DIDFT_AXIS );
-    if( FAILED( Error ) )
-        return Error;
-
-    //
-    // Set the device for the type of joystick
-    //
-
-    if( x_strcmp( "4 axis 16 button joystick", pInstance->tszProductName ) == 0 )
-    {
-        Device.Flags |= DEVICE_FLG_PS2_PAD;
-
-        s_Input.PS2PadDevice[ s_Input.nPS2Pads ] = s_Input.nJoysticks;
-        s_Input.nPS2Pads++;
-    }
-    else if( (x_strcmp( "PSX for USB Converter (4-axis, 12-button, POV,effects)", pInstance->tszProductName ) == 0) ||
-             (x_strcmp( "PSX/USB Pad Adaptor (4-axis, 12-button, POV,effects)", pInstance->tszProductName ) == 0) )
-    {
-        Device.Flags |= DEVICE_FLG_PS2_PAD;
-		Device.Flags |= DEVICE_FLG_SOYO_PS2_PAD;
-
-        s_Input.PS2PadDevice[ s_Input.nPS2Pads ] = s_Input.nJoysticks;
-        s_Input.nPS2Pads++;
-    }
-    else if( (x_strcmp( "PS Vibration Feedback Converter ", pInstance->tszProductName ) == 0) ||
-             (x_strcmp( "Logitech RumblePad 2 USB", pInstance->tszProductName ) == 0) )
-    {
-        Device.Flags |= DEVICE_FLG_PS2_PAD;
-		Device.Flags |= DEVICE_FLG_DUALSHOCK_CONVERTER_PS2_PAD;
-
-        s_Input.PS2PadDevice[ s_Input.nPS2Pads ] = s_Input.nJoysticks;
-        s_Input.nPS2Pads++;
-    }
-    else if(  ( x_strcmp( "PSX/USB Pad", pInstance->tszProductName ) == 0 ) ||
-             (x_strcmp( "4 axis 12 button joystick with hat switch", pInstance->tszProductName ) == 0) )
-    {
-        Device.Flags |= DEVICE_FLG_PS2_PAD;
-        Device.Flags |= DEVICE_FLG_PSX_USB_PAD;
-
-        s_Input.PS2PadDevice[ s_Input.nPS2Pads ] = s_Input.nJoysticks;
-        s_Input.nPS2Pads++;
-    }
-    else if( x_strcmp( "Logitech Dual Action USB", pInstance->tszProductName ) == 0 )
-    {
-        Device.Flags |= DEVICE_FLG_PS2_PAD;
-
-        s_Input.PS2PadDevice[ s_Input.nPS2Pads ] = s_Input.nJoysticks;
-        s_Input.nPS2Pads++;
-    }
-    else
-    {
-
-        s_Input.PCPadDevice[ s_Input.nPCPads ] = s_Input.nJoysticks;
-        s_Input.nPCPads++;
-    
-	}  
-    return Error;
-}
-
-//=========================================================================
-
-static 
+static
 dxerr ReadKeyboadBufferedData( device& Device, s32 ID )
 {
-    DIDEVICEOBJECTDATA  didod[ MAX_EVENTS ];  // Receives buffered data 
-    DWORD               dwElements;
+    DIDEVICEOBJECTDATA  didod[ MAX_EVENTS ];
+    DWORD               dwElements = MAX_EVENTS;
     dxerr               Error;
 
-    dwElements = MAX_EVENTS;
     Error = Device.pDevice->GetDeviceData( sizeof(DIDEVICEOBJECTDATA), didod, &dwElements, 0 );
-    if( Error != DI_OK ) 
+    if( Error != DI_OK )
     {
-        // We got an error or we got DI_BUFFEROVERFLOW.
-        //
-        // Either way, it means that continuous contact with the
-        // device has been lost, either due to an external
-        // interruption, or because the buffer overflowed
-        // and some events were lost.
-        //
-        // Consequently, if a button was pressed at the time
-        // the buffer overflowed or the connection was broken,
-        // the corresponding "up" message might have been lost.
-        //
-        // But since our simple sample doesn't actually have
-        // any state associated with button up or down events,
-        // there is no state to reset.  (In a real game, ignoring
-        // the buffer overflow would result in the game thinking
-        // a key was held down when in fact it isn't; it's just
-        // that the "up" event got lost because the buffer
-        // overflowed.)
-        //
-        // If we want to be cleverer, we could do a
-        // GetDeviceState() and compare the current state
-        // against the state we think the device is in,
-        // and process all the states that are currently
-        // different from our private state.
         Error = Device.pDevice->Acquire();
-        while( Error == DIERR_INPUTLOST ) 
+        while( Error == DIERR_INPUTLOST )
             Error = Device.pDevice->Acquire();
 
-        // Update the dialog text 
-        if( Error == DIERR_OTHERAPPHASPRIO || 
-            Error == DIERR_NOTACQUIRED ) 
-        {
-            // We lost the device some how 
-            //    SetDlgItemText( s_Input.Window, IDC_DATA, "Unacquired" );
-        }
-
-        // hr may be DIERR_OTHERAPPHASPRIO or other errors.  This
-        // may occur when the app is minimized or in the process of 
-        // switching, so just try again later 
-        return Error; 
+        return Error;
     }
 
-    if( FAILED(Error) )  
+    if( FAILED( Error ) )
         return Error;
 
-    //
-    // Study each of the buffer elements and process them.
-    //
-    for( u32 i = 0; i < dwElements; i++ ) 
+    for( u32 i = 0; i < dwElements; i++ )
     {
-        state&          State  = GetState( didod[ i ].dwTimeStamp );
-        input_gadget    Gadget = (input_gadget)( didod[ i ].dwOfs );
+        state&       State  = GetState( didod[ i ].dwTimeStamp );
+        input_gadget Gadget = (input_gadget)( didod[ i ].dwOfs );
 
         ASSERT( Gadget >= 0 );
         ASSERT( Gadget < DIGITAL_COUNT_KBD );
 
-        if( (didod[ i ].dwData & 0x80) )
-        {
-            State.Keyboard[ ID ].Digital[ Gadget ] |= DIGITAL_ON | DIGITAL_DEBAUNCE;
-        }
+        if( didod[ i ].dwData & 0x80 )
+            State.Keyboard[ ID ].Digital[ Gadget ] |=  DIGITAL_ON | DIGITAL_DEBAUNCE;
         else
-        {
-            State.Keyboard[ ID ].Digital[ Gadget ] &= (~DIGITAL_ON);
-        }
+            State.Keyboard[ ID ].Digital[ Gadget ] &= ~DIGITAL_ON;
     }
 
     return Error;
@@ -848,67 +513,29 @@ dxerr ReadKeyboadBufferedData( device& Device, s32 ID )
 
 //=========================================================================
 
-static 
+static
 dxerr ReadMouseBufferedData( device& Device, s32 ID )
 {
-    DIDEVICEOBJECTDATA didod[ MAX_EVENTS ];  // Receives buffered data 
-    DWORD              dwElements;
-    dxerr              Error;
+    DIDEVICEOBJECTDATA  didod[ MAX_EVENTS ];
+    DWORD               dwElements = MAX_EVENTS;
+    dxerr               Error;
 
-    dwElements = MAX_EVENTS;
     Error = Device.pDevice->GetDeviceData( sizeof(DIDEVICEOBJECTDATA), didod, &dwElements, 0 );
-    if( Error != DI_OK ) 
+    if( Error != DI_OK )
     {
-        // We got an error or we got DI_BUFFEROVERFLOW.
-        //
-        // Either way, it means that continuous contact with the
-        // device has been lost, either due to an external
-        // interruption, or because the buffer overflowed
-        // and some events were lost.
-        //
-        // Consequently, if a button was pressed at the time
-        // the buffer overflowed or the connection was broken,
-        // the corresponding "up" message might have been lost.
-        //
-        // But since our simple sample doesn't actually have
-        // any state associated with button up or down events,
-        // there is no state to reset.  (In a real game, ignoring
-        // the buffer overflow would result in the game thinking
-        // a key was held down when in fact it isn't; it's just
-        // that the "up" event got lost because the buffer
-        // overflowed.)
-        //
-        // If we want to be cleverer, we could do a
-        // GetDeviceState() and compare the current state
-        // against the state we think the device is in,
-        // and process all the states that are currently
-        // different from our private state.
         Error = Device.pDevice->Acquire();
-        while( Error == DIERR_INPUTLOST ) 
+        while( Error == DIERR_INPUTLOST )
             Error = Device.pDevice->Acquire();
 
-        // Update the dialog text 
-        if( Error == DIERR_OTHERAPPHASPRIO || 
-            Error == DIERR_NOTACQUIRED ) 
-        {
-        //    SetDlgItemText( hDlg, IDC_DATA, "Unacquired" );
-        }
-
-        // hr may be DIERR_OTHERAPPHASPRIO or other errors.  This
-        // may occur when the app is minimized or in the process of 
-        // switching, so just try again later 
-        return Error; 
+        return Error;
     }
 
-    if( FAILED(Error) )  
+    if( FAILED( Error ) )
         return Error;
 
-    //
-    // Study each of the buffer elements and process them.
-    //
-    for( u32 i = 0; i < dwElements; i++ ) 
+    for( u32 i = 0; i < dwElements; i++ )
     {
-        state& State  = GetState( didod[ i ].dwTimeStamp );
+        state& State = GetState( didod[ i ].dwTimeStamp );
 
         if( didod[ i ].dwOfs >= DIMOFS_BUTTON0 && didod[ i ].dwOfs <= DIMOFS_BUTTON7 )
         {
@@ -916,470 +543,243 @@ dxerr ReadMouseBufferedData( device& Device, s32 ID )
             ASSERT( Index >= 0 );
             ASSERT( Index < DIGITAL_COUNT_MOUSE );
 
-            if( (didod[ i ].dwData & 0x80) )
-            {
-                State.Mouse[ID].Digital[ Index ] |= DIGITAL_ON | DIGITAL_DEBAUNCE;
-            }
+            if( didod[ i ].dwData & 0x80 )
+                State.Mouse[ ID ].Digital[ Index ] |=  DIGITAL_ON | DIGITAL_DEBAUNCE;
             else
-            {
-                State.Mouse[ID].Digital[ Index ] &= (~DIGITAL_ON);
-            }
+                State.Mouse[ ID ].Digital[ Index ] &= ~DIGITAL_ON;
         }
         else if( didod[ i ].dwOfs >= DIMOFS_X && didod[ i ].dwOfs <= DIMOFS_Z )
         {
-            s32 Index = (didod[ i ].dwOfs - DIMOFS_X)>>2;
+            s32 Index = (didod[ i ].dwOfs - DIMOFS_X) >> 2;
             ASSERT( Index >= 0 );
             ASSERT( Index < ANALOG_COUNT_MOUSE );
-            //DebugMessage( "%d\n", Index );
-            State.Mouse[ID].Anolog[ Index ] = (f32)((s32)didod[ i ].dwData);
+            State.Mouse[ ID ].Anolog[ Index ] = (f32)((s32)didod[ i ].dwData);
         }
     }
 
-    return Error;
-}
-
-//=========================================================================
-
-static 
-dxerr ReadMouseImmediateData( device& Device, s32 ID )
-{
-    dxerr           Error;
-    DIMOUSESTATE2   dims2;      // DirectInput mouse state structure
-
-    // Get the input's device state, and put the state in dims
-    ZeroMemory( &dims2, sizeof(dims2) );
-
-    Error = Device.pDevice->GetDeviceState( sizeof(DIMOUSESTATE2), &dims2 );
-    if( FAILED(Error) ) 
-    {
-        // DirectInput may be telling us that the input stream has been
-        // interrupted.  We aren't tracking any state between polls, so
-        // we don't have any special reset that needs to be done.
-        // We just re-acquire and try again.
-        
-        // If input is lost then acquire and keep trying 
-        Error = Device.pDevice->Acquire();
-        while( Error == DIERR_INPUTLOST ) 
-            Error = Device.pDevice->Acquire();
-
-        // Update the dialog text 
-        if( Error == DIERR_OTHERAPPHASPRIO || 
-            Error == DIERR_NOTACQUIRED ) 
-        {
-            // Lost device
-        //    SetDlgItemText( hDlg, IDC_DATA, "Unacquired" );
-        }
-
-        // hr may be DIERR_OTHERAPPHASPRIO or other errors.  This
-        // may occur when the app is minimized or in the process of 
-        // switching, so just try again later 
-        return Error; 
-    }
-    
-    //
-    // The dims structure now has the state of the mouse.
-    //        
-    for( s32 i=0; i<8; i++ )
-    {
-        s_Input.State[0].Mouse[ID].Digital[i] = (dims2.rgbButtons[i]& 0x80) != 0;
-    }
-
-    s_Input.State[0].Mouse[ID].Anolog[0] = (f32)dims2.lX;
-    s_Input.State[0].Mouse[ID].Anolog[1] = (f32)dims2.lY; 
-    s_Input.State[0].Mouse[ID].Anolog[2] = (f32)dims2.lZ;
-
-    return Error;
-}
-
-//=========================================================================
-
-static 
-dxerr ReadKeyboardImmediateData( device& Device, s32 ID )
-{
-    dxerr   Error;
-    byte    diks[256];   // DirectInput keyboard state buffer 
-    
-    // Get the input's device state, and put the state in dims
-    ZeroMemory( &diks, sizeof(diks) );
-
-    Error = Device.pDevice->GetDeviceState( sizeof(diks), &diks );
-    if( FAILED(Error) ) 
-    {
-        // DirectInput may be telling us that the input stream has been
-        // interrupted.  We aren't tracking any state between polls, so
-        // we don't have any special reset that needs to be done.
-        // We just re-acquire and try again.
-        
-        // If input is lost then acquire and keep trying 
-        Error = Device.pDevice->Acquire();
-        while( Error == DIERR_INPUTLOST ) 
-            Error = Device.pDevice->Acquire();
-
-        // Update the dialog text 
-        if( Error == DIERR_OTHERAPPHASPRIO || 
-            Error == DIERR_NOTACQUIRED ) 
-        {
-            // Lost Device
-        //    SetDlgItemText( hDlg, IDC_DATA, "Unacquired" );
-        }
-
-        // hr may be DIERR_OTHERAPPHASPRIO or other errors.  This
-        // may occur when the app is minimized or in the process of 
-        // switching, so just try again later 
-        return Error; 
-    }
-    
-    // Make a string of the index values of the keys that are down
-    for( s32 i = 0; i < ( INPUT_KBD__END - INPUT_KBD__BEGIN ) ; i++ ) 
-    {
-        xbool Pressed = ( diks[i] & 0x80 ) != 0;
-
-        if( Pressed )
-        {
-            if( s_Input.State[0].Keyboard[ID].Digital[i] & DIGITAL_ON )
-            {
-                s_Input.State[0].Keyboard[ID].Digital[i] &= ~DIGITAL_DEBAUNCE;
-            }
-            else
-            {
-                s_Input.State[0].Keyboard[ID].Digital[i] |= DIGITAL_ON | DIGITAL_DEBAUNCE;
-            }
-        }
-        else
-        {
-            s_Input.State[0].Keyboard[ID].Digital[i] &= (~(DIGITAL_ON|DIGITAL_DEBAUNCE));
-        }                    
-
-    }
-
-    //ASSERT( s_Input.State[0].Keyboard[0].Digital[2] == 0 );        
-
-    return Error;
-}
-
-
-//=========================================================================
-
-static 
-dxerr ReadJoystickImmediateData( device& Device, s32 ID )
-{
-    dxerr           Error;
-    DIJOYSTATE2     dipad2;      // DirectInput Joystick state structure
-
-    // Get the input's device state, and put the state in dims
-    ZeroMemory( &dipad2, sizeof(dipad2) );
-
-    Error = Device.pDevice->GetDeviceState( sizeof(DIJOYSTATE2), &dipad2 );
-    if( FAILED(Error) ) 
-    {
-        // DirectInput may be telling us that the input stream has been
-        // interrupted.  We aren't tracking any state between polls, so
-        // we don't have any special reset that needs to be done.
-        // We just re-acquire and try again.
-        
-        // If input is lost then acquire and keep trying 
-        Error = Device.pDevice->Acquire();
-        while( Error == DIERR_INPUTLOST ) 
-            Error = Device.pDevice->Acquire();
-
-        // Update the dialog text 
-        if( Error == DIERR_OTHERAPPHASPRIO || 
-            Error == DIERR_NOTACQUIRED ) 
-        {
-            // Lost device
-        //    SetDlgItemText( hDlg, IDC_DATA, "Unacquired" );
-        }
-
-        // hr may be DIERR_OTHERAPPHASPRIO or other errors.  This
-        // may occur when the app is minimized or in the process of 
-        // switching, so just try again later 
-        return Error; 
-    }
-    
-    // The dipad2 structure now has the state of the pad.
-    {
-        if( Device.Flags & DEVICE_FLG_PS2_PAD )
-        {
-        }
-        else
-        {
-            for( s32 i=0; i<(INPUT_PC_BTN_31 - INPUT_PC_BTN_0); i++ )
-            {
-                s_Input.State[0].PCPad[ID].Digital[ i ] = ( dipad2.rgbButtons[ i ] & 0x80) !=0;
-            }
-
-            s_Input.State[0].PCPad[ID].Anolog[0] = (f32)dipad2.lX;
-            s_Input.State[0].PCPad[ID].Anolog[1] = (f32)dipad2.lY;
-            s_Input.State[0].PCPad[ID].Anolog[2] = (f32)dipad2.lZ;
-
-            s_Input.State[0].PCPad[ID].Anolog[3] = (f32)dipad2.lRx;
-            s_Input.State[0].PCPad[ID].Anolog[4] = (f32)dipad2.lRy;
-            s_Input.State[0].PCPad[ID].Anolog[5] = (f32)dipad2.lRz;
-        }
-    }
-    
-    return Error;
-}
-
-//=========================================================================
-
-static 
-dxerr ReadJoystickBufferedData( device& Device, s32 ID )
-{
-    DIDEVICEOBJECTDATA didod[ MAX_EVENTS ];  // Receives buffered data 
-    DWORD              dwElements;
-    dxerr              Error;
-
-    dwElements = MAX_EVENTS;
-    Error = Device.pDevice->GetDeviceData( sizeof(DIDEVICEOBJECTDATA), didod, &dwElements, 0 );
-    if( Error != DI_OK ) 
-    {
-        // We got an error or we got DI_BUFFEROVERFLOW.
-        //
-        // Either way, it means that continuous contact with the
-        // device has been lost, either due to an external
-        // interruption, or because the buffer overflowed
-        // and some events were lost.
-        //
-        // Consequently, if a button was pressed at the time
-        // the buffer overflowed or the connection was broken,
-        // the corresponding "up" message might have been lost.
-        //
-        // But since our simple sample doesn't actually have
-        // any state associated with button up or down events,
-        // there is no state to reset.  (In a real game, ignoring
-        // the buffer overflow would result in the game thinking
-        // a key was held down when in fact it isn't; it's just
-        // that the "up" event got lost because the buffer
-        // overflowed.)
-        //
-        // If we want to be cleverer, we could do a
-        // GetDeviceState() and compare the current state
-        // against the state we think the device is in,
-        // and process all the states that are currently
-        // different from our private state.
-        Error = Device.pDevice->Acquire();
-        while( Error == DIERR_INPUTLOST ) 
-            Error = Device.pDevice->Acquire();
-
-        // Update the dialog text 
-        if( Error == DIERR_OTHERAPPHASPRIO || 
-            Error == DIERR_NOTACQUIRED ) 
-        {
-        //    SetDlgItemText( hDlg, IDC_DATA, "Unacquired" );
-        }
-
-        // hr may be DIERR_OTHERAPPHASPRIO or other errors.  This
-        // may occur when the app is minimized or in the process of 
-        // switching, so just try again later 
-        return Error; 
-    }
-
-    if( FAILED(Error) )  
-        return Error;
-
-    for( u32 i = 0; i < dwElements; i++ ) 
-    {
-        state& State = GetState( didod[ i ].dwTimeStamp );
-
-        if( Device.Flags & DEVICE_FLG_PS2_PAD )
-        {            
-            static s32 BtnMap[]=
-            {
-                INPUT_PS2_BTN_TRIANGLE  - INPUT_PS2_BTN_L2,   //  0             
-                INPUT_PS2_BTN_CIRCLE    - INPUT_PS2_BTN_L2,   //  1           
-                INPUT_PS2_BTN_CROSS     - INPUT_PS2_BTN_L2,   //  2                  
-                INPUT_PS2_BTN_SQUARE    - INPUT_PS2_BTN_L2,   //  3                 
-
-                INPUT_PS2_BTN_L2        - INPUT_PS2_BTN_L2,   //  4                     
-                INPUT_PS2_BTN_R2        - INPUT_PS2_BTN_L2,   //  5                     
-  
-                INPUT_PS2_BTN_L1        - INPUT_PS2_BTN_L2,   //  6                     
-                INPUT_PS2_BTN_R1        - INPUT_PS2_BTN_L2,   //  7                     
-  
-                INPUT_PS2_BTN_SELECT    - INPUT_PS2_BTN_SELECT,  //  8
-                INPUT_PS2_BTN_START     - INPUT_PS2_BTN_SELECT,  //  9
-
-                INPUT_PS2_BTN_R_STICK   - INPUT_PS2_BTN_SELECT,  // 10
-                INPUT_PS2_BTN_L_STICK   - INPUT_PS2_BTN_SELECT,  // 11
-  
-                INPUT_PS2_BTN_L_UP      - INPUT_PS2_BTN_L2,   // 12                  
-                INPUT_PS2_BTN_L_RIGHT   - INPUT_PS2_BTN_L2,   // 13              
-                INPUT_PS2_BTN_L_DOWN    - INPUT_PS2_BTN_L2,   // 14               
-                INPUT_PS2_BTN_L_LEFT    - INPUT_PS2_BTN_L2,   // 15               
-            };  
-
-			if( (Device.Flags & DEVICE_FLG_SOYO_PS2_PAD) ||
-                (Device.Flags & DEVICE_FLG_DUALSHOCK_CONVERTER_PS2_PAD) ) // SOYO Uses POV Hat switch, so we must interpret results for buttons 12-15
-			{
-				if( didod[ i ].dwOfs >= DIJOFS_POV(0) && didod[ i ].dwOfs <= DIJOFS_POV(3) ) 			
-				{
-					if( didod[ i ].dwData == 0xFFFFFFFF ) // POV Hat Switch released
-					{
-						if( State.PS2Pad[ID].Anolog[ 12 ] > 0.01f ) 
-                            State.PS2Pad[ID].Anolog[ 12 ] = State.PS2Pad[ID].Anolog[ 12 ] - 1;
-						if( State.PS2Pad[ID].Anolog[ 13 ] > 0.01f ) 
-                            State.PS2Pad[ID].Anolog[ 13 ] = State.PS2Pad[ID].Anolog[ 13 ] - 1;
-						if( State.PS2Pad[ID].Anolog[ 14 ] > 0.01f ) 
-                            State.PS2Pad[ID].Anolog[ 14 ] = State.PS2Pad[ID].Anolog[ 14 ] - 1;
-						if( State.PS2Pad[ID].Anolog[ 15 ] > 0.01f ) 
-                            State.PS2Pad[ID].Anolog[ 15 ] = State.PS2Pad[ID].Anolog[ 15 ] - 1;
-					}
-					else // Hat Switch Pressed.
-					{
-						s32 Index = didod[ i ].dwData/9000 + 12; // Mapped to buttons 12-15 
-                        State.PS2Pad[ID].Anolog[ Index ] = 1.0001f;
-					}
-				}
-
-                if( Device.Flags & DEVICE_FLG_DUALSHOCK_CONVERTER_PS2_PAD )
-                {
-                    f32 Temp;
-
-                    Temp                        = State.PS2Pad[ID].Anolog[18];
-                    State.PS2Pad[ID].Anolog[18] = State.PS2Pad[ID].Anolog[19];
-                    State.PS2Pad[ID].Anolog[19] = Temp;
-                }
-			}
-
-			// OLD
-            //if( didod[ i ].dwOfs >= DIJOFS_BUTTON0 && didod[ i ].dwOfs <= DIJOFS_BUTTON31 ) 
-
-			if( didod[ i ].dwOfs >= DIJOFS_BUTTON0 && didod[ i ].dwOfs <= DIJOFS_BUTTON31 ) 			
-            {
-                s32 Index = didod[ i ].dwOfs - DIJOFS_BUTTON0;
-
-                ASSERT( Index >= 0 );
-                ASSERT( Index < ANALOG_COUNT_PS2PAD );
-
-                if( Index >= 8 && Index <= 11 )
-                {
-                    Index = BtnMap[ Index ];
-
-                    ASSERT( Index >= 0 );
-                    ASSERT( Index < ANALOG_COUNT_PS2PAD );
-
-                    if( (didod[ i ].dwData & 0x80) )
-                    {
-                        State.PS2Pad[ID].Digital[ Index ] |= DIGITAL_ON | DIGITAL_DEBAUNCE;
-                    }
-                    else
-                    {
-                        State.PS2Pad[ID].Digital[ Index ] &= (~DIGITAL_ON);
-                    }                    
-                }
-                else
-                {
-                    Index = BtnMap[ Index ];
-
-                    //DebugMessage( "%d \n", Index );
-
-                    ASSERT( Index >= 0 );
-                    ASSERT( Index < ANALOG_COUNT_PS2PAD );
-
-                    if( didod[ i ].dwData & 0x80 )
-                    {
-                        State.PS2Pad[ID].Anolog[ Index ] = 1.0001f;
-                    }
-                    else
-                    {
-                        if( State.PS2Pad[ID].Anolog[ Index ] > 0.01f ) 
-                            State.PS2Pad[ID].Anolog[ Index ] = State.PS2Pad[ID].Anolog[ Index ] - 1;
-                    }                    
-                }
-            }
-            else if( didod[ i ].dwOfs >= DIJOFS_X && didod[ i ].dwOfs <= DIJOFS_RZ ) 
-            {
-                s32 Index = (didod[ i ].dwOfs - DIJOFS_X)>>2;
-
-                ASSERT( Index >= 0 );
-                ASSERT( Index < ANALOG_COUNT_PS2PAD );
-
-                if( Index == 0 )
-                {
-                    Index = INPUT_PS2_STICK_LEFT_X  - INPUT_PS2_BTN_L2 ;
-                    State.PS2Pad[ID].Anolog[ Index ] = (f32)((s32)didod[ i ].dwData)/ 1000.0f;    
-                }
-                else if( Index == 1 )
-                {
-                    Index = INPUT_PS2_STICK_LEFT_Y  - INPUT_PS2_BTN_L2 ;
-                    State.PS2Pad[ID].Anolog[ Index ] = (f32)((s32)didod[ i ].dwData)/-1000.0f;    
-                }
-                else if( Index == 2 )
-                {
-                    //Index = INPUT_PS2_STICK_RIGHT_X  - INPUT_PS2_BTN_L2 ;
-                    //State.PS2Pad[ID].Anolog[ Index ] = (f32)((s32)didod[ i ].dwData)/ 1000.0f;    
-                    Index = INPUT_PS2_STICK_RIGHT_Y  - INPUT_PS2_BTN_L2;
-                    State.PS2Pad[ID].Anolog[ Index ] = (f32)((s32)didod[ i ].dwData)/ -1000.0f;    
-                }
-                else if( Index == 5 )
-                {
-                    //Index = INPUT_PS2_STICK_RIGHT_Y  - INPUT_PS2_BTN_L2;
-                    //State.PS2Pad[ID].Anolog[ Index ] = (f32)((s32)didod[ i ].dwData)/-1000.0f;    
-                    Index = INPUT_PS2_STICK_RIGHT_X  - INPUT_PS2_BTN_L2 ;
-                    State.PS2Pad[ID].Anolog[ Index ] = (f32)((s32)didod[ i ].dwData)/ 1000.0f;    
-                }
-            }
-        }
-        else
-        {
-            //
-            // Set the button presses
-            //
-            if( didod[ i ].dwOfs >= DIJOFS_BUTTON0 && didod[ i ].dwOfs <= DIJOFS_BUTTON31 ) 
-            {
-                s32 Index = didod[ i ].dwOfs - DIJOFS_BUTTON0;
-
-                ASSERT( Index >= 0 );
-                ASSERT( Index < DIGITAL_COUNT_PCPAD );
-
-                if( (didod[ i ].dwData & 0x80) )
-                {
-                    State.PCPad[ID].Digital[ Index ] |= DIGITAL_ON | DIGITAL_DEBAUNCE;
-                }
-                else
-                {
-                    State.PCPad[ID].Digital[ Index ] &= (~DIGITAL_ON);
-                }
-            }
-            else if( didod[ i ].dwOfs >= DIJOFS_X && didod[ i ].dwOfs <= DIJOFS_RZ ) 
-            {
-                s32 Index = (didod[ i ].dwOfs - DIJOFS_X)>>2;
-
-                ASSERT( Index >= 0 );
-                ASSERT( Index < ANALOG_COUNT_PCPAD );
-
-                //DebugMessage( "%d %d\n", Index, didod[ i ].dwData );
-
-                State.PCPad[ID].Anolog[ Index ] = (f32)((s32)didod[ i ].dwData)/1000.0f;
-            }
-        }
-    }
     return Error;
 }
 
 //=========================================================================
 
 static
+dxerr ReadMouseImmediateData( device& Device, s32 ID )
+{
+    dxerr         Error;
+    DIMOUSESTATE2 dims2;
+
+    ZeroMemory( &dims2, sizeof(dims2) );
+    Error = Device.pDevice->GetDeviceState( sizeof(DIMOUSESTATE2), &dims2 );
+    if( FAILED( Error ) )
+    {
+        Error = Device.pDevice->Acquire();
+        while( Error == DIERR_INPUTLOST )
+            Error = Device.pDevice->Acquire();
+
+        return Error;
+    }
+
+    for( s32 i = 0; i < 8; i++ )
+        s_Input.State[0].Mouse[ ID ].Digital[ i ] = (dims2.rgbButtons[ i ] & 0x80) != 0;
+
+    s_Input.State[0].Mouse[ ID ].Anolog[0] = (f32)dims2.lX;
+    s_Input.State[0].Mouse[ ID ].Anolog[1] = (f32)dims2.lY;
+    s_Input.State[0].Mouse[ ID ].Anolog[2] = (f32)dims2.lZ;
+
+    return Error;
+}
+
+//=========================================================================
+
+static
+dxerr ReadKeyboardImmediateData( device& Device, s32 ID )
+{
+    dxerr Error;
+    byte  diks[256];
+
+    ZeroMemory( &diks, sizeof(diks) );
+    Error = Device.pDevice->GetDeviceState( sizeof(diks), &diks );
+    if( FAILED( Error ) )
+    {
+        Error = Device.pDevice->Acquire();
+        while( Error == DIERR_INPUTLOST )
+            Error = Device.pDevice->Acquire();
+
+        return Error;
+    }
+
+    for( s32 i = 0; i < ( INPUT_KBD__END - INPUT_KBD__BEGIN ); i++ )
+    {
+        xbool Pressed = ( diks[ i ] & 0x80 ) != 0;
+
+        if( Pressed )
+        {
+            if( s_Input.State[0].Keyboard[ ID ].Digital[ i ] & DIGITAL_ON )
+                s_Input.State[0].Keyboard[ ID ].Digital[ i ] &= ~DIGITAL_DEBAUNCE;
+            else
+                s_Input.State[0].Keyboard[ ID ].Digital[ i ] |= DIGITAL_ON | DIGITAL_DEBAUNCE;
+        }
+        else
+        {
+            s_Input.State[0].Keyboard[ ID ].Digital[ i ] &= ~(DIGITAL_ON | DIGITAL_DEBAUNCE);
+        }
+    }
+
+    return Error;
+}
+
+//=========================================================================
+
+static
+void ReadXboxPad( s32 ID )
+{
+    XINPUT_STATE xState;
+    s_Input.bXboxConnected[ ID ] = ( XInputGetState( ID, &xState ) == ERROR_SUCCESS );
+    if( !s_Input.bXboxConnected[ ID ] )
+        return;
+
+    const XINPUT_GAMEPAD& Pad  = xState.Gamepad;
+    input_xbox_pad&       XPad = s_Input.State[0].XboxPad[ ID ];
+
+    // Digital buttons (START, BACK, DPAD, thumb clicks)
+    static const struct { WORD Mask; s32 Idx; } s_DigMap[] =
+    {
+        { XINPUT_GAMEPAD_START,        INPUT_XBOX_BTN_START   - INPUT_XBOX__DIGITAL_BUTTONS_BEGIN - 1 },
+        { XINPUT_GAMEPAD_BACK,         INPUT_XBOX_BTN_BACK    - INPUT_XBOX__DIGITAL_BUTTONS_BEGIN - 1 },
+        { XINPUT_GAMEPAD_DPAD_LEFT,    INPUT_XBOX_BTN_LEFT    - INPUT_XBOX__DIGITAL_BUTTONS_BEGIN - 1 },
+        { XINPUT_GAMEPAD_DPAD_RIGHT,   INPUT_XBOX_BTN_RIGHT   - INPUT_XBOX__DIGITAL_BUTTONS_BEGIN - 1 },
+        { XINPUT_GAMEPAD_DPAD_UP,      INPUT_XBOX_BTN_UP      - INPUT_XBOX__DIGITAL_BUTTONS_BEGIN - 1 },
+        { XINPUT_GAMEPAD_DPAD_DOWN,    INPUT_XBOX_BTN_DOWN    - INPUT_XBOX__DIGITAL_BUTTONS_BEGIN - 1 },
+        { XINPUT_GAMEPAD_LEFT_THUMB,   INPUT_XBOX_BTN_L_STICK - INPUT_XBOX__DIGITAL_BUTTONS_BEGIN - 1 },
+        { XINPUT_GAMEPAD_RIGHT_THUMB,  INPUT_XBOX_BTN_R_STICK - INPUT_XBOX__DIGITAL_BUTTONS_BEGIN - 1 },
+    };
+
+    for( s32 i = 0; i < (s32)(sizeof(s_DigMap)/sizeof(s_DigMap[0])); i++ )
+    {
+        xbool Pressed = ( Pad.wButtons & s_DigMap[i].Mask ) != 0;
+        byte& Slot    = XPad.Digital[ s_DigMap[i].Idx ];
+        if( Pressed )
+        {
+            if( Slot & DIGITAL_ON ) Slot &= ~DIGITAL_DEBAUNCE;
+            else                    Slot |= DIGITAL_ON | DIGITAL_DEBAUNCE;
+        }
+        else
+        {
+            Slot &= ~(DIGITAL_ON | DIGITAL_DEBAUNCE);
+        }
+    }
+
+    // Face buttons and bumpers (LB=WHITE, RB=BLACK, A, B, X, Y)
+    static const struct { WORD Mask; s32 Idx; } s_BtnMap[] =
+    {
+        { XINPUT_GAMEPAD_LEFT_SHOULDER,  INPUT_XBOX_BTN_WHITE - INPUT_XBOX__ANALOG_BUTTONS_BEGIN - 1 },
+        { XINPUT_GAMEPAD_RIGHT_SHOULDER, INPUT_XBOX_BTN_BLACK - INPUT_XBOX__ANALOG_BUTTONS_BEGIN - 1 },
+        { XINPUT_GAMEPAD_A,              INPUT_XBOX_BTN_A     - INPUT_XBOX__ANALOG_BUTTONS_BEGIN - 1 },
+        { XINPUT_GAMEPAD_B,              INPUT_XBOX_BTN_B     - INPUT_XBOX__ANALOG_BUTTONS_BEGIN - 1 },
+        { XINPUT_GAMEPAD_X,              INPUT_XBOX_BTN_X     - INPUT_XBOX__ANALOG_BUTTONS_BEGIN - 1 },
+        { XINPUT_GAMEPAD_Y,              INPUT_XBOX_BTN_Y     - INPUT_XBOX__ANALOG_BUTTONS_BEGIN - 1 },
+    };
+
+    for( s32 i = 0; i < (s32)(sizeof(s_BtnMap)/sizeof(s_BtnMap[0])); i++ )
+    {
+        xbool Pressed = ( Pad.wButtons & s_BtnMap[i].Mask ) != 0;
+        byte& Slot    = XPad.AnalogBtn[ s_BtnMap[i].Idx ];
+        if( Pressed )
+        {
+            if( Slot & DIGITAL_ON ) Slot &= ~DIGITAL_DEBAUNCE;
+            else                    Slot |= DIGITAL_ON | DIGITAL_DEBAUNCE;
+        }
+        else
+        {
+            Slot &= ~(DIGITAL_ON | DIGITAL_DEBAUNCE);
+        }
+    }
+
+    // Triggers — digital state + float analog value
+    const s32 LTIdx = INPUT_XBOX_L_TRIGGER - INPUT_XBOX__ANALOG_BUTTONS_BEGIN - 1;
+    const s32 RTIdx = INPUT_XBOX_R_TRIGGER - INPUT_XBOX__ANALOG_BUTTONS_BEGIN - 1;
+
+    auto UpdateTrigger = [&]( byte& Slot, f32& Value, BYTE Raw )
+    {
+        Value = Raw / 255.0f;
+        xbool Pressed = Raw > XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
+        if( Pressed )
+        {
+            if( Slot & DIGITAL_ON ) Slot &= ~DIGITAL_DEBAUNCE;
+            else                    Slot |= DIGITAL_ON | DIGITAL_DEBAUNCE;
+        }
+        else
+        {
+            Slot &= ~(DIGITAL_ON | DIGITAL_DEBAUNCE);
+        }
+    };
+
+    UpdateTrigger( XPad.AnalogBtn[ LTIdx ], XPad.Trigger[0], Pad.bLeftTrigger  );
+    UpdateTrigger( XPad.AnalogBtn[ RTIdx ], XPad.Trigger[1], Pad.bRightTrigger );
+
+    // Sticks — normalize to [-1..1] then apply radial deadzone.
+    // Use 32768 as divisor so -32768 maps exactly to -1.0.
+    {
+        const f32 StickInv = 1.0f / 32768.0f;
+
+        f32 LX = (f32)Pad.sThumbLX * StickInv;
+        f32 LY = (f32)Pad.sThumbLY * StickInv;
+        f32 RX = (f32)Pad.sThumbRX * StickInv;
+        f32 RY = (f32)Pad.sThumbRY * StickInv;
+
+        // Radial deadzone: if the stick magnitude is inside the dead zone we zero
+        // both axes so they don't drift; outside we rescale to fill the full range.
+        const f32 LDZ = (f32)XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE  * StickInv;
+        const f32 RDZ = (f32)XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE * StickInv;
+
+        f32 LMag = sqrtf( LX*LX + LY*LY );
+        if( LMag < LDZ )
+        {
+            LX = 0.0f;
+            LY = 0.0f;
+        }
+        else
+        {
+            f32 Scale = (LMag - LDZ) / (LMag * (1.0f - LDZ));
+            LX *= Scale;
+            LY *= Scale;
+        }
+
+        f32 RMag = sqrtf( RX*RX + RY*RY );
+        if( RMag < RDZ )
+        {
+            RX = 0.0f;
+            RY = 0.0f;
+        }
+        else
+        {
+            f32 Scale = (RMag - RDZ) / (RMag * (1.0f - RDZ));
+            RX *= Scale;
+            RY *= Scale;
+        }
+
+        XPad.Stick[ INPUT_XBOX_STICK_LEFT_X  - INPUT_XBOX__STICKS_BEGIN - 1 ] = LX;
+        XPad.Stick[ INPUT_XBOX_STICK_LEFT_Y  - INPUT_XBOX__STICKS_BEGIN - 1 ] = LY;
+        XPad.Stick[ INPUT_XBOX_STICK_RIGHT_X - INPUT_XBOX__STICKS_BEGIN - 1 ] = RX;
+        XPad.Stick[ INPUT_XBOX_STICK_RIGHT_Y - INPUT_XBOX__STICKS_BEGIN - 1 ] = RY;
+    }
+}
+
+//=========================================================================
+
+static
 xbool ProcessEvents( void )
-{ 
-    //
+{
     // Check whether we have more events to porcess
-    //
     if( s_Input.iStateNext >= s_Input.nStates )
         return FALSE;
 
-    //
     // Advance the process queue
-    //
     s_Input.iState = s_Input.iStateNext;
     ASSERT( s_Input.iState < MAX_STATES );
 
-    //
     // Check whether we have more events to porcess
-    //
     s_Input.iStateNext++;
-   // DebugMessage( "%d\n", s_Input.nStates );
 
     return TRUE;
 }
@@ -1389,7 +789,6 @@ xbool ProcessEvents( void )
 static
 s64 TIME_GetClock( void )
 {
-    // use same clock than direct input
     return GetTickCount();
 }
 
@@ -1402,165 +801,27 @@ s64 TIME_GetTicksPerSecond( void )
 }
 
 //=========================================================================
-// This is more like a hack trying to get the stupid joystics to work. 
-// For editors and such. DInput is just a pain to put up with.
-//=========================================================================
-static 
-void ReadWindowsJoy( device& Device, s32 ID )
-{
-    JOYINFOEX ExInfo;
-
-    state& State = GetState( 0 ); //GetTickCount() );
-
-    x_memset( &ExInfo, 0, sizeof(ExInfo) );
-    ExInfo.dwSize = sizeof(ExInfo);
-    ExInfo.dwFlags = JOY_RETURNALL ;
-    joyGetPosEx( 0, &ExInfo );
-
-    // SB - This currently works for the EMS USB convertor!
-    //      If other convertors are returning incorrect
-    //      values, then create a new mapping table for it
-    //      and check the Device.Flags to see which convertor
-    //      is being used. DON'T JUST MODIFY THIS TABLE!!!!
-    static s32 MapPC2PS2[] = 
-    { 
-        INPUT_PS2_BTN_TRIANGLE,         // 0
-        INPUT_PS2_BTN_CIRCLE,           // 1
-        INPUT_PS2_BTN_CROSS,            // 2
-        INPUT_PS2_BTN_SQUARE,           // 3
-        INPUT_PS2_BTN_L2,               // 4
-        INPUT_PS2_BTN_R2,               // 5
-        INPUT_PS2_BTN_L1,               // 6
-        INPUT_PS2_BTN_R1,               // 7
-        INPUT_PS2_BTN_SELECT,           // 8
-        INPUT_PS2_BTN_START,            // 9
-        INPUT_PS2_BTN_L_STICK,          // 10
-        INPUT_PS2_BTN_R_STICK,          // 11
-        INPUT_PS2_BTN_L_UP,             // 12
-        INPUT_PS2_BTN_L_RIGHT,          // 13
-        INPUT_PS2_BTN_L_DOWN,           // 14
-        INPUT_PS2_BTN_L_LEFT,           // 15
-    };
-
-    //
-    // Handle buttons
-    // 
-    for( s32 i=0; i<16; i++ )
-    {
-        s32 Gadget = MapPC2PS2[i];
-
-        if( Gadget < 0 )
-            continue;
-
-        //
-        // Digital Buttons
-        //
-        s32 Index = Gadget - INPUT_PS2_BTN_L2;
-        if( ExInfo.dwButtons&(1<<i) )
-        {
-            if( State.PS2Pad[ID].Digital[ Index ] & DIGITAL_ON )
-            {
-                State.PS2Pad[ID].Digital[ Index ] &= ~DIGITAL_DEBAUNCE;
-            }
-            else
-            {
-                State.PS2Pad[ID].Digital[ Index ] |= DIGITAL_ON | DIGITAL_DEBAUNCE;
-            }
-        }
-        else
-        {
-            State.PS2Pad[ID].Digital[ Index ] &= (~(DIGITAL_ON|DIGITAL_DEBAUNCE));
-        }                    
-    }
-
-    if ( Device.Flags & DEVICE_FLG_PSX_USB_PAD )
-    {
-        // bah. stupid inconsistent PC crap. this particular model returns dpad buttons
-        // as a hat POV angle. wtf?
-        if ( ExInfo.dwFlags & JOY_RETURNPOV )
-        {
-            // we have a POV angle, figure out where it is
-            xbool IsPressed[4]; // up, right, down, left
-            if ( ExInfo.dwPOV != 0xffff )
-            {
-                IsPressed[0] = (ExInfo.dwPOV >= 29250) || (ExInfo.dwPOV <  6750);
-                IsPressed[1] = (ExInfo.dwPOV >=  2250) && (ExInfo.dwPOV < 15750);
-                IsPressed[2] = (ExInfo.dwPOV >= 11250) && (ExInfo.dwPOV < 24750);
-                IsPressed[3] = (ExInfo.dwPOV >= 20250) && (ExInfo.dwPOV < 33750);
-            }
-            else
-            {
-                IsPressed[0] = FALSE;
-                IsPressed[1] = FALSE;
-                IsPressed[2] = FALSE;
-                IsPressed[3] = FALSE;
-            }
-
-            for ( s32 iPressed = 0; iPressed < 4; iPressed++ )
-            {
-                s32 Index = MapPC2PS2[iPressed+12] - INPUT_PS2_BTN_L2;
-                if ( IsPressed[iPressed] )
-                {
-                    if( State.PS2Pad[ID].Digital[ Index ] & DIGITAL_ON )
-                    {
-                        State.PS2Pad[ID].Digital[ Index ] &= ~DIGITAL_DEBAUNCE;
-                    }
-                    else
-                    {
-                        State.PS2Pad[ID].Digital[ Index ] |= DIGITAL_ON | DIGITAL_DEBAUNCE;
-                    }
-                }
-                else
-                {   
-                    State.PS2Pad[ID].Digital[ Index ] &= (~(DIGITAL_ON|DIGITAL_DEBAUNCE));
-                }
-            }
-        }
-    }
-
-    const f32 Max_S16    = 0xffff/2;
-    const f32 InvMax_S16 = 1.0f/Max_S16;
-    State.PS2Pad[ID].Anolog[INPUT_PS2_STICK_LEFT_X -INPUT_PS2_BTN_L2] = (((f32)ExInfo.dwXpos) - Max_S16)* InvMax_S16;
-    State.PS2Pad[ID].Anolog[INPUT_PS2_STICK_LEFT_Y -INPUT_PS2_BTN_L2] = (((f32)ExInfo.dwYpos) - Max_S16)*-InvMax_S16;
-    State.PS2Pad[ID].Anolog[INPUT_PS2_STICK_RIGHT_X-INPUT_PS2_BTN_L2] = (((f32)ExInfo.dwZpos) - Max_S16)* InvMax_S16;
-    State.PS2Pad[ID].Anolog[INPUT_PS2_STICK_RIGHT_Y-INPUT_PS2_BTN_L2] = (((f32)ExInfo.dwRpos) - Max_S16)*-InvMax_S16;
-}
-
-//=========================================================================
 
 xbool input_UpdateState2( s32 Depth = 0 )
 {
-    //x_DebugMsg("Entering iUs\n");
-    //
-    // check whether we are getting events from the queue or we are collecting more events
-    //
+    // check whether we are getting events from the queue or we are collecting more events	
     if( s_Input.bProcessEvents )
     {
-        // 
-        // Process the next set of events
-        //
+        // Process the next set of events		
         if( ProcessEvents() )
-        {
-            //x_DebugMsg("Leaving iUs\n");
             return TRUE;
-        }
-        
-        // 
+
         // We are done processing events for this time interval
-        //
         s_Input.bProcessEvents = FALSE;
-        //x_DebugMsg("Leaving iUs\n");
         return FALSE;
     }
 
-    //
     // Read all messages for the system
-    //
-    if(!s_DoNotProcessWindowsMessages)
+    if( !s_DoNotProcessWindowsMessages )
     {
-        while( PeekMessage( &s_Input.Msg, NULL, 0, 0, PM_NOREMOVE) )
+        while( PeekMessage( &s_Input.Msg, NULL, 0, 0, PM_NOREMOVE ) )
         {
-            if ( !GetMessage( &s_Input.Msg, NULL, 0, 0 ) )
+            if( !GetMessage( &s_Input.Msg, NULL, 0, 0 ) )
             {
                 s_Input.ExitApp = TRUE;
                 return FALSE;
@@ -1570,101 +831,87 @@ xbool input_UpdateState2( s32 Depth = 0 )
             DispatchMessage ( &s_Input.Msg );
         }
     }
-    //
+
     // Update the timer as well as the type of input query
-    //
     s_Input.LastTimeFrame    = s_Input.CurrentTimeFrame;
-    s_Input.CurrentTimeFrame = TIME_GetClock(); 
-    if( (s_Input.TicksPerRefresh) && ((( s_Input.CurrentTimeFrame - s_Input.LastTimeFrame)/s_Input.TicksPerRefresh) > MAX_STATES) )
+    s_Input.CurrentTimeFrame = TIME_GetClock();
+
+    if( s_Input.TicksPerRefresh &&
+        (( s_Input.CurrentTimeFrame - s_Input.LastTimeFrame ) / s_Input.TicksPerRefresh) > MAX_STATES )
     {
-        //
-        // The user waited to long to ask the input system for events. Now
-        // we have too many states to fit in the queue. So lets jump to 
-        // Immediate mode
-        //
         s_Input.bImmediate = TRUE;
-        //DebugMessage( "s_Input.bImmediate = TRUE;\n");
-
-    }
-    else
-    {
-        //DebugMessage( "s_Input.bImmediate = FALSE;\n");
-        //s_Input.bImmediate = FALSE;
     }
 
-    //
     // Tell the queue to prepare since we are about to start collecting events
-    //
     if( Depth == 0 )
         PageFlipQueue();
 
-    //
-    // Read input for all the mouses
-    //
-    if(!s_DoNotProcessWindowsMessages)
+    if( !s_DoNotProcessWindowsMessages )
     {
-        for( s32 m=0; m<s_Input.nMouses; m++ )
+        // Read input for all the mouses	
+        for( s32 m = 0; m < s_Input.nMouses; m++ )
         {
             if( s_Input.bImmediate )
-            {
-                ReadMouseImmediateData( s_Input.Mouse[m], m );
-            }
+                ReadMouseImmediateData( s_Input.Mouse[ m ], m );
             else
-            {
-                ReadMouseBufferedData( s_Input.Mouse[m], m );
-            }
+                ReadMouseBufferedData ( s_Input.Mouse[ m ], m );
         }
 
-    //
-    // Read input for all the keyboards
-    //
-        for( s32 k=0; k<s_Input.nKeyboards; k++ )
+        // Read input for all the keyboards
+        for( s32 k = 0; k < s_Input.nKeyboards; k++ )
         {
             if( s_Input.bImmediate )
-            {
-                ReadKeyboardImmediateData( s_Input.Keyboard[k], k );
-            }
+                ReadKeyboardImmediateData( s_Input.Keyboard[ k ], k );
             else
-            {
-                ReadKeyboadBufferedData( s_Input.Keyboard[k], k );
-            }
+                ReadKeyboadBufferedData  ( s_Input.Keyboard[ k ], k );
         }
     }
 
-    //
     // Read input for all the joysticks
-    //
-    for( s32 j=0; j<s_Input.nJoysticks; j++ )
+    for( s32 x = 0; x < XUSER_MAX_COUNT; x++ )
+        ReadXboxPad( x );
+
     {
-        //if( s_Input.bImmediate )
-        if( 1 )
+        f32 DeltaSec = (f32)( s_Input.CurrentTimeFrame - s_Input.LastTimeFrame )
+                     / (f32)TIME_GetTicksPerSecond();
+
+        for( s32 x = 0; x < XUSER_MAX_COUNT; x++ )
         {
-            // HACKED VERSION
-            if( Depth == 0 )
-                ReadWindowsJoy( s_Input.Joystick[j], j );
-        }
-        else
-        {
-            if(0)
+            if( !s_Input.bXboxConnected[x] )
+                continue;
+
+            rumble_controller& C   = s_Rumble.Controller[x];
+            XINPUT_VIBRATION   vib = { 0, 0 };
+
+            if( C.Enabled && !s_Rumble.Suppress && C.Type != RT_NO_RUMBLE )
             {
-                ReadJoystickImmediateData( s_Input.Joystick[j], j );
+                C.Intensity   -= RUMBLE_DECAY_RATE * DeltaSec;
+                C.DurationSec -= DeltaSec;
+
+                if( C.Intensity <= 0.0f || C.DurationSec <= 0.0f )
+                {
+                    C.Type      = RT_NO_RUMBLE;
+                    C.Intensity = 0.0f;
+                }
+                else
+                {
+                    WORD Speed = (WORD)( MIN( MAX( C.Intensity, 0.0f ), 1.0f ) * 65535.0f );
+                    vib.wLeftMotorSpeed  = Speed;
+                    vib.wRightMotorSpeed = Speed;
+                }
             }
-            else
-            {
-                ReadJoystickBufferedData( s_Input.Joystick[j], j );
-            }
+
+            XInputSetState( x, &vib );
         }
     }
 
-    //
     // Set the next stage of the input system
-    //
     s_Input.bProcessEvents = TRUE;
 
-    //x_DebugMsg("Leaving iUs\n");
-    
-    return input_UpdateState2( Depth++ );
+    return input_UpdateState2( Depth + 1 );
 }
+
+//=========================================================================
 
 xbool input_UpdateState( void )
 {
@@ -1675,6 +922,30 @@ xbool input_UpdateState( void )
 
 void d3deng_KillInput( void )
 {
+    for( s32 i = 0; i < s_Input.nMouses; i++ )
+        if( s_Input.Mouse[i].pDevice )
+        {
+            s_Input.Mouse[i].pDevice->Unacquire();
+            s_Input.Mouse[i].pDevice->Release();
+            s_Input.Mouse[i].pDevice = NULL;
+        }
+
+    for( s32 i = 0; i < s_Input.nKeyboards; i++ )
+        if( s_Input.Keyboard[i].pDevice )
+        {
+            s_Input.Keyboard[i].pDevice->Unacquire();
+            s_Input.Keyboard[i].pDevice->Release();
+            s_Input.Keyboard[i].pDevice = NULL;
+        }
+
+    if( s_Input.pDInput )
+    {
+        s_Input.pDInput->Release();
+        s_Input.pDInput = NULL;
+    }
+
+    s_Input.nMouses    = 0;
+    s_Input.nKeyboards = 0;
 }
 
 //=========================================================================
@@ -1688,16 +959,11 @@ void d3deng_DoNotProcessWindowsMessages()
 
 xbool d3deng_InitInput( HWND Window )
 {
-    dxerr   Error;
+    dxerr Error;
 
-    //
     // Set our input in contex of a window
-    //
     s_Input.Window             = Window;
-
-    //
     // Set our defauls
-    //
     s_Input.bExclusive         = FALSE;
     s_Input.bForeground        = TRUE;
     s_Input.bImmediate         = FALSE;
@@ -1708,40 +974,26 @@ xbool d3deng_InitInput( HWND Window )
     s_Input.bImmediate = TRUE;
 #endif
 
-#ifdef sbroumley
-    s_Input.bExclusive         = FALSE;
-    s_Input.bForeground        = TRUE;
-    s_Input.bImmediate         = FALSE;
-    s_Input.bDisableWindowsKey = TRUE;
-#endif
+    s_Input.TicksPerRefresh = TIME_GetTicksPerSecond() / REFRESH_RATE;
 
-    s_Input.TicksPerRefresh    = TIME_GetTicksPerSecond() / REFRESH_RATE;
-
-    //
     // Initialize all the devices indirections to -1
-    //
-    for( s32 i=0; i<MAX_DEVICES; i++ )
+    for( s32 i = 0; i < MAX_DEVICES; i++ )
     {
-        s_Input.PCPadDevice[i]  = -1;
-        s_Input.PS2PadDevice[i] = -1;
         s_Input.KeybdDevice[i]  = -1;
         s_Input.MouseDevice[i]  = -1;
     }
 
-    //
+    for( s32 x = 0; x < XUSER_MAX_COUNT; x++ )
+        s_Rumble.Controller[x].Enabled = TRUE;
+
     // Create a DInput object
-    //
-    Error = DirectInput8Create( GetModuleHandle(NULL), DIRECTINPUT_VERSION, 
+    Error = DirectInput8Create( GetModuleHandle(NULL), DIRECTINPUT_VERSION,
                                 IID_IDirectInput8, (VOID**)&s_Input.pDInput, NULL );
     if( FAILED( Error ) )
-    {
         return FALSE;
-    }
 
-    //
     // Create all the keyboards
-    //
-    Error = s_Input.pDInput->EnumDevices( DI8DEVCLASS_KEYBOARD, 
+    Error = s_Input.pDInput->EnumDevices( DI8DEVCLASS_KEYBOARD,
                                           EnumKeyboardCallback,
                                           NULL, DIEDFL_ATTACHEDONLY );
     if( FAILED( Error ) )
@@ -1750,33 +1002,15 @@ xbool d3deng_InitInput( HWND Window )
         return FALSE;
     }
 
-    //
     // Create all the Mouses
-    //
-    if( 1 )
-    {
-        Error = s_Input.pDInput->EnumDevices( DI8DEVCLASS_POINTER, 
-                                              EnumMouseCallback,
-                                              NULL, DIEDFL_ATTACHEDONLY );
-        if( FAILED( Error ) )
-        {
-            d3deng_KillInput();
-            return FALSE;
-        }
-    }
-
-    //
-    // Create all the Joysticks
-    //
-    Error = s_Input.pDInput->EnumDevices( DI8DEVCLASS_GAMECTRL, 
-                                          EnumJoysticksCallback,
+    Error = s_Input.pDInput->EnumDevices( DI8DEVCLASS_POINTER,
+                                          EnumMouseCallback,
                                           NULL, DIEDFL_ATTACHEDONLY );
     if( FAILED( Error ) )
     {
         d3deng_KillInput();
         return FALSE;
     }
-
 
     return TRUE;
 }
@@ -1792,7 +1026,6 @@ f32 GetValue( s32 ControllerID, input_gadget GadgetID, digital_type DigitalType 
     if( GadgetID < INPUT_KBD__END && GadgetID > INPUT_KBD__BEGIN )
     {
         s32 DeviceID = s_Input.KeybdDevice[ ControllerID ];
-
         if( DeviceID >= 0 )
         {
             s32 Index = GadgetID - INPUT_KBD__DIGITAL + 1;
@@ -1804,86 +1037,51 @@ f32 GetValue( s32 ControllerID, input_gadget GadgetID, digital_type DigitalType 
     {
         switch( GadgetID )
         {
-        case INPUT_MOUSE_X_REL:     return s_Input.State[0].Mouse[ControllerID].Anolog[0]; //return d3deng_GetMouseX();
-        case INPUT_MOUSE_Y_REL:     return s_Input.State[0].Mouse[ControllerID].Anolog[1]; //return d3deng_GetMouseY();
-        case INPUT_MOUSE_WHEEL_REL: return s_Input.State[0].Mouse[ControllerID].Anolog[2]; //return d3deng_GetMouseWheel();
-        case INPUT_MOUSE_BTN_L:     return s_Input.State[0].Mouse[ControllerID].Digital[0]; //return (f32)d3deng_MouseGetLButton();
-        case INPUT_MOUSE_BTN_R:     return s_Input.State[0].Mouse[ControllerID].Digital[1]; //return (f32)d3deng_MouseGetRButton();
-        case INPUT_MOUSE_BTN_C:     return s_Input.State[0].Mouse[ControllerID].Digital[2]; //return (f32)d3deng_MouseGetMButton();
-        } 
-    }
-
-    if( GadgetID < INPUT_PC__END && GadgetID > INPUT_PC__BEGIN )
-    {
-        s32 DeviceID = s_Input.PCPadDevice[ ControllerID ];
-
-        if( DeviceID >= 0 )
-        {
-            if( GadgetID < INPUT_PC__ANALOG )
-            {
-                s32 Index = GadgetID - INPUT_PC__DIGITAL -1;
-                return (f32)(s_Input.State[ s_Input.iState ].PCPad[ ControllerID ].Digital[ Index ] & DigitalType );
-            }
-            else
-            {
-                s32 Index  = GadgetID - INPUT_PC__ANALOG -1;
-                return s_Input.State[ s_Input.iState ].PCPad[ ControllerID ].Anolog[ Index ];
-            }
+        case INPUT_MOUSE_X_REL:     return s_Input.State[0].Mouse[ ControllerID ].Anolog[0];
+        case INPUT_MOUSE_Y_REL:     return s_Input.State[0].Mouse[ ControllerID ].Anolog[1];
+        case INPUT_MOUSE_WHEEL_REL: return s_Input.State[0].Mouse[ ControllerID ].Anolog[2];
+        case INPUT_MOUSE_BTN_L:     return s_Input.State[0].Mouse[ ControllerID ].Digital[0];
+        case INPUT_MOUSE_BTN_R:     return s_Input.State[0].Mouse[ ControllerID ].Digital[1];
+        case INPUT_MOUSE_BTN_C:     return s_Input.State[0].Mouse[ ControllerID ].Digital[2];
         }
     }
 
-    if( GadgetID < INPUT_PS2__END && GadgetID > INPUT_PS2__BEGIN )
+    if( GadgetID < INPUT_XBOX__END && GadgetID > INPUT_XBOX__BEGIN )
     {
-        s32 DeviceID = s_Input.PS2PadDevice[ ControllerID ];
+        if( ControllerID >= XUSER_MAX_COUNT || !s_Input.bXboxConnected[ ControllerID ] )
+            return 0;
 
-        if( DeviceID >= 0 )
+        const input_xbox_pad& XPad = s_Input.State[ s_Input.iState ].XboxPad[ ControllerID ];
+
+        if( GadgetID > INPUT_XBOX__DIGITAL_BUTTONS_BEGIN && GadgetID < INPUT_XBOX__DIGITAL_BUTTONS_END )
         {
-            // Check if it is a digital button
-            if( (GadgetID>=INPUT_PS2_BTN_L2) && (GadgetID<INPUT_PS2_STICK_LEFT_X) )
+            s32 Index = GadgetID - INPUT_XBOX__DIGITAL_BUTTONS_BEGIN - 1;
+            return (f32)( XPad.Digital[ Index ] & DigitalType );
+        }
+
+        if( GadgetID > INPUT_XBOX__ANALOG_BUTTONS_BEGIN && GadgetID < INPUT_XBOX__ANALOG_BUTTONS_END )
+        {
+            s32 Index = GadgetID - INPUT_XBOX__ANALOG_BUTTONS_BEGIN - 1;
+            if( GadgetID == INPUT_XBOX_L_TRIGGER || GadgetID == INPUT_XBOX_R_TRIGGER )
             {
-                s32 Index = GadgetID - INPUT_PS2_BTN_L2;
-                return (f32)(s_Input.State[ s_Input.iState ].PS2Pad[ ControllerID ].Digital[ Index ] & DigitalType );
+                // Debounce queries (input_WasPressed) use the digital AnalogBtn state,
+                // everything else returns the normalized analog float (0..1).
+                if( DigitalType == DIGITAL_DEBAUNCE )
+                    return (f32)( XPad.AnalogBtn[ Index ] & DIGITAL_DEBAUNCE );
+                return (GadgetID == INPUT_XBOX_L_TRIGGER) ? XPad.Trigger[0] : XPad.Trigger[1];
             }
-            else
-            // Must be an analog
-            {
-                s32 Index = GadgetID - INPUT_PS2_BTN_L2;
+            return (f32)( XPad.AnalogBtn[ Index ] & DigitalType );
+        }
 
-                if( Index >= (INPUT_PS2_STICK_LEFT_X-INPUT_PS2_BTN_L2) && Index <= (INPUT_PS2_STICK_RIGHT_Y-INPUT_PS2_BTN_L2) )
-                {
-                    const f32 DEADZONE = 0.25f;
-                    f32 V = s_Input.State[ s_Input.iState ].PS2Pad[ ControllerID ].Anolog[ Index ];
-
-                    // Remove dead zone
-                    if( V>=0.0f )
-                    {
-                        V -= DEADZONE ;
-                        if( V<0.0f ) V = 0.0f;
-                    }
-                    else
-                    {
-                        V += DEADZONE ;
-                        if( V>0.0f ) V = 0.0f;
-                    }
-
-                    // Scale back to max range
-                    V *= 1.0f / (1.0f - DEADZONE) ;
-    
-                    // Clamp
-                    if( V>1.0f ) V = 1.0f;
-                    if( V<-1.0f) V = -1.0f;
-
-                    return V;
-                }
-                return s_Input.State[ s_Input.iState ].PS2Pad[ ControllerID ].Anolog[ Index ];
-            }
+        if( GadgetID > INPUT_XBOX__STICKS_BEGIN && GadgetID < INPUT_XBOX__STICKS_END )
+        {
+            s32 Index = GadgetID - INPUT_XBOX__STICKS_BEGIN - 1;
+            return XPad.Stick[ Index ];
         }
     }
 
     if( GadgetID == INPUT_MSG_EXIT )
-    {
-        return (f32)(s_Input.ExitApp);
-    }
+        return (f32)( s_Input.ExitApp );
 
     return 0;
 }
@@ -1913,62 +1111,114 @@ f32 input_GetValue( input_gadget GadgetID, s32 ControllerID )
 
 void input_Feedback( f32 Duration, f32 Intensity, s32 ControllerID )
 {
-    // PC, this does nothing right now but should control any force-feedback device
-    (void)Duration;
-    (void)Intensity;
-    (void)ControllerID;
+    if( ControllerID < 0 || ControllerID >= XUSER_MAX_COUNT )
+        return;
+    if( !s_Input.bXboxConnected[ ControllerID ] )
+        return;
+
+    rumble_controller& C = s_Rumble.Controller[ ControllerID ];
+    C.Type        = RT_INTENSITY;
+    C.Intensity  += Intensity * 2.0f;
+    C.DurationSec = Duration;
 }
 
 //==============================================================================
 
 void input_Feedback( s32 Count, feedback_envelope* pEnvelope, s32 ControllerID )
 {
-    (void)Count;
-    (void)pEnvelope;
-    (void)ControllerID;
+    if( Count <= 0 || !pEnvelope )
+        return;
+    if( ControllerID < 0 || ControllerID >= XUSER_MAX_COUNT )
+        return;
+    if( !s_Input.bXboxConnected[ ControllerID ] )
+        return;
+
+    // Use the first envelope entry for intensity and duration.
+    rumble_controller& C = s_Rumble.Controller[ ControllerID ];
+    C.Type        = RT_INTENSITY;
+    C.Intensity   = pEnvelope[0].Intensity;
+    C.DurationSec = pEnvelope[0].Duration;
 }
 
 //=============================================================================
 
 void input_EnableFeedback( xbool state, s32 ControllerID )
 {
-    (void)state;
-    (void)ControllerID;
+    if( ControllerID < 0 || ControllerID >= XUSER_MAX_COUNT )
+        return;
+
+    s_Rumble.Controller[ ControllerID ].Enabled = state;
+
+    if( !state )
+    {
+        s_Rumble.Controller[ ControllerID ].Type      = RT_NO_RUMBLE;
+        s_Rumble.Controller[ ControllerID ].Intensity = 0.0f;
+        XINPUT_VIBRATION silence = { 0, 0 };
+        if( s_Input.bXboxConnected[ ControllerID ] )
+            XInputSetState( ControllerID, &silence );
+    }
 }
 
 //==============================================================================
 
 void input_SuppressFeedback( xbool Suppress )
 {
-    (void)Suppress;
+    s_Rumble.Suppress = Suppress;
+
+    if( Suppress )
+    {
+        XINPUT_VIBRATION silence = { 0, 0 };
+        for( s32 x = 0; x < XUSER_MAX_COUNT; x++ )
+            if( s_Input.bXboxConnected[x] )
+                XInputSetState( x, &silence );
+    }
 }
 
 //==============================================================================
 
 void input_Kill( void )
 {
+    input_ClearFeedback();
+    d3deng_KillInput();
 }
 
 //==============================================================================
 
 xbool input_IsPresent( input_gadget GadgetID, s32 ControllerID )
 {
-    (void) GadgetID;
-    (void) ControllerID;
+    if( GadgetID > INPUT_XBOX__BEGIN && GadgetID < INPUT_XBOX__END )
+    {
+        if( ControllerID < 0 || ControllerID >= XUSER_MAX_COUNT )
+            return FALSE;
+        return s_Input.bXboxConnected[ ControllerID ];
+    }
     return TRUE;
 }
 
 //==============================================================================
 
-s32 input_GetJoystickCount( void )
+s32 input_GetPadCount( void )
 {
-    return s_Input.nJoysticks;
+    s32 nXbox = 0;
+    for( s32 x = 0; x < XUSER_MAX_COUNT; x++ )
+        if( s_Input.bXboxConnected[x] )
+            nXbox++;
+    return nXbox;
 }
 
 //==============================================================================
 
 void input_ClearFeedback( void )
 {
+    XINPUT_VIBRATION silence = { 0, 0 };
+    for( s32 x = 0; x < XUSER_MAX_COUNT; x++ )
+    {
+        s_Rumble.Controller[x].Type      = RT_NO_RUMBLE;
+        s_Rumble.Controller[x].Intensity = 0.0f;
+        s_Rumble.Controller[x].DurationSec = 0.0f;
+        if( s_Input.bXboxConnected[x] )
+            XInputSetState( x, &silence );
+    }
 }
 
 //==============================================================================
