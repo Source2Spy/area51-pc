@@ -1960,9 +1960,15 @@ xbool input_IsPresent( input_gadget GadgetID, s32 ControllerID )
 
 //==============================================================================
 
+s32 input_GetJoystickCount( void )
+{
+    return s_Input.nJoysticks;
+}
+
+//==============================================================================
+
 void input_ClearFeedback( void )
 {
 }
 
 //==============================================================================
-

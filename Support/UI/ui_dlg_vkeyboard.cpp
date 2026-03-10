@@ -522,8 +522,8 @@ ui_dlg_vkeyboard::ui_dlg_vkeyboard( void )
     m_pResultOk   = NULL;
     m_bName       = TRUE;
     m_pPopUp      = NULL;
-#ifdef TARGET_XBOX
-    m_bVerifyXBL  = TRUE;
+#ifdef TARGET_PC
+    m_bGamepadMode = TRUE;
 #endif
 }
 
@@ -567,6 +567,9 @@ xbool ui_dlg_vkeyboard::Create( s32                        UserID,
 
     // Do dialog creation
     Success = ui_dialog::Create( UserID, pManager, &vkeyboardDialog, r, pParent, Flags );
+#ifdef TARGET_PC
+    m_FullPositionB = m_Position.b;
+#endif
 
     // Setup Frame
     ((ui_frame*)m_Children[0])->SetBackgroundColor( xcolor (39,117,28,128) ); //xcolor(25,79,103,255) );
@@ -818,6 +821,58 @@ void ui_dlg_vkeyboard::Render( s32 ox, s32 oy )
 }
 
 //=========================================================================
+#ifdef TARGET_PC
+
+//-------------------------------------------------------------------------
+// Physical keyboard key map
+//-------------------------------------------------------------------------
+
+struct pc_key_entry
+{
+    input_gadget    Key;
+    char            Normal;
+    char            Shifted;
+};
+
+//-------------------------------------------------------------------------
+
+static const pc_key_entry s_PCKeyMap[] =
+{
+    // Letters
+    { INPUT_KBD_A, 'a', 'A' }, { INPUT_KBD_B, 'b', 'B' }, { INPUT_KBD_C, 'c', 'C' },
+    { INPUT_KBD_D, 'd', 'D' }, { INPUT_KBD_E, 'e', 'E' }, { INPUT_KBD_F, 'f', 'F' },
+    { INPUT_KBD_G, 'g', 'G' }, { INPUT_KBD_H, 'h', 'H' }, { INPUT_KBD_I, 'i', 'I' },
+    { INPUT_KBD_J, 'j', 'J' }, { INPUT_KBD_K, 'k', 'K' }, { INPUT_KBD_L, 'l', 'L' },
+    { INPUT_KBD_M, 'm', 'M' }, { INPUT_KBD_N, 'n', 'N' }, { INPUT_KBD_O, 'o', 'O' },
+    { INPUT_KBD_P, 'p', 'P' }, { INPUT_KBD_Q, 'q', 'Q' }, { INPUT_KBD_R, 'r', 'R' },
+    { INPUT_KBD_S, 's', 'S' }, { INPUT_KBD_T, 't', 'T' }, { INPUT_KBD_U, 'u', 'U' },
+    { INPUT_KBD_V, 'v', 'V' }, { INPUT_KBD_W, 'w', 'W' }, { INPUT_KBD_X, 'x', 'X' },
+    { INPUT_KBD_Y, 'y', 'Y' }, { INPUT_KBD_Z, 'z', 'Z' },
+    // Digits
+    { INPUT_KBD_0, '0', ')' }, { INPUT_KBD_1, '1', '!' }, { INPUT_KBD_2, '2', '@' },
+    { INPUT_KBD_3, '3', '#' }, { INPUT_KBD_4, '4', '$' }, { INPUT_KBD_5, '5', '%' },
+    { INPUT_KBD_6, '6', '^' }, { INPUT_KBD_7, '7', '&' }, { INPUT_KBD_8, '8', '*' },
+    { INPUT_KBD_9, '9', '(' },
+    // Common symbols
+    { INPUT_KBD_SPACE,      ' ',  ' '  },
+    { INPUT_KBD_MINUS,      '-',  '_'  },
+    { INPUT_KBD_EQUALS,     '=',  '+'  },
+    { INPUT_KBD_LBRACKET,   '[',  '{'  },
+    { INPUT_KBD_RBRACKET,   ']',  '}'  },
+    { INPUT_KBD_SEMICOLON,  ';',  ':'  },
+    { INPUT_KBD_APOSTROPHE, '\'', '"'  },
+    { INPUT_KBD_COMMA,      ',',  '<'  },
+    { INPUT_KBD_PERIOD,     '.',  '>'  },
+    { INPUT_KBD_SLASH,      '/',  '?'  },
+    { INPUT_KBD_BACKSLASH,  '\\', '|'  },
+};
+
+//-------------------------------------------------------------------------
+
+static const s32 s_PCKeyMapCount = sizeof(s_PCKeyMap) / sizeof(s_PCKeyMap[0]);
+#endif // TARGET_PC
+
+//=========================================================================
 
 void ui_dlg_vkeyboard::OnUpdate( ui_win* pWin, f32 DeltaTime )
 {
@@ -831,6 +886,36 @@ void ui_dlg_vkeyboard::OnUpdate( ui_win* pWin, f32 DeltaTime )
             m_pPopUp = NULL;
         }
     }
+
+#ifdef TARGET_PC
+    // In keyboard mode, feed physical keyboard characters directly into the string control.
+    if( !m_bGamepadMode && !m_pPopUp )
+    {
+        xbool bShift = input_IsPressed( INPUT_KBD_LSHIFT ) ||
+                       input_IsPressed( INPUT_KBD_RSHIFT );
+
+        for( s32 k = 0; k < s_PCKeyMapCount; k++ )
+        {
+            if( input_WasPressed( s_PCKeyMap[k].Key ) )
+            {
+                char c = bShift ? s_PCKeyMap[k].Shifted : s_PCKeyMap[k].Normal;
+                if( c && ( (m_MaxCharacters == -1) ||
+                            (m_pStringCtrl->GetLabel().GetLength() < m_MaxCharacters) ) )
+                {
+                    m_pStringCtrl->Character( xstring( xfs("%c", c) ) );
+                    if( m_pString )
+                        *m_pString = m_pStringCtrl->GetLabel();
+                    g_AudioMgr.Play( "Select_VKB" );
+                }
+                else if( c )
+                {
+                    g_AudioMgr.Play( "InvalidEntry" );
+                }
+                break; // process one key per frame to avoid double-input
+            }
+        }
+    }
+#endif // TARGET_PC
 }
 
 //=========================================================================
@@ -862,6 +947,20 @@ void ui_dlg_vkeyboard::OnPadDelete( ui_win* pWin )
 void ui_dlg_vkeyboard::OnPadSelect( ui_win* pWin )
 {
     (void)pWin;
+
+#ifdef TARGET_PC
+    // In keyboard mode, Enter triggers the accept (OK) action.
+    // Delegate to OnNotify by faking a click on the OK virtual key
+    // ('\040' is the OK sentinel used throughout this dialog).
+    if( !m_bGamepadMode )
+    {
+        if( m_pPopUp )
+            return;
+
+        xwstring okLabel( "\040" );
+        OnNotify( pWin, this, WN_CHARACTER, &okLabel );
+    }
+#endif // TARGET_PC
 }
 
 //=========================================================================
@@ -904,37 +1003,6 @@ s32 ui_dlg_vkeyboard::IsValid( const xwstring* pString, xbool bIsName )
         {
             return 2;
         }
-
-#ifdef TARGET_XBOX
-        if( m_bVerifyXBL )
-        {
-            // MUST be online to do this!
-            ASSERT( g_NetworkMgr.IsOnline() );
-
-            // run xbox obscenity check
-            XONLINETASK_HANDLE Task;
-            XOnlineStringVerify(
-                1,                              // number of strings
-                (LPCWSTR*)pString,              // array of strings
-                XGetLanguage(),                 // language to check
-                NULL,
-                &Task
-                );
-
-            HRESULT Result;
-            // wait for check to complete
-            while( ( Result = XOnlineTaskContinue( Task ) ) == XONLINETASK_S_RUNNING )
-            {
-                x_DelayThread( 1 );
-            }
-
-            if( Result != XONLINETASK_S_SUCCESS )
-            {
-                // check failed
-                return 1;
-            }
-        }
-#endif
 
         // Convert it to lower case.
         xwstring PotentialName = *pString;
@@ -1133,11 +1201,7 @@ void ui_dlg_vkeyboard::OnNotify( ui_win* pWin, ui_win* pSender, s32 Command, voi
                             TRUE, 
                             TRUE, 
                             FALSE,
-    #ifdef TARGET_XBOX 
-                            g_StringTableMgr( "ui", "IDS_OBSCENE_PROFILE_XBOX" ),
-    #else
                             g_StringTableMgr( "ui", "IDS_OBSCENE_PROFILE_PS2" ),
-    #endif
                             pNavtext,
                             &m_PopUpResult );
                     }
@@ -1220,41 +1284,36 @@ void ui_dlg_vkeyboard::SetReturn( xbool* pDone, xbool* pOk )
 }
 
 //=========================================================================
-#ifdef TARGET_XBOX
-void ui_dlg_vkeyboard::ConfigureForProfile( void )
+#ifdef TARGET_PC
+void ui_dlg_vkeyboard::SetGamepadMode( xbool bGamepad )
 {
-    // Disable the ? / + < = > | : controls
-    s32 i = 0;
-    s32 x;
-    s32 y;
-    for( y = 0 ; y < NROWS ; y++ )
+    m_bGamepadMode = bGamepad;
+
+    if( !m_bGamepadMode )
     {
-        for( x = 0 ; x < NCOLS ; x++ )
+        // Hide all children except the string control
+        for( s32 i = 0; i < m_Children.GetCount(); i++ )
         {
-            ui_vkey* pVKey = (ui_vkey*)m_NavGraph[x + (y + 1) * NCOLS];
-
-            if ( pVKey )
-            {
-                if (   (pVKey->GetLabel() == xwstring( "?" ))
-                    || (pVKey->GetLabel() == xwstring( "/" ))
-                    || (pVKey->GetLabel() == xwstring( "+" ))
-                    || (pVKey->GetLabel() == xwstring( "<" ))
-                    || (pVKey->GetLabel() == xwstring( "=" ))
-                    || (pVKey->GetLabel() == xwstring( ">" ))
-                    || (pVKey->GetLabel() == xwstring( "|" ))
-                    || (pVKey->GetLabel() == xwstring( ":" ))
-                    )
-                {
-                    pVKey->SetFlag( WF_DISABLED, TRUE  );
-                }
-            }
+            ui_win* pChild = m_Children[i];
+            if( pChild != (ui_win*)m_pStringCtrl )
+                pChild->SetFlags( pChild->GetFlags() & ~WF_VISIBLE );
         }
+
+        // Clear nav graph slots (redirect all to string control)
+        for( s32 i = 0; i < m_NavH * m_NavW; i++ )
+        {
+            if( m_NavGraph[i] != (ui_win*)m_pStringCtrl )
+                m_NavGraph[i] = m_pStringCtrl;
+        }
+
+        GotoControl( m_pStringCtrl );
+
+        // Compact dialog: title bar + string control + bottom padding
+        m_Position.b = m_Position.t + m_pStringCtrl->GetPosition().b + (s32)( 8.0f * g_UiMgr->GetScaleY() );
     }
-
-    // we don't need to verify profile names
-    m_bVerifyXBL = FALSE;
+    else
+    {
+        m_Position.b = m_FullPositionB;
+    }
 }
-#endif
-//=========================================================================
-
-
+#endif // TARGET_PC

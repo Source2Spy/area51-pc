@@ -37,8 +37,10 @@ public:
                                           void*                     pUserData );
 
     void            Configure           ( xbool bName ) { m_bName = bName; }
-#ifdef TARGET_XBOX
-    void            ConfigureForProfile ( void );
+
+#ifdef TARGET_PC
+    void            SetGamepadMode      ( xbool bGamepad );
+    xbool           IsGamepadMode       ( void ) const { return m_bGamepadMode; }
 #endif
 
     virtual void    Render              ( s32 ox=0, s32 oy=0 );
@@ -69,8 +71,9 @@ protected:
     dlg_popup*      m_pPopUp;
     s32             m_PopUpResult;
     xbool           m_bName;            // Whether this dialogue exists to enter in a name (as opposed to a password).
-#ifdef TARGET_XBOX
-    xbool           m_bVerifyXBL;       // Whether we need to verify the string through the Xbox Live service
+#ifdef TARGET_PC
+    xbool           m_bGamepadMode;     // If TURE on screen keyboard will be shown.
+    s32             m_FullPositionB;
 #endif
 };
 

@@ -27,6 +27,9 @@ xbool           input_IsPressed     ( input_gadget GadgetID, s32 ControllerID = 
 xbool           input_WasPressed    ( input_gadget GadgetID, s32 ControllerID = 0 );
 f32             input_GetValue      ( input_gadget GadgetID, s32 ControllerID = 0 );
 xbool           input_IsPresent     ( input_gadget GadgetID, s32 ControllerID = -1 );
+#ifdef TARGET_PC
+s32             input_GetJoystickCount( void );
+#endif
 //------------------------------------------------------------------------------
 //  Public functions in e_Input.cpp
 //------------------------------------------------------------------------------

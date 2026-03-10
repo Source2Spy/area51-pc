@@ -190,6 +190,10 @@ void ui_edit::OnPadSelect( ui_win* pWin )
     pVKeyboard->Configure( m_bName );
     pVKeyboard->ConnectString( &m_Label, m_BufferSize );
     pVKeyboard->SetLabel( m_VirtualKeyboardTitle );
+#ifdef TARGET_PC
+    // If is keyboard mode, we just turn off virtual keyboard and other things.
+    pVKeyboard->SetGamepadMode( input_GetJoystickCount() > 0 );
+#endif
 }
 
 //=========================================================================
