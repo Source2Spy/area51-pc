@@ -1,0 +1,158 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Backends">
+      <UniqueIdentifier>{d5343546-ef83-45ca-87f8-632d54d0a69e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Bindings">
+      <UniqueIdentifier>{942db6fc-575d-42b7-a774-85d3955782bc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Backends\Lua">
+      <UniqueIdentifier>{0c472cc6-8460-4e9f-a6d9-1436cacc397e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Bindings\MiscUtils">
+      <UniqueIdentifier>{a507701f-3f2f-40b5-9b9a-970316509996}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Bindings\bind_objects.hpp">
+      <Filter>Bindings</Filter>
+    </ClInclude>
+    <ClInclude Include="Bindings\bind_system.hpp">
+      <Filter>Bindings</Filter>
+    </ClInclude>
+    <ClInclude Include="Backends\lua_backend.hpp">
+      <Filter>Backends</Filter>
+    </ClInclude>
+    <ClInclude Include="script_backend.hpp" />
+    <ClInclude Include="script_bindings.hpp" />
+    <ClInclude Include="script_context.hpp" />
+    <ClInclude Include="script_mgr.hpp" />
+    <ClInclude Include="Bindings\bind_input.hpp">
+      <Filter>Bindings</Filter>
+    </ClInclude>
+    <ClInclude Include="Bindings\bind_raycast.hpp">
+      <Filter>Bindings</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\MiscUtils\SimpleUtils.hpp">
+      <Filter>Bindings\MiscUtils</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Bindings\bind_system.cpp">
+      <Filter>Bindings</Filter>
+    </ClCompile>
+    <ClCompile Include="Bindings\bind_objects.cpp">
+      <Filter>Bindings</Filter>
+    </ClCompile>
+    <ClCompile Include="Backends\lua_backend.cpp">
+      <Filter>Backends</Filter>
+    </ClCompile>
+    <ClCompile Include="script_mgr.cpp" />
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\lapi.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\lauxlib.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\lbaselib.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\lcode.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\lcorolib.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\lctype.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\ldblib.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\ldebug.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\ldo.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\ldump.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\lfunc.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\lgc.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\linit.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\liolib.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\llex.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\lmathlib.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\lmem.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\loadlib.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\lobject.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\lopcodes.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\loslib.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\lparser.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\lstate.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\lstring.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\lstrlib.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\ltable.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\ltablib.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\ltm.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\lundump.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\lutf8lib.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\lvm.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xCore\3rdParty\Lua\5.4.8\lzio.c">
+      <Filter>Backends\Lua</Filter>
+    </ClCompile>
+    <ClCompile Include="Bindings\bind_raycast.cpp">
+      <Filter>Bindings</Filter>
+    </ClCompile>
+    <ClCompile Include="Bindings\bind_input.cpp">
+      <Filter>Bindings</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\MiscUtils\SimpleUtils.cpp">
+      <Filter>Bindings\MiscUtils</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

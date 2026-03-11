@@ -32,6 +32,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NetworkMgr", "..\..\Support
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UserInterface", "..\..\Support\Dialogs\UserInterface.vcxproj", "{EBC1773D-9BCC-4125-8069-F3EC6637B4BB}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "script_mgr", "..\..\Support\ScriptMgr\Script_mgr.vcxproj", "{4E845295-7F43-482B-B9D5-45AC080358B6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -222,6 +224,18 @@ Global
 		{EBC1773D-9BCC-4125-8069-F3EC6637B4BB}.Release|Win32.Build.0 = Release|Win32
 		{EBC1773D-9BCC-4125-8069-F3EC6637B4BB}.VIEWER-Debug|Win32.ActiveCfg = VIEWER-Debug|Win32
 		{EBC1773D-9BCC-4125-8069-F3EC6637B4BB}.VIEWER-Debug|Win32.Build.0 = VIEWER-Debug|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.Debug|Win32.ActiveCfg = Debug|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.Debug|Win32.Build.0 = Debug|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.EDITOR-Debug|Win32.ActiveCfg = EDITOR-Debug|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.EDITOR-Debug|Win32.Build.0 = EDITOR-Debug|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.OptDebug|Win32.ActiveCfg = OptDebug|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.OptDebug|Win32.Build.0 = OptDebug|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.QA|Win32.ActiveCfg = QA|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.QA|Win32.Build.0 = QA|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.Release|Win32.ActiveCfg = Release|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.Release|Win32.Build.0 = Release|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.VIEWER-Debug|Win32.ActiveCfg = VIEWER-Debug|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.VIEWER-Debug|Win32.Build.0 = VIEWER-Debug|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

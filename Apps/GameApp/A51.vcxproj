@@ -275,6 +275,10 @@
       <Project>{0de696a2-85bd-4b78-8dcc-5329b99d5aeb}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
+    <ProjectReference Include="..\..\Support\ScriptMgr\Script_mgr.vcxproj">
+      <Project>{4E845295-7F43-482B-B9D5-45AC080358B6}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>	
     <ProjectReference Include="..\..\Support\NetworkMgr\NetworkMgr.vcxproj">
       <Project>{8946d9dc-520e-4b19-bd73-1b0ed91c66ba}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>

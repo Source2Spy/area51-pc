@@ -1,0 +1,36 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36202.13
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "script_mgr", "Script_mgr.vcxproj", "{4E845295-7F43-482B-B9D5-45AC080358B6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		EDITOR-Debug|Win32 = EDITOR-Debug|Win32
+		OptDebug|Win32 = OptDebug|Win32
+		QA|Win32 = QA|Win32
+		Release|Win32 = Release|Win32
+		VIEWER-Debug|Win32 = VIEWER-Debug|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.Debug|Win32.ActiveCfg = Debug|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.Debug|Win32.Build.0 = Debug|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.EDITOR-Debug|Win32.ActiveCfg = EDITOR-Debug|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.EDITOR-Debug|Win32.Build.0 = EDITOR-Debug|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.OptDebug|Win32.ActiveCfg = OptDebug|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.OptDebug|Win32.Build.0 = OptDebug|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.QA|Win32.ActiveCfg = QA|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.QA|Win32.Build.0 = QA|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.Release|Win32.ActiveCfg = Release|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.Release|Win32.Build.0 = Release|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.VIEWER-Debug|Win32.ActiveCfg = VIEWER-Debug|Win32
+		{4E845295-7F43-482B-B9D5-45AC080358B6}.VIEWER-Debug|Win32.Build.0 = VIEWER-Debug|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {7FD501CF-2F51-4AEE-A686-68C6204AD34F}
+	EndGlobalSection
+EndGlobal
