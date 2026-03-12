@@ -35,9 +35,9 @@ public:
 
     virtual void        RegisterFunction( const char* pName, script_fn Fn ) override;
 
-    virtual const char* GetBackendName  ( void ) const override { return "Lua 5.4"; }
+    virtual const char* GetBackendName  ( void ) const override { return "Lua 5.5"; }
 
-    lua_State*          GetState        ( void ) const { return m_pL; }
+    //lua_State*          GetState        ( void ) const { return m_pL; }
 
 private:
     lua_State*          m_pL;
