@@ -12,9 +12,9 @@
 
 extern "C"
 {
-#include "3rdParty\Lua\5.4.8\lua.h"
-#include "3rdParty\Lua\5.4.8\lualib.h"
-#include "3rdParty\Lua\5.4.8\lauxlib.h"
+#include "3rdParty\Lua\5.5.0\lua.h"
+#include "3rdParty\Lua\5.5.0\lualib.h"
+#include "3rdParty\Lua\5.5.0\lauxlib.h"
 }
 
 #include "x_files.hpp"
