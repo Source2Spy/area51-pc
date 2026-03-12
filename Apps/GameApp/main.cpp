@@ -81,6 +81,12 @@
 #include "ConversationMgr\ConversationMgr.hpp"
 
 //==============================================================================
+//  SCRIPTING
+//==============================================================================
+
+#include "..\Support\ScriptMgr\script_mgr.hpp"
+
+//==============================================================================
 //  SUPPORT SYSTEM INCLUDES
 //==============================================================================
 
@@ -504,6 +510,7 @@ void Update( f32 DeltaTime )
         g_PostEffectMgr.OnUpdate( DeltaTime );
         g_DecalMgr.OnUpdate( DeltaTime );
         g_AlienGlobMgr.Advance( DeltaTime );
+        g_ScriptMgr.Update( DeltaTime );		
     }
 
     if(
@@ -1179,12 +1186,17 @@ void DoStartup( void )
     #if defined( ENABLE_DEBUG_MENU )
     g_DebugMenu.Init();
     #endif
+	
+    // Init scripting
+    g_ScriptMgr.Init();
+    g_ScriptMgr.RunFile( "scripts\\main.lua" );	
 }
 
 //==============================================================================
 
 void DoShutdown( void )
 {
+    g_ScriptMgr.Kill();	
     g_UIMemCardMgr.Kill();
     g_NetworkMgr.Kill();
     g_GameTextMgr.Kill();
@@ -1275,6 +1287,9 @@ void RunGame( void )
             g_ObjMgr.DestroyObjectEx( GUID, TRUE );
         }
     }
+
+    // Level is fully loaded and startup trigger has run, notify scripts.
+    g_ScriptMgr.NotifyLevelStart();
 
     f32 DeltaTime = MAX( g_GameTimer.ReadSec(), 0.001f );
 
@@ -1397,6 +1412,9 @@ void RunGame( void )
         // set the state to idle whilst we wait
         g_StateMgr.SetState( SM_IDLE );
     }
+
+    // Notify scripts that the level is ending.
+    g_ScriptMgr.NotifyLevelEnd();
 
     //
     // Enable the user interface for the primary user.
