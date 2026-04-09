@@ -1397,13 +1397,13 @@ s32 ui_manager::CreateUser( s32 ControllerID, const irect& Bounds, s32 Data )
         // Set Analog Scalers
         for( i=0 ; i<SM_MAX_PLAYERS ; i++ ) // This may not be the best define for this, but it's better than hard numbers! 
         {
-            //pUser->DPadUp[i]       .SetupRepeat( 0.200f, 0.060f );
-            //pUser->DPadDown[i]     .SetupRepeat( 0.200f, 0.060f );
-            //pUser->DPadLeft[i]     .SetupRepeat( 0.200f, 0.060f );
-            //pUser->DPadRight[i]    .SetupRepeat( 0.200f, 0.060f );
+            pUser->DPadUp[i]       .SetupRepeat( 0.200f, 0.060f );
+            pUser->DPadDown[i]     .SetupRepeat( 0.200f, 0.060f );
+            pUser->DPadLeft[i]     .SetupRepeat( 0.200f, 0.060f );
+            pUser->DPadRight[i]    .SetupRepeat( 0.200f, 0.060f );
             //pUser->PadSelect[i]    .SetupRepeat( 0.200f, 0.060f );
             //pUser->PadBack[i]      .SetupRepeat( 0.200f, 0.060f );
-            //pUser->PadDelete[i]    .SetupRepeat( 0.200f, 0.060f );
+            pUser->PadDelete[i]    .SetupRepeat( 0.400f, 0.050f );
             //pUser->PadActivate[i]  .SetupRepeat( 0.200f, 0.060f );
         }
         static const s32 MAX_DIALOGS_EVER = 20;
@@ -1792,10 +1792,8 @@ xbool ui_manager::ProcessInput( f32 DeltaTime, s32 UserID )
                 UpdateButton( pUser->PadSelect[i],     input_WasPressed( INPUT_KBD_RETURN, i ), DeltaTime );
                 UpdateButton( pUser->PadBack[i],       input_WasPressed( INPUT_KBD_ESCAPE, i ), DeltaTime );
                 
-                
                 //Idk, it should be like this?
-                UpdateButton( pUser->PadDelete[i], (input_WasPressed( INPUT_KBD_DELETE, i ) || input_WasPressed( INPUT_KBD_BACK, i )), DeltaTime ); //Usefull for deleting player profiles and etc.
-                //TEMP!!!
+                UpdateButton( pUser->PadDelete[i], (input_IsPressed( INPUT_KBD_DELETE, i ) || input_IsPressed( INPUT_KBD_BACK, i )), DeltaTime ); //Usefull for deleting player profiles and etc.
                 UpdateButton( pUser->PadActivate[i],   input_WasPressed( INPUT_KBD_R,   i ), DeltaTime ); //Usefull for editing player profiles and etc.                
             }
             // Keep index of last controller that pressed a select button so we can hack
@@ -1874,7 +1872,7 @@ xbool ui_manager::ProcessInput( f32 DeltaTime, s32 UserID )
                     tDPadRight      = pUser->DPadRight[i].nPresses    + pUser->DPadRight[i].nRepeats;
                     PadSelect       = pUser->PadSelect[i].nPresses;
                     PadBack         = pUser->PadBack[i].nPresses;
-                    PadDelete       = pUser->PadDelete[i].nPresses;
+                    PadDelete       = pUser->PadDelete[i].nPresses + pUser->PadDelete[i].nRepeats;
                     PadActivate     = pUser->PadActivate[i].nPresses;               
                     PadShoulderL    = pUser->PadShoulderL[i].nPresses + pUser->PadShoulderL[i].nRepeats;
                     PadShoulderR    = pUser->PadShoulderR[i].nPresses + pUser->PadShoulderR[i].nRepeats;
@@ -2616,7 +2614,7 @@ s32 ui_manager::LookUpButtonCode( const xwchar* pString, s32 iStart ) const
     xwstring codeString;
 
     c = pString[iStart];
-    while( c && (c != 0xBB ) ) // '»'
+    while( c && (c != 0xBB ) ) // 'Â»'
     {
         // add this character to the string
         codeString += pString[iStart];

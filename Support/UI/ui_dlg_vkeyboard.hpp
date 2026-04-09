@@ -74,6 +74,8 @@ protected:
 #ifdef TARGET_PC
     xbool           m_bGamepadMode;     // If TURE on screen keyboard will be shown.
     s32             m_FullPositionB;
+    s32             m_RepeatKeyIdx;     // -1=none, >=0=index into s_PCKeyMap
+    f32             m_KeyRepeatTimer;
 #endif
 };
 

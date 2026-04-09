@@ -118,19 +118,19 @@ void ui_vkey::Render( s32 ox, s32 oy )
         {
         case '\010':
             //ForceRect = TRUE;
-            Label = g_StringTableMgr( "ui", "IDS_DELETE" );	
+            Label = g_StringTableMgr( "ui", "IDS_DELETE" );
             break;
         case '\020':
             //ForceRect = TRUE;
-            Label = g_StringTableMgr( "ui", "IDS_SPACE" );	
+            Label = g_StringTableMgr( "ui", "IDS_SPACE" );
             break;
         case '\030':
             //ForceRect = TRUE;
-            Label = g_StringTableMgr( "ui", "IDS_CANCEL" );	
+            Label = g_StringTableMgr( "ui", "IDS_CANCEL" );
             break;
         case '\040':
             //ForceRect = TRUE;
-            Label = g_StringTableMgr( "ui", "IDS_OK" );	
+            Label = g_StringTableMgr( "ui", "IDS_OK" );
             break;
         }
 
@@ -194,7 +194,7 @@ void ui_vkey::OnCursorEnter( ui_win* pWin )
 {
     (void)pWin;
     m_Flags |= WF_HIGHLIGHT;
-    //g_AudioMgr.Play( "Cusor_VKB" );
+    //g_AudioMgr.Play( "Cursor_VKB" );
 }
 
 //=========================================================================
@@ -213,7 +213,7 @@ public:
     virtual void    OnPadDelete         ( ui_win* pWin );
 
     void            Backspace           ( void );
-    void            Character           ( const xstring& String );
+    void            Character           ( const xwstring& String );
     s32             GetCursorPos        ( void );
     void            SetCursorPos        ( s32 Pos );
 
@@ -378,24 +378,24 @@ void ui_vkString::OnPadNavigate( ui_win* pWin, s32 Code, s32 Presses, s32 Repeat
         {
             m_Cursor--;
             s_CursorFrame = 0;
-            g_AudioMgr.Play( "Cusor_VKB" );
+            g_AudioMgr.Play( "Cursor_VKB" );
         }
         else
-		{
+        {
             g_AudioMgr.Play( "InvalidEntry" );
-		}
+        }
         break;
     case ui_manager::NAV_RIGHT:
         if( m_Cursor < m_Label.GetLength() )
         {
             m_Cursor++;
             s_CursorFrame = 0;
-            g_AudioMgr.Play( "Cusor_VKB" );
+            g_AudioMgr.Play( "Cursor_VKB" );
         }
         else
-		{
+        {
             g_AudioMgr.Play( "InvalidEntry" );
-		}
+        }
         break;
     case ui_manager::NAV_UP:
         ui_control::OnPadNavigate( pWin, Code, Presses, Repeats, WrapX, WrapY );
@@ -403,7 +403,7 @@ void ui_vkString::OnPadNavigate( ui_win* pWin, s32 Code, s32 Presses, s32 Repeat
         break;
     default:
         ui_control::OnPadNavigate( pWin, Code, Presses, Repeats, WrapX, WrapY );
-        //g_AudioMgr.Play( "Cusor_VKB" );
+        //g_AudioMgr.Play( "Cursor_VKB" );
         break;
     }
 }
@@ -420,24 +420,24 @@ void ui_vkString::OnPadShoulder( ui_win* pWin, s32 Direction )
         {
             m_Cursor--;
             s_CursorFrame = 0;
-            g_AudioMgr.Play( "Cusor_VKB" );
+            g_AudioMgr.Play( "Cursor_VKB" );
         }
         else
-		{
+        {
             g_AudioMgr.Play( "InvalidEntry" );
-		}
+        }
         break;
     case 1:
         if( m_Cursor < m_Label.GetLength() )
         {
             m_Cursor++;
             s_CursorFrame = 0;
-            g_AudioMgr.Play( "Cusor_VKB" );
+            g_AudioMgr.Play( "Cursor_VKB" );
         }
         else
-		{
+        {
             g_AudioMgr.Play( "InvalidEntry" );
-		}
+        }
         break;
     default:
         ui_control::OnPadShoulder( pWin, Direction );
@@ -475,9 +475,9 @@ void ui_vkString::Backspace( void )
     s_CursorFrame = 0;
 }
 
-void ui_vkString::Character( const xstring& String )
+void ui_vkString::Character( const xwstring& String )
 {
-    xstring NewString;
+    xwstring NewString;
     NewString = m_Label.Left( m_Cursor );
     NewString += String;
     NewString += m_Label.Right( m_Label.GetLength()-m_Cursor );
@@ -523,7 +523,9 @@ ui_dlg_vkeyboard::ui_dlg_vkeyboard( void )
     m_bName       = TRUE;
     m_pPopUp      = NULL;
 #ifdef TARGET_PC
-    m_bGamepadMode = TRUE;
+    m_bGamepadMode   = TRUE;
+    m_RepeatKeyIdx   = -1;
+    m_KeyRepeatTimer = 0.0f;
 #endif
 }
 
@@ -877,7 +879,6 @@ static const s32 s_PCKeyMapCount = sizeof(s_PCKeyMap) / sizeof(s_PCKeyMap[0]);
 void ui_dlg_vkeyboard::OnUpdate( ui_win* pWin, f32 DeltaTime )
 {
     (void)pWin;
-    (void)DeltaTime;
 
     if( m_pPopUp )
     {
@@ -891,30 +892,63 @@ void ui_dlg_vkeyboard::OnUpdate( ui_win* pWin, f32 DeltaTime )
     // In keyboard mode, feed physical keyboard characters directly into the string control.
     if( !m_bGamepadMode && !m_pPopUp )
     {
-        xbool bShift = input_IsPressed( INPUT_KBD_LSHIFT ) ||
-                       input_IsPressed( INPUT_KBD_RSHIFT );
-
+        // Determine which character key is held.
+        // Backspace repeat is handled by ui_manager via PadDelete + SetupRepeat.
+        s32 heldKey = -1;
         for( s32 k = 0; k < s_PCKeyMapCount; k++ )
         {
-            if( input_WasPressed( s_PCKeyMap[k].Key ) )
+            if( input_IsPressed( s_PCKeyMap[k].Key ) )
             {
-                char c = bShift ? s_PCKeyMap[k].Shifted : s_PCKeyMap[k].Normal;
-                if( c && ( (m_MaxCharacters == -1) ||
-                            (m_pStringCtrl->GetLabel().GetLength() < m_MaxCharacters) ) )
+                heldKey = k;
+                break;
+            }
+        }
+
+        // Hold-to-repeat for character keys
+        xbool bFire = FALSE;
+        if( heldKey >= 0 )
+        {
+            if( m_RepeatKeyIdx != heldKey )
+            {
+                m_RepeatKeyIdx   = heldKey;
+                m_KeyRepeatTimer = 0.4f;
+                bFire = TRUE;
+            }
+            else
+            {
+                m_KeyRepeatTimer -= DeltaTime;
+                if( m_KeyRepeatTimer <= 0.0f )
                 {
-                    m_pStringCtrl->Character( xstring( xfs("%c", c) ) );
-                    if( m_pString )
-                        *m_pString = m_pStringCtrl->GetLabel();
-                    g_AudioMgr.Play( "Select_VKB" );
+                    m_KeyRepeatTimer = 0.05f;
+                    bFire = TRUE;
                 }
-                else if( c )
-                {
-                    g_AudioMgr.Play( "InvalidEntry" );
-                }
-                break; // process one key per frame to avoid double-input
+            }
+        }
+        else
+        {
+            m_RepeatKeyIdx = -1;
+        }
+
+        if( bFire )
+        {
+            xbool bShift = input_IsPressed( INPUT_KBD_LSHIFT ) || input_IsPressed( INPUT_KBD_RSHIFT );			
+            char c = bShift ? s_PCKeyMap[heldKey].Shifted : s_PCKeyMap[heldKey].Normal;
+            if( c && ( (m_MaxCharacters == -1) ||
+                        (m_pStringCtrl->GetLabel().GetLength() < m_MaxCharacters) ) )
+            {
+                m_pStringCtrl->Character( xwstring( xfs("%c", c) ) );
+                if( m_pString )
+                    *m_pString = m_pStringCtrl->GetLabel();
+                g_AudioMgr.Play( "Select_VKB" );
+            }
+            else if( c )
+            {
+                g_AudioMgr.Play( "InvalidEntry" );
             }
         }
     }
+#else
+    (void)DeltaTime;
 #endif // TARGET_PC
 }
 
@@ -925,7 +959,7 @@ void ui_dlg_vkeyboard::OnPadNavigate( ui_win* pWin, s32 Code, s32 Presses, s32 R
     (void)WrapX;
     (void)WrapY;
     ui_dialog::OnPadNavigate( pWin, Code, Presses, Repeats, TRUE, FALSE );
-    g_AudioMgr.Play( "Cusor_VKB" );
+    g_AudioMgr.Play( "Cursor_VKB" );
 }
 
 //=========================================================================
@@ -939,6 +973,9 @@ void ui_dlg_vkeyboard::OnPadShoulder( ui_win* pWin, s32 Direction )
 
 void ui_dlg_vkeyboard::OnPadDelete( ui_win* pWin )
 {
+    if( m_pPopUp )
+        return;
+
     m_pStringCtrl->OnPadDelete( pWin );
 }
 
@@ -946,8 +983,6 @@ void ui_dlg_vkeyboard::OnPadDelete( ui_win* pWin )
 
 void ui_dlg_vkeyboard::OnPadSelect( ui_win* pWin )
 {
-    (void)pWin;
-
 #ifdef TARGET_PC
     // In keyboard mode, Enter triggers the accept (OK) action.
     // Delegate to OnNotify by faking a click on the OK virtual key
@@ -960,6 +995,8 @@ void ui_dlg_vkeyboard::OnPadSelect( ui_win* pWin )
         xwstring okLabel( "\040" );
         OnNotify( pWin, this, WN_CHARACTER, &okLabel );
     }
+#else
+    (void)pWin;
 #endif // TARGET_PC
 }
 
@@ -1018,7 +1055,7 @@ s32 ui_dlg_vkeyboard::IsValid( const xwstring* pString, xbool bIsName )
         // Obscenity Filter.
         //
         //g_StringTableMgr.LoadTable( "Obscenities", xfs("%s\\%s", g_RscMgr.GetRootDirectory(), "ENG_obscenities.stringbin" ) );
-		g_StringTableMgr.LoadTable( "Obscenities", "ENG_obscenities.stringbin" );
+        g_StringTableMgr.LoadTable( "Obscenities", "ENG_obscenities.stringbin" );
         xwstring Words[ 100 ];
 
         s32 NumWords = -1;
@@ -1134,7 +1171,6 @@ s32 ui_dlg_vkeyboard::IsValid( const xwstring* pString, xbool bIsName )
     return 0;
 }
 
-
 //=========================================================================
 
 void ui_dlg_vkeyboard::OnNotify( ui_win* pWin, ui_win* pSender, s32 Command, void* pData )
@@ -1149,67 +1185,71 @@ void ui_dlg_vkeyboard::OnNotify( ui_win* pWin, ui_win* pSender, s32 Command, voi
             ASSERT( pData );
 
             // Update String
-            xstring*    pString = (xstring*)pData;
+            xwstring*   pString = (xwstring*)pData;
             if( pString->GetAt(0) == '\010' )
             {
+                // backspace
                 if( m_pStringCtrl->GetCursorPos() > 0 )
-                    m_pStringCtrl->Backspace();
-            }
-            else if ( pString->GetAt(0) == '\020' )
-            {
-                // space
-                if( (m_MaxCharacters == -1) || (m_pStringCtrl->GetLabel().GetLength() < m_MaxCharacters) )
                 {
-                    //                  m_pStringCtrl->SetLabel( m_pStringCtrl->GetLabel() + *pString );
-                    m_pStringCtrl->Character( ' ' );
-                }                             
+                    m_pStringCtrl->Backspace();
+                    g_AudioMgr.Play( "Delete_VKB" );
+                }
                 else
                 {
                     g_AudioMgr.Play( "InvalidEntry" );
                 }
-                break;
             }
-            else if ( pString->GetAt(0) == '\030' )
+            else if( pString->GetAt(0) == '\020' )
+            {
+                // space
+                if( (m_MaxCharacters == -1) || (m_pStringCtrl->GetLabel().GetLength() < m_MaxCharacters) )
+                {
+                    m_pStringCtrl->Character( xwstring(" ") );
+                }
+                else
+                {
+                    g_AudioMgr.Play( "InvalidEntry" );
+                }
+            }
+            else if( pString->GetAt(0) == '\030' )
             {
                 // cancel
                 if( m_pResultOk )
                     *m_pResultOk = FALSE;
                 OnPadBack( pWin );
-
                 break;
             }
-            else if ( pString->GetAt(0) == '\040' )
+            else if( pString->GetAt(0) == '\040' )
             {
                 // accept
-                // check for NULL string
+                ASSERT( m_pString );
                 s32 ValidCode = IsValid( m_pString, m_bName );
                 if( ValidCode != 0 )
                 {
                     g_AudioMgr.Play( "InvalidEntry" );
 
                     irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-                    m_pPopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL|ui_win::WF_USE_ABSOLUTE );
+                    m_pPopUp = (dlg_popup*)g_UiMgr->OpenDialog( m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL|ui_win::WF_USE_ABSOLUTE );
 
                     // set nav text
-                    xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_OK" ));
-
-                    const xwchar* pNavtext = (const xwchar*)navText;                 
+                    xwstring navText( g_StringTableMgr( "ui", "IDS_NAV_OK" ) );
+                    const xwchar* pNavtext = (const xwchar*)navText;
 
                     if( ValidCode == 1 )
                     {
-                        m_pPopUp->Configure( g_StringTableMgr( "ui", "IDS_OBSCENITY_FILTER" ), 
-                            TRUE, 
-                            TRUE, 
+                        m_pPopUp->Configure( g_StringTableMgr( "ui", "IDS_OBSCENITY_FILTER" ),
+                            TRUE,
+                            TRUE,
                             FALSE,
                             g_StringTableMgr( "ui", "IDS_OBSCENE_PROFILE_PS2" ),
                             pNavtext,
                             &m_PopUpResult );
                     }
-                    else 
+                    else
                     {
-                        m_pPopUp->Configure( g_StringTableMgr( "ui", "IDS_INVALID_NAME" ), 
-                            TRUE, 
-                            TRUE, 
+                        m_pPopUp->Configure( g_StringTableMgr( "ui", "IDS_INVALID_NAME" ),
+                            TRUE,
+                            TRUE,
                             FALSE,
                             g_StringTableMgr( "ui", "IDS_INVALID_NAME_TEXT" ),
                             pNavtext,
@@ -1223,14 +1263,10 @@ void ui_dlg_vkeyboard::OnNotify( ui_win* pWin, ui_win* pSender, s32 Command, voi
                     if( m_pResultDone )
                         *m_pResultDone = TRUE;
 
-                    // Close dialog
-                    if ( m_Flags & WF_INPUTMODAL )
-                    {
+                    if( m_Flags & WF_INPUTMODAL )
                         m_pManager->EndDialog( m_UserID, TRUE );
-                    }
 
                     g_AudioMgr.Play( "Select_Norm" );
-
                     break;
                 }
             }
@@ -1238,7 +1274,6 @@ void ui_dlg_vkeyboard::OnNotify( ui_win* pWin, ui_win* pSender, s32 Command, voi
             {
                 if( (m_MaxCharacters == -1) || (m_pStringCtrl->GetLabel().GetLength() < m_MaxCharacters) )
                 {
-//                  m_pStringCtrl->SetLabel( m_pStringCtrl->GetLabel() + *pString );
                     m_pStringCtrl->Character( *pString );
                 }
                 else
