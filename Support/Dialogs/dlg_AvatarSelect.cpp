@@ -383,13 +383,7 @@ void dlg_avatar_select::OnPadSelect( ui_win* pWin )
             
             g_AudioMgr.Play("Select_Norm");
             m_State = DIALOG_STATE_BACK;
-        }
-        else
-        {
-            // no changes - return to previous screen
-            g_AudioMgr.Play( "Backup" );
-            m_State = DIALOG_STATE_BACK;
-        }        
+        }       
     }
 }
 
