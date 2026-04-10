@@ -22,12 +22,17 @@ ingame_pad::ingame_pad( void )
 
 void ingame_pad::OnInitialize( void )
 {
-    //
-    // Set all my logical actions
-    //
-    SetLogical( MOVE_STRAFE,            "Strafe" );
-    SetLogical( MOVE_FOWARD_BACKWARDS,  "Fowards/Backwards" );
-    SetLogical( LOOK_HORIZONTAL,        "Horizontral Look" );
+    //-------------------------------------------------------------------------
+    // Logical actions
+    //-------------------------------------------------------------------------
+
+    SetLogical( MOVE_STRAFE,            "" );   //Deprecated, use instead: STRAFE_LEFT, STRAFE_RIGHT    
+    SetLogical( MOVE_FOWARD_BACKWARDS,  "" );   //Deprecated, use instead: MOVE_FORWARD, MOVE_BACKWARD  
+    SetLogical( MOVE_FORWARD,           "Move Forward" );
+    SetLogical( MOVE_BACKWARD,          "Move Backward" );
+    SetLogical( STRAFE_LEFT,            "Strafe Left" );
+    SetLogical( STRAFE_RIGHT,           "Strafe Right" );
+    SetLogical( LOOK_HORIZONTAL,        "Horizontal Look" );
     SetLogical( LOOK_VERTICAL,          "Vertical Look" );
     SetLogical( LEAN_LEFT,              "Lean Left" );
     SetLogical( LEAN_RIGHT,             "Lean Right" );
@@ -85,8 +90,10 @@ void ingame_pad::OnInitialize( void )
 #ifdef TARGET_XBOX
     // Set the default controler
     // Left Analog
-    AddMapping( INPUT_PLATFORM_XBOX, MOVE_STRAFE,            INPUT_XBOX_STICK_LEFT_X, FALSE );
-    AddMapping( INPUT_PLATFORM_XBOX, MOVE_FOWARD_BACKWARDS,  INPUT_XBOX_STICK_LEFT_Y, FALSE );
+    AddMapping( INPUT_PLATFORM_XBOX, MOVE_FORWARD,           INPUT_XBOX_STICK_LEFT_Y, FALSE,  1.0f );
+    AddMapping( INPUT_PLATFORM_XBOX, MOVE_BACKWARD,          INPUT_XBOX_STICK_LEFT_Y, FALSE, -1.0f );
+    AddMapping( INPUT_PLATFORM_XBOX, STRAFE_RIGHT,           INPUT_XBOX_STICK_LEFT_X, FALSE,  1.0f );
+    AddMapping( INPUT_PLATFORM_XBOX, STRAFE_LEFT,            INPUT_XBOX_STICK_LEFT_X, FALSE, -1.0f );
 
     // Right Analog
     AddMapping( INPUT_PLATFORM_XBOX, LOOK_HORIZONTAL,        INPUT_XBOX_STICK_RIGHT_X, FALSE );
@@ -164,8 +171,10 @@ void ingame_pad::OnInitialize( void )
 #ifdef TARGET_PS2
     // Set the default controler
     // Left Analog
-    AddMapping( INPUT_PLATFORM_PS2, MOVE_STRAFE,            INPUT_PS2_STICK_LEFT_X, FALSE );
-    AddMapping( INPUT_PLATFORM_PS2, MOVE_FOWARD_BACKWARDS,  INPUT_PS2_STICK_LEFT_Y, FALSE );
+    AddMapping( INPUT_PLATFORM_PS2, MOVE_FORWARD,           INPUT_PS2_STICK_LEFT_Y, FALSE,  1.0f );
+    AddMapping( INPUT_PLATFORM_PS2, MOVE_BACKWARD,          INPUT_PS2_STICK_LEFT_Y, FALSE, -1.0f );
+    AddMapping( INPUT_PLATFORM_PS2, STRAFE_RIGHT,           INPUT_PS2_STICK_LEFT_X, FALSE,  1.0f );
+    AddMapping( INPUT_PLATFORM_PS2, STRAFE_LEFT,            INPUT_PS2_STICK_LEFT_X, FALSE, -1.0f );
     AddMapping( INPUT_PLATFORM_PS2, ACTION_CHAT,            INPUT_PS2_BTN_L_STICK, TRUE   );  
 
     // Right Analog
@@ -232,12 +241,12 @@ const char* ingame_pad::GetLogicalIDName( s32 Index )
             ASSERTS(0, "Add your new state to this list or properties will not work!");
 
 
-        case MOVE_STRAFE:               return "Strafe";  //Deprecated
-        case MOVE_FOWARD_BACKWARDS:     return "Move";    //Deprecated
-        case MOVE_FORWARD:              return "Move";
-        case MOVE_BACKWARD:             return "Move";
-        case STRAFE_LEFT:               return "Strafe";
-        case STRAFE_RIGHT:              return "Strafe";
+        case MOVE_STRAFE:               return "";  //Deprecated, use instead: STRAFE_LEFT, STRAFE_RIGHT    
+        case MOVE_FOWARD_BACKWARDS:     return "";  //Deprecated, use instead: MOVE_FORWARD, MOVE_BACKWARD  
+        case MOVE_FORWARD:              return "Move Forward";
+        case MOVE_BACKWARD:             return "Move Backward";
+        case STRAFE_LEFT:               return "Strafe Left";
+        case STRAFE_RIGHT:              return "Strafe Right";
         case LOOK_HORIZONTAL:           return "Look Horiz";
         case LOOK_VERTICAL:             return "Look Vert";
         case LEAN_LEFT:                 return "Lean Left";

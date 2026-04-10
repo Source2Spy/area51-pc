@@ -40,9 +40,9 @@ public:
     enum logical_id
     {
         ACTION_NULL = -1,
-        MOVE_STRAFE,                    
-        MOVE_FOWARD_BACKWARDS,
-       
+        MOVE_STRAFE,             //Deprecated, use instead: STRAFE_LEFT, STRAFE_RIGHT        
+        MOVE_FOWARD_BACKWARDS,   //Deprecated, use instead: MOVE_FORWARD, MOVE_BACKWARD  
+
         MOVE_FORWARD,                    
         MOVE_BACKWARD,      
         STRAFE_LEFT,                    

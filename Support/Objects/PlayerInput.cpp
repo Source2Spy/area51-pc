@@ -311,47 +311,19 @@ void player::UpdateStickInput(void)
 
     if ( !m_bInTurret )
     {
-        m_fMoveValue   = +g_IngamePad[m_ActivePlayerPad].GetLogical( ingame_pad::MOVE_FOWARD_BACKWARDS ).IsValue;
-        m_fStrafeValue = -g_IngamePad[m_ActivePlayerPad].GetLogical( ingame_pad::MOVE_STRAFE ).IsValue;
+        f32 MoveForward  = x_max( 0.0f, g_IngamePad[m_ActivePlayerPad].GetLogical( ingame_pad::MOVE_FORWARD  ).IsValue );
+        f32 MoveBackward = x_max( 0.0f, g_IngamePad[m_ActivePlayerPad].GetLogical( ingame_pad::MOVE_BACKWARD ).IsValue );
+        f32 StrafeRight  = x_max( 0.0f, g_IngamePad[m_ActivePlayerPad].GetLogical( ingame_pad::STRAFE_RIGHT  ).IsValue );
+        f32 StrafeLeft   = x_max( 0.0f, g_IngamePad[m_ActivePlayerPad].GetLogical( ingame_pad::STRAFE_LEFT   ).IsValue );
 
-#if defined(TARGET_PC) && !defined(X_EDITOR)
-        {
-            xbool MoveForwardKeyIsPressed  = (xbool)g_IngamePad[m_ActivePlayerPad].GetLogical(ingame_pad::MOVE_FORWARD).WasValue;
-            xbool MoveBackwardKeyIsPressed = (xbool)g_IngamePad[m_ActivePlayerPad].GetLogical(ingame_pad::MOVE_BACKWARD).WasValue;
-            xbool StrafeLeftKeyIsPressed   = (xbool)g_IngamePad[m_ActivePlayerPad].GetLogical(ingame_pad::STRAFE_LEFT).WasValue;
-            xbool StrafeRightKeyIsPressed  = (xbool)g_IngamePad[m_ActivePlayerPad].GetLogical(ingame_pad::STRAFE_RIGHT).WasValue;
-
-            f32 MoveValue   = 0.0f;
-            f32 StrafeValue = 0.0f;
-
-            if (MoveForwardKeyIsPressed) 
-            {
-                MoveValue = 1.0f;
-            } 
-            else if (MoveBackwardKeyIsPressed) 
-            {
-                MoveValue = -1.0f;
-            }
-            
-            if (StrafeLeftKeyIsPressed) 
-            {
-                StrafeValue = 1.0f;
-            } 
-            else if (StrafeRightKeyIsPressed) 
-            {
-                StrafeValue = -1.0f;
-            }
-
-            m_fMoveValue   += MoveValue;
-            m_fStrafeValue += StrafeValue;
-        }
-#endif
+        m_fMoveValue   =  (MoveForward  - MoveBackward);
+        m_fStrafeValue = -(StrafeRight  - StrafeLeft);
     }
     else
     {
         m_fMoveValue   = 0.0f;
         m_fStrafeValue = 0.0f;
-    }   
+    }
     //DrawLabelInFront( xfs( "RawYaw: %f\nRawPitch: %f\nRawMove: %f\nRawStrafe: %f\n", m_fRawControllerYaw, m_fRawControllerPitch, m_fMoveValue, m_fStrafeValue ) );
 #ifndef TARGET_PC
     ScaleYawAndPitchValues();    

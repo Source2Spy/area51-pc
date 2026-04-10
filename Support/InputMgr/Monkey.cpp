@@ -434,11 +434,13 @@ f32 monkey::GetValue( s32 LogicalPadMapping )
     // if logical pad mapping corresponds to an analog stick, use stick data
     switch ( LogicalPadMapping )
     {
-        case ingame_pad::MOVE_STRAFE : 
-            return ( m_MonkeyPadData.pad_l_x );            
+        case ingame_pad::MOVE_FORWARD :
+        case ingame_pad::MOVE_BACKWARD :
+            return ( m_MonkeyPadData.pad_l_y );
 
-        case ingame_pad::MOVE_FOWARD_BACKWARDS :
-            return ( m_MonkeyPadData.pad_l_y );            
+        case ingame_pad::STRAFE_LEFT :
+        case ingame_pad::STRAFE_RIGHT :
+            return ( m_MonkeyPadData.pad_l_x );
 
         case ingame_pad::ACTION_HUD_MOVEMENT_HORIZONTAL :
         case ingame_pad::LOOK_HORIZONTAL :
