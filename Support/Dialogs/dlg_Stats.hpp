@@ -44,6 +44,8 @@ public:
     virtual void        OnPadBack               ( ui_win* pWin );
     virtual void        OnUpdate                ( ui_win* pWin, f32 DeltaTime );
 
+    void                EnableBlackout          ( void )                    { m_bRenderBlackout = TRUE; }
+
 protected:
     ui_frame*           m_pFrame1;
 
@@ -75,6 +77,7 @@ protected:
 
     ui_text*            m_pNavText;
     s32                 m_CurrHL;
+    xbool               m_bRenderBlackout;	
 };
 
 //==============================================================================

@@ -329,6 +329,9 @@ xbool dlg_stats::Create( s32                        UserID,
     // make the dialog active
     m_State = DIALOG_STATE_ACTIVE;
 
+    // Disable "dark" background :)
+    m_bRenderBlackout = FALSE;
+
 	// Return success code
     return Success;
 }
@@ -353,22 +356,25 @@ void dlg_stats::Render( s32 ox, s32 oy )
 
 	irect rb;
 
-
     // render background filter
-	s32 XRes, YRes;
-    eng_GetRes(XRes, YRes);
+    if( m_bRenderBlackout )
+    {
+        s32 XRes, YRes;
+        eng_GetRes( XRes, YRes );
 #ifdef TARGET_PS2
-    // Nasty hack to force PS2 to draw to rb.l = 0
-    rb.Set( -1, 0, XRes, YRes );
+        // Nasty hack to force PS2 to draw to rb.l = 0
+        rb.Set( -1, 0, XRes, YRes );
 #else
-    rb.Set( 0, 0, XRes, YRes );
+        rb.Set( 0, 0, XRes, YRes );
 #endif
-    g_UiMgr->RenderGouraudRect(rb, xcolor(0,0,0,180),
-                                   xcolor(0,0,0,180),
-                                   xcolor(0,0,0,180),
-                                   xcolor(0,0,0,180),FALSE);
-    
-    
+        g_UiMgr->RenderGouraudRect( rb,
+                                    xcolor( 0, 0, 0, 180 ),
+                                    xcolor( 0, 0, 0, 180 ),
+                                    xcolor( 0, 0, 0, 180 ),
+                                    xcolor( 0, 0, 0, 180 ),
+                                    FALSE );
+    }	
+	
     // render transparent screen
     rb.l = m_CurrPos.l + 22;
     rb.t = m_CurrPos.t;
