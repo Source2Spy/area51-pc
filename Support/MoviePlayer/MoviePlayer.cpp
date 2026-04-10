@@ -70,8 +70,7 @@ void movie_player::Kill(void)
 //==============================================================================
 
 void movie_player::Render(xbool InRenderLoop)
-{
-#ifdef TARGET_PC	   
+{   
     if (!InRenderLoop)
     {
         if (eng_Begin("Movie"))
@@ -84,7 +83,6 @@ void movie_player::Render(xbool InRenderLoop)
     {
         m_Private.Render();
     }
-#endif	
 }
 
 //==============================================================================
@@ -136,7 +134,7 @@ s32 PlaySimpleMovie(const char* movieName)
                     done = TRUE;
                 }
 #else
-                #error Do something !!!
+                #error Put your platform code here :)
 #endif
             }
         }
