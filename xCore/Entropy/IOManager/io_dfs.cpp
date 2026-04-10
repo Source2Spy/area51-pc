@@ -221,11 +221,8 @@ void dfs_SplitRelativePath( const char* pRelativePath, xstring& Path, xstring& N
     if( Name.GetLength() > 0 ) Name.MakeUpper();
     if( Ext.GetLength()  > 0 ) Ext.MakeUpper();
 }
-#endif
 
 //==============================================================================
-
-#ifdef TARGET_PC
 
 static 
 u32 dfs_FindOrAddString( xarray<dfs_string_entry>& Table, u32& StringsLength, const xstring& Str )
@@ -245,11 +242,9 @@ u32 dfs_FindOrAddString( xarray<dfs_string_entry>& Table, u32& StringsLength, co
     StringsLength += (u32)Str.GetLength() + 1;
     return Entry.Offset;
 }
-#endif
 
 //==============================================================================
 
-#ifdef TARGET_PC
 static 
 void dfs_CollectFiles( const char* pRootPath, const char* pRelativePath, xarray<dfs_emulated_entry>& Entries, s32 Depth = 0 )
 {
