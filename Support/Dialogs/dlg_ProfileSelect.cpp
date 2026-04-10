@@ -976,7 +976,7 @@ void dlg_profile_select::RefreshProfileList( void )
         m_pProfileDetails->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_INFO" ) );
         m_pCardSlot->SetLabel( g_StringTableMgr( "ui", "IDS_NULL" ) );
 
-#if defined(TARGET_PC)
+#ifdef TARGET_PC
         m_pCreationDate     ->SetFlag( WF_VISIBLE, FALSE );
         m_pModifiedDate     ->SetFlag( WF_VISIBLE, FALSE );
         m_pInfoCreationDate ->SetFlag( WF_VISIBLE, FALSE );
