@@ -81,8 +81,8 @@ enum sort_keys
 ui_manager::control_tem OnlineJoinControls[] = 
 {
     // Frames.
-    { IDC_MATCHLIST,        "IDS_NULL",             "joinlist",    35,  40, 482, 190, 0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_SERVER_DETAILS,   "IDS_NULL",             "blankbox",    35, 238, 482,  76, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_MATCHLIST,        "IDS_NULL",             "joinlist",    35,  40, 432, 190, 0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_SERVER_DETAILS,   "IDS_NULL",             "blankbox",    35, 238, 432,  76, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
     { IDC_FRIEND_TEXT,      "IDS_JOIN_FRIEND_TEXT", "text",        43, 260, 110,  16, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_HEADSET_TEXT,     "IDS_JOIN_HEADSET",     "text",        43, 276, 110,  16, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },

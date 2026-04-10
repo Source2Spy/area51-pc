@@ -6026,7 +6026,7 @@ void state_mgr::EnterOnlineJoin( void )
 {
     // Create online join menu
     g_UiMgr->EndDialog( g_UiUserID, TRUE );
-    irect mainarea(-20, DIALOG_TOP, 532, DIALOG_BOTTOM );
+    irect mainarea(-20, DIALOG_TOP, 480, DIALOG_BOTTOM );
     m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "online join", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
 #ifndef USE_MOVIES
     g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
