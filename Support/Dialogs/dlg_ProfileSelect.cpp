@@ -26,10 +26,9 @@
 #ifdef CONFIG_VIEWER
 #include "../../Apps/ArtistViewer/Config.hpp"
 #else
-#include "../../Apps/GameApp/Config.hpp"	
+#include "../../Apps/GameApp/Config.hpp"    
 #endif
 #include "MemCardMgr/MemCardMgr.hpp"
-
 
 //=========================================================================
 //  Main Menu Dialog
@@ -45,7 +44,7 @@ enum popup_type
 
 enum controls
 {
-	IDC_PROFILE_SELECT_LISTBOX,
+    IDC_PROFILE_SELECT_LISTBOX,
     IDC_PROFILE_SELECT_INFOBOX,
 
     IDC_PROFILE_CARD_SLOT,
@@ -148,7 +147,7 @@ xbool dlg_profile_select::Create( s32                        UserID,
     ASSERT( pManager );
 
     // Do dialog creation
-	Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
+    Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
     // find controls
     m_pProfileList     = (ui_listbox*)    FindChildByID( IDC_PROFILE_SELECT_LISTBOX  );
@@ -251,7 +250,7 @@ xbool dlg_profile_select::Create( s32                        UserID,
     // make the dialog active
     m_State = DIALOG_STATE_ACTIVE;
 
-	// Return success code
+    // Return success code
     return Success;
 }
 
@@ -300,7 +299,7 @@ void dlg_profile_select::Render( s32 ox, s32 oy )
     static s32 gap      =  9;
     static s32 width    =  4;
 
-	irect rb;
+    irect rb;
     
     if( m_bRenderBlackout )
     {
@@ -389,7 +388,7 @@ void dlg_profile_select::OnPadSelect( ui_win* pWin )
             g_AudioMgr.Play( "InvalidEntry" );
             return;
         }
-		
+        
         // check for bad profile
         if( m_pProfileList->GetSelectedItemData( 1 ) != PROFILE_OK )
         {
@@ -478,7 +477,7 @@ void dlg_profile_select::OnPadSelect( ui_win* pWin )
                 pVKeyboard->Configure( TRUE );
 #ifdef TARGET_PC
                 pVKeyboard->SetGamepadMode( input_GetPadCount() > 0 );
-#endif				
+#endif                
                 pVKeyboard->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_CREATE" ) );
                 pVKeyboard->ConnectString( &m_ProfileName, SM_PROFILE_NAME_LENGTH );
                 pVKeyboard->SetReturn( &m_ProfileEntered, &m_ProfileOk );
@@ -549,7 +548,7 @@ void dlg_profile_select::OnPadDelete( ui_win* pWin )
             g_AudioMgr.Play( "InvalidEntry" );
             return;
         }
-		
+        
         // get the profile index from the list
         s32 index = m_pProfileList->GetSelectedItemData();
 
@@ -595,7 +594,7 @@ void dlg_profile_select::OnPadActivate( ui_win* pWin )
             g_AudioMgr.Play( "InvalidEntry" );
             return;
         }
-		
+        
         switch( m_Type )
         {
             // continue without saving
@@ -893,6 +892,7 @@ void dlg_profile_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 }
 
 //=========================================================================
+
 void dlg_profile_select::RefreshProfileList( void )
 {
     xbool Found = FALSE;
@@ -910,39 +910,36 @@ void dlg_profile_select::RefreshProfileList( void )
 
     // get the profile list
     xarray<profile_info*>& ProfileNames = g_StateMgr.GetProfileList();
+
     // store the current selection
     s32 CurrentSelection = m_pProfileList->GetSelection();
 
     // clear the list
     m_pProfileList->DeleteAllItems();
+
     // get the current list from the memcard manager
     g_UIMemCardMgr.GetProfileNames( ProfileNames );
-    // fill it with the profile information
-    for (s32 i=0; i<ProfileNames.GetCount(); i++)
-    {
-        s32 ProfileState = PROFILE_OK;
 
+    // fill it with the profile information
+    for( s32 i = 0; i < ProfileNames.GetCount(); i++ )
+    {
         if( ProfileNames[i]->bDamaged )
         {
-            ProfileState = PROFILE_CORRUPT;
+            // add the profile to the list
+            m_pProfileList->AddItem( g_StringTableMgr( "ui", "IDS_CORRUPT" ), i, PROFILE_CORRUPT );
+            m_pProfileList->SetItemColor( i, XCOLOR_RED );
         }
         else if ( ProfileNames[i]->Ver != PROFILE_VERSION_NUMBER )
         {
-#ifdef RETAIL
-            ProfileState = PROFILE_CORRUPT;
-#else
-            ProfileState = PROFILE_EXPIRED;
-#endif
-        }
-
-        if( ProfileState != PROFILE_OK )
-        {
-            m_pProfileList->AddItem( g_StringTableMgr( "ui", "IDS_CORRUPT" ), i, ProfileState );
+            // add the profile to the list
+            //m_pProfileList->AddItem( g_StringTableMgr( "ui", "IDS_BAD_VERSION" ), i, PROFILE_EXPIRED ); // not for retail
+            m_pProfileList->AddItem( g_StringTableMgr( "ui", "IDS_CORRUPT" ), i, PROFILE_CORRUPT );
             m_pProfileList->SetItemColor( i, XCOLOR_RED );
         }
         else
         {
-            m_pProfileList->AddItem( ProfileNames[i]->Name, i, ProfileState );
+            // add the profile to the list
+            m_pProfileList->AddItem( ProfileNames[i]->Name, i, PROFILE_OK );
         }
 
         // look for a match for the selected profile hash
@@ -959,105 +956,85 @@ void dlg_profile_select::RefreshProfileList( void )
 
     // add a create option
     m_CreateIndex = ProfileNames.GetCount();
-    m_pProfileList->AddItem( g_StringTableMgr("ui", "IDS_PROFILE_CREATE_NEW"), m_CreateIndex );
+    m_pProfileList->AddItem( g_StringTableMgr( "ui", "IDS_PROFILE_CREATE_NEW" ), m_CreateIndex );
 
     // determine if profile selected
+    if( ( CurrentSelection >= 0 ) && ( CurrentSelection < m_pProfileList->GetItemCount() ) )
     {
-        if( ( CurrentSelection >= 0 ) && (CurrentSelection < m_pProfileList->GetItemCount()) )
-        {
-            m_pProfileList->SetSelection( CurrentSelection );
-        }
-        else
-        {
-            m_pProfileList->SetSelection( 0 );
-        }
+        m_pProfileList->SetSelection( CurrentSelection );
+    }
+    else
+    {
+        m_pProfileList->SetSelection( 0 );
     }
 
-    // populate profile info box based on current selection
+    // populate profile info
     s32 SelIndex = m_pProfileList->GetSelection();
 
     if( SelIndex == m_CreateIndex )
     {
-        // Handle display for "Create New" option
-        m_pProfileDetails->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_CREATE_NEW" ) );
+        m_pProfileDetails->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_INFO" ) );
+        m_pCardSlot->SetLabel( g_StringTableMgr( "ui", "IDS_NULL" ) );
 
 #if defined(TARGET_PC)
-            m_pProfileDetails->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_INFO" ) );
-            m_pCardSlot         ->SetLabel( g_StringTableMgr( "ui", "IDS_NULL" ) ); //TEMP
-            m_pCreationDate     ->SetFlag(WF_VISIBLE, FALSE);
-            m_pModifiedDate     ->SetFlag(WF_VISIBLE, FALSE);
-            m_pInfoCreationDate ->SetFlag(WF_VISIBLE, FALSE);
-            m_pInfoModifiedDate ->SetFlag(WF_VISIBLE, FALSE);
+        m_pCreationDate     ->SetFlag( WF_VISIBLE, FALSE );
+        m_pModifiedDate     ->SetFlag( WF_VISIBLE, FALSE );
+        m_pInfoCreationDate ->SetFlag( WF_VISIBLE, FALSE );
+        m_pInfoModifiedDate ->SetFlag( WF_VISIBLE, FALSE );
 #else
-            m_pProfileDetails->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_INFO" ) );
-            m_pCardSlot         ->SetLabel( g_StringTableMgr( "ui", "IDS_NULL" ) );
-            m_pCreationDate     ->SetFlag(WF_VISIBLE, TRUE);
-            m_pModifiedDate     ->SetFlag(WF_VISIBLE, TRUE);
-            m_pInfoCreationDate ->SetFlag(WF_VISIBLE, TRUE);
-            m_pInfoModifiedDate ->SetFlag(WF_VISIBLE, TRUE);
-            m_pInfoCreationDate ->SetLabel( xwstring(L"---") );
-            m_pInfoModifiedDate ->SetLabel( xwstring(L"---") );
+        m_pCreationDate     ->SetFlag( WF_VISIBLE, TRUE );
+        m_pModifiedDate     ->SetFlag( WF_VISIBLE, TRUE );
+        m_pInfoCreationDate ->SetFlag( WF_VISIBLE, TRUE );
+        m_pInfoModifiedDate ->SetFlag( WF_VISIBLE, TRUE );
+        m_pInfoCreationDate ->SetLabel( xwstring(L"---") );
+        m_pInfoModifiedDate ->SetLabel( xwstring(L"---") );
 #endif
     }
-    else // Displaying info for an existing profile
+    else
     {
         if( SelIndex >= 0 && SelIndex < ProfileNames.GetCount() )
         {
-            m_pCreationDate     ->SetFlag(WF_VISIBLE, TRUE);
-            m_pModifiedDate     ->SetFlag(WF_VISIBLE, TRUE);
-            m_pInfoCreationDate ->SetFlag(WF_VISIBLE, TRUE);
-            m_pInfoModifiedDate ->SetFlag(WF_VISIBLE, TRUE);
+            m_pCreationDate     ->SetFlag( WF_VISIBLE, TRUE );
+            m_pModifiedDate     ->SetFlag( WF_VISIBLE, TRUE );
+            m_pInfoCreationDate ->SetFlag( WF_VISIBLE, TRUE );
+            m_pInfoModifiedDate ->SetFlag( WF_VISIBLE, TRUE );
 
             m_pProfileDetails->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_INFO" ) );
 
-#if defined(TARGET_PC)
-                m_pCardSlot->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_SAVE_LOCATION_PC" ) ); //TEMP
-#else 
-                if( ProfileNames[SelIndex]->CardID == 0 )
-                {
-                    m_pCardSlot     ->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_CARD_SLOT_1" ) );
-                }
-                else
-                {
-                    m_pCardSlot     ->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_CARD_SLOT_2" ) );
-                }
+#ifdef TARGET_PC
+            m_pCardSlot->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_SAVE_LOCATION_PC" ) ); //TODO: GS: Make this locale
 #endif
+            // set the profile info
+            if( ProfileNames[SelIndex]->CardID == 0 )
+            {
+                m_pCardSlot->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_CARD_SLOT_1" ) );
+            }
+            else
+            {
+                m_pCardSlot->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_CARD_SLOT_2" ) );
+            }
 
-            split_date TimeStamp;
-            const xwchar* Month;
-
-            // Creation Date
-            TimeStamp = eng_SplitDate( ProfileNames[SelIndex]->CreationDate );
-            Month = g_StringTableMgr( "ui", (const char*)xfs("IDS_MONTH%d", TimeStamp.Month));
+            split_date TimeStamp = eng_SplitDate( ProfileNames[SelIndex]->CreationDate );
+            const xwchar* Month = g_StringTableMgr( "ui", (const char*)xfs("IDS_MONTH%d", TimeStamp.Month));
             xwstring CreateStamp(xfs("%02i:%02i:%02i ",TimeStamp.Hour, TimeStamp.Minute, TimeStamp.Second));
             CreateStamp += Month;
-            CreateStamp += (const char*)xfs(" %02i, %d", TimeStamp.Day, TimeStamp.Year);
+            CreateStamp += (const char*)xfs("%02i", TimeStamp.Day);
             m_pInfoCreationDate->SetLabel(CreateStamp);
-
-            // Modification Date
+            
             TimeStamp = eng_SplitDate( ProfileNames[SelIndex]->ModifiedDate );
             Month = g_StringTableMgr( "ui", (const char*)xfs("IDS_MONTH%d", TimeStamp.Month));
             xwstring ModStamp(xfs("%02i:%02i:%02i ",TimeStamp.Hour, TimeStamp.Minute, TimeStamp.Second));
             ModStamp += Month;
-            ModStamp += (const char*)xfs(" %02i, %d", TimeStamp.Day, TimeStamp.Year);
+            ModStamp += (const char*)xfs("%02i", TimeStamp.Day);
             m_pInfoModifiedDate->SetLabel(ModStamp);
-        }		
-		else
-        {
-             m_pProfileDetails->SetLabel( g_StringTableMgr( "ui", "IDS_ERROR" ) );
-             m_pCardSlot         ->SetLabel( xwstring("") );
-             m_pInfoCreationDate ->SetLabel( xwstring("") );
-             m_pInfoModifiedDate ->SetLabel( xwstring("") );
         }
-		/* IDK
         else
         {
-             m_pProfileDetails->SetLabel( g_StringTableMgr( "ui", "IDS_ERROR" ) );
-             m_pCardSlot         ->SetLabel( L"" );
-             m_pInfoCreationDate ->SetLabel( L"" );
-             m_pInfoModifiedDate ->SetLabel( L"" );
+            m_pProfileDetails   ->SetLabel( g_StringTableMgr( "ui", "IDS_ERROR" ) );
+            m_pCardSlot         ->SetLabel( xwstring("") );
+            m_pInfoCreationDate ->SetLabel( xwstring("") );
+            m_pInfoModifiedDate ->SetLabel( xwstring("") );
         }
-		*/
     }
 }
 
@@ -1066,7 +1043,7 @@ void dlg_profile_select::RefreshProfileList( void )
 void dlg_profile_select::OnLoadProfileCB( void )
 {
 #ifdef TARGET_PС
-    MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( 0 );	
+    MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( 0 );    
 #else
     MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( m_iCard );
 #endif
@@ -1108,7 +1085,7 @@ void dlg_profile_select::OnLoadProfileCB( void )
 void dlg_profile_select::OnDeleteProfileCB( void )
 {
 #ifdef TARGET_PС
-    MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( 0 );	
+    MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( 0 );    
 #else
     MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( m_iCard );
 #endif
@@ -1138,7 +1115,7 @@ void dlg_profile_select::OnDeleteProfileCB( void )
 void dlg_profile_select::OnSaveProfileCB( void )
 {
 #ifdef TARGET_PС
-    MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( 0 );	
+    MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( 0 );    
 #else
     MemCardMgr::condition& Condition = g_UIMemCardMgr.GetCondition( m_iCard );
 #endif
