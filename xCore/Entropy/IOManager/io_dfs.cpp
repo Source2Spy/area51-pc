@@ -113,6 +113,16 @@ void dfs_DumpFileListing( const dfs_header* pHeader, const char* pFileName )
 
         for( s32 i=0 ; i<pHeader->nFiles ; i++, pEntry++ )
         {
+            ASSERT( (u32)pEntry->PathNameOffset  < pHeader->StringsLength );
+            ASSERT( (u32)pEntry->FileNameOffset1 < pHeader->StringsLength );
+            ASSERT( (u32)pEntry->FileNameOffset2 < pHeader->StringsLength );
+            ASSERT( (u32)pEntry->ExtNameOffset   < pHeader->StringsLength );
+            if( (u32)pEntry->PathNameOffset  >= pHeader->StringsLength ||
+                (u32)pEntry->FileNameOffset1 >= pHeader->StringsLength ||
+                (u32)pEntry->FileNameOffset2 >= pHeader->StringsLength ||
+                (u32)pEntry->ExtNameOffset   >= pHeader->StringsLength )
+                continue;
+        
             x_fprintf( f,"%8d\t%8d\t%8d\t%s\t%s%s\t%s\n",
                 i,
                 pEntry->Length,
@@ -241,8 +251,12 @@ u32 dfs_FindOrAddString( xarray<dfs_string_entry>& Table, u32& StringsLength, co
 
 #ifdef TARGET_PC
 static 
-void dfs_CollectFiles( const char* pRootPath, const char* pRelativePath, xarray<dfs_emulated_entry>& Entries )
+void dfs_CollectFiles( const char* pRootPath, const char* pRelativePath, xarray<dfs_emulated_entry>& Entries, s32 Depth = 0 )
 {
+    ASSERT( Depth <= 64 );
+    if( Depth > 64 )
+        return;
+	
     char SearchPath[X_MAX_PATH];
     WIN32_FIND_DATA FindData;
     HANDLE hFind;
@@ -272,7 +286,7 @@ void dfs_CollectFiles( const char* pRootPath, const char* pRelativePath, xarray<
             else
                 x_sprintf( NextRelative, "%s", FindData.cFileName );
 
-            dfs_CollectFiles( pRootPath, NextRelative, Entries );
+            dfs_CollectFiles( pRootPath, NextRelative, Entries, Depth + 1 );
         }
         else
         {
@@ -308,7 +322,7 @@ dfs_header* dfs_BuildHeaderFromDirectory( const char* pRootPath )
     if( (pRootPath == NULL) || (*pRootPath == 0) )
         return NULL;
 
-    dfs_CollectFiles( pRootPath, "", Entries );
+    dfs_CollectFiles( pRootPath, "", Entries, 0 );
 
     if( Entries.GetCount() == 0 )
         return NULL;
