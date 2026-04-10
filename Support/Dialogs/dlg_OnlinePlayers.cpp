@@ -351,14 +351,12 @@ void dlg_online_players::Render( s32 ox, s32 oy )
     // render the normal dialog stuff
     ui_dialog::Render( ox, oy );
 
-#ifdef TARGET_PS2
-    // render gamespy logo
+    // render network logo
     irect LogoPos = m_Position;
     LogoPos.r -= 35;
     LogoPos.l = LogoPos.r - 128;
     LogoPos.b = LogoPos.t + 32;
-    g_UiMgr->RenderBitmap( g_UiMgr->FindBitmap( "gamespy_logo" ), LogoPos, XCOLOR_WHITE );
-#endif
+    g_UiMgr->RenderBitmap( g_UiMgr->FindBitmap( "gamespy_logo" ), LogoPos, XCOLOR_WHITE ); // GS: TODO: Please put something else here later.
 
     // render the glow bar
     g_UiMgr->RenderGlowBar();
