@@ -15,6 +15,7 @@
 #include "ui\ui_frame.hpp"
 #include "ui\ui_text.hpp"
 #include "ui\ui_combo.hpp"
+#include "ui\ui_button.hpp"
 
 //==============================================================================
 //  dlg_avatar_select
@@ -51,11 +52,9 @@ public:
 protected:
     ui_frame*           m_pFrame1;
     ui_combo*           m_pAvatarSelect;
-
+    ui_button*          m_pButtonAccept;
     ui_text*            m_pNavText;
-
     s32                 m_CurrHL;
-
     xbool               m_bRenderBlackout;
 };
 

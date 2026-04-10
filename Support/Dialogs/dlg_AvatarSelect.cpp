@@ -18,27 +18,24 @@
 #include "stringmgr\stringmgr.hpp"
 #include "ResourceMgr\ResourceMgr.hpp"
 
-#if defined(TARGET_PS2)
-#include "Entropy\PS2\ps2_misc.hpp"
-#endif
-
-
 //=========================================================================
 //  Main Menu Dialog
 //=========================================================================
 
 enum controls
 {
-	IDC_AVATAR_SELECT_COMBO,
+    IDC_AVATAR_SELECT_COMBO,
     IDC_AVATAR_SELECT_NAV_TEXT,
+    IDC_AVATAR_SELECT_BUTTON_ACCEPT,    
 };
 
 
 ui_manager::control_tem AvatarSelectControls[] = 
 {
     // Frames.
-    { IDC_AVATAR_SELECT_COMBO,     "IDS_NULL",  "combo",     71,  50, 128, 256, 0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_AVATAR_SELECT_NAV_TEXT,  "IDS_NULL",  "text",       0,   0,   0,   0, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_AVATAR_SELECT_COMBO,          "IDS_NULL",    "combo",  71,  50, 128, 256, 0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_AVATAR_SELECT_NAV_TEXT,       "IDS_NULL",    "text",    0,   0,   0,   0, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_AVATAR_SELECT_BUTTON_ACCEPT,  "IDS_ACCEPT",  "button", 71, 315, 128,  22, 0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 };
 
 ui_manager::dialog_tem AvatarSelectDialog =
@@ -116,15 +113,17 @@ xbool dlg_avatar_select::Create( s32                        UserID,
     ASSERT( pManager );
 
     // Do dialog creation
-	Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
+    Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
     // find controls
-    m_pAvatarSelect = (ui_combo*)   FindChildByID( IDC_AVATAR_SELECT_COMBO    );
-    m_pNavText      = (ui_text*)    FindChildByID( IDC_AVATAR_SELECT_NAV_TEXT );
+    m_pAvatarSelect  = (ui_combo*)   FindChildByID( IDC_AVATAR_SELECT_COMBO    );
+    m_pNavText       = (ui_text*)    FindChildByID( IDC_AVATAR_SELECT_NAV_TEXT );
+    m_pButtonAccept  = (ui_button*)  FindChildByID( IDC_AVATAR_SELECT_BUTTON_ACCEPT );
 
     // hide them
-    m_pAvatarSelect->SetFlag(ui_win::WF_VISIBLE, FALSE);
-    m_pNavText     ->SetFlag(ui_win::WF_VISIBLE, FALSE);
+    m_pAvatarSelect ->SetFlag(ui_win::WF_VISIBLE, FALSE);
+    m_pNavText      ->SetFlag(ui_win::WF_VISIBLE, FALSE);
+    m_pButtonAccept ->SetFlag(ui_win::WF_VISIBLE, FALSE);
 
     // set up nav text
     xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_ACCEPT" ));
@@ -229,7 +228,7 @@ xbool dlg_avatar_select::Create( s32                        UserID,
     // make the dialog active
     m_State = DIALOG_STATE_ACTIVE;
 
-	// Return success code
+    // Return success code
     return Success;
 }
 
@@ -238,12 +237,6 @@ xbool dlg_avatar_select::Create( s32                        UserID,
 void dlg_avatar_select::Destroy( void )
 {
     ui_dialog::Destroy();
-
-#ifdef TARGET_PS2
-    // wait until we finish drawing before we unload the logo bitmap
-    DLIST.Flush();
-    DLIST.WaitForTasks();
-#endif
 
     // unload avatars
     g_UiMgr->UnloadBitmap( "avatar0"  );
@@ -275,18 +268,13 @@ void dlg_avatar_select::Render( s32 ox, s32 oy )
     static s32 gap      =  9;
     static s32 width    =  4;
 
-	irect rb;
+    irect rb;
 
     if( m_bRenderBlackout )
     {
         s32 XRes, YRes;
         eng_GetRes(XRes, YRes);
-#ifdef TARGET_PS2
-        // Nasty hack to force PS2 to draw to rb.l = 0
-        rb.Set( -1, 0, XRes, YRes );
-#else
         rb.Set( 0, 0, XRes, YRes );
-#endif
         g_UiMgr->RenderGouraudRect(rb, xcolor(0,0,0,180),
             xcolor(0,0,0,180),
             xcolor(0,0,0,180),
@@ -384,16 +372,24 @@ void dlg_avatar_select::OnPadSelect( ui_win* pWin )
 {
     (void)pWin;
 
-    // accept
     if ( m_State == DIALOG_STATE_ACTIVE )
     {
-        // get the pending profile
-        player_profile& CurrentProfile = g_StateMgr.GetPendingProfile();
-        // store the avatar ID in the profile data
-        CurrentProfile.SetAvatarID( m_pAvatarSelect->GetSelectedItemData( 0 ) ); 
-
-        g_AudioMgr.Play("Select_Norm");
-        m_State = DIALOG_STATE_BACK;
+        if( pWin == (ui_win*)m_pButtonAccept )
+        {
+            // get the pending profile
+            player_profile& CurrentProfile = g_StateMgr.GetPendingProfile();
+            // store the avatar ID in the profile data
+            CurrentProfile.SetAvatarID( m_pAvatarSelect->GetSelectedItemData( 0 ) ); 
+            
+            g_AudioMgr.Play("Select_Norm");
+            m_State = DIALOG_STATE_BACK;
+        }
+        else
+        {
+            // no changes - return to previous screen
+            g_AudioMgr.Play( "Backup" );
+            m_State = DIALOG_STATE_BACK;
+        }        
     }
 }
 
@@ -404,6 +400,8 @@ void dlg_avatar_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     (void)pWin;
     (void)DeltaTime;
 
+    s32 highLight = -1;
+
     // scale window if necessary
     if( g_UiMgr->IsScreenScaling() )
     {
@@ -412,6 +410,7 @@ void dlg_avatar_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             // turn on the controls
             m_pAvatarSelect ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pNavText      ->SetFlag(ui_win::WF_VISIBLE, TRUE);
+            m_pButtonAccept ->SetFlag(ui_win::WF_VISIBLE, TRUE); 
             GotoControl( (ui_control*)m_pAvatarSelect );
             g_UiMgr->SetScreenHighlight( m_pAvatarSelect->GetPosition() );
         }
@@ -419,6 +418,27 @@ void dlg_avatar_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
     // update the glow bar
     g_UiMgr->UpdateGlowBar(DeltaTime);
+    
+    // update labels    
+    if( m_pAvatarSelect->GetFlags(WF_HIGHLIGHT) )
+    {
+        highLight = 0;
+        g_UiMgr->SetScreenHighlight( m_pAvatarSelect->GetPosition() );
+    }    
+    
+    if( m_pButtonAccept->GetFlags(WF_HIGHLIGHT) )
+    {
+        highLight = 1;
+        g_UiMgr->SetScreenHighlight( m_pButtonAccept->GetPosition() );
+    }
+
+    if( highLight != m_CurrHL )
+    {
+        if( highLight != -1 )
+            g_AudioMgr.Play("Cusor_Norm");
+
+        m_CurrHL = highLight;
+    }    
 }
 
 //=========================================================================
