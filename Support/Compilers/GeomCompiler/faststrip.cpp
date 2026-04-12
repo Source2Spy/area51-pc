@@ -621,7 +621,8 @@ void faststrip::FindBestStrip( void )
         T.IsActive = FALSE;
 
         // Deactivate all strips that begin with this tri
-        for( s32 i=0; i<m_nStripsPerTri; i++ )
+        s32 i;
+        for( i=0; i<m_nStripsPerTri; i++ )
             DeactivateStrip( (iTri*m_nStripsPerTri)+i );
 
         // Tell all neighbor triangles it is no longer active

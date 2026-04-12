@@ -108,7 +108,8 @@ xhandle ps2_strip::GetNextTri( xhandle hTri, s32 iD1, s32 iD2 )
         if( V1.hTriangle[i] == hTri )
             continue;
 
-        for( s32 j=0; j<V2.nRef; j++ )
+        s32 j;
+        for( j=0; j<V2.nRef; j++ )
         {
             if( V2.hTriangle[j] == hTri )
                 continue;
@@ -321,7 +322,8 @@ s32 ps2_strip::GetLastIndex( xhandle hTri, s32 iD1, s32 iD2 )
 {
     triangle& Tri       = m_lTriangle( hTri );
 
-    for( s32 i=0; i<3; i++ )
+    s32 i;
+    for( i=0; i<3; i++ )
     {
         if( i != iD1 && i != iD2 )
             break;

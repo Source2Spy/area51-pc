@@ -306,7 +306,7 @@ const rsc_desc_type& rsc_desc_mgr::GetType( const char* pType ) const
 
     x_throw( xfs("unable to find [%s] RscDesc", pType ) );
 
-    return *pLoop;
+    return *(const rsc_desc_type*)NULL;
 }
 
 
@@ -787,8 +787,9 @@ void rsc_desc_mgr::AddExternalRsc( const char* pExternalInfo, s32 Index )
     //
     ParseExternalRsc( pExternalInfo, RscName, CompilerRules );
 
-    // Find whether the external resource already exits 
-    for( s32 i=0; i<m_lRscDesc.GetCount(); i++ )
+    // Find whether the external resource already exits
+    s32 i;
+    for( i=0; i<m_lRscDesc.GetCount(); i++ )
     {
         if( x_stricmp( RscName, m_lRscDesc[i].pDesc->GetName() ) == 0 )
         {
@@ -1038,7 +1039,7 @@ rsc_desc& rsc_desc_mgr::GetRscDescByString( const char* pName )
 
     x_throw( xfs("unable to find [%s] RscDesc", pName ) );
 
-    return *m_lRscDesc[i].pDesc;
+    return *(rsc_desc*)NULL;
 }
 
 //=========================================================================

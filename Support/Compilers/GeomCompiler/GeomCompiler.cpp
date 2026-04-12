@@ -914,7 +914,8 @@ void geom_compiler::BuildSettings( geom& Geom, const char* pSettingsFile, const 
         }
 
         // Compile properties
-        for( s32 iProperty = 0; iProperty < RawSettings.m_Properties.GetCount(); iProperty++ )
+        s32 iProperty;
+        for( iProperty = 0; iProperty < RawSettings.m_Properties.GetCount(); iProperty++ )
         {
             // Lookup source + dest
             const raw_settings::property& SrcProperty = RawSettings.m_Properties[iProperty];
@@ -1508,7 +1509,8 @@ void geom_compiler::ExportRigidGeom( const char* pFileName )
         // Nuke all the facets that represent those bones.
         for( j=0; j<RawMesh.m_nFacets; j++ )
         {
-            for( s32 t=0; t<BadSubMesh.GetCount(); t++ )
+            s32 t;
+            for( t=0; t<BadSubMesh.GetCount(); t++ )
             {
                 if( BadSubMesh[t] == RawMesh.m_pFacet[j].iMesh )
                     break;
@@ -4760,7 +4762,8 @@ void geom_compiler::ExportVirtualMeshes( mesh& Mesh, geom& Geom, s32 PlatformID 
                 {
                     // note that we can't use the normal GetMeshIndex function
                     // because we're still working inside the dictionary!
-                    for( s32 MeshId = 0; MeshId < Geom.m_nMeshes; MeshId++ )
+                    s32 MeshId;
+                    for( MeshId = 0; MeshId < Geom.m_nMeshes; MeshId++ )
                     {
                         if( !x_strcmp( m_Dictionary.GetString( Geom.m_pMesh[MeshId].NameOffset ),
                                        SrcLOD.MeshName[k] ) )

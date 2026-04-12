@@ -38,7 +38,8 @@ void arm_optimizer::OpCommands( section& Section )
     //  2 old matrix
     // -1 is corently not been use
     //
-    for( s32 i=0; i<m_nMatrices; i++ )
+    s32 i;
+    for( i=0; i<m_nMatrices; i++ )
     {
         m_pMatrixCache[ i ]     = -1;
         FlushSys[ i ]           = -1;
@@ -135,10 +136,11 @@ void arm_optimizer::OpCommands( section& Section )
 
                             //
                             // Use the weights in the cache
-                            // 
-                            for( s32 w = 0; w<V.nWeights; w++ )
+                            //
+                            s32 w, m;
+                            for( w = 0; w<V.nWeights; w++ )
                             {
-                                for( s32 m=0; m<m_nMatrices; m++ )
+                                for( m=0; m<m_nMatrices; m++ )
                                 {
                                     if( FlushSys[ m ] >= 0 )
                                     {
@@ -163,7 +165,8 @@ void arm_optimizer::OpCommands( section& Section )
                                 if( V.Position == V2.Position &&
                                     V.nWeights == V2.nWeights )
                                 {
-                                    for( s32 h=0; h<V.nWeights; h++ )
+                                    s32 h;
+                                    for( h=0; h<V.nWeights; h++ )
                                     {
                                         if( V.Weight[h].iBone != V2.Weight[h].iBone )
                                             break;
@@ -307,7 +310,8 @@ void arm_optimizer::OpSection( section& Section )
 
                 for( s32 w=0; w<V.nWeights; w++)
                 {
-                    for( s32 c=0; c<WL.nWeights; c++ )
+                    s32 c;
+                    for( c=0; c<WL.nWeights; c++ )
                     {
                         if( V.Weight[w].iBone == WL.Weight[c] ) break;
                     }
@@ -385,7 +389,8 @@ void arm_optimizer::OpSection( section& Section )
         // Reset the score of the verts and matrices
         //
         CurentCount++;
-        for( s32 f=0; f< m_nMatrices; f++ )
+        s32 f;
+        for( f=0; f< m_nMatrices; f++ )
         {
             m_pMatrixCacheScore[f] = -(m_pMatrixCache[f] == -1);
         }
@@ -405,7 +410,7 @@ void arm_optimizer::OpSection( section& Section )
         //
         for( f=0; f< nTrisLeft; f++ )
         {
-            s32             i,c=0,k;
+            s32             i,c=0,k,j;
             triangle&       Facet = Section.lTriangle[f];
             weight_list&    WL    = WList[f];
             f32             Score = 0;
@@ -413,9 +418,9 @@ void arm_optimizer::OpSection( section& Section )
             // get the score base on the matrix cache
             for( c=i=0; i<WL.nWeights; i++ )
             {
-                for( s32 j=0; j<m_nMatrices; j++ )
+                for( j=0; j<m_nMatrices; j++ )
                 {
-                    if( m_pMatrixCache[j] == WL.Weight[i] ) 
+                    if( m_pMatrixCache[j] == WL.Weight[i] )
                     {
                         m_pMatrixCacheScore[j]++;
                         Score += 100;
@@ -522,8 +527,9 @@ void arm_optimizer::OpSection( section& Section )
                     s32 iMatrix = 0;
                     BestScore   = 999999999.0f;
 
-                    // Find the best score               
-                    for( s32 i=0; i<m_nMatrices; i++ )
+                    // Find the best score
+                    s32 i;
+                    for( i=0; i<m_nMatrices; i++ )
                     {
                         if( WL.Weight[v] == m_pMatrixCache[i] ) break;
 
@@ -589,7 +595,8 @@ void arm_optimizer::OpSection( section& Section )
                     s32 iVertex = 0;
                     BestScore   = 999999999.0f;
 
-                    for( s32 i=0; i<m_CacheSize; i++ )
+                    s32 i;
+                    for( i=0; i<m_CacheSize; i++ )
                     {
                         // Make sure that is none of the matrices what we
                         // need for the new facet
@@ -626,9 +633,10 @@ void arm_optimizer::OpSection( section& Section )
             triangle& Facet = Section.lTriangle[ iBestFacet ];
             for( s32 v=0; v<WL.nWeights; v++ )
             {
-                for( s32 i=0;i<m_nMatrices; i++ )
+                s32 i;
+                for( i=0;i<m_nMatrices; i++ )
                 {
-                    if( m_pMatrixCache[i] == WL.Weight[v] ) break; 
+                    if( m_pMatrixCache[i] == WL.Weight[v] ) break;
                 }
 
                 ASSERT( i < m_nMatrices );
@@ -645,7 +653,8 @@ void arm_optimizer::OpSection( section& Section )
             // Print the vertex and matrix caches
             //
             x_fprintf( Fp,"MC[ ");
-            for( s32 i=0;i<m_nMatrices; i++ )
+            s32 i;
+            for( i=0;i<m_nMatrices; i++ )
             {
                 x_fprintf( Fp,"%4d ", m_pMatrixCache[i]);
             }
@@ -815,9 +824,10 @@ void arm_optimizer::Build( const rawmesh2& RawMesh, const xarray<s32>& lDListTri
         {
             vertex&   Vertex = RawMesh.m_pVertex[ Triangle.iVertex[k] ];
             s32       nVerts = lVert.GetCount();
+            s32       l;
 
             // Linear search for the particular vertex
-            for( s32 l=0; l<nVerts; l++ )
+            for( l=0; l<nVerts; l++ )
             {
                 s32     s;
                 vertex& V = lVert[l];
