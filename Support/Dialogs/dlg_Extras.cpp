@@ -94,21 +94,11 @@ ui_manager::dialog_tem ExtrasDialog =
 #define ID_EXTRA_EDGAR              26
 #define ID_EXTRA_OUTRO              27
 
-#ifdef TARGET_XBOX
-#define ID_DEMO_NARC_OR_UT_STRING   {"PromoUnreal2"}
-#else
 #define ID_DEMO_NARC_OR_UT_STRING   ("PromoNarc")
-#endif
 #define ID_VOICES_OF_A51_STRING     {"VoicesOfArea51"}
-#ifdef TARGET_XBOX
 #define ID_RAMIREZ_STRING           {"Secrets_Ramirez"}
 #define ID_CRISPY_STRING            {"Secrets_Crispy"}
 #define ID_MCCANN_STRING            {"Secrets_McCan"}
-#else
-#define ID_RAMIREZ_STRING           {"SecretsRamirez"}
-#define ID_CRISPY_STRING            {"SecretsCrispy"}
-#define ID_MCCANN_STRING            {"SecretsMcCan"}
-#endif
 #define ID_INTRO_STRING             {"CinemaIntro"}
 #define ID_SLIDE_SHOW_1_STRING      {"CinemaIntro"}
 #define ID_SLIDE_SHOW_2_STRING      {"CinemaIntro"}
@@ -132,8 +122,7 @@ ui_manager::dialog_tem ExtrasDialog =
 #define ID_INFECTION_STRING         {"CinemaInfection"}
 #define ID_EDGAR_STRING             {"CinemaEdgar"}
 #define ID_OUTRO_STRING             {"CinemaOutro"}
-                                      
-                                      
+
 char s_MovieNames[30][32] = 
 {    
     ID_DEMO_NARC_OR_UT_STRING,   
