@@ -23,35 +23,21 @@
 #include "../../Apps/GameApp/Config.hpp"    
 #endif
 
-// You are dead, not big suprise!
-// (ofc this is temp solution)
-//#define DEAD_SPY
-
 //=========================================================================
 //  Main Menu Dialog
 //=========================================================================
 
 ui_manager::control_tem MainMenuControls[] = 
 {
-#ifdef TARGET_PC
     { IDC_MAIN_MENU_CAMPAIGN,           "IDS_MAIN_MENU_CAMPAIGN",   "button",   60, 80, 120, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_MAIN_MENU_ONLINE,             "IDS_MAIN_MENU_ONLINE",     "button",   60, 120, 120, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_MAIN_MENU_SETTINGS,           "IDS_MAIN_MENU_SETTINGS",   "button",   60, 160, 120, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_MAIN_MENU_PROFILES,           "IDS_MAIN_MENU_PROFILES",   "button",   60, 200, 120, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_MAIN_MENU_CREDITS,            "IDS_EXTRAS_ITEM_CREDITS",  "button",   60, 240, 120, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_MAIN_MENU_NAV_TEXT,           "IDS_NULL",                 "text",      0,   0,   0,  0, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-#else
-    { IDC_MAIN_MENU_CAMPAIGN,           "IDS_MAIN_MENU_CAMPAIGN",   "button",   60,  60, 120, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_MAIN_MENU_MULTI,              "IDS_MAIN_MENU_MULTI",      "button",   60, 100, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_MAIN_MENU_ONLINE,             "IDS_MAIN_MENU_ONLINE",     "button",   60, 140, 120, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_MAIN_MENU_SETTINGS,           "IDS_MAIN_MENU_SETTINGS",   "button",   60, 180, 120, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_MAIN_MENU_PROFILES,           "IDS_MAIN_MENU_PROFILES",   "button",   60, 220, 120, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_MAIN_MENU_CREDITS,            "IDS_EXTRAS_ITEM_CREDITS",  "button",   60, 260, 120, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_MAIN_MENU_NAV_TEXT,           "IDS_NULL",                 "text",      0,   0,   0,  0, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-#ifdef TARGET_XBOX
-    { IDC_MAIN_MENU_SILENT_LOGIN_TEXT,  "IDS_NULL",                 "text",    120, 320,   0,  0, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+#if defined(TARGET_PC)		
+    { IDC_MAIN_MENU_EXIT,               "IDS_MAIN_MENU_QUIT",       "button",   60, 280, 120, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 #endif	
-#endif
+    { IDC_MAIN_MENU_NAV_TEXT,           "IDS_NULL",                 "text",      0,   0,   0,  0, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 }; 
 
 ui_manager::dialog_tem MainMenuDialog =
@@ -62,10 +48,6 @@ ui_manager::dialog_tem MainMenuDialog =
     &MainMenuControls[0],
     0
 };
-
-#ifdef TARGET_XBOX
-static xbool s_PendingInviteRunOnce = FALSE;
-#endif
 
 //=========================================================================
 //  Defines
@@ -106,10 +88,6 @@ ui_win* dlg_main_menu_factory( s32 UserID, ui_manager* pManager, ui_manager::dia
 
 dlg_main_menu::dlg_main_menu( void )
 {
-#ifdef TARGET_XBOX
-    m_XBOXNotificationOffsetX = 28;    
-    m_XBOXNotificationOffsetY = 36;    
-#endif
 }
 
 //=========================================================================
@@ -145,10 +123,10 @@ xbool dlg_main_menu::Create( s32                        UserID,
     m_pButtonSettings       = (ui_button*)  FindChildByID( IDC_MAIN_MENU_SETTINGS           );
     m_pButtonProfiles       = (ui_button*)  FindChildByID( IDC_MAIN_MENU_PROFILES           );
     m_pButtonCredits        = (ui_button*)  FindChildByID( IDC_MAIN_MENU_CREDITS            );
+#if defined(TARGET_PC)		
+    m_pButtonExit           = (ui_button*)  FindChildByID( IDC_MAIN_MENU_EXIT               );
+#endif	
     m_pNavText              = (ui_text*)    FindChildByID( IDC_MAIN_MENU_NAV_TEXT           );
-#ifdef TARGET_XBOX
-    m_pSilentLoginText      = (ui_text*)    FindChildByID( IDC_MAIN_MENU_SILENT_LOGIN_TEXT  );
-#endif
 
     s32 iControl = g_StateMgr.GetCurrentControl();
     if( (iControl == -1) || (GotoControl(iControl)==NULL) )
@@ -173,19 +151,15 @@ xbool dlg_main_menu::Create( s32                        UserID,
     m_pButtonOnline       ->SetFlag(ui_win::WF_VISIBLE, FALSE);    
     m_pButtonSettings     ->SetFlag(ui_win::WF_VISIBLE, FALSE);    
     m_pButtonProfiles     ->SetFlag(ui_win::WF_VISIBLE, FALSE);    
-    m_pButtonCredits      ->SetFlag(ui_win::WF_VISIBLE, FALSE);    
+    m_pButtonCredits      ->SetFlag(ui_win::WF_VISIBLE, FALSE);
+#if defined(TARGET_PC)	
+    m_pButtonExit         ->SetFlag(ui_win::WF_VISIBLE, FALSE);
+#endif	
     m_pNavText            ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-#ifdef TARGET_XBOX
-    m_pSilentLoginText    ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-#endif
-
 #ifdef LAN_PARTY_BUILD
     m_pButtonMultiPlayer  ->SetFlag(ui_win::WF_DISABLED, TRUE);
 #endif
-
-#ifdef DEAD_SPY
     m_pButtonOnline       ->SetFlag(ui_win::WF_DISABLED, TRUE);
-#endif
 
     // set up nav text 
     xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_SELECT" ));
@@ -194,14 +168,6 @@ xbool dlg_main_menu::Create( s32                        UserID,
     m_pNavText->SetLabelFlags( ui_font::h_center|ui_font::v_top|ui_font::is_help_text );
     m_pNavText->UseSmallText(TRUE);
 
-#ifdef TARGET_XBOX
-    // set up silent signin text
-
-    xwstring silentsigninText(g_StringTableMgr( "ui", "IDS_MAIN_MENU_SIGNED_IN_XBOX" ));
-    m_pSilentLoginText->SetLabel( xwstring(silentsigninText) );
-    m_pSilentLoginText->SetLabelFlags( ui_font::h_center|ui_font::v_top );
-    m_pSilentLoginText->UseSmallText(TRUE);
-#endif
     // set the number of players to 0
     g_PendingConfig.SetPlayerCount( 0 );
 
@@ -216,6 +182,7 @@ xbool dlg_main_menu::Create( s32                        UserID,
     m_State = DIALOG_STATE_ACTIVE;
 
     m_PopUp = NULL;
+    m_PopUpResult = DLG_POPUP_IDLE;
 
     // nuke any temporary profiles 
     //for( s32 i=0; i<SM_PROFILE_COUNT; i++ )
@@ -344,6 +311,30 @@ void dlg_main_menu::OnPadSelect( ui_win* pWin )
             m_CurrentControl = IDC_MAIN_MENU_CREDITS;
             m_State = DIALOG_STATE_SELECT;
         }
+#if defined(TARGET_PC)			
+        else if( pWin == (ui_win*)m_pButtonExit )
+        {
+            g_AudioMgr.Play("Select_Norm");
+            if( m_PopUp == NULL )
+            {
+                m_PopUpResult = DLG_POPUP_IDLE;
+                irect r = g_UiMgr->GetUserBounds( m_UserID );
+                m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog( m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|ui_win::WF_INPUTMODAL|ui_win::WF_USE_ABSOLUTE );
+
+                xwstring navText( g_StringTableMgr( "ui", "IDS_NAV_YES" ) );
+                navText += g_StringTableMgr( "ui", "IDS_NAV_NO" );
+                m_pNavText->SetFlag(ui_win::WF_VISIBLE, FALSE);
+
+                m_PopUp->Configure( g_StringTableMgr( "ui", "IDS_APP_EXIT_VERIFY_TITLE" ),
+                                    TRUE,
+                                    TRUE,
+                                    FALSE,
+                                    g_StringTableMgr( "ui", "IDS_APP_EXIT_VERIFY_MSG" ),
+                                    navText,
+                                    &m_PopUpResult );
+            }
+        }
+#endif
     }
 }
 
@@ -369,11 +360,12 @@ void dlg_main_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             m_pButtonOnline       ->SetFlag(ui_win::WF_VISIBLE, TRUE); 
             m_pButtonSettings     ->SetFlag(ui_win::WF_VISIBLE, TRUE);    
             m_pButtonProfiles     ->SetFlag(ui_win::WF_VISIBLE, TRUE);    
-            m_pButtonCredits      ->SetFlag(ui_win::WF_VISIBLE, TRUE);    
+            m_pButtonCredits      ->SetFlag(ui_win::WF_VISIBLE, TRUE);
+#if defined(TARGET_PC)			
+            m_pButtonExit         ->SetFlag(ui_win::WF_VISIBLE, TRUE);
+#endif			
             m_pNavText            ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-#ifdef TARGET_XBOX
-            m_pSilentLoginText    ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-#endif  
+
             s32 iControl = g_StateMgr.GetCurrentControl();
             if( (iControl == -1) || (GotoControl(iControl)==NULL) )
             {
@@ -397,48 +389,34 @@ void dlg_main_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                 SetFlag( WF_DISABLED, FALSE );
                 g_UiMgr->SetScreenOn(TRUE);
             }
-
-            #ifdef TARGET_XBOX
-            if( s_PendingInviteRunOnce == FALSE )
-            {
-                // Ensure we never get this dialog again
-                s_PendingInviteRunOnce = TRUE;
-
-                if( g_MatchMgr.GetPendingInviteAccepted() == TRUE )
-                {
-                    xwstring InvitingUser;
-                    xwstring AcceptedUser;
-                    
-                    if( g_MatchMgr.GetInviteAcceptedUsers( InvitingUser, AcceptedUser ) == TRUE )
-                    {
-                        // pending accept popup
-                        irect r = g_UiMgr->GetUserBounds( m_UserID );
-                        m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog( m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|ui_win::WF_INPUTMODAL|ui_win::WF_USE_ABSOLUTE );
-
-                        xwstring Format( g_StringTableMgr( "ui", "IDS_MAIN_MENU_PENDING_INVITE" ) );
-
-                        s32 Index = Format.Find( xwstring( "%s" ) );
-                        ASSERT( Index != -1 );
-
-                        xwstring Message( Format.Left ( Index ) );
-                        xwstring Right  ( Format.Right( Format.GetLength() - Index - 2 ) );
-
-                        Message += InvitingUser;
-                        Message += Right;
-
-                        m_PopUp->Configure( AcceptedUser,
-                                            TRUE, 
-                                            FALSE, 
-                                            FALSE, 
-                                            Message,
-                                            g_StringTableMgr( "ui", "IDS_NAV_OK" ),
-                                            &m_PopUpResult );
-                    }
-                }
-            }
-            #endif
         }
     }
+
+#if defined(TARGET_PC)
+    // check exit popup result
+    if( m_PopUp )
+    {
+        if( m_PopUpResult != DLG_POPUP_IDLE )
+        {
+            if( m_PopUpResult == DLG_POPUP_YES )
+            {
+				// GS: TODO: Fix game exit for memcards, threads and etc...
+                PostQuitMessage(0);
+            }
+            else
+            {
+                // re-enable the dialog
+                m_State = DIALOG_STATE_ACTIVE;
+            }
+
+            // clear popup 
+            m_PopUp = NULL;
+
+            // turn on nav text
+            m_pNavText->SetFlag(ui_win::WF_VISIBLE, TRUE);
+        }
+    }
+#endif	
 
     // update the glow bar
     g_UiMgr->UpdateGlowBar(DeltaTime);
@@ -475,6 +453,13 @@ void dlg_main_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         g_UiMgr->SetScreenHighlight( m_pButtonCredits->GetPosition() );
         highLight = 5;
     }
+#if defined(TARGET_PC)	
+    else if( m_pButtonExit->GetFlags(WF_HIGHLIGHT) )
+    {
+        g_UiMgr->SetScreenHighlight( m_pButtonExit->GetPosition() );
+        highLight = 6;
+    }
+#endif
     if( highLight != m_CurrHL )
     {
         if( highLight != -1 )
@@ -483,59 +468,14 @@ void dlg_main_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         m_CurrHL = highLight;
     }
 
-#ifdef TARGET_XBOX
-//klkl: Add silent login messages for Xbox
-    xwstring silentsigninText;
-
-    {
-        switch( g_MatchMgr.GetAuthStatus() )
-        {
-        case AUTH_STAT_CONNECTED:
-            {
-                PXONLINE_USER user = XOnlineGetLogonUsers();
-                if( !user )
-                {
-                    silentsigninText = g_StringTableMgr("ui", "IDS_MAIN_MENU_NOT_SIGNED_IN_XBOX");
-                    break;
-                }
-                silentsigninText = g_StringTableMgr("ui", "IDS_MAIN_MENU_SIGNED_IN_XBOX");
-                //add gamertag
-                silentsigninText += "\n";
-                silentsigninText += user->szGamertag;
-            }
-            break;
-        case AUTH_STAT_NEED_PASSWORD:
-            silentsigninText = g_StringTableMgr("ui", "IDS_MAIN_MENU_PASSCODE_NEEDED_XBOX");
-            break;
-        case AUTH_STAT_CANNOT_CONNECT:
-        case AUTH_STAT_URGENT_MESSAGE:
-            silentsigninText = g_StringTableMgr("ui", "IDS_MAIN_MENU_SIGNIN_FAILED_XBOX");
-            break;
-        case AUTH_STAT_CONNECTING:
-            silentsigninText = g_StringTableMgr("ui", "IDS_MAIN_MENU_SIGNING_IN_XBOX");
-            break;
-        case AUTH_STAT_DISCONNECTED:
-        case AUTH_STAT_NO_ACCOUNT:
-        default:
-            silentsigninText = g_StringTableMgr("ui", "IDS_MAIN_MENU_NOT_SIGNED_IN_XBOX");
-            break;
-        }
-    }
-
-    m_pSilentLoginText->SetLabel(silentsigninText);
-#endif
-
 #ifndef CONFIG_RETAIL
 
     // check for enabling autoclient/server
     if( !m_bCheckKeySequence )
     {
-    #if defined(TARGET_PS2) || defined(TARGET_PC)
+    #if defined(TARGET_PC)
         if( input_IsPressed( INPUT_PS2_BTN_START,   0 ) &&
             input_IsPressed( INPUT_PS2_BTN_SELECT,  0 ) )
-    #elif defined TARGET_XBOX
-        if( input_IsPressed( INPUT_XBOX_BTN_START,  0 ) &&
-            input_IsPressed( INPUT_XBOX_BTN_B,      0 ) )
     #else
         ASSERT(0);
     #endif
@@ -546,20 +486,16 @@ void dlg_main_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     }
     else
     {
-    #if defined(TARGET_PS2) || defined(TARGET_PC)
+    #if defined(TARGET_PC)
         if( input_WasPressed( INPUT_PS2_BTN_L_UP,  0 ) )
-    #elif defined TARGET_XBOX
-        if( input_WasPressed( INPUT_XBOX_BTN_UP, 0 ) )
     #else
         ASSERT(0);
     #endif
         {
             g_Config.AutoServer = TRUE;
         }
-    #if defined(TARGET_PS2) || defined(TARGET_PC)
+    #if defined(TARGET_PC)
         else if( input_WasPressed( INPUT_PS2_BTN_L_DOWN, 0 ) )
-    #elif defined TARGET_XBOX
-        else if( input_WasPressed( INPUT_XBOX_BTN_DOWN, 0 ) )
     #else
         ASSERT(0);
     #endif

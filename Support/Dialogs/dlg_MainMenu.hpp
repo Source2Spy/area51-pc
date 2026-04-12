@@ -28,6 +28,9 @@ enum menu_menu_controls
     IDC_MAIN_MENU_SETTINGS,
     IDC_MAIN_MENU_PROFILES,
     IDC_MAIN_MENU_CREDITS,
+#if defined(TARGET_PC)		
+    IDC_MAIN_MENU_EXIT,
+#endif
     IDC_MAIN_MENU_NAV_TEXT,
     IDC_MAIN_MENU_SIGN_IN,
     IDC_MAIN_MENU_SILENT_LOGIN_TEXT,
@@ -71,6 +74,9 @@ protected:
     ui_button*          m_pButtonSettings;
     ui_button*          m_pButtonProfiles;
     ui_button*          m_pButtonCredits;
+#if defined(TARGET_PC)		
+    ui_button*          m_pButtonExit;
+#endif	
     ui_text*            m_pNavText;
     ui_text*            m_pSilentLoginText;
 

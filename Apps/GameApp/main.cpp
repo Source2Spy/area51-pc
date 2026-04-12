@@ -1237,6 +1237,11 @@ void RunFrontEnd( void )
            (g_StateMgr.GetState() != SM_DEMO_EXIT) )
     {
         UpdateFrontEnd( );
+
+#ifdef TARGET_PC
+        if( input_IsPressed( INPUT_MSG_EXIT ) )
+            break;
+#endif
     }
 
     // update input - flush last keypress
