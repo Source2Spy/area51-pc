@@ -3,8 +3,6 @@
 #include "ExportPackage.hpp"
 #include "dsptool.hpp"
 #include "Endian.hpp"
-#include "..\3rdparty\miles6\include\mss.h"
-#undef WAVE_FORMAT_IMA_ADPCM // CJ: Because mss.h defines this by hand, bad miles!
 #include "imaadpcm.h"
 #include "lame.h"
 

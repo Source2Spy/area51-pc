@@ -1061,7 +1061,7 @@ void ExportPackageHeader( xbool ReverseEndian, s32 Target )
         PH.BreakPointTableFootprint = reverse_endian_32 ( PH.BreakPointTableFootprint );
         PH.MusicDataFootprint       = reverse_endian_32 ( PH.MusicDataFootprint );
 
-        for( i=0 ; i<NUM_TEMPERATURES ; i++ )
+        for( s32 i=0 ; i<NUM_TEMPERATURES ; i++ )
         {
             PH.nSampleHeaders[ i ]  = reverse_endian_32( PH.nSampleHeaders[ i ] );
             PH.nSampleIndices[ i ]  = reverse_endian_32( PH.nSampleIndices[ i ] );
@@ -1178,7 +1178,7 @@ void WritePackageToDisk( const char*Filename, xbool ReverseEndian, s32 Target )
     Final.Append( s_Package.m_DescriptorStream );
 
     // For each temperature.
-    for( i=0 ; i<NUM_TEMPERATURES ; i++ )
+    for( s32 i=0 ; i<NUM_TEMPERATURES ; i++ )
     {
         s16 Count = 0;
 /*
@@ -1226,7 +1226,7 @@ x_DebugMsg( "nChannels: %d, File: %s\n", File.NumChannels[ Target ], File.Filena
             // Dummy one at end for size calculations.
             IndexTable.Append() = Count;
 
-            for( j=0 ; j<IndexTable.GetCount() ; j++ )
+            for( s32 j=0 ; j<IndexTable.GetCount() ; j++ )
             {
                 s16 Word = IndexTable[j];
                 if( ReverseEndian )
@@ -1246,7 +1246,7 @@ x_DebugMsg( "************************************************************\n" );
     Fixup += TotalSampleTableSize;
 
     // For each temperature...
-    for( i=0 ; i<NUM_TEMPERATURES ; i++ )
+    for( s32 i=0 ; i<NUM_TEMPERATURES ; i++ )
     {
         s32 AudioRam = 0;
 /*

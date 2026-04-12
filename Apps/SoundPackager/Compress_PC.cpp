@@ -2,8 +2,6 @@
 #include "SoundPackager.hpp"
 #include "ExportPackage.hpp"
 #include "Endian.hpp"
-#include "..\3rdparty\miles6\include\mss.h"
-#undef WAVE_FORMAT_IMA_ADPCM // CJ: Because mss.h defines this by hand, bad miles!
 #include "imaadpcm.h"
 #include "lame.h"
 
@@ -165,7 +163,7 @@ u32 CompressAudioFilePC_ADPCM ( X_FILE* in, X_FILE* out, s32* NumChannels, s32* 
         s32  HeaderSize         = 4 * sizeof(s32);
         s32  CompressionMethod;
         s32  i;
-        U32  CompressedSize;
+        u32  CompressedSize;
         s32  BreakPointSize;
         s32  nBreakPoints;
 
@@ -218,17 +216,20 @@ u32 CompressAudioFilePC_ADPCM ( X_FILE* in, X_FILE* out, s32* NumChannels, s32* 
             AudioFile->GetChannelData( pSampleBuffer, i );
 
             // Compress and save
-            AILSOUNDINFO info;
-            info.format = WAVE_FORMAT_PCM;
-            info.data_ptr = pSampleBuffer;
-            info.data_len = nSamples * sizeof(s16);
-            info.rate = SampleRate;
-            info.bits = 16;
-            info.channels = 1;
-            info.samples = nSamples;
-            info.block_size = 36;
-            void* pCompressedData;
-            AIL_compress_ADPCM( &info, &pCompressedData, &CompressedSize );
+            IMAADPCMWAVEFORMAT wfxEncode;
+            CImaAdpcmCodec::CreateImaAdpcmFormat( 1, (DWORD)SampleRate, 65, &wfxEncode );
+            CImaAdpcmCodec codec;
+            codec.Initialize( &wfxEncode, CODEC_MODE_ENCODE_NORMAL );
+            UINT nBlocks       = ((UINT)nSamples + 64) / 65;
+            UINT nSamplesPadded = nBlocks * 65;
+            s16* pPaddedSamples = (s16*)x_malloc( nSamplesPadded * sizeof(s16) );
+            x_memset( pPaddedSamples, 0, nSamplesPadded * sizeof(s16) );
+            x_memcpy( pPaddedSamples, pSampleBuffer, nSamples * sizeof(s16) );
+            CompressedSize = nBlocks * codec.GetEncodeAlignment();
+            void* pCompressedData = x_malloc( CompressedSize );
+            ASSERT( pCompressedData );
+            codec.Convert( pPaddedSamples, pCompressedData, nBlocks );
+            x_free( pPaddedSamples );
             pCompressedBuffer.Append() = pCompressedData;
 
             if( AudioFile->IsLooped() )
@@ -279,7 +280,7 @@ u32 CompressAudioFilePC_ADPCM ( X_FILE* in, X_FILE* out, s32* NumChannels, s32* 
             x_fwrite( pCompressedBuffer[i], CompressedSize, 1, out );
 
             // Free the compressed buffer memory.
-            AIL_mem_free_lock( pCompressedBuffer[i] );
+            x_free( pCompressedBuffer[i] );
         }
 
         // Write out the lip sync data.

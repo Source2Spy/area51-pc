@@ -1360,7 +1360,7 @@ xbool InterleaveStreamedAudio( file_info& File, s32 Target )
                     // Interleave the waveform data.
                     s32 EvenOdd    = 0;
                     s32 BytesWrote = 0;
-                    for( i=0 ; i<Data.CompressedSize ; i+=DataSize[ EvenOdd ], EvenOdd ^= 1 )
+                    for( s32 i=0 ; i<Data.CompressedSize ; i+=DataSize[ EvenOdd ], EvenOdd ^= 1 )
                     {
                         s32 nBytes    = DataSize   [ EvenOdd ];
                         s32 nPadBytes = DataPadding[ EvenOdd ];
@@ -1412,7 +1412,7 @@ xbool InterleaveStreamedAudio( file_info& File, s32 Target )
                     ASSERT( BytesWrote == PaddedCompressedSize );
 
                     // Write out the lip sync data.
-                    for( i=0 ; i<1 ; i++ )
+                    for( s32 i=0 ; i<1 ; i++ )
                     {
 //                        x_DebugMsg( "   LipSyncOffset: %d, Size: %d\n", x_ftell(f), Data.LipSyncSize );
                         if( bIsMP3 )
