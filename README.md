@@ -33,8 +33,7 @@ The following prerequisites are required to build the source tree for PC:
 
 1. **Visual Studio 2022**
 2. [Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/)
-3. You'll need to create an environment variable called **X** and **S** that points to the important library directions of the source tree. For example, if the source tree is located at **'D:\area51-pc'** the **X** environment variable should point to **'D:\area51-pc\xCore'**. the **S** environment variable should point to **'D:\area51-pc\Support'**
-4. ~~**XtremeToolkit 4100** **(FOR UI TOOLS)** | Install it from "xCore\3rdParty\CodeJock"~~ **UNDER CONSTRUCTION!!!!**
+3. ~~**XtremeToolkit 4100** **(FOR UI TOOLS)** | Install it from "xCore\3rdParty\CodeJock"~~ **UNDER CONSTRUCTION!!!!**
 
 ## Running PC Build
 
