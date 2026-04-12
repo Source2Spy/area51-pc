@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{63f7cdae-dd33-40bc-b461-0d8b7724fb2f}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;cpp;c;cxx;rc;def;r;odl;idl;hpj;bat</Extensions>
+    </Filter>
+    <Filter Include="Source Files\MFCStuff">
+      <UniqueIdentifier>{5f83a78a-1e8e-475d-a5ce-20e7574e4f2d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources">
+      <UniqueIdentifier>{9c3ac3d8-8555-4440-b28b-6b5934d16352}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="RSCDesc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="StdAfx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CompErrorDisplayCtrl.cpp">
+      <Filter>Source Files\MFCStuff</Filter>
+    </ClCompile>
+    <ClCompile Include="EDRscDesc_Doc.cpp">
+      <Filter>Source Files\MFCStuff</Filter>
+    </ClCompile>
+    <ClCompile Include="EDRscDesc_Frame.cpp">
+      <Filter>Source Files\MFCStuff</Filter>
+    </ClCompile>
+    <ClCompile Include="EDRscDesc_View.cpp">
+      <Filter>Source Files\MFCStuff</Filter>
+    </ClCompile>
+    <ClCompile Include="FlatRscList_View.cpp">
+      <Filter>Source Files\MFCStuff</Filter>
+    </ClCompile>
+    <ClCompile Include="ReadPipe.cpp">
+      <Filter>Source Files\MFCStuff</Filter>
+    </ClCompile>
+    <ClCompile Include="TreeRsclist_View.cpp">
+      <Filter>Source Files\MFCStuff</Filter>
+    </ClCompile>
+    <ClCompile Include="TreeTypeRscList.cpp">
+      <Filter>Source Files\MFCStuff</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="RSCDesc.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="StdAfx.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CompErrorDisplayCtrl.h">
+      <Filter>Source Files\MFCStuff</Filter>
+    </ClInclude>
+    <ClInclude Include="EDRscDesc_Doc.h">
+      <Filter>Source Files\MFCStuff</Filter>
+    </ClInclude>
+    <ClInclude Include="EDRscDesc_Frame.h">
+      <Filter>Source Files\MFCStuff</Filter>
+    </ClInclude>
+    <ClInclude Include="EDRscDesc_View.h">
+      <Filter>Source Files\MFCStuff</Filter>
+    </ClInclude>
+    <ClInclude Include="FlatRscList_View.h">
+      <Filter>Source Files\MFCStuff</Filter>
+    </ClInclude>
+    <ClInclude Include="ReadPipe.h">
+      <Filter>Source Files\MFCStuff</Filter>
+    </ClInclude>
+    <ClInclude Include="TreeRsclist_View.h">
+      <Filter>Source Files\MFCStuff</Filter>
+    </ClInclude>
+    <ClInclude Include="TreeTypeRscList.h">
+      <Filter>Source Files\MFCStuff</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Resources</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="EDRscDesc_Script.rc">
+      <Filter>Resources</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\icon1.ico">
+      <Filter>Resources</Filter>
+    </Image>
+    <Image Include="res\idw_rscd.bmp">
+      <Filter>Resources</Filter>
+    </Image>
+    <Image Include="res\rscdectoolbar1.bmp">
+      <Filter>Resources</Filter>
+    </Image>
+    <Image Include="res\rscdesc_bitmap1.bmp">
+      <Filter>Resources</Filter>
+    </Image>
+    <Image Include="res\rscdesc_Edit.bmp">
+      <Filter>Resources</Filter>
+    </Image>
+    <Image Include="res\RscDescView.ico">
+      <Filter>Resources</Filter>
+    </Image>
+  </ItemGroup>
+</Project>

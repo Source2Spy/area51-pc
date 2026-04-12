@@ -1,0 +1,78 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="ExternMiscUtils">
+      <UniqueIdentifier>{a549184f-c1aa-43af-9048-5e99cdaf33e9}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\xCore\Auxiliary\MiscUtils\dictionary.cpp">
+      <Filter>ExternMiscUtils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Apps\MeshViewer\GeomDesc.cpp">
+      <Filter>ExternMiscUtils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\xCore\Auxiliary\MiscUtils\Guid.cpp">
+      <Filter>ExternMiscUtils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\xCore\Auxiliary\MiscUtils\mem_stream.cpp">
+      <Filter>ExternMiscUtils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\xCore\Auxiliary\MiscUtils\Property.cpp">
+      <Filter>ExternMiscUtils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\xCore\MeshUtil\RawSettings.cpp">
+      <Filter>ExternMiscUtils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Apps\MeshViewer\RigidDesc.cpp">
+      <Filter>ExternMiscUtils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Apps\MeshViewer\SkinDesc.cpp">
+      <Filter>ExternMiscUtils</Filter>
+    </ClCompile>
+    <ClCompile Include="ArmOptimizer.cpp" />
+    <ClCompile Include="BMPUtil.cpp" />
+    <ClCompile Include="faststrip.cpp" />
+    <ClCompile Include="GeomCompiler.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="PS2SkinOptimizer.cpp" />
+    <ClCompile Include="PS2strip.cpp" />
+    <ClCompile Include="texinfo.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\xCore\Auxiliary\MiscUtils\dictionary.hpp">
+      <Filter>ExternMiscUtils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Apps\MeshViewer\GeomDesc.hpp">
+      <Filter>ExternMiscUtils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\xCore\Auxiliary\MiscUtils\Guid.hpp">
+      <Filter>ExternMiscUtils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\xCore\Auxiliary\MiscUtils\mem_stream.hpp">
+      <Filter>ExternMiscUtils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\xCore\Auxiliary\MiscUtils\Property.hpp">
+      <Filter>ExternMiscUtils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\xCore\MeshUtil\RawSettings.hpp">
+      <Filter>ExternMiscUtils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Apps\MeshViewer\RigidDesc.hpp">
+      <Filter>ExternMiscUtils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Apps\MeshViewer\SkinDesc.hpp">
+      <Filter>ExternMiscUtils</Filter>
+    </ClInclude>
+    <ClInclude Include="ArmOptimizer.hpp" />
+    <ClInclude Include="BMPUtil.hpp" />
+    <ClInclude Include="faststrip.hpp" />
+    <ClInclude Include="GeomCompiler.hpp" />
+    <ClInclude Include="PS2SkinOptimizer.hpp" />
+    <ClInclude Include="PS2strip.hpp" />
+    <ClInclude Include="texinfo.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="..\..\..\xCore\3rdParty\Nvidia\NvTriStrip\NvTriStrip.lib" />
+  </ItemGroup>
+</Project>

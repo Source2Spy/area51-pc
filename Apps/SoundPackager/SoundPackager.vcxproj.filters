@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="ADPCM">
+      <UniqueIdentifier>{86ed3850-3193-4404-80d2-cf854012f943}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="imaadpcm.cpp">
+      <Filter>ADPCM</Filter>
+    </ClCompile>
+    <ClCompile Include="aiff_file.cpp" />
+    <ClCompile Include="audio_file.cpp" />
+    <ClCompile Include="Compress_GCN.cpp" />
+    <ClCompile Include="Compress_PC.cpp" />
+    <ClCompile Include="Compress_PS2.cpp" />
+    <ClCompile Include="Compress_XBOX.cpp" />
+    <ClCompile Include="DspTool.cpp" />
+    <ClCompile Include="endian.cpp" />
+    <ClCompile Include="ExportPackage.cpp" />
+    <ClCompile Include="ParseScript.cpp" />
+    <ClCompile Include="ProcessSample.cpp" />
+    <ClCompile Include="SoundPackager.cpp" />
+    <ClCompile Include="wav_file.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="imaadpcm.h">
+      <Filter>ADPCM</Filter>
+    </ClInclude>
+    <ClInclude Include="aiff_file.hpp" />
+    <ClInclude Include="audio_file.hpp" />
+    <ClInclude Include="audio_private_pkg.hpp" />
+    <ClInclude Include="Compress.hpp" />
+    <ClInclude Include="DspTool.hpp" />
+    <ClInclude Include="ENCVAG.H" />
+    <ClInclude Include="endian.hpp" />
+    <ClInclude Include="ExportPackage.hpp" />
+    <ClInclude Include="PackageTypes.hpp" />
+    <ClInclude Include="ParseScript.hpp" />
+    <ClInclude Include="SoundPackager.hpp" />
+    <ClInclude Include="wav_file.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ENCVAG.DLL" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="ENCVAG.LIB" />
+    <Library Include="..\..\xCore\3rdParty\Miles6\lib\win\Mss32.lib" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="test.txt" />
+  </ItemGroup>
+</Project>
