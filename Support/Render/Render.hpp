@@ -10,11 +10,11 @@
 #include "x_types.hpp"
 #include "x_time.hpp"
 
-#include "ResourceMgr\ResourceMgr.hpp"
+#include "..\ResourceMgr\ResourceMgr.hpp"
 
-#include "Render\Material.hpp"
-#include "Render\RigidGeom.hpp"
-#include "Render\SkinGeom.hpp"
+#include "Material.hpp"
+#include "RigidGeom.hpp"
+#include "SkinGeom.hpp"
 
 //=============================================================================
 

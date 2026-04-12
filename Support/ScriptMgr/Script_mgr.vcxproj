@@ -26,6 +26,9 @@
       <Platform>Win32</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <PropertyGroup Label="UserMacros">
+    <X>..\..\xCore</X>
+  </PropertyGroup> 
   <ItemGroup>
     <ClInclude Include="..\..\MiscUtils\SimpleUtils.hpp" />
   </ItemGroup>

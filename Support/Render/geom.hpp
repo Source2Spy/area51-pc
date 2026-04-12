@@ -9,7 +9,7 @@
 #include "x_files.hpp"
 #include "Auxiliary\MiscUtils\Fileio.hpp"
 #include "Material_Prefs.hpp"
-#include "Animation\AnimData.hpp"
+#include "..\Animation\AnimData.hpp"
 
 // blech...this conditional include is because geomcompiler breaks when
 // you get multiple versions of directx included (dx8 is needed for the

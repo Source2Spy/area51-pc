@@ -5,7 +5,7 @@
 // INCLUDES
 //=========================================================================
 
-#include "ResourceMgr\ResourceMgr.hpp"
+#include "..\ResourceMgr\ResourceMgr.hpp"
 #include "x_files.hpp"
 #include "x_bitmap.hpp"
 
