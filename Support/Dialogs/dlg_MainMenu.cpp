@@ -159,7 +159,6 @@ xbool dlg_main_menu::Create( s32                        UserID,
 #ifdef LAN_PARTY_BUILD
     m_pButtonMultiPlayer  ->SetFlag(ui_win::WF_DISABLED, TRUE);
 #endif
-    m_pButtonOnline       ->SetFlag(ui_win::WF_DISABLED, TRUE);
 
     // set up nav text 
     xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_SELECT" ));

@@ -691,7 +691,7 @@ void dlg_lore_menu::OnLBDown( ui_win* pWin )
         g_UiMgr->GetCursorPos( m_UserID, cx, cy );
         if( m_DrawPos.PointInRect( cx, cy ) )
         {
-            // Click on popup image - go full screen
+            // Click on popup image
             OnPadSelect( pWin );
         }
         else
