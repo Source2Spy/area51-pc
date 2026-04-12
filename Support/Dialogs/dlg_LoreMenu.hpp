@@ -52,6 +52,7 @@ public:
     virtual void        OnPadNavigate       ( ui_win* pWin, s32 Code, s32 Presses, s32 Repeats, xbool WrapX = FALSE, xbool WrapY = FALSE );
     virtual void        OnPadSelect         ( ui_win* pWin );
     virtual void        OnPadBack           ( ui_win* pWin );
+    virtual void        OnLBDown            ( ui_win* pWin );
     virtual void        OnUpdate            ( ui_win* pWin, f32 DeltaTime );
 
     void                InitIconScaling     ( xbool ScaleDown );
@@ -87,9 +88,6 @@ protected:
     f32                     m_ScreenScaleX;
     f32                     m_ScreenScaleY;
     xbool                   m_bFullScreenMode;
-#ifdef TARGET_PS2
-    xbool                   m_bPalMode;
-#endif
 
     // icon scaling controls
     irect                   m_DrawPos;

@@ -21,10 +21,6 @@
 #include "StateMgr/LoreList.hpp"
 #include "MoviePlayer/MoviePlayer.hpp"
 
-#if defined(TARGET_PS2)
-#include "Entropy\PS2\ps2_misc.hpp"
-#endif
-
 //=========================================================================
 //  Main Menu Dialog
 //=========================================================================
@@ -47,6 +43,8 @@ enum controls
     IDC_NAV_TEXT,
 };
 
+//-------------------------------------------------------------------------
+
 ui_manager::control_tem LoreMenuControls[] = 
 {
     // Frames.
@@ -65,17 +63,14 @@ ui_manager::control_tem LoreMenuControls[] =
     { IDC_LORE_TEXT_2,      "IDS_NULL",    "text",        48, 278,  90,  16, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_LORE_TEXT_3,      "IDS_NULL",    "text",        48, 294,  90,  16, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
-#ifdef TARGET_PS2
-    { IDC_LORE_BLACKOUT,    "IDS_NULL",    "blankbox",    -9, -24, 513, 448, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_USE_ABSOLUTE },
-#else
     { IDC_LORE_BLACKOUT,    "IDS_NULL",    "blankbox",  -113, -40, 722, 480, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_USE_ABSOLUTE },
-#endif
 
     { IDC_LORE_TEXTBOX,     "IDS_NULL",    "textbox",     60, 240, 376,  93, 0, 2, 5, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 
     { IDC_NAV_TEXT,         "IDS_NULL",    "text",         0,   0,   0,   0, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 };
 
+//-------------------------------------------------------------------------
 
 ui_manager::dialog_tem LoreMenuDialog =
 {
@@ -153,7 +148,7 @@ xbool dlg_lore_menu::Create( s32                        UserID,
     ASSERT( pManager );
 
     // Do dialog creation
-	Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
+    Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
     m_CurrHL = 0;
     s_Scaled = FALSE;
@@ -307,12 +302,6 @@ xbool dlg_lore_menu::Create( s32                        UserID,
     // Initialize popup
     m_PopUp = NULL;
 
-    // Initialize screen scale factors
-    s32 XRes, YRes;
-    eng_GetRes( XRes, YRes );
-    m_ScreenScaleX = (f32)XRes / 512.0f;
-    m_ScreenScaleY = (f32)YRes / 448.0f;
-
     // Initialize icon scaling
     m_scaleCount        = 0.0f;
     m_bScreenIsOn       = FALSE;
@@ -320,11 +309,6 @@ xbool dlg_lore_menu::Create( s32                        UserID,
     m_TimeOut           = 0.0f;
     m_bCycleBitmap      = FALSE;
     m_bFullScreenMode   = FALSE;
-
-#ifdef TARGET_PS2
-    // get video mode
-    eng_GetPALMode( m_bPalMode );
-#endif
     
     // initialize screen scaling
     InitScreenScaling( Position );
@@ -332,7 +316,7 @@ xbool dlg_lore_menu::Create( s32                        UserID,
     // make the dialog active
     m_State = DIALOG_STATE_ACTIVE;
 
-	// Return success code
+    // Return success code
     return Success;
 }
 
@@ -344,12 +328,6 @@ void dlg_lore_menu::Destroy( void )
 
     // kill screen wipe
     g_UiMgr->ResetScreenWipe();
-
-#ifdef TARGET_PS2
-    // wait until we finish drawing before we unload the logo bitmap
-    DLIST.Flush();
-    DLIST.WaitForTasks();
-#endif
 
     // unload lore bitmaps
     g_UiMgr->UnloadBitmap( "LoreVideo" );
@@ -368,7 +346,7 @@ void dlg_lore_menu::Render( s32 ox, s32 oy )
     static s32 gap      =  9;
     static s32 width    =  4;
 
-	irect rb;
+    irect rb;
     
     // render transparent screen
     rb.l = m_CurrPos.l + 22;
@@ -421,42 +399,7 @@ void dlg_lore_menu::Render( s32 ox, s32 oy )
     if( m_bFullScreenMode )
     {
         irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-
-#ifdef TARGET_PS2
-        if( m_bPalMode )
-        {
-            m_pManager->RenderBitmap( m_StillBitmapID, r, XCOLOR_WHITE ); // PAL
-        }
-        else
-        {
-            vector2 UV0( 0.0f, 0.0625f );
-            vector2 UV1( 1.0f, 0.9375f );
-            m_pManager->RenderBitmapUV( m_StillBitmapID, r, UV0, UV1, XCOLOR_WHITE );
-        }
-#elif defined TARGET_XBOX
-        switch( g_PhysW )
-        {
-            case 1280: 
-            case  720:
-                m_pManager->RenderBitmap( m_StillBitmapID, r, XCOLOR_WHITE );
-                break;
-
-            case  640:
-            {
-                vector2 UV0( 0.0556f, 0.0f );
-                vector2 UV1( 0.9444f, 1.0f );
-                m_pManager->RenderBitmapUV( m_StillBitmapID, r, UV0, UV1, XCOLOR_WHITE );
-            }
-            break;
-
-            default:
-                ASSERT(0);
-                break;
-        }
-#else
         m_pManager->RenderBitmap( m_StillBitmapID, r, XCOLOR_WHITE );
-#endif
-
         m_pNavText->Render();
         return;
     }
@@ -465,14 +408,9 @@ void dlg_lore_menu::Render( s32 ox, s32 oy )
     if( m_bScreenIsOn )
     {                    
         // dim the background dialog
-	    //s32 XRes, YRes;
+        //s32 XRes, YRes;
         //eng_GetRes(XRes, YRes);
-//#ifdef TARGET_PS2
-        // Nasty hack to force PS2 to draw to rb.l = 0
-        //irect rb( -1, 0, XRes, YRes );
-//#else
         //irect rb( 0, 0, XRes, YRes );
-//#endif
         //g_UiMgr->RenderRect( rb, xcolor(0,0,0,m_FadeLevel), FALSE );
 
         // render border
@@ -524,41 +462,7 @@ void dlg_lore_menu::Render( s32 ox, s32 oy )
                             m_StillBitmapID = g_UiMgr->LoadBitmap( "Still", xfs( "%s%d.xbmp", m_FileName, m_CurrItem+1 ) );
                         }
                     }
-
-#ifdef TARGET_PS2
-                    if( m_bPalMode )
-                    {
-                        m_pManager->RenderBitmap( m_StillBitmapID, r, XCOLOR_WHITE ); //PAL
-                    }
-                    else
-                    {
-                        vector2 UV0( 0.0f, 0.0625f );
-                        vector2 UV1( 1.0f, 0.9375f );
-                        m_pManager->RenderBitmapUV( m_StillBitmapID, r, UV0, UV1, XCOLOR_WHITE );
-                    }
-#elif defined TARGET_XBOX
-                    switch( g_PhysW )
-                    {
-                        case 1280: 
-                        case  720:
-                            m_pManager->RenderBitmap( m_StillBitmapID, r, XCOLOR_WHITE );
-                            break;
-
-                        case  640:
-                        {
-                            vector2 UV0( 0.0556f, 0.0f );
-                            vector2 UV1( 0.9444f, 1.0f );
-                            m_pManager->RenderBitmapUV( m_StillBitmapID, r, UV0, UV1, XCOLOR_WHITE );
-                        }
-                        break;
-
-                        default:
-                            ASSERT(0);
-                            break;
-                    }
-#else
                     m_pManager->RenderBitmap( m_StillBitmapID, r, XCOLOR_WHITE );
-#endif
             }
         }
     }
@@ -619,15 +523,13 @@ void dlg_lore_menu::OnPadNavigate( ui_win* pWin, s32 Code, s32 Presses, s32 Repe
 void dlg_lore_menu::OnNotify ( ui_win* pWin, ui_win* pSender, s32 Command, void* pData )
 {
     (void)pWin;
-    (void)pSender;
-    (void)Command;
     (void)pData;
 
     if( pSender == (ui_win*)m_pLoreSelect )
     {
         if( Command == WN_COMBO_SELCHANGE )
         {
-            if( !s_Scaled )
+            if( !s_Scaled && (m_State == DIALOG_STATE_ACTIVE) )
             {
                 PopulateLoreDetails( TRUE );
             }
@@ -639,8 +541,6 @@ void dlg_lore_menu::OnNotify ( ui_win* pWin, ui_win* pSender, s32 Command, void*
 
 void dlg_lore_menu::OnPadSelect( ui_win* pWin )
 {
-    (void)pWin;
-
     if ( m_State == DIALOG_STATE_ACTIVATE )
     {
         if( (!m_bFullScreenMode) && (m_scaleCount == 0) )
@@ -783,6 +683,30 @@ void dlg_lore_menu::OnPadBack( ui_win* pWin )
 
 //=========================================================================
 
+void dlg_lore_menu::OnLBDown( ui_win* pWin )
+{
+    if( m_bScreenIsOn && !m_bFullScreenMode && (m_scaleCount == 0) )
+    {
+        s32 cx, cy;
+        g_UiMgr->GetCursorPos( m_UserID, cx, cy );
+        if( m_DrawPos.PointInRect( cx, cy ) )
+        {
+            // Click on popup image - go full screen
+            OnPadSelect( pWin );
+        }
+        else
+        {
+            // Click outside popup - close it
+            g_AudioMgr.Play("Backup");
+            InitIconScaling( TRUE );
+        }
+        return;
+    }
+    ui_dialog::OnLBDown( pWin );
+}
+
+//=========================================================================
+
 void dlg_lore_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
     (void)pWin;
@@ -830,7 +754,7 @@ void dlg_lore_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     // update everything else
     ui_dialog::OnUpdate( pWin, DeltaTime );
 
-    if( !s_Scaled )
+    if( !s_Scaled && (m_State == DIALOG_STATE_ACTIVE) )
     {
         // update highlight
         if( m_pLoreSelect->GetFlags(WF_HIGHLIGHT) )
@@ -901,42 +825,10 @@ void dlg_lore_menu::InitIconScaling ( xbool ScaleDown )
     if( m_bScaleDown )
     {
         m_FadeLevel = 255;
-        m_RequestedPos.Set( 0, 0, (s32)(64*m_ScreenScaleX), (s32)(64*m_ScreenScaleY) );
-        m_pSelectedIcon->LocalToScreen( m_RequestedPos );         
-
-#ifdef TARGET_PS2
-        if( m_bPalMode )
-        {
-            m_StartPos = irect( 159, 64, (159+194), (64+194) ); // PAL
-        }
-        else
-        {
-            m_StartPos = irect( 145, 64, (145+222), (64+194) ); // NTSC
-        }
-#elif defined TARGET_XBOX
-        switch( g_PhysW )
-        {
-        case 1280: 
-        case  720:
-            m_StartPos = irect( 215, (s32)(64*m_ScreenScaleY), 215+290, (s32)((64*m_ScreenScaleY)+194) );
-            break;
-        case  640:
-            m_StartPos = irect( 191, (s32)(64*m_ScreenScaleY), 191+258, (s32)((64*m_ScreenScaleY)+194) );
-            break;
-        default:
-            ASSERT(0);
-            break;
-        }
-        extern xbool g_b480P;
-        if( g_b480P )
-        {
-            m_StartPos.t -= 10;
-            m_StartPos.b -= 10;
-        }
-#else
-        // 640x480
-        m_StartPos = irect( 191, (s32)(64*m_ScreenScaleY), 191+258, (s32)((64*m_ScreenScaleY)+194) );
-#endif
+        m_RequestedPos.Set( 0, 0, (s32)(64*g_UiMgr->GetScaleX()), (s32)(64*g_UiMgr->GetScaleY()) );
+        m_pSelectedIcon->LocalToScreen( m_RequestedPos );
+        
+        m_StartPos = m_DrawPos;
         m_DrawPos = m_StartPos;
         m_TimeOut = 0.0f;
 
@@ -952,6 +844,7 @@ void dlg_lore_menu::InitIconScaling ( xbool ScaleDown )
         m_pTextBox->SetFlag( ui_win::WF_SELECTED, FALSE );
         
         g_UiMgr->EnableScreenHighlight();
+
         // turn on lore details
         m_pLoreDetails ->SetFlag(ui_win::WF_VISIBLE, TRUE);
         m_pLoreLine1   ->SetFlag(ui_win::WF_VISIBLE, TRUE);
@@ -961,50 +854,40 @@ void dlg_lore_menu::InitIconScaling ( xbool ScaleDown )
         // goto previous control
         GotoControl( (ui_control*)m_pSelectedIcon );
         s_Scaled = FALSE;
+
+        for( s32 i = 0; i < 5; i++ )
+        {
+            m_pLoreButton[i]->SetFlag( ui_win::WF_DISABLED, FALSE );
+        }
     }
     else
     {
         s_Scaled = TRUE;
 
         m_FadeLevel = 0;
-#ifdef TARGET_PS2
-        if( m_bPalMode )
-        {
-            m_RequestedPos = irect( 159, 64, (159+194), (64+194) ); // PAL
-        }
-        else
-        {
-            m_RequestedPos = irect( 145, 64, (145+222), (64+194) ); // NTSC
-        }
-#elif defined TARGET_XBOX
-        switch( g_PhysW )
-        {
-            case 1280: 
-            case  720:
-                m_RequestedPos = irect( 215, (s32)(64*m_ScreenScaleY), 215+290, (s32)((64*m_ScreenScaleY)+194) );
-                break;
-            case  640:
-                m_RequestedPos = irect( 191, (s32)(64*m_ScreenScaleY), 191+258, (s32)((64*m_ScreenScaleY)+194) );
-                break;
-            default:
-                ASSERT(0);
-                break;
-        }
-        extern xbool g_b480P;
-        if( g_b480P )
-        {
-            m_RequestedPos.t -= 10;
-            m_RequestedPos.b -= 10;
-        }
-#else
-        // 640x480
-        m_RequestedPos = irect( 191, (s32)(64*m_ScreenScaleY), 191+258, (s32)((64*m_ScreenScaleY)+194) );
-#endif
+    
+        // TODO: GS: Do it better :L
+        const f32 virtHW = 122.5f;
+        const f32 virtHH = 107.0f;
+        const f32 virtYO = 72.5f;
 
-        m_StartPos.Set( 0, 0, (s32)(64*m_ScreenScaleX), (s32)(64*m_ScreenScaleY) );
+        s32 cx = (s32)(g_UiMgr->GetScaleX() * 256);
+        s32 cy = (s32)(g_UiMgr->GetScaleY() * 224);
+        m_RequestedPos = irect( cx - (s32)(virtHW * g_UiMgr->GetScaleX()),
+                                cy - (s32)((virtHH + virtYO) * g_UiMgr->GetScaleY()),
+                                cx + (s32)(virtHW * g_UiMgr->GetScaleX()),
+                                cy + (s32)((virtHH - virtYO) * g_UiMgr->GetScaleY()) );
+
+        m_StartPos.Set( 0, 0, (s32)(64*g_UiMgr->GetScaleX()), (s32)(64*g_UiMgr->GetScaleY()) );
         m_pSelectedIcon->LocalToScreen( m_StartPos );
         m_DrawPos = m_StartPos;
         m_pSelectedIcon->SetFlag( ui_win::WF_VISIBLE, FALSE );
+
+        for( s32 i = 0; i < 5; i++ )
+        {
+            m_pLoreButton[i]->SetFlag( ui_win::WF_DISABLED, TRUE );
+        }
+
         // disable the highlight
         g_UiMgr->DisableScreenHighlight();
     }
@@ -1096,13 +979,7 @@ xbool dlg_lore_menu::UpdateIconScaling( f32 DeltaTime )
                             m_NumItems = 1;
                             m_CurrItem = 0;
                             x_strcpy( m_FileName, Entry->FileName );    
-#ifdef TARGET_PS2
-                            m_StillBitmapID = g_UiMgr->LoadBitmap( "Still", xfs( "%s_PS2.xbmp", m_FileName ) );
-#elif defined TARGET_XBOX
-                            m_StillBitmapID = g_UiMgr->LoadBitmap( "Still", xfs( "%s_XBOX.xbmp", m_FileName ) );
-#else
                             m_StillBitmapID = g_UiMgr->LoadBitmap( "Still", xfs( "%s.xbmp", m_FileName ) );
-#endif
                         }
 
                         // load the correct bitmap
