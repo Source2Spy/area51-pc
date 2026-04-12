@@ -6,6 +6,8 @@
 // 
 // 
 
+// GS: Bruh, what is this ? This code shoud be replaced by dlg_PopUp
+
 //
 // Includes
 //
