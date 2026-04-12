@@ -14,10 +14,6 @@
 
 #include "StateMgr/StateMgr.hpp"
 
-#if defined(TARGET_PS2)
-#include "Entropy\PS2\ps2_misc.hpp"
-#endif
-
 //=========================================================================
 //  Defines
 //=========================================================================
@@ -193,63 +189,18 @@ void ui_textbox::Render( s32 ox, s32 oy )
         rt.b -= SPACE_BOTTOM;
         rt.Deflate( 4, 0 );
 
-        if (g_UiMgr->IsWipeActive())
+        // Skip to the first visible line in the wrapped text by counting newlines.
+        const xwchar* pVisibleText = (const xwchar*)m_Label;
+        for( s32 skipLines = m_iFirstVisibleLine; skipLines > 0 && *pVisibleText; )
         {
-            irect wipePos;
-            g_UiMgr->GetWipePos(wipePos);
-
-            if ( wipePos.b > rt.t )
-            {
-                if ( wipePos.b > rt.b )
-                {
-#ifdef TARGET_PS2
-                    gsreg_Begin( 1 );
-                    gsreg_SetScissor( rt.l, rt.t, rt.r, rt.b );
-                    gsreg_End();
-#endif
-                }
-                else
-                {
-#ifdef TARGET_PS2
-                    gsreg_Begin( 1 );
-                    gsreg_SetScissor( r.l, r.t, r.r, wipePos.b );
-                    gsreg_End();
-#endif
-                }
-            }
-        }
-        else
-        {
-            m_pManager->PushClipWindow( rt );
+            if( *pVisibleText == '\n' )
+                skipLines--;
+            pVisibleText++;
         }
 
-
-        rt.t -= m_LineHeight*m_iFirstVisibleLine;
-//      rt.Translate( 1, 1 );
-//      m_pManager->RenderText( m_Font, rt, m_LabelFlags, c2, (const xwchar*)m_Label );
-//      rt.Translate( -1, -1 );
-        m_pManager->RenderText( m_Font, rt, m_LabelFlags, xcolor(255,252,204,255), (const xwchar*)m_Label );
-
-
-        if (g_UiMgr->IsWipeActive())
-        {
-#ifdef TARGET_PS2
-            // restore correct scissor
-            irect wipePos;
-            g_UiMgr->GetWipePos(wipePos);
-
-            irect screen;
-            g_UiMgr->GetScreenSize(screen);
-            
-            gsreg_Begin( 1 );
-            gsreg_SetScissor( screen.l, screen.t, screen.r, wipePos.b );
-            gsreg_End();
-#endif
-        }
-        else
-        {
-            m_pManager->PopClipWindow();
-        }
+        // Force v_top so the first visible line starts exactly at rt.t.
+        u32 renderFlags = (m_LabelFlags & ~(ui_font::v_center | ui_font::v_bottom)) | ui_font::v_top;
+        m_pManager->RenderText( m_Font, rt, renderFlags, xcolor(255,252,204,255), pVisibleText );
 
         if (m_ShowBorders)
         {
@@ -392,8 +343,6 @@ void ui_textbox::OnPadNavigate( ui_win* pWin, s32 Code, s32 Presses, s32 Repeats
 
 void ui_textbox::OnPadSelect( ui_win* pWin )
 {
-    (void)pWin;
-
     if ( ( m_Flags & WF_SELECTED ) && ( m_ExitOnSelect ) )
     {
         if( m_pParent )
@@ -420,8 +369,6 @@ void ui_textbox::OnPadSelect( ui_win* pWin )
 
 void ui_textbox::OnPadBack( ui_win* pWin )
 {
-    (void)pWin;
-
     if( ( m_Flags & WF_SELECTED ) && ( !m_ExitOnBack ) )
     {
         // Clear selected
@@ -454,10 +401,9 @@ xcolor ui_textbox::GetBackgroundColor( void ) const
 void ui_textbox::OnCursorMove ( ui_win* pWin, s32 x, s32 y )
 {
     (void)pWin;
+#ifndef TARGET_PC
     (void)x;
     (void)y;
-
-#ifndef TARGET_PC
     return;
 #else
     
@@ -523,9 +469,7 @@ void ui_textbox::OnCursorMove ( ui_win* pWin, s32 x, s32 y )
     // Store the latest mouse position.
     m_CursorX = x;
     m_CursorY = y;
-       
 #endif
-
 }
 
 //=========================================================================
@@ -568,7 +512,6 @@ void ui_textbox::OnLBDown ( ui_win* pWin )
             m_iFirstVisibleLine = FirstVisible;
         }
     }
-
 #endif
 }
 
@@ -589,10 +532,8 @@ void ui_textbox::OnLBUp ( ui_win* pWin )
 void ui_textbox::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
     (void)pWin;
-    (void)DeltaTime;
 
 #ifdef TARGET_PC
-    
     if( m_MouseDown )
     {    
         m_ScrollTime += DeltaTime;
@@ -630,15 +571,12 @@ void ui_textbox::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         }
     }
 #endif
-
 }
 
 //=========================================================================
 
 void ui_textbox::OnCursorExit ( ui_win* pWin )
 {
-    (void)pWin;
-
 #ifdef TARGET_PC
     m_MouseDown = FALSE;
     m_ScrollDown = FALSE;

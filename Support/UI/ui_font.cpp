@@ -10,10 +10,6 @@
 //#include "guid/guid.hpp"
 #include "ui/ui_manager.hpp"
 
-#if defined(TARGET_PS2)
-#include "Entropy\PS2\ps2_misc.hpp"
-#endif
-
 //=========================================================================
 
 #define OFFSET_X    (2048-(512/2))
@@ -27,101 +23,7 @@
 #define HELP_TEXT_SPACING            8
 #define BUTTON_START_SPRITE_WIDTH   24
 
-#ifdef TARGET_XBOX
 static xbool ScaleText = FALSE;
-#else
-static xbool ScaleText = FALSE;
-#endif
-
-#ifdef TARGET_PS2
-
-struct header
-{
-    dmatag  DMA;        // DMA tag
-	giftag  PGIF;       // GIF for setting PRIM register
-	s64     Prim;       // PRIM register
-    s64     Dummy;
-	giftag  GIF;		// GIF for actual primitives
-};
-
-struct char_info
-{
-	s64     Color1;		// RGBAQ register
-    s64     T0;
-    s64     P0;
-    s64     T1;
-    s64     P1;
-	s64     Color2;		// RGBAQ register
-    s64     T2;
-    s64     P2;
-    s64     T3;
-    s64     P3;
-};
-
-#endif
-
-#ifdef TARGET_PS2
-
-static header*          s_pHeader;
-static char_info*       s_pChar;
-static s32              s_NChars;
-static s32              s_NCharsAlloced;
-static giftag           s_GIF       PS2_ALIGNMENT(16);
-static giftag           s_PGIF      PS2_ALIGNMENT(16);
-
-static
-void ps2_NewCharBatch( void )
-{
-    // make sure we can fit at least one character at a time into this batch
-    s32 nBytes = DLIST.GetAvailable();
-    if( nBytes < (s32)(sizeof(header) + sizeof(char_info)) )
-    {
-        DLIST.Flush();
-        nBytes = DLIST.GetAvailable();
-    }
-    ASSERT( nBytes >= (s32)(sizeof(header) + sizeof(char_info)) );
-
-    // figure out how many characters we can allocate for, figuring
-    // the size of the header into the equation
-    nBytes -= sizeof(header);
-    s_NCharsAlloced = nBytes / sizeof(char_info);
-
-    // allocate the space for the header and characters
-    byte* pD = (byte*)DLIST.Alloc( sizeof(header) + s_NCharsAlloced*sizeof(char_info) );
-    s_pHeader = (header*)pD;
-    s_pChar   = (char_info*)(pD + sizeof(header));
-
-    // and we've added no characters yet
-    s_NChars = 0;
-}
-
-static
-void ps2_EndCharBatch( void )
-{
-    // fill in the header
-    s_pHeader->DMA.SetCont( sizeof(header) - sizeof(dmatag) + (s_NChars * sizeof(char_info)) );
-    s_pHeader->DMA.MakeDirect();
-    s_pHeader->PGIF      = s_PGIF;
-    s_pHeader->GIF       = s_GIF;
-    s_pHeader->GIF.NLOOP = s_NChars; 
-    s_pHeader->Prim = SCE_GS_SET_PRIM(
-        GIF_PRIM_TRIANGLESTRIP,    // type of primitive
-        1,    // shading method (flat, gouraud)
-        1,    // texture mapping (off, on)
-        0,    // fogging (off, on)
-        1,    // alpha blending (off, on)
-        0,    // 1 pass anti-aliasing (off, on)
-        1,    // tex-coord spec method (STQ, UV)
-        0,    // context (1 or 2)
-        0 );  // fragment value control (normal, fixed)
-
-    // we may not have used all of the space available, so give back what
-    // we can to the display list
-    DLIST.Dealloc( (s_NCharsAlloced - s_NChars)*sizeof(char_info) );
-}
-
-#endif
-
 
 //=========================================================================
 //  Font
@@ -324,26 +226,8 @@ void ui_font::TextSize( irect& Rect, const xwchar* pString, s32 Count ) const
 
                 if( buttonCode != -1 )
                 {
-#if defined(TARGET_XBOX)  
-                    if( buttonCode == XBOX_BUTTON_START )
-                    {
-                        Width += BUTTON_START_SPRITE_WIDTH; 
-                    }
-                    else
-                    {
-                        Width += BUTTON_SPRITE_WIDTH; 
-                    } 					
-#elif defined(TARGET_PS2)
-                    if( buttonCode == PS2_BUTTON_START )
-                    {
-                        Width += BUTTON_START_SPRITE_WIDTH; 
-                    }
-                    else
-                    {
-                        Width += BUTTON_SPRITE_WIDTH; 
-                    }  
-#elif defined(TARGET_PC)
-                    if( buttonCode == PS2_BUTTON_START )
+#if defined(TARGET_PC)
+                    if( buttonCode == INPUT_KBD_RETURN )
                     {
                         Width += BUTTON_START_SPRITE_WIDTH; 
                     }
@@ -440,26 +324,8 @@ s32 ui_font::TextWidth( const xwchar* pString, s32 Count ) const
 
                 if( ButtonCode != -1 )
                 {
-#if defined(TARGET_XBOX)  
-                    if( ButtonCode == XBOX_BUTTON_START )
-                    {
-                        Width += BUTTON_START_SPRITE_WIDTH; 
-                    }
-                    else
-                    {
-                        Width += BUTTON_SPRITE_WIDTH; 
-                    } 					
-#elif defined(TARGET_PS2)
-                    if( ButtonCode == PS2_BUTTON_START )
-                    {
-                        Width += BUTTON_START_SPRITE_WIDTH; 
-                    }
-                    else
-                    {
-                        Width += BUTTON_SPRITE_WIDTH; 
-                    }  
-#elif defined(TARGET_PC)
-                    if( ButtonCode == PS2_BUTTON_START )
+#if defined(TARGET_PC)
+                    if( ButtonCode == INPUT_KBD_RETURN )
                     {
                         Width += BUTTON_START_SPRITE_WIDTH; 
                     }
@@ -633,8 +499,8 @@ u32 ui_font::LookUpCharacter(u32 c ) const
     }
 }
 
-
 //=========================================================================
+
 const ui_font::Character& ui_font::GetCharacter( s32 Index ) const
 {
 
@@ -786,26 +652,8 @@ void ui_font::TextWrap( const xwchar* pString, const irect& Rect, xwstring& Wrap
 
                 if( ButtonCode != -1 )
                 {
-#if defined(TARGET_XBOX)  
-                    if( ButtonCode == XBOX_BUTTON_START )
-                    {
-                        Width += BUTTON_START_SPRITE_WIDTH; 
-                    }
-                    else
-                    {
-                        Width += BUTTON_SPRITE_WIDTH; 
-                    } 					
-#elif defined(TARGET_PS2)
-                    if( ButtonCode == PS2_BUTTON_START )
-                    {
-                        Width += BUTTON_START_SPRITE_WIDTH; 
-                    }
-                    else
-                    {
-                        Width += BUTTON_SPRITE_WIDTH; 
-                    }  
-#elif defined(TARGET_PC)
-                    if( ButtonCode == PS2_BUTTON_START )
+#if defined(TARGET_PC)
+                    if( ButtonCode == INPUT_KBD_RETURN )
                     {
                         Width += BUTTON_START_SPRITE_WIDTH; 
                     }
@@ -999,26 +847,8 @@ void ui_font::RenderHelpText( const irect&  Rect,
                 {
                     Width   += HELP_TEXT_SPACING;
                 }				
-#if defined(TARGET_XBOX)  
-                if( buttonCode == XBOX_BUTTON_START )
-                {
-                    Width   += BUTTON_START_SPRITE_WIDTH; 
-                }
-                else
-				{
-                    Width   += BUTTON_SPRITE_WIDTH;
-				}				
-#elif defined(TARGET_PS2)
-                if( buttonCode == PS2_BUTTON_START )
-                {
-                    Width   += BUTTON_START_SPRITE_WIDTH;
-                }
-                else
-                {
-                    Width   += BUTTON_SPRITE_WIDTH;
-                }  
-#elif defined(TARGET_PC)
-                if( buttonCode == PS2_BUTTON_START )
+#if defined(TARGET_PC)
+                if( buttonCode == INPUT_KBD_RETURN )
                 {
                     Width   += BUTTON_START_SPRITE_WIDTH;
                 }
@@ -1154,8 +984,8 @@ void ui_font::RenderHelpText( const irect&  Rect,
                 
                 xbitmap* button = g_UiMgr->GetButtonTexture( buttonCode );
         		draw_SetTexture( *button );				
-#if defined(TARGET_XBOX)
-                if( buttonCode == XBOX_BUTTON_START )
+
+                if( buttonCode == INPUT_KBD_RETURN )
                 {
                     draw_Sprite( vector3((f32)sx+1, (f32)sy+1, 0), vector2(BUTTON_SPRITE_WIDTH, BUTTON_SPRITE_WIDTH), xcolor(0,0,0,255) );
                     draw_Sprite( vector3((f32)sx, (f32)sy, 0), vector2(BUTTON_SPRITE_WIDTH, BUTTON_SPRITE_WIDTH), xcolor(255,255,255) );
@@ -1171,61 +1001,7 @@ void ui_font::RenderHelpText( const irect&  Rect,
                     // set new block start
                     sx += BUTTON_SPRITE_WIDTH;
                 }
-#elif defined(TARGET_PS2)
-                if( buttonCode == PS2_BUTTON_START )
-                {
-                    draw_SpriteImmediate( vector2((f32)sx+1, (f32)sy+1),
-                                          vector2(BUTTON_SPRITE_WIDTH*2, BUTTON_SPRITE_WIDTH),
-                                          vector2(0.0f,0.0f),
-                                          vector2(1.0f,1.0f),
-                                          xcolor(0,0,0,255) );
-                    draw_SpriteImmediate( vector2((f32)sx, (f32)sy),
-                                          vector2(BUTTON_SPRITE_WIDTH * 2, BUTTON_SPRITE_WIDTH),
-                                          vector2(0.0f,0.0f),
-                                          vector2(1.0f,1.0f),
-                                          xcolor(255,255,255) );
-                    //draw_Sprite( vector3((f32)sx+1, (f32)sy+1, 0), vector2(BUTTON_SPRITE_WIDTH * 2, BUTTON_SPRITE_WIDTH), xcolor(0,0,0,255) );
-                    //draw_Sprite( vector3((f32)sx, (f32)sy, 0), vector2(BUTTON_SPRITE_WIDTH * 2, BUTTON_SPRITE_WIDTH), xcolor(255,255,255) );
 
-                    // set new block start
-                    sx += BUTTON_START_SPRITE_WIDTH; 
-                }
-                else
-                {
-                    draw_SpriteImmediate( vector2((f32)sx+1, (f32)sy+1),
-                                          vector2(BUTTON_SPRITE_WIDTH, BUTTON_SPRITE_WIDTH),
-                                          vector2(0.0f,0.0f),
-                                          vector2(1.0f,1.0f),
-                                          xcolor(0,0,0,255) );
-                    draw_SpriteImmediate( vector2((f32)sx, (f32)sy),
-                                          vector2(BUTTON_SPRITE_WIDTH, BUTTON_SPRITE_WIDTH),
-                                          vector2(0.0f,0.0f),
-                                          vector2(1.0f,1.0f),
-                                          xcolor(255,255,255) );
-                    //draw_Sprite( vector3((f32)sx+1, (f32)sy+1, 0), vector2(BUTTON_SPRITE_WIDTH, BUTTON_SPRITE_WIDTH), xcolor(0,0,0,255) );
-                    //draw_Sprite( vector3((f32)sx, (f32)sy, 0), vector2(BUTTON_SPRITE_WIDTH, BUTTON_SPRITE_WIDTH), xcolor(255,255,255) );
-
-                    // set new block start
-                    sx += BUTTON_SPRITE_WIDTH;
-                }
-#elif defined(TARGET_PC)
-                if( buttonCode == PS2_BUTTON_START )
-                {
-                    draw_Sprite( vector3((f32)sx+1, (f32)sy+1, 0), vector2(BUTTON_SPRITE_WIDTH, BUTTON_SPRITE_WIDTH), xcolor(0,0,0,255) );
-                    draw_Sprite( vector3((f32)sx, (f32)sy, 0), vector2(BUTTON_SPRITE_WIDTH, BUTTON_SPRITE_WIDTH), xcolor(255,255,255) );
-
-                    // set new block start
-                    sx += BUTTON_START_SPRITE_WIDTH;
-                }
-                else
-                {
-                    draw_Sprite( vector3((f32)sx+1, (f32)sy+1, 0), vector2(BUTTON_SPRITE_WIDTH, BUTTON_SPRITE_WIDTH), xcolor(0,0,0,255) );
-                    draw_Sprite( vector3((f32)sx, (f32)sy, 0), vector2(BUTTON_SPRITE_WIDTH, BUTTON_SPRITE_WIDTH), xcolor(255,255,255) );
-
-                    // set new block start
-                    sx += BUTTON_SPRITE_WIDTH;
-                }
-#endif
                 tx = sx;
                 ty = sy;
 
@@ -1277,12 +1053,7 @@ void ui_font::RenderHelpText( const irect&  Rect,
 
             uv0.Set( u0, v0 );
             uv1.Set( u1, v1 );
- 
-            #ifdef TARGET_PS2
-            draw_SpriteImmediate( vector2((f32)tx, (f32)ty), Size, uv0, uv1, Color );
-            #else
             draw_SpriteUV( vector3((f32)tx,(f32)ty,10.0f), Size, uv0, uv1, Color );
-            #endif
         
             tx        += w + 1;
             CurrWidth += w + 1;
@@ -1291,10 +1062,7 @@ void ui_font::RenderHelpText( const irect&  Rect,
         // get new character
         iStart++;
     }
-
-    #if defined(TARGET_PC) || defined(TARGET_XBOX) || defined(TARGET_PS2) || defined(TARGET_GCN)
     draw_End();
-    #endif
 }
 //=========================================================================
 
@@ -1380,52 +1148,23 @@ void ui_font::RenderText( const irect&  Rect,
         return;
     }
 
-    #if defined TARGET_PC || defined TARGET_XBOX
-        vector2 uv0;
-        vector2 uv1;   
-        vector2 Size( 0, (f32)m_Height );
-//        f32     BmWidth  = 1.0f / (f32)m_BmWidth;
-//        f32     BmHeight = 1.0f / (f32)m_BmHeight;
+    vector2 uv0;
+    vector2 uv1;   
+    vector2 Size( 0, (f32)m_Height );
+    //f32     BmWidth  = 1.0f / (f32)m_BmWidth;
+    //f32     BmHeight = 1.0f / (f32)m_BmHeight;
 
-        // Prepare to draw characters.
-        s32 DrawFlags = DRAW_USE_ALPHA | DRAW_TEXTURED | DRAW_2D | DRAW_UI_RTARGET | DRAW_NO_ZBUFFER | DRAW_NO_ZWRITE | DRAW_UV_CLAMP | DRAW_CULL_NONE ;
-        if( Flags & ui_font::blend_additive )
-            DrawFlags |= DRAW_BLEND_ADD;
-        draw_Begin( DRAW_TRIANGLES, DrawFlags );
-        draw_SetTexture( *pBitmap );
+    // Prepare to draw characters.
+    s32 DrawFlags = DRAW_USE_ALPHA | DRAW_TEXTURED | DRAW_2D | DRAW_UI_RTARGET | DRAW_NO_ZBUFFER | DRAW_NO_ZWRITE | DRAW_UV_CLAMP | DRAW_CULL_NONE ;
+    if( Flags & ui_font::blend_additive )
+        DrawFlags |= DRAW_BLEND_ADD;
+    draw_Begin( DRAW_TRIANGLES, DrawFlags );
+    draw_SetTexture( *pBitmap );
 
-        // Turn off BILINEAR.
-//        g_pd3dDevice->SetTextureStageState( 0, D3DTSS_MINFILTER, D3DTEXF_POINT );
-//        g_pd3dDevice->SetTextureStageState( 0, D3DTSS_MAGFILTER, D3DTEXF_POINT );
-//        g_pd3dDevice->SetTextureStageState( 0, D3DTSS_MIPFILTER, D3DTEXF_POINT );
-    #endif
-
-    #ifdef TARGET_PS2
-        // Setup Texture
-        //vram_Activate( m_Bitmap );
-
-        vram_Activate( *pBitmap );
-
-        s32 B = (Flags & ui_font::blend_additive) ? C_ZERO : C_DST;
-        gsreg_Begin( 5 );
-        gsreg_SetClamping( TRUE );
-        gsreg_SetMipEquation( FALSE, 1.0f, 0, MIP_MAG_POINT, MIP_MIN_POINT );
-        gsreg_SetAlphaBlend( ALPHA_BLEND_MODE(C_SRC, B, A_SRC, C_DST) );
-        gsreg_SetZBufferTest( ZBUFFER_TEST_ALWAYS );
-        gsreg_SetZBufferUpdate( FALSE );
-        gsreg_End();
-
-        // Build GIF Tags
-        s_PGIF.Build( GIF_MODE_REGLIST, 2, 1, 0, 0, 0, 1 );
-        s_PGIF.Reg  ( GIF_REG_PRIM, GIF_REG_NOP );
-        s_GIF.Build ( GIF_MODE_REGLIST, 10, 0, 0, 0, 0, 1 );
-        s_GIF.Reg   ( GIF_REG_RGBAQ, GIF_REG_UV, GIF_REG_XYZ3, GIF_REG_UV, GIF_REG_XYZ3, 
-                        GIF_REG_RGBAQ, GIF_REG_UV, GIF_REG_XYZ2, GIF_REG_UV, GIF_REG_XYZ2  );
-
-        //draw_DisableBilinear(); // location??? TODO: ctetrick
-        // start a character batch
-        ps2_NewCharBatch();
-    #endif
+    // Turn off BILINEAR.
+    //g_pd3dDevice->SetTextureStageState( 0, D3DTSS_MINFILTER, D3DTEXF_POINT );
+    //g_pd3dDevice->SetTextureStageState( 0, D3DTSS_MAGFILTER, D3DTEXF_POINT );
+    //g_pd3dDevice->SetTextureStageState( 0, D3DTSS_MIPFILTER, D3DTEXF_POINT );
 
     // Get size for vertical positioning.
     Height = TextHeight( pString );
@@ -1489,16 +1228,31 @@ void ui_font::RenderText( const irect&  Rect,
             if( Flags & clip_l_justify ) 
                 tx = Rect.l;
             else
-            if( Flags & clip_r_justify ) 
+            if( Flags & clip_r_justify )
                 tx = Rect.r - Width;
         }
+
+        // Skip lines above the visible area and stop once we're past the bottom.
+        if( ty + m_Height <= Rect.t )
+        {
+            iStart = iEnd;
+            if( pString[iStart] == '\n' )
+            {
+                ty += m_Height;
+                iStart++;
+            }
+            continue;
+        }
+
+        if( ty >= Rect.b )
+            break;
 
         //
         // Render each character.
         //
         for( ; iStart < iEnd; iStart++ )
         {
-            c = pString[ iStart ];            
+            c = pString[ iStart ];
             //
             // Button code stuff.
 
@@ -1548,26 +1302,8 @@ void ui_font::RenderText( const irect&  Rect,
 
                     //draw_Sprite( vector3((f32)tx+1, (f32)ty+1, 0), vector2(BUTTON_SPRITE_WIDTH, BUTTON_SPRITE_WIDTH), xcolor(0,0,0,255) );
 	        	    //draw_Sprite( vector3((f32)tx, (f32)ty, 0), vector2(BUTTON_SPRITE_WIDTH, BUTTON_SPRITE_WIDTH), xcolor(255,255,255) );
-#if defined(TARGET_XBOX)  
-                if( buttonCode == XBOX_BUTTON_START )
-                {
-                    tx += BUTTON_SPRITE_WIDTH; 
-                }
-                else
-				{
-                    tx += BUTTON_SPRITE_WIDTH;
-				}				
-#elif defined(TARGET_PS2)
-                if( buttonCode == PS2_BUTTON_START )
-                {
-                    tx += BUTTON_SPRITE_WIDTH;
-                }
-                else
-                {
-                    tx += BUTTON_START_SPRITE_WIDTH;
-                }  
-#elif defined(TARGET_PC)
-                if( buttonCode == PS2_BUTTON_START )
+#if defined(TARGET_PC)
+                if( buttonCode == INPUT_KBD_RETURN )
                 {
                     tx += BUTTON_SPRITE_WIDTH;
                 }
@@ -1619,87 +1355,35 @@ void ui_font::RenderText( const irect&  Rect,
 
             //Color.A = 255;
 
-            #if defined TARGET_PC || defined TARGET_XBOX
+            f32 u0 = (x            + 0.5f) / m_BmWidth;
+            f32 u1 = (x + w        + 0.5f) / m_BmWidth;
+            f32 v0 = (y            + 0.5f) / m_BmHeight;
+            f32 v1 = (y + m_Height + 0.5f) / m_BmHeight;
+		    
+            if( ScaleText )
             {
-                f32 u0 = (x            + 0.5f) / m_BmWidth;
-                f32 u1 = (x + w        + 0.5f) / m_BmWidth;
-                f32 v0 = (y            + 0.5f) / m_BmHeight;
-                f32 v1 = (y + m_Height + 0.5f) / m_BmHeight;
-
-                if( ScaleText )
-                {
-                    w = (u32)((f32)w * ScaleX);
-                }
-                Size.X = (f32)w;
-                Size.Y = (f32)m_Height;
-                uv0.Set( u0, v0 );
-                uv1.Set( u1, v1 );
-
-                draw_Color( Color2 );
-                draw_UV( uv0.X, uv0.Y );
-                draw_Vertex( tx, ty, 0.0f );
-                draw_UV( uv1.X, uv0.Y );
-                draw_Vertex( tx+w, ty, 0.0f );
-                draw_Color( Color1 );
-                draw_UV( uv0.X, uv1.Y );
-                draw_Vertex( tx, ty+m_Height, 0.0f );
-
-                draw_Vertex( tx, ty+m_Height, 0.0f );
-                draw_UV( uv1.X, uv1.Y );
-                draw_Vertex( tx+w, ty+m_Height, 0.0f );
-                draw_Color( Color2 );
-                draw_UV( uv1.X, uv0.Y );
-                draw_Vertex( tx+w, ty, 0.0f );
-                
+                w = (u32)((f32)w * ScaleX);
             }
-            #endif
-            
-            #ifdef TARGET_PS2
-            {
-                // Text is often rendered in it's entirety with a clipping region set. 
-                // problem is on PS2, the EULA text is very large (thanks again lawyers!)
-                // the rendering region for this text exceeds the world coordinates and wraps.
-                // so for this problem we'll skip any characters that go offscreen. 
-                // This is a limited case, so button codes are not considered.
-                s32 XRes, YRes;
-                eng_GetRes( XRes, YRes );
-
-                if( ((tx > 0) && ((tx + w) < XRes)) && ((ty > 0) && ((ty + m_Height) < YRes)))
-                {    
-	                s32         X0,Y0,X1,Y1;
-                    char_info*  pCH = s_pChar;
-
-	                X0 = (OFFSET_X<<4) + ((tx)<<4);
-	                Y0 = (OFFSET_Y<<4) + ((ty)<<4);
-	                X1 = (OFFSET_X<<4) + ((tx+w)<<4);
-	                Y1 = (OFFSET_Y<<4) + ((ty+m_Height)<<4);
-
-                    pCH->Color1 = SCE_GS_SET_RGBAQ( Color2.R>>1, Color2.G>>1, Color2.B>>1, Color2.A>>1, 0x3F800000 );	                
-                    pCH->T0     = SCE_GS_SET_UV( (x<<4)+8, (y<<4)+8 );
-	                pCH->P0     = SCE_GS_SET_XYZ(X0,Y0,0xFFFFFFFF);
-    	            
-                    pCH->T1     = SCE_GS_SET_UV( ((x+w)<<4)+8, (y<<4)+8 );
-	                pCH->P1     = SCE_GS_SET_XYZ(X1,Y0,0xFFFFFFFF);
-
-	                pCH->Color2 = SCE_GS_SET_RGBAQ( Color1.R>>1, Color1.G>>1, Color1.B>>1, Color1.A>>1, 0x3F800000 );	                
-                    pCH->T2     = SCE_GS_SET_UV( (x<<4)+8, ((y+m_Height)<<4)+8 );
-	                pCH->P2     = SCE_GS_SET_XYZ(X0,Y1,0xFFFFFFFF);
-    	            
-                    pCH->T3     = SCE_GS_SET_UV( ((x+w)<<4)+8, ((y+m_Height)<<4)+8 );
-	                pCH->P3     = SCE_GS_SET_XYZ(X1,Y1,0xFFFFFFFF);
-
-                    s_pChar++;
-                    s_NChars++;
-                    if( s_NChars == s_NCharsAlloced )
-                    {
-                        // start a new batch
-                        ps2_EndCharBatch();
-                        ps2_NewCharBatch();
-                    }
-                }
-            }
-            #endif
-
+            Size.X = (f32)w;
+            Size.Y = (f32)m_Height;
+            uv0.Set( u0, v0 );
+            uv1.Set( u1, v1 );
+		    
+            draw_Color( Color2 );
+            draw_UV( uv0.X, uv0.Y );
+            draw_Vertex( tx, ty, 0.0f );
+            draw_UV( uv1.X, uv0.Y );
+            draw_Vertex( tx+w, ty, 0.0f );
+            draw_Color( Color1 );
+            draw_UV( uv0.X, uv1.Y );
+            draw_Vertex( tx, ty+m_Height, 0.0f );
+		    
+            draw_Vertex( tx, ty+m_Height, 0.0f );
+            draw_UV( uv1.X, uv1.Y );
+            draw_Vertex( tx+w, ty+m_Height, 0.0f );
+            draw_Color( Color2 );
+            draw_UV( uv1.X, uv0.Y );
+            draw_Vertex( tx+w, ty, 0.0f ); 
             tx += w + 1;
         }
 
@@ -1710,15 +1394,7 @@ void ui_font::RenderText( const irect&  Rect,
             iStart++;
         }
     }
-
-    #if defined TARGET_PC || defined TARGET_XBOX
     draw_End();
-    #endif
-
-    #ifdef TARGET_PS2
-    // finish off any pending batches
-    ps2_EndCharBatch();
-    #endif
 
 #if !defined(APP_EDITOR)
     if( NumButtons > 0 && UseGradient )
@@ -1732,38 +1408,8 @@ void ui_font::RenderText( const irect&  Rect,
                         
             xbitmap* button = g_UiMgr->GetButtonTexture( ButtonCodes[ i ] );
             draw_SetTexture( *button );
-
-            #ifdef TARGET_PS2
-            if( buttonCode == PS2_BUTTON_START )
-            {
-                draw_SpriteImmediate( vector2(Button_X[i]+1, Button_Y[i]+1),
-                    vector2(BUTTON_SPRITE_WIDTH * 2, BUTTON_SPRITE_WIDTH),
-                    vector2(0.0f,0.0f),
-                    vector2(1.0f,1.0f),
-                    xcolor(0,0,0,255) );
-                draw_SpriteImmediate( vector2(Button_X[i], Button_Y[i]),
-                    vector2(BUTTON_SPRITE_WIDTH * 2, BUTTON_SPRITE_WIDTH),
-                    vector2(0.0f,0.0f),
-                    vector2(1.0f,1.0f),
-                    xcolor(255,255,255,255) );
-            }
-            else
-            {
-                draw_SpriteImmediate( vector2(Button_X[i]+1, Button_Y[i]+1),
-                    vector2(BUTTON_SPRITE_WIDTH, BUTTON_SPRITE_WIDTH),
-                    vector2(0.0f,0.0f),
-                    vector2(1.0f,1.0f),
-                    xcolor(0,0,0,255) );
-                draw_SpriteImmediate( vector2(Button_X[i], Button_Y[i]),
-                    vector2(BUTTON_SPRITE_WIDTH, BUTTON_SPRITE_WIDTH),
-                    vector2(0.0f,0.0f),
-                    vector2(1.0f,1.0f),
-                    xcolor(255,255,255,255) );
-            }
-            #else
             draw_Sprite( vector3(Button_X[ i ]+1, Button_Y[ i ]+1, 0), vector2(BUTTON_SPRITE_WIDTH, BUTTON_SPRITE_WIDTH), xcolor(0,0,0,255) );
 	        draw_Sprite( vector3(Button_X[ i ]  , Button_Y[ i ]  , 0), vector2(BUTTON_SPRITE_WIDTH, BUTTON_SPRITE_WIDTH), xcolor(255,255,255) );           
-            #endif
         }
         draw_End();
     }
@@ -1835,8 +1481,6 @@ void ui_font::RenderStateControlledText( const irect& Rect, u32 Flags, const xco
 
     ASSERT( pString );
 
-
-#if defined TARGET_PC || defined TARGET_XBOX
     vector2 uv0;
     vector2 uv1;   
     vector2 Size( 0, (f32)m_Height );
@@ -1849,31 +1493,6 @@ void ui_font::RenderStateControlledText( const irect& Rect, u32 Flags, const xco
         DrawFlags |= DRAW_BLEND_ADD;
     draw_Begin( DRAW_SPRITES, DrawFlags );
     draw_SetTexture( *pBitmap );
-#endif
-
-#ifdef TARGET_PS2
-    // Setup Texture
-    vram_Activate( *pBitmap );
-
-    s32 B = (Flags & ui_font::blend_additive) ? C_ZERO : C_DST;
-    gsreg_Begin( 5 );
-    gsreg_SetClamping( TRUE );
-    gsreg_SetMipEquation( FALSE, 1.0f, 0, MIP_MAG_POINT, MIP_MIN_POINT );
-    gsreg_SetAlphaBlend( ALPHA_BLEND_MODE(C_SRC, B, A_SRC, C_DST) );
-    gsreg_SetZBufferTest( ZBUFFER_TEST_ALWAYS );
-    gsreg_SetZBufferUpdate( FALSE );
-    gsreg_End();
-
-    // Build GIF Tags
-    s_PGIF.Build( GIF_MODE_REGLIST, 2, 1, 0, 0, 0, 1 );
-    s_PGIF.Reg  ( GIF_REG_PRIM, GIF_REG_NOP );
-    s_GIF.Build ( GIF_MODE_REGLIST, 10, 0, 0, 0, 0, 1 );
-    s_GIF.Reg   ( GIF_REG_RGBAQ, GIF_REG_UV, GIF_REG_XYZ3, GIF_REG_UV, GIF_REG_XYZ3, 
-        GIF_REG_RGBAQ, GIF_REG_UV, GIF_REG_XYZ2, GIF_REG_UV, GIF_REG_XYZ2  );
-
-    // start a character batch
-    ps2_NewCharBatch();
-#endif
 
     // Get size for vertical positioning.
     Height = TextHeight( pString );
@@ -1937,16 +1556,31 @@ void ui_font::RenderStateControlledText( const irect& Rect, u32 Flags, const xco
             if( Flags & clip_l_justify ) 
                 tx = Rect.l;
             else
-                if( Flags & clip_r_justify ) 
+                if( Flags & clip_r_justify )
                     tx = Rect.r - Width;
         }
+
+        // Skip lines above the visible area and stop once we're past the bottom.
+        if( ty + m_Height <= Rect.t )
+        {
+            iStart = iEnd;
+            if( pString[iStart] == '\n' )
+            {
+                ty += m_Height;
+                iStart++;
+            }
+            continue;
+        }
+
+        if( ty >= Rect.b )
+            break;
 
         //
         // Render each character.
         //
         for( ; iStart < iEnd; iStart++ )
         {
-            c = pString[ iStart ];            
+            c = pString[ iStart ];
             //
             // Button code stuff.
 
@@ -1996,74 +1630,28 @@ void ui_font::RenderStateControlledText( const irect& Rect, u32 Flags, const xco
             s32 y  = m_Characters[ ci ].Y;
             s32 w  = m_Characters[ ci ].W;
 
-#if defined TARGET_PC || defined TARGET_XBOX
-            {
-                if( (((CustomRenderStruct*)StateData)[iStart]).m_State == s_render )
-                {                
-                    f32 u0 = (x            + 0.5f) / m_BmWidth;
-                    f32 u1 = (x + w        + 0.5f) / m_BmWidth;
-                    f32 v0 = (y            + 0.5f) / m_BmHeight;
-                    f32 v1 = (y + m_Height + 0.5f) / m_BmHeight;
+            if( (((CustomRenderStruct*)StateData)[iStart]).m_State == s_render )
+            {                
+                f32 u0 = (x            + 0.5f) / m_BmWidth;
+                f32 u1 = (x + w        + 0.5f) / m_BmWidth;
+                f32 v0 = (y            + 0.5f) / m_BmHeight;
+                f32 v1 = (y + m_Height + 0.5f) / m_BmHeight;
 
-                    if( ScaleText )
-                    {
-                        w = (u32)((f32)w * ScaleX);
-                    }
-                    Size.X = (f32)w;
-                    Size.Y = (f32)m_Height;
-                    uv0.Set( u0, v0 );
-                    uv1.Set( u1, v1 );
-
-                    xcolor RenderColor = Color1;
-                    RenderColor.A = (u8)(((CustomRenderStruct*)StateData)[iStart]).m_Value;
-
-                    // aharp TODO need to add gradient font
-                    draw_SpriteUV( vector3((f32)tx,(f32)ty,10.0f), Size, uv0, uv1, RenderColor );
-                }
-            }
-#endif
-
-#ifdef TARGET_PS2
-            {
-                if( ((CustomRenderStruct*)StateData)->m_State == s_render )
+                if( ScaleText )
                 {
-                    s32         X0,Y0,X1,Y1;
-                    char_info*  pCH = s_pChar;
-
-                    X0 = (OFFSET_X<<4) + ((tx)<<4);
-                    Y0 = (OFFSET_Y<<4) + ((ty)<<4);
-                    X1 = (OFFSET_X<<4) + ((tx+w)<<4);
-                    Y1 = (OFFSET_Y<<4) + ((ty+m_Height)<<4);
-
-                    xcolor RenderColor = Color1;
-                    RenderColor.A = (u8)(((CustomRenderStruct*)StateData)[iStart]).m_Value;
-
-                    pCH->Color1 = SCE_GS_SET_RGBAQ( RenderColor.R>>1, RenderColor.G>>1, RenderColor.B>>1, RenderColor.A>>1, 0x3F800000 );	                
-                    pCH->T0     = SCE_GS_SET_UV( (x<<4)+8, (y<<4)+8 );
-                    pCH->P0     = SCE_GS_SET_XYZ(X0,Y0,0xFFFFFFFF);
-
-                    pCH->T1     = SCE_GS_SET_UV( ((x+w)<<4)+8, (y<<4)+8 );
-                    pCH->P1     = SCE_GS_SET_XYZ(X1,Y0,0xFFFFFFFF);
-
-                    pCH->Color2 = SCE_GS_SET_RGBAQ( RenderColor.R>>1, RenderColor.G>>1, RenderColor.B>>1, RenderColor.A>>1, 0x3F800000 );	                
-                    pCH->T2     = SCE_GS_SET_UV( (x<<4)+8, ((y+m_Height)<<4)+8 );
-                    pCH->P2     = SCE_GS_SET_XYZ(X0,Y1,0xFFFFFFFF);
-
-                    pCH->T3     = SCE_GS_SET_UV( ((x+w)<<4)+8, ((y+m_Height)<<4)+8 );
-                    pCH->P3     = SCE_GS_SET_XYZ(X1,Y1,0xFFFFFFFF);
-
-                    s_pChar++;
-                    s_NChars++;
-                    if( s_NChars == s_NCharsAlloced )
-                    {
-                        // start a new batch
-                        ps2_EndCharBatch();
-                        ps2_NewCharBatch();
-                    }
+                    w = (u32)((f32)w * ScaleX);
                 }
-            }
-#endif
+                Size.X = (f32)w;
+                Size.Y = (f32)m_Height;
+                uv0.Set( u0, v0 );
+                uv1.Set( u1, v1 );
 
+                xcolor RenderColor = Color1;
+                RenderColor.A = (u8)(((CustomRenderStruct*)StateData)[iStart]).m_Value;
+
+                // aharp TODO need to add gradient font
+                draw_SpriteUV( vector3((f32)tx,(f32)ty,10.0f), Size, uv0, uv1, RenderColor );
+            }
             tx += w + 1;
         }
 
@@ -2074,13 +1662,5 @@ void ui_font::RenderStateControlledText( const irect& Rect, u32 Flags, const xco
             iStart++;
         }
     }
-
-#if defined TARGET_PC || defined TARGET_XBOX
     draw_End();
-#endif
-
-#ifdef TARGET_PS2
-    // finish off any pending batches
-    ps2_EndCharBatch();
-#endif
 }
