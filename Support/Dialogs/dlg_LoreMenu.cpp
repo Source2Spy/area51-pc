@@ -417,7 +417,7 @@ void dlg_lore_menu::Render( s32 ox, s32 oy )
         g_UiMgr->RenderRect( m_DrawPos, xcolor(255,252,204,255), FALSE );
 
         // render movie/button bitmap
-        if( m_scaleCount || m_TimeOut)
+        if( m_TimeOut || (m_scaleCount && m_bScaleDown) )
         {
             irect r = m_DrawPos;
             r.t += 2;
@@ -685,6 +685,18 @@ void dlg_lore_menu::OnPadBack( ui_win* pWin )
 
 void dlg_lore_menu::OnLBDown( ui_win* pWin )
 {
+    if( m_bFullScreenMode )
+    {
+        // exit full screen mode
+        m_bFullScreenMode = FALSE;
+        xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_SELECT" ));
+        navText += g_StringTableMgr( "ui", "IDS_NAV_BACK" );
+        m_pNavText->SetLabel( navText );
+        g_AudioMgr.Play("Backup");
+        return;
+		
+    }
+
     if( m_bScreenIsOn && !m_bFullScreenMode && (m_scaleCount == 0) )
     {
         s32 cx, cy;
@@ -890,6 +902,20 @@ void dlg_lore_menu::InitIconScaling ( xbool ScaleDown )
 
         // disable the highlight
         g_UiMgr->DisableScreenHighlight();
+
+        // set filename for still 
+        const lore_entry* PreEntry = g_LoreList.Find( m_pSelectedIcon->GetData() );
+        if( PreEntry && (PreEntry->LoreType == LORE_TYPE_STILL || PreEntry->LoreType == LORE_TYPE_TEXT) )
+        {
+            g_UiMgr->UnloadBitmap( "Still" );
+            m_NumItems = PreEntry->NumItems;
+            m_CurrItem = 0;
+            x_strcpy( m_FileName, PreEntry->FileName );
+            if( m_NumItems > 1 )
+                m_StillBitmapID = g_UiMgr->LoadBitmap( "Still", xfs( "%s%d.xbmp", m_FileName, m_CurrItem+1 ) );
+            else
+                m_StillBitmapID = g_UiMgr->LoadBitmap( "Still", xfs( "%s.xbmp", m_FileName ) );
+        }
     }
 
     
@@ -965,25 +991,6 @@ xbool dlg_lore_menu::UpdateIconScaling( f32 DeltaTime )
                         break;
                     case LORE_TYPE_STILL:
                     case LORE_TYPE_TEXT:
-                        // set filename for still
-                        g_UiMgr->UnloadBitmap( "Still" );
-                        if( Entry->NumItems > 1 )
-                        {
-                            m_NumItems = Entry->NumItems;
-                            m_CurrItem = 0;
-                            x_strcpy( m_FileName, Entry->FileName );
-                            m_StillBitmapID = g_UiMgr->LoadBitmap( "Still", xfs( "%s%d.xbmp", m_FileName, m_CurrItem+1 ) );
-                        }
-                        else
-                        {
-                            m_NumItems = 1;
-                            m_CurrItem = 0;
-                            x_strcpy( m_FileName, Entry->FileName );    
-                            m_StillBitmapID = g_UiMgr->LoadBitmap( "Still", xfs( "%s.xbmp", m_FileName ) );
-                        }
-
-                        // load the correct bitmap
-                        //m_bCycleBitmap = TRUE;
 
                         // turn off lore details
                         m_pLoreDetails ->SetFlag(ui_win::WF_VISIBLE, FALSE);
