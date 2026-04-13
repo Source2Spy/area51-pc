@@ -10,8 +10,8 @@
 #include "ui_combo.hpp"
 #include "ui_manager.hpp"
 #include "ui_font.hpp"
-#include "ui_listbox.hpp"
-#include "ui_dlg_list.hpp"
+//#include "ui_listbox.hpp"
+//#include "ui_dlg_list.hpp"
 //#include "ui_dlg_combolist.hpp"
 
 //=========================================================================
@@ -532,40 +532,28 @@ void ui_combo::ClearSelection( void )
 
 void ui_combo::OnLBDown ( ui_win* pWin )
 {
-    (void)pWin;
 #ifdef TARGET_PC
-    // Throw up default config selection dialog
-    irect r = GetPosition();
-    r.Translate( -r.l, -r.t + r.GetHeight() );
-    LocalToScreenCreate( r );
+    // Get cursor screen position
+    s32 cx, cy;
+    g_UiMgr->GetCursorPos( m_UserID, cx, cy );
 
-    // Scale the list box to a resonable size.
-    s32 Items = m_Items.GetCount()-1;
-    if( Items < 3 )
-        Items = 3;
-    r.b = r.t + 26+18*(Items);
-    s32 x, y;
-    eng_GetRes( x, y );
-    
-    // Keep the list box inside the viewport.
-    if( r.b > y )
+    // Get combo actual screen bounds
+    irect r( 0, 0, m_Position.GetWidth(), m_Position.GetHeight() );
+    LocalToScreen( r );
+
+    // Arrow hit zone ( use combo height as width )
+    s32 arrowW = r.GetHeight() * 2;
+
+    if( cx < r.l + arrowW )
     {
-        s32 diff = r.b - y;
-        r.Translate( 0, -diff );
+        // Left arrow - previous item
+        OnPadShoulder( pWin, -1 );
     }
-
-    // Open a list box with all the items listed in it.
-    ui_dlg_list* pListDialog = (ui_dlg_list*)m_pManager->OpenDialog( m_UserID, "ui_list", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_INPUTMODAL );
-    ui_listbox* pList = pListDialog->GetListBox();
-    pListDialog->SetResultPtr( &m_iSelection );
-
-    // Set the items label.
-    for( s32 i=0 ; i < m_Items.GetCount(); i++ )
+    else if( cx > r.r - arrowW )
     {
-        pList->AddItem( m_Items[i].Label, i );
+        // Right arrow - next item
+        OnPadShoulder( pWin, 1 );
     }
-
-    pList->SetSelection( 0 );
 #endif
 }
 
