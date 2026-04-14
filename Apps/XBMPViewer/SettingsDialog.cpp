@@ -32,13 +32,13 @@ SettingsDialog::SettingsDialog(QWidget* pParent)
     m_pGameType->addItem("Tribes:AA");
 
     m_pThemeType = new QComboBox(this);
-    m_pThemeType->addItem("Fusion White");
-    m_pThemeType->addItem("Fusion Dark");
+    //m_pThemeType->addItem("Fusion White");
+    //m_pThemeType->addItem("Fusion Dark");
     m_pThemeType->addItem("Windows White");
     m_pThemeType->addItem("Windows Dark");
-    //m_pThemeType->addItem("Windows 10 White");
-    m_pThemeType->addItem("Windows 10 Dark");	
-	m_pThemeType->addItem("VGUI");
+    m_pThemeType->addItem("Windows 10 White");
+    m_pThemeType->addItem("Windows 10 Dark");
+    m_pThemeType->addItem("VGUI");
 
     QFormLayout* pFormLayout = new QFormLayout();
     pFormLayout->addRow("Game", m_pGameType);

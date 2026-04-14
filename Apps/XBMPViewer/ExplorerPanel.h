@@ -20,7 +20,6 @@
 
 class QFileSystemModel;
 class QCompleter;
-class QDockWidget;
 class QLineEdit;
 class QTreeView;
 
@@ -33,21 +32,23 @@ class ExplorerPanel : public QWidget
     Q_OBJECT
 
 public:
-    explicit ExplorerPanel       (QWidget* pParent = NULL);
-							     
-    void ConfigureDock           (QDockWidget* pDock) const;
-    void SetPath                 (const QString& Path);
-    QString GetPath              (void) const;
-							     
-signals:                         
-    void PathSelected            (const QString& Path);
-							     
-private slots:                   
-    void OnTreeSelectionChanged  (const QModelIndex& Current, const QModelIndex& Previous);
-    void OnPathEntered           (void);
-							     
-private:                         
-    void UpdateSelection         (const QString& Path);
+    explicit ExplorerPanel      (QWidget* pParent = NULL);
+
+    void    SetPath             (const QString& Path);
+    QString GetPath             (void) const;
+
+signals:
+    void PathSelected           (const QString& Path);
+
+protected:
+    void changeEvent            (QEvent* pEvent) override;
+
+private slots:
+    void OnTreeSelectionChanged (const QModelIndex& Current, const QModelIndex& Previous);
+    void OnPathEntered          (void);
+
+private:
+    void UpdateSelection        (const QString& Path);
 
 private:
     QFileSystemModel*   m_pModel;

@@ -19,7 +19,7 @@
 //==============================================================================
 
 class BitmapPreviewWidget;
-class QDockWidget;
+class QBoxLayout;
 
 //==============================================================================
 //  PreviewPanel CLASS
@@ -32,15 +32,16 @@ class PreviewPanel : public QWidget
 public:
     explicit PreviewPanel(QWidget* pParent = NULL);
 
-    void                 ConfigureDock   (QDockWidget* pDock) const;
     BitmapPreviewWidget* GetColorWidget  (void) const;
     BitmapPreviewWidget* GetAlphaWidget  (void) const;
     QSlider*             GetMipSlider    (void) const;
 
 protected:
+    void changeEvent     (QEvent* pEvent) override;
     void resizeEvent     (QResizeEvent* pEvent) override;
 
 private:
+    QBoxLayout*          m_pLayout;
     BitmapPreviewWidget* m_pBitmapColor;
     BitmapPreviewWidget* m_pBitmapAlpha;
     QSlider*             m_pMipSlider;

@@ -42,6 +42,8 @@ AboutDialog::AboutDialog(const QString& GameType, const QString& ThemeType, QWid
     QString InfoText;
     InfoText += "Product Name: XBMPViewer\n";
     InfoText += QString("Build: %1 %2\n").arg(__DATE__).arg(__TIME__);
+    InfoText += QString("Game: %1\n").arg(GameType);
+    InfoText += QString("Theme: %1\n").arg(ThemeType);
     m_pInfo->setPlainText(InfoText);
 
     QDialogButtonBox* pButtons = new QDialogButtonBox(this);

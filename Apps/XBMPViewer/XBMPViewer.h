@@ -15,6 +15,7 @@
 
 #include <QMainWindow>
 #include <QString>
+#include <QVector>
 
 //==============================================================================
 
@@ -25,6 +26,7 @@ class QSlider;
 class FileListView;
 class ExplorerPanel;
 class FileListModel;
+struct FileRecord;
 class PreviewPanel;
 class QSortFilterProxyModel;
 
@@ -40,7 +42,6 @@ public:
     explicit XBMPViewer         (QWidget* pParent = NULL);
 
 protected:
-    void resizeEvent            (QResizeEvent* pEvent) override;
     void closeEvent             (QCloseEvent* pEvent) override;
 
 private slots:
@@ -61,14 +62,15 @@ private slots:
     void OnExplorerPathSelected (const QString& Path);
 
 private:
-    void    LoadBitmap          (const QString& Path);
-    void    UpdatePreview       (void);
-    void    UpdateStatus        (void);
-    void    UpdateStatusTotals  (void);
-    void    UpdateStatusFocus   (void);
-    void    ApplyTheme          (void);
-    QString FormatSizeString    (s64 Bytes) const;
-    QString FormatFileSizeKB    (s64 Bytes) const;
+    QVector<const FileRecord*> GetSelectedRecords (void) const;
+    void    LoadBitmap                            (const QString& Path);
+    void    UpdatePreview                         (void);
+    void    UpdateStatus                          (void);
+    void    UpdateStatusTotals                    (void);
+    void    UpdateStatusFocus                     (void);
+    void    UpdateConvertActions                  (void);
+    QString FormatSizeString                      (s64 Bytes) const;
+    QString FormatFileSizeKB                      (s64 Bytes) const;
 
 private:
     FileListModel*         m_pFileModel;

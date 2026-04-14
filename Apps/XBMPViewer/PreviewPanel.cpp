@@ -12,7 +12,8 @@
 
 #include "BitmapPreviewWidget.h"
 
-#include <QDockWidget>
+#include <QBoxLayout>
+#include <QEvent>
 
 //==============================================================================
 //  IMPLEMENTATION
@@ -20,7 +21,13 @@
 
 PreviewPanel::PreviewPanel(QWidget* pParent)
     : QWidget(pParent)
+    , m_pLayout(NULL)
+    , m_pBitmapColor(NULL)
+    , m_pBitmapAlpha(NULL)
+    , m_pMipSlider(NULL)
 {
+    setAutoFillBackground(true);
+
     m_pBitmapColor = new BitmapPreviewWidget(this);
     m_pBitmapAlpha = new BitmapPreviewWidget(this);
     m_pBitmapAlpha->SetAlpha(TRUE);
@@ -29,17 +36,13 @@ PreviewPanel::PreviewPanel(QWidget* pParent)
     m_pMipSlider->setRange(0, 0);
     m_pMipSlider->setTickPosition(QSlider::TicksBothSides);
     m_pMipSlider->setTickInterval(1);
-    m_pMipSlider->setMinimumSize(20, 20);
-}
 
-//==============================================================================
-
-void PreviewPanel::ConfigureDock(QDockWidget* pDock) const
-{
-    if (!pDock)
-        return;
-
-    pDock->setAllowedAreas(Qt::TopDockWidgetArea | Qt::BottomDockWidgetArea);
+    m_pLayout = new QBoxLayout(QBoxLayout::LeftToRight, this);
+    m_pLayout->setContentsMargins(1, 1, 1, 1);
+    m_pLayout->setSpacing(4);
+    m_pLayout->addWidget(m_pBitmapColor, 1);
+    m_pLayout->addWidget(m_pMipSlider, 0);
+    m_pLayout->addWidget(m_pBitmapAlpha, 1);
 }
 
 //==============================================================================
@@ -65,38 +68,37 @@ QSlider* PreviewPanel::GetMipSlider(void) const
 
 //==============================================================================
 
+void PreviewPanel::changeEvent(QEvent* pEvent)
+{
+    QWidget::changeEvent(pEvent);
+
+    const QEvent::Type T = pEvent->type();
+    if (T == QEvent::StyleChange || T == QEvent::PaletteChange)
+        setAutoFillBackground(true);
+}
+
+//==============================================================================
+
 void PreviewPanel::resizeEvent(QResizeEvent* pEvent)
 {
     QWidget::resizeEvent(pEvent);
 
+    // Switch layout direction and slider orientation based on aspect ratio.
+    // Fix slider to 50px in its "thin" dimension and let the layout stretch it
+    // in the other dimension.
     const s32 SliderSize = 50;
-    QRect R = rect();
-    R.adjust(1, 1, -1, -1);
-
-    QRect R1 = R;
-    QRect R2 = R;
-    QRect R3 = R;
-
-    if (R.width() >= R.height())
+    if (width() >= height())
     {
-        R1.setRight(R1.left() + (R.width() - SliderSize) / 2);
-        R2.setLeft(R2.right() - (R.width() - SliderSize) / 2);
-        R3.setLeft(R1.right());
-        R3.setRight(R2.left());
-        R3.adjust(4, 4, -4, -4);
+        m_pLayout->setDirection(QBoxLayout::LeftToRight);
         m_pMipSlider->setOrientation(Qt::Vertical);
+        m_pMipSlider->setMinimumSize(SliderSize, 0);
+        m_pMipSlider->setMaximumSize(SliderSize, QWIDGETSIZE_MAX);
     }
     else
     {
-        R1.setBottom(R1.top() + (R.height() - SliderSize) / 2);
-        R2.setTop(R2.bottom() - (R.height() - SliderSize) / 2);
-        R3.setTop(R1.bottom());
-        R3.setBottom(R2.top());
-        R3.adjust(4, 4, -4, -4);
+        m_pLayout->setDirection(QBoxLayout::TopToBottom);
         m_pMipSlider->setOrientation(Qt::Horizontal);
+        m_pMipSlider->setMinimumSize(0, SliderSize);
+        m_pMipSlider->setMaximumSize(QWIDGETSIZE_MAX, SliderSize);
     }
-
-    m_pBitmapColor->setGeometry(R1);
-    m_pBitmapAlpha->setGeometry(R2);
-    m_pMipSlider->setGeometry(R3);
 }

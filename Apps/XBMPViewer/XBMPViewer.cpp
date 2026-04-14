@@ -1,7 +1,7 @@
 //==============================================================================
-//  
+//
 //  XBMPViewer.cpp
-//  
+//
 //==============================================================================
 
 //==============================================================================
@@ -43,7 +43,6 @@
 #include <QStatusBar>
 #include <QUrl>
 #include <QDesktopServices>
-#include <QStyle>
 #include <QMenu>
 #include <QProcess>
 #include <QVector>
@@ -62,12 +61,11 @@ namespace
         COLUMN_FORMAT,
         COLUMN_COUNT
     };
-
 }
 
 //------------------------------------------------------------------------------
 
-static 
+static
 QImage BuildPreviewImage(xbitmap& Bitmap, s32 Mip, xbool Alpha)
 {
     const s32 Width = Bitmap.GetWidth(Mip);
@@ -116,7 +114,7 @@ XBMPViewer::XBMPViewer(QWidget* pParent)
     , m_pActionAbout(NULL)
     , m_pActionAboutQt(NULL)
     , m_SelectedGameType("Area-51")
-    , m_SelectedThemeType("Fusion White")
+    , m_SelectedThemeType("Windows White")
     , m_HasBitmap(FALSE)
 {
     setWindowTitle("xbmpViewer");
@@ -137,21 +135,21 @@ XBMPViewer::XBMPViewer(QWidget* pParent)
     QDockWidget* pExplorerDock = new QDockWidget("Explorer", this);
     pExplorerDock->setObjectName("ExplorerDock");
     pExplorerDock->setWidget(m_pExplorerPanel);
-    m_pExplorerPanel->ConfigureDock(pExplorerDock);
     addDockWidget(Qt::LeftDockWidgetArea, pExplorerDock);
 
     QDockWidget* pPreviewDock = new QDockWidget("Preview", this);
     pPreviewDock->setObjectName("PreviewDock");
     m_pPreviewPanel = new PreviewPanel(pPreviewDock);
     pPreviewDock->setWidget(m_pPreviewPanel);
-    m_pPreviewPanel->ConfigureDock(pPreviewDock);
     addDockWidget(Qt::BottomDockWidgetArea, pPreviewDock);
 
     m_pMipSlider = m_pPreviewPanel->GetMipSlider();
     m_pMipSlider->setEnabled(FALSE);
 
     m_pActionConvertTga = new QAction("Convert to TGA", this);
+    m_pActionConvertTga->setEnabled(FALSE);
     m_pActionConvertXbmp = new QAction("Convert to XBMP", this);
+    m_pActionConvertXbmp->setEnabled(FALSE);
     m_pActionExit = new QAction("Exit", this);
     m_pActionSettings = new QAction("Settings", this);
     m_pActionHelp = new QAction("Help", this);
@@ -257,7 +255,7 @@ XBMPViewer::XBMPViewer(QWidget* pParent)
     m_SelectedThemeType = ConfigThemeType;
     m_pFileModel->SetGameType(m_SelectedGameType);
 
-    ApplyTheme();
+    ThemeManager::ApplyTheme(m_SelectedThemeType);
     if (!ConfigGeometry.isEmpty())
         restoreGeometry(ConfigGeometry);
     if (!ConfigState.isEmpty())
@@ -267,19 +265,27 @@ XBMPViewer::XBMPViewer(QWidget* pParent)
 
 //==============================================================================
 
-void XBMPViewer::resizeEvent(QResizeEvent* pEvent)
-{
-    QMainWindow::resizeEvent(pEvent);
-    UpdatePreview();
-}
-
-//==============================================================================
-
 void XBMPViewer::closeEvent(QCloseEvent* pEvent)
 {
     if (!ConfigManager::SaveConfig(m_SelectedGameType, m_SelectedThemeType, saveGeometry(), saveState()))
         x_DebugMsg("xbmpViewer: failed to save config\n");
     QMainWindow::closeEvent(pEvent);
+}
+
+//==============================================================================
+
+QVector<const FileRecord*> XBMPViewer::GetSelectedRecords(void) const
+{
+    const QModelIndexList Selection = m_pFileList->selectionModel()->selectedRows();
+    QVector<const FileRecord*> Records;
+    for (s32 i = 0; i < Selection.size(); ++i)
+    {
+        const QModelIndex SourceIndex = m_pSortModel->mapToSource(Selection[i]);
+        const FileRecord* pRecord = m_pFileModel->GetFile(SourceIndex.row());
+        if (pRecord)
+            Records.push_back(pRecord);
+    }
+    return Records;
 }
 
 //==============================================================================
@@ -317,6 +323,7 @@ void XBMPViewer::OnFileSelected(const QModelIndex& Index)
     LoadBitmap(pRecord->Path);
     UpdatePreview();
     UpdateStatus();
+    UpdateConvertActions();
 }
 
 //==============================================================================
@@ -327,6 +334,7 @@ void XBMPViewer::OnSelectionChanged(const QItemSelection& Selected, const QItemS
     (void)Deselected;
     UpdateStatusTotals();
     UpdateStatusFocus();
+    UpdateConvertActions();
 }
 
 //==============================================================================
@@ -393,17 +401,12 @@ void XBMPViewer::OnFileContextMenu(const QPoint& Pos)
 
 void XBMPViewer::OnOpenInExplorer(void)
 {
-    const QModelIndexList Selection = m_pFileList->selectionModel()->selectedRows();
-    if (Selection.isEmpty())
-        return;
-
-    const QModelIndex SourceIndex = m_pSortModel->mapToSource(Selection.front());
-    const FileRecord* pRecord = m_pFileModel->GetFile(SourceIndex.row());
-    if (!pRecord)
+    const QVector<const FileRecord*> Records = GetSelectedRecords();
+    if (Records.isEmpty())
         return;
 
     QStringList Args;
-    Args << "/select," << QDir::toNativeSeparators(pRecord->Path);
+    Args << "/select," << QDir::toNativeSeparators(Records.front()->Path);
     QProcess::startDetached("explorer.exe", Args);
 }
 
@@ -411,18 +414,9 @@ void XBMPViewer::OnOpenInExplorer(void)
 
 void XBMPViewer::OnConvertContext(void)
 {
-    const QModelIndexList Selection = m_pFileList->selectionModel()->selectedRows();
-    if (Selection.isEmpty())
+    const QVector<const FileRecord*> Records = GetSelectedRecords();
+    if (Records.isEmpty())
         return;
-
-    QVector<const FileRecord*> Records;
-    for (s32 i = 0; i < Selection.size(); ++i)
-    {
-        const QModelIndex SourceIndex = m_pSortModel->mapToSource(Selection[i]);
-        const FileRecord* pRecord = m_pFileModel->GetFile(SourceIndex.row());
-        if (pRecord)
-            Records.push_back(pRecord);
-    }
 
     BitmapConvertService ConvertService;
     const BitmapConvertService::ContextNeeds Needs = ConvertService.GetContextNeeds(Records);
@@ -475,22 +469,13 @@ void XBMPViewer::OnPreviewClicked(const QImage& Image, xbool Alpha)
 
 void XBMPViewer::OnConvertTga(void)
 {
-    const QModelIndexList Selection = m_pFileList->selectionModel()->selectedRows();
-    if (Selection.isEmpty())
+    const QVector<const FileRecord*> Records = GetSelectedRecords();
+    if (Records.isEmpty())
         return;
 
     const QString OutputDir = QFileDialog::getExistingDirectory(this, "Select Output Folder", m_CurrentPath);
     if (OutputDir.isEmpty())
         return;
-
-    QVector<const FileRecord*> Records;
-    for (s32 i = 0; i < Selection.size(); ++i)
-    {
-        const QModelIndex SourceIndex = m_pSortModel->mapToSource(Selection[i]);
-        const FileRecord* pRecord = m_pFileModel->GetFile(SourceIndex.row());
-        if (pRecord)
-            Records.push_back(pRecord);
-    }
 
     BitmapConvertService ConvertService;
     ConvertService.ConvertToTga(Records, OutputDir);
@@ -510,8 +495,8 @@ void XBMPViewer::OnConvertXbmp(void)
     const xbool GenericCompression = Dialog.GetGenericCompression();
     (void)GenericCompression;
 
-    const QModelIndexList Selection = m_pFileList->selectionModel()->selectedRows();
-    if (Selection.isEmpty())
+    const QVector<const FileRecord*> Records = GetSelectedRecords();
+    if (Records.isEmpty())
         return;
 
     const QString OutputDir = QFileDialog::getExistingDirectory(this, "Select Output Folder", m_CurrentPath);
@@ -523,15 +508,6 @@ void XBMPViewer::OnConvertXbmp(void)
     {
         x_DebugMsg("xbmpViewer: invalid format selection: %s\n", Format.toLocal8Bit().constData());
         return;
-    }
-
-    QVector<const FileRecord*> Records;
-    for (s32 i = 0; i < Selection.size(); ++i)
-    {
-        const QModelIndex SourceIndex = m_pSortModel->mapToSource(Selection[i]);
-        const FileRecord* pRecord = m_pFileModel->GetFile(SourceIndex.row());
-        if (pRecord)
-            Records.push_back(pRecord);
     }
 
     BitmapConvertService ConvertService;
@@ -549,7 +525,7 @@ void XBMPViewer::OnShowSettings(void)
     {
         m_SelectedGameType = Dialog.GetGameType();
         m_SelectedThemeType = Dialog.GetThemeType();
-        ApplyTheme();
+        ThemeManager::ApplyTheme(m_SelectedThemeType);
         m_pFileModel->SetGameType(m_SelectedGameType);
         OnExplorerPathSelected(m_pExplorerPanel->GetPath());
     }
@@ -595,9 +571,7 @@ void XBMPViewer::LoadBitmap(const QString& Path)
     }
 
     if (m_Bitmap.GetFlags() & xbitmap::FLAG_GCN_DATA_SWIZZLED)
-    {
         m_Bitmap.GCNUnswizzleData();
-    }
 
     switch (m_Bitmap.GetFormat())
     {
@@ -650,6 +624,28 @@ void XBMPViewer::UpdatePreview(void)
 
 //==============================================================================
 
+void XBMPViewer::UpdateConvertActions(void)
+{
+    const QVector<const FileRecord*> Records = GetSelectedRecords();
+
+    xbool HasXbmp = FALSE;
+    xbool HasSource = FALSE;
+
+    for (s32 i = 0; i < Records.size(); ++i)
+    {
+        const QString Ext = QFileInfo(Records[i]->Path).suffix().toLower();
+        if (Ext == "xbmp" || Ext == "xbm")
+            HasXbmp = TRUE;
+        else if (Ext == "tga" || Ext == "psd" || Ext == "bmp")
+            HasSource = TRUE;
+    }
+
+    m_pActionConvertTga->setEnabled(HasXbmp);
+    m_pActionConvertXbmp->setEnabled(HasSource);
+}
+
+//==============================================================================
+
 void XBMPViewer::UpdateStatus(void)
 {
     UpdateStatusTotals();
@@ -663,52 +659,34 @@ void XBMPViewer::UpdateStatusTotals(void)
     const s32 TotalFiles = m_pFileModel->GetFileCount();
     const s64 TotalBytes = m_pFileModel->GetTotalBytes();
 
-    QString TotalText = QString("   Total %1 %2 %3   ")
+    m_pStatusTotal->setText(QString("   Total %1 %2 %3   ")
         .arg(TotalFiles)
         .arg(TotalFiles == 1 ? "file" : "files")
-        .arg(FormatSizeString(TotalBytes));
+        .arg(FormatSizeString(TotalBytes)));
 
-    m_pStatusTotal->setText(TotalText);
-
-    const QModelIndexList Selection = m_pFileList->selectionModel()->selectedRows();
-    s32 SelectedFiles = Selection.size();
+    const QVector<const FileRecord*> Records = GetSelectedRecords();
     s64 SelectedBytes = 0;
+    for (s32 i = 0; i < Records.size(); ++i)
+        SelectedBytes += Records[i]->SizeBytes;
 
-    for (s32 i = 0; i < Selection.size(); ++i)
-    {
-        const QModelIndex SourceIndex = m_pSortModel->mapToSource(Selection[i]);
-        const FileRecord* pRecord = m_pFileModel->GetFile(SourceIndex.row());
-        if (pRecord)
-            SelectedBytes += pRecord->SizeBytes;
-    }
-
-    QString SelectedText = QString("   Selected %1 %2 %3   ")
-        .arg(SelectedFiles)
-        .arg(SelectedFiles == 1 ? "file" : "files")
-        .arg(FormatSizeString(SelectedBytes));
-
-    m_pStatusSelected->setText(SelectedText);
+    m_pStatusSelected->setText(QString("   Selected %1 %2 %3   ")
+        .arg(Records.size())
+        .arg(Records.size() == 1 ? "file" : "files")
+        .arg(FormatSizeString(SelectedBytes)));
 }
 
 //==============================================================================
 
 void XBMPViewer::UpdateStatusFocus(void)
 {
-    const QModelIndexList Selection = m_pFileList->selectionModel()->selectedRows();
-    if (Selection.isEmpty())
+    const QVector<const FileRecord*> Records = GetSelectedRecords();
+    if (Records.isEmpty())
     {
         m_pStatusFocus->setText(QString());
         return;
     }
 
-    const QModelIndex SourceIndex = m_pSortModel->mapToSource(Selection.front());
-    const FileRecord* pRecord = m_pFileModel->GetFile(SourceIndex.row());
-    if (!pRecord)
-    {
-        m_pStatusFocus->setText(QString());
-        return;
-    }
-
+    const FileRecord* pRecord = Records.front();
     QString Detail;
     if ((pRecord->Width > 0) && (pRecord->Height > 0))
     {
@@ -721,20 +699,10 @@ void XBMPViewer::UpdateStatusFocus(void)
             .arg(pRecord->Format);
     }
 
-    const QString FileSize = FormatFileSizeKB(pRecord->SizeBytes);
-    const QString Text = QString("   %1 (%2)%3   ")
+    m_pStatusFocus->setText(QString("   %1 (%2)%3   ")
         .arg(pRecord->Name)
-        .arg(FileSize)
-        .arg(Detail);
-
-    m_pStatusFocus->setText(Text);
-}
-
-//==============================================================================
-
-void XBMPViewer::ApplyTheme(void)
-{
-    ThemeManager::ApplyTheme(m_SelectedThemeType);
+        .arg(FormatFileSizeKB(pRecord->SizeBytes))
+        .arg(Detail));
 }
 
 //==============================================================================

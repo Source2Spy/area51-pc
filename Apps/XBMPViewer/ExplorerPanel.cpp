@@ -10,10 +10,10 @@
 
 #include "ExplorerPanel.h"
 
+#include <QEvent>
 #include <QHeaderView>
 #include <QCompleter>
 #include <QDir>
-#include <QDockWidget>
 #include <QFileInfo>
 #include <QFileIconProvider>
 #include <QFileSystemModel>
@@ -58,6 +58,8 @@ ExplorerPanel::ExplorerPanel(QWidget* pParent)
     m_pPathCompleter->setCaseSensitivity(Qt::CaseInsensitive);
     m_pPathEdit->setCompleter(m_pPathCompleter);
 
+    setAutoFillBackground(true);
+
     QVBoxLayout* pLayout = new QVBoxLayout(this);
     pLayout->setContentsMargins(4, 4, 4, 4);
     pLayout->addWidget(m_pPathEdit);
@@ -83,12 +85,22 @@ ExplorerPanel::ExplorerPanel(QWidget* pParent)
 
 //==============================================================================
 
-void ExplorerPanel::ConfigureDock(QDockWidget* pDock) const
+void ExplorerPanel::changeEvent(QEvent* pEvent)
 {
-    if (!pDock)
-        return;
+    QWidget::changeEvent(pEvent);
 
-    pDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    const QEvent::Type T = pEvent->type();
+    if (T == QEvent::StyleChange || T == QEvent::PaletteChange)
+    {
+        // The style may have reset autoFillBackground during re-polish.
+        // Re-assert it so the panel background stays correctly painted.
+        setAutoFillBackground(true);
+
+        // QAbstractScrollArea handles StyleChange on its own, but PaletteChange
+        // does not explicitly refresh the viewport background brush in all
+        // Qt versions. Force it here to be safe.
+        m_pTree->viewport()->update();
+    }
 }
 
 //==============================================================================
