@@ -106,8 +106,6 @@ xbool ui_dialog::Create( s32                        UserID,
     m_State             = DIALOG_STATE_INIT;
     m_CurrentControl    = -1;
 
-	m_OldCursorX        = pUser->CursorX;
-    m_OldCursorY        = pUser->CursorY;
 
     // Setup Navgraph size
     m_NavGraph.SetCapacity( m_NavW * m_NavH );
@@ -434,7 +432,7 @@ void ui_dialog::OnPadNavigate( ui_win* pWin, s32 Code, s32 Presses, s32 Repeats,
     xbool bWrapped = FALSE;
 
     // Scan until the control to move to is found
-    ui_win* pCurrentWin = pUser->pLastWindowUnderCursor;
+    ui_win* pCurrentWin = pUser->pFocusedWindow;
 //    while( ((x != m_NavX) && (dx != 0)) || ((y != m_NavY) && (dy != 0)) )
     while( ((x < m_NavW) && (x >= 0)) && ((y < m_NavH) && (y >= 0)) )
     {
@@ -501,11 +499,7 @@ void ui_dialog::OnPadNavigate( ui_win* pWin, s32 Code, s32 Presses, s32 Repeats,
 
             if( Found )
             {
-                irect r = pWin->GetPosition();
-                s32 cx = (r.r - r.l)/2;
-                s32 cy = (r.b - r.t)/2;
-                pWin->LocalToScreen( cx, cy );
-                m_pManager->SetCursorPos( m_UserID, cx, cy );
+                m_pManager->SetFocusWindow( m_UserID, pWin );
                 m_NavX = x;
                 m_NavY = y;
                 break;
@@ -591,12 +585,8 @@ ui_control* ui_dialog::GotoControl( s32 iControl )
     if( (!(pChild->GetFlags() & ui_win::WF_STATIC  )) &&
         (!(pChild->GetFlags() & ui_win::WF_DISABLED)) )
     {
-        s32 x = pChild->GetWidth() / 2;
-        s32 y = pChild->GetHeight() / 2;
-
-        // Position cursor over Child
-        pChild->LocalToScreen( x, y );
-        m_pManager->SetCursorPos( m_UserID, x, y );
+        // Set focus on this control
+        m_pManager->SetFocusWindow( m_UserID, pChild );
 
         // Set Navigation cursor to center of the control
         const irect& r = pChild->GetNavPos( );
@@ -635,12 +625,8 @@ xbool ui_dialog::GotoControl( ui_control* pControl )
     if( (!(pChild->GetFlags() & ui_win::WF_STATIC  )) &&
         (!(pChild->GetFlags() & ui_win::WF_DISABLED)) )
     {
-        s32 x = pChild->GetWidth() / 2;
-        s32 y = pChild->GetHeight() / 2;
-
-        // Position cursor over Child
-        pChild->LocalToScreen( x, y );
-        m_pManager->SetCursorPos( m_UserID, x, y );
+        // Set focus on this control
+        m_pManager->SetFocusWindow( m_UserID, pChild );
 
         // Set Navigation cursor to center of the control
         const irect& r = pChild->GetNavPos( );

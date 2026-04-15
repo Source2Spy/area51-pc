@@ -409,7 +409,7 @@ void dlg_download::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         MEMORY_OWNER("dlg_download::OnUpdate");
         (void)pWin;
         (void)DeltaTime;
-        ui_win* pWindowInFocus = g_UiMgr->GetWindowUnderCursor(m_UserID);
+        ui_win* pWindowInFocus = g_UiMgr->GetFocusedWindow(m_UserID);
 
         if( pWindowInFocus == m_pRemoteManifestList )
         {

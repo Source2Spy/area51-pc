@@ -1137,7 +1137,7 @@ void ui_listbox::AlphaSortList( void )
 
 //=========================================================================
 
-void ui_listbox::OnCursorMove( ui_win* pWin, s32 x, s32 y )
+void ui_listbox::OnMouseMove( ui_win* pWin, s32 x, s32 y )
 {   
     (void)pWin;
     (void)x;
@@ -1149,10 +1149,10 @@ void ui_listbox::OnCursorMove( ui_win* pWin, s32 x, s32 y )
     
     if( m_ScrollDown )
     {    
-        if( m_ScrollBar.PointInRect( m_CursorX, m_CursorY ) )
+        if( m_ScrollBar.PointInRect( m_MouseX, m_MouseY ) )
         {
             s32 FirstVisible = m_iFirstVisibleItem;
-            s32 diff = (y - m_CursorY);
+            s32 diff = (y - m_MouseY);
 
             if( diff > 0 )
             {
@@ -1197,8 +1197,8 @@ void ui_listbox::OnCursorMove( ui_win* pWin, s32 x, s32 y )
 
     xbool Processed = FALSE;
     s32 dy = 0;
-    m_CursorX = x;
-    m_CursorY = y;
+    m_MouseX = x;
+    m_MouseY = y;
     ScreenToLocal( x, y );
     irect scroll( m_UpArrow.l, m_UpArrow.t, m_DownArrow.r, m_DownArrow.b );
     ScreenToLocal( scroll );
@@ -1210,12 +1210,12 @@ void ui_listbox::OnCursorMove( ui_win* pWin, s32 x, s32 y )
         if( m_MouseDown )
         {
             // Just move the selected item down one.
-            if( m_DownArrow.PointInRect( m_CursorX, m_CursorY ) )
+            if( m_DownArrow.PointInRect( m_MouseX, m_MouseY ) )
             {
                 m_MouseDown = TRUE;
             }
             // Just move the selected item up one.
-            else if( m_UpArrow.PointInRect( m_CursorX, m_CursorY ) )
+            else if( m_UpArrow.PointInRect( m_MouseX, m_MouseY ) )
             {
                 m_MouseDown = TRUE;
             }    
@@ -1226,7 +1226,7 @@ void ui_listbox::OnCursorMove( ui_win* pWin, s32 x, s32 y )
         }
 
         if( m_pParent )
-            m_pParent->OnCursorMove( pWin, x, y );
+            m_pParent->OnMouseMove( pWin, x, y );
         return;
     }
 
@@ -1281,7 +1281,7 @@ void ui_listbox::OnCursorMove( ui_win* pWin, s32 x, s32 y )
     if( !Processed )
     {
         if( m_pParent )
-            m_pParent->OnCursorMove( pWin, x, y );
+            m_pParent->OnMouseMove( pWin, x, y );
     }   
 #endif
 }
@@ -1306,12 +1306,12 @@ void ui_listbox::OnLBDown( ui_win* pWin )
         {
 
             // Don't select the listbox if the cursor is on the scroll bar portion.
-            if( scroll.PointInRect( m_CursorX, m_CursorY ) )
+            if( scroll.PointInRect( m_MouseX, m_MouseY ) )
             {
                 
                 s32 OldSelection = m_iSelection;
                 // Just move the selected item down one.
-                if( m_DownArrow.PointInRect( m_CursorX, m_CursorY ) )
+                if( m_DownArrow.PointInRect( m_MouseX, m_MouseY ) )
                 {
                     m_iSelection++;
                     if( m_iSelection >= m_Items.GetCount() )
@@ -1323,7 +1323,7 @@ void ui_listbox::OnLBDown( ui_win* pWin )
                 }
 
                 // Just move the selected item up one.
-                if( m_UpArrow.PointInRect( m_CursorX, m_CursorY ) )
+                if( m_UpArrow.PointInRect( m_MouseX, m_MouseY ) )
                 {
                     m_iSelection--;
                     if( m_iSelection < 0 )
@@ -1334,7 +1334,7 @@ void ui_listbox::OnLBDown( ui_win* pWin )
                     m_MouseDown = TRUE;
                 }            
                 // Did the mouse click on the scroll bar.    
-                else if( m_ScrollBar.PointInRect( m_CursorX, m_CursorY ) )
+                else if( m_ScrollBar.PointInRect( m_MouseX, m_MouseY ) )
                     m_ScrollDown = TRUE;
             
                 EnsureVisible( m_iSelection );
@@ -1404,7 +1404,7 @@ void ui_listbox::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         s32 OldSelection = m_iSelection;
 
         // Just move the selected item down one.
-        if( m_DownArrow.PointInRect( m_CursorX, m_CursorY ) )
+        if( m_DownArrow.PointInRect( m_MouseX, m_MouseY ) )
         {
             m_iSelection++;
             
@@ -1418,7 +1418,7 @@ void ui_listbox::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         }
 
         // Just move the selected item up one.
-        if( m_UpArrow.PointInRect( m_CursorX, m_CursorY ) )
+        if( m_UpArrow.PointInRect( m_MouseX, m_MouseY ) )
         {
             m_iSelection--;
             if( m_iSelection < 0 )
@@ -1464,34 +1464,34 @@ void ui_listbox::OnLBUp ( ui_win* pWin )
 
 //=========================================================================
 
-void ui_listbox::OnCursorEnter ( ui_win* pWin )
+void ui_listbox::OnFocusGained ( ui_win* pWin )
 {
     (void) pWin;
 
-    // Turn on the high light.
-    ui_win::OnCursorEnter( pWin );
+    // Turn on the highlight.
+    ui_win::OnFocusGained( pWin );
 
     // select
     SetFlag(WF_SELECTED, TRUE);
-        
+
     if( m_pParent )
-        m_pParent->OnCursorEnter( pWin );
+        m_pParent->OnFocusGained( pWin );
 }
 
 //=========================================================================
 
-void ui_listbox::OnCursorExit ( ui_win* pWin )
+void ui_listbox::OnFocusLost ( ui_win* pWin )
 {
     (void) pWin;
 
-    // Turn off the high light.
-    ui_win::OnCursorExit( pWin );
-    
+    // Turn off the highlight.
+    ui_win::OnFocusLost( pWin );
+
     // unselect
     SetFlag(WF_SELECTED, FALSE);
 
     if( m_pParent )
-        m_pParent->OnCursorExit( pWin );
+        m_pParent->OnFocusLost( pWin );
 }
 
 //=========================================================================

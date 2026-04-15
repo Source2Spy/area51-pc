@@ -58,7 +58,7 @@ public:
 
     virtual void    Render                  ( s32 ox=0, s32 oy=0 );
 
-    virtual void    OnCursorEnter           ( ui_win* pWin );
+    virtual void    OnFocusGained           ( ui_win* pWin );
     virtual void    OnPadNavigate           ( ui_win* pWin, s32 Code, s32 Presses, s32 Repeats, xbool WrapX = FALSE, xbool WrapY = FALSE );
     virtual void    OnPadSelect             ( ui_win* pWin );
     virtual void    OnPadShoulder           ( ui_win* pWin, s32 Direction );

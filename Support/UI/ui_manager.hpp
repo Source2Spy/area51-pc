@@ -199,16 +199,17 @@ public:
         s32                     Data;
         s32                     Height;
         ui_win*                 pCaptureWindow;
-        ui_win*                 pLastWindowUnderCursor;
+        ui_win*                 pFocusedWindow;               // Window that currently has focus (set by mouse hover or pad nav)
+        ui_win*                 pHoveredWindow;               // Window currently under the mouse cursor
         xstring                 Background;
         s32                     iHighlightElement;
 
-        xbool                   CursorVisible;                // TRUE when Mouse Cursor Visible
-        xbool                   MouseActive;                  // TRUE when Mouse Active
-        s32                     CursorX;                      // Mouse Cursor X
-        s32                     CursorY;                      // Mouse Cursor Y
-        s32                     LastCursorX;                  // Last Mouse Cursor X
-        s32                     LastCursorY;                  // Last Mouse Cursor Y
+        xbool                   bMouseMode;                   // TRUE when mouse is the active input device
+        xbool                   MouseVisible;                 // TRUE when mouse cursor is visible
+        s32                     MouseX;                       // Mouse cursor X
+        s32                     MouseY;                       // Mouse cursor Y
+        s32                     LastMouseX;                   // Last frame mouse cursor X
+        s32                     LastMouseY;                   // Last frame mouse cursor Y
         button                  ButtonLB;
         button                  ButtonMB;
         button                  ButtonRB;
@@ -398,11 +399,12 @@ public:
     void            DeleteAllUsers          ( void );
     user*           GetUser                 ( s32 UserID ) const;
     s32             GetUserData             ( s32 UserID ) const;
-    ui_win*         GetWindowUnderCursor    ( s32 UserID ) const;
-    void            SetCursorVisible        ( s32 UserID, xbool State );
-    xbool           GetCursorVisible        ( s32 UserID ) const;
-    void            SetCursorPos            ( s32 UserID, s32  x, s32  y );
-    void            GetCursorPos            ( s32 UserID, s32& x, s32& y ) const;
+    ui_win*         GetFocusedWindow        ( s32 UserID ) const;
+    void            SetMouseVisible         ( s32 UserID, xbool State );
+    xbool           GetMouseVisible         ( s32 UserID ) const;
+    void            SetMousePos             ( s32 UserID, s32  x, s32  y );
+    void            GetMousePos             ( s32 UserID, s32& x, s32& y ) const;
+    void            SetFocusWindow          ( s32 UserID, ui_win* pWin );
     ui_win*         SetCapture              ( s32 UserID, ui_win* pWin );
     void            ReleaseCapture          ( s32 UserID );
     void            SetUserBackground       ( s32 UserID, const char* pName );

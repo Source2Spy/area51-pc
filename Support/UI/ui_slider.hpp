@@ -43,8 +43,8 @@ public:
     virtual void    OnPadSelect             ( ui_win* pWin );
     virtual void    OnLBDown                ( ui_win* pWin );
     virtual void    OnLBUp                  ( ui_win* pWin );
-    virtual void    OnCursorMove            ( ui_win* pWin, s32 x, s32 y );
-    virtual void    OnCursorExit            ( ui_win* pWin );
+    virtual void    OnMouseMove             ( ui_win* pWin, s32 x, s32 y );
+    virtual void    OnFocusLost             ( ui_win* pWin );
 
     void            SetRange            ( s32 Min, s32 Max );
     void            GetRange            ( s32& Min, s32& Max ) const;

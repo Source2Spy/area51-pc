@@ -1383,16 +1383,17 @@ s32 ui_manager::CreateUser( s32 ControllerID, const irect& Bounds, s32 Data )
         pUser->Data                     = Data;
         pUser->Height                   = 0;
         pUser->pCaptureWindow           = 0;
-        pUser->pLastWindowUnderCursor   = 0;
+        pUser->pFocusedWindow           = 0;
+        pUser->pHoveredWindow           = 0;
         pUser->iHighlightElement        = FindElement( "highlight" );
         ASSERT( pUser->iHighlightElement );
 
-        pUser->CursorVisible            = TRUE;
-        pUser->MouseActive              = FALSE;
-        pUser->CursorX                  = Bounds.GetWidth()/2  + Bounds.l;
-        pUser->CursorY                  = Bounds.GetHeight()/2 + Bounds.t;
-        pUser->LastCursorX              = Bounds.GetWidth()/2  + Bounds.l;
-        pUser->LastCursorY              = Bounds.GetHeight()/2 + Bounds.t;
+        pUser->bMouseMode               = FALSE;
+        pUser->MouseVisible             = TRUE;
+        pUser->MouseX                   = Bounds.GetWidth()/2  + Bounds.l;
+        pUser->MouseY                   = Bounds.GetHeight()/2 + Bounds.t;
+        pUser->LastMouseX               = Bounds.GetWidth()/2  + Bounds.l;
+        pUser->LastMouseY               = Bounds.GetHeight()/2 + Bounds.t;
 
         // Set Analog Scalers
         for( i=0 ; i<SM_MAX_PLAYERS ; i++ ) // This may not be the best define for this, but it's better than hard numbers! 
@@ -1483,74 +1484,76 @@ s32 ui_manager::GetUserData( s32 UserID ) const
 }
 
 //=========================================================================
-ui_win* ui_manager::GetWindowUnderCursor( s32 UserID ) const
+
+ui_win* ui_manager::GetFocusedWindow( s32 UserID ) const
 {
     ASSERT( (m_Users.Find( (user*)UserID )) != -1 );
 
     user*   pUser = (user*)UserID;
-    return pUser->pLastWindowUnderCursor;
+    return pUser->pFocusedWindow;
 }
 
 //=========================================================================
 
-void ui_manager::SetCursorVisible( s32 UserID, xbool State )
+void ui_manager::SetMouseVisible( s32 UserID, xbool State )
 {
     ASSERT( (m_Users.Find( (user*)UserID )) != -1 );
 
     user*   pUser = (user*)UserID;
-    pUser->CursorVisible = State;
+    pUser->MouseVisible = State;
 }
 
 //=========================================================================
 
-xbool ui_manager::GetCursorVisible( s32 UserID ) const
+xbool ui_manager::GetMouseVisible( s32 UserID ) const
 {
     ASSERT( (m_Users.Find( (user*)UserID )) != -1 );
 
     user*   pUser = (user*)UserID;
-    return pUser->CursorVisible;
+    return pUser->MouseVisible;
 }
 
 //=========================================================================
 
-void ui_manager::SetCursorPos( s32 UserID, s32 x, s32 y )
+void ui_manager::SetMousePos( s32 UserID, s32 x, s32 y )
 {
     ASSERT( (m_Users.Find( (user*)UserID )) != -1 );
 
     user*   pUser = (user*)UserID;
-    pUser->CursorX = x;
-    pUser->CursorY = y;
-
-    ui_win* pWin = GetWindowAtXY( pUser, x, y );
-
-    // Has window under cursor changed?
-    if( pWin != pUser->pLastWindowUnderCursor )
-    {
-        // Call exit function if there was a window under the cursor
-        if( pUser->pLastWindowUnderCursor )
-        {
-            pUser->pLastWindowUnderCursor->OnCursorExit( pUser->pLastWindowUnderCursor );
-        }
-
-        // Set new window under cursor and call enter function
-        pUser->pLastWindowUnderCursor = pWin;
-        if( pUser->pLastWindowUnderCursor )
-        {
-            pUser->pLastWindowUnderCursor->OnCursorEnter( pUser->pLastWindowUnderCursor );
-        }
-    }
-
+    pUser->MouseX = x;
+    pUser->MouseY = y;
 }
 
 //=========================================================================
 
-void ui_manager::GetCursorPos( s32 UserID, s32& x, s32& y ) const
+void ui_manager::GetMousePos( s32 UserID, s32& x, s32& y ) const
 {
     ASSERT( (m_Users.Find( (user*)UserID )) != -1 );
 
     user*   pUser = (user*)UserID;
-    x = pUser->CursorX;
-    y = pUser->CursorY;
+    x = pUser->MouseX;
+    y = pUser->MouseY;
+}
+
+//=========================================================================
+
+void ui_manager::SetFocusWindow( s32 UserID, ui_win* pWin )
+{
+    ASSERT( (m_Users.Find( (user*)UserID )) != -1 );
+
+    user*   pUser = (user*)UserID;
+
+    // Only fire events when the focused window actually changes
+    if( pWin == pUser->pFocusedWindow )
+        return;
+
+    if( pUser->pFocusedWindow )
+        pUser->pFocusedWindow->OnFocusLost( pUser->pFocusedWindow );
+
+    pUser->pFocusedWindow = pWin;
+
+    if( pUser->pFocusedWindow )
+        pUser->pFocusedWindow->OnFocusGained( pUser->pFocusedWindow );
 }
 
 //=========================================================================
@@ -1723,41 +1726,50 @@ xbool ui_manager::ProcessInput( f32 DeltaTime, s32 UserID )
         // Get pointer to window to receive input
         ui_win* pWin = pUser->pCaptureWindow;
 
-        // Update mouse cursor position
+        // Update mouse position and switch to mouse mode if it moved
 #if defined( TARGET_PC ) && !defined( X_EDITOR )
-        pUser->CursorX += (s32)input_GetValue(INPUT_MOUSE_X_REL);
-        pUser->CursorY += (s32)input_GetValue(INPUT_MOUSE_Y_REL);
+        {
+            s32 dx = (s32)input_GetValue(INPUT_MOUSE_X_REL);
+            s32 dy = (s32)input_GetValue(INPUT_MOUSE_Y_REL);
+            if( dx || dy )
+            {
+                pUser->MouseX += dx;
+                pUser->MouseY += dy;
+
+                // Clamp to screen bounds
+                pUser->MouseX = MAX( pUser->MouseX, 0 );
+                pUser->MouseX = MIN( pUser->MouseX, (pUser->Bounds.GetWidth()-1) );
+                pUser->MouseY = MAX( pUser->MouseY, 0 );
+                pUser->MouseY = MIN( pUser->MouseY, (pUser->Bounds.GetHeight()-1) );
+
+                // Switch to mouse mode and show cursor
+                pUser->bMouseMode   = TRUE;
+                pUser->MouseVisible = TRUE;
+
+                // Update hover and focus
+                ui_win* pWindowUnderMouse = GetWindowAtXY( pUser, pUser->MouseX, pUser->MouseY );
+
+                // Track which window is under the mouse
+                if( pWindowUnderMouse != pUser->pHoveredWindow )
+                    pUser->pHoveredWindow = pWindowUnderMouse;
+
+                // Only steal focus when the mouse is actually over a control.
+                // Hovering over empty background leaves the current focus intact
+                if( pWindowUnderMouse )
+                    SetFocusWindow( (s32)pUser, pWindowUnderMouse );
+            }
+        }
 #endif
 
-        pUser->CursorX = MAX( pUser->CursorX, 0 );
-        pUser->CursorX = MIN( pUser->CursorX, (pUser->Bounds.GetWidth()-1) );
-        pUser->CursorY = MAX( pUser->CursorY, 0 );
-        pUser->CursorY = MIN( pUser->CursorY, (pUser->Bounds.GetHeight()-1) );
-
-        // Determine which window cursor is now over and call appropriate EXIT/ENTER functions
+        // Determine which window receives input this frame
         if( pWin == NULL )
         {
-            ui_win* pWindowUnderCursor = GetWindowAtXY( pUser, pUser->CursorX, pUser->CursorY );
+            pWin = pUser->pFocusedWindow;
 
-            // Has window under cursor changed?
-            if( pWindowUnderCursor != pUser->pLastWindowUnderCursor )
-            {
-                // Call exit function if there was a window under the cursor
-                if( pUser->pLastWindowUnderCursor )
-                {
-                    pUser->pLastWindowUnderCursor->OnCursorExit( pUser->pLastWindowUnderCursor );
-                }
-
-                // Set new window under cursor and call enter function
-                pUser->pLastWindowUnderCursor = pWindowUnderCursor;
-                if( pUser->pLastWindowUnderCursor )
-                {
-                    pUser->pLastWindowUnderCursor->OnCursorEnter( pUser->pLastWindowUnderCursor );
-                }
-            }
-
-            // Set pointer to window to receive input
-            pWin = pUser->pLastWindowUnderCursor;
+            // If nothing has focus (e.g. mouse is over background), fall back to
+            // the topmost dialog so pad navigation always has somewhere to go
+            if( pWin == NULL && pUser->DialogStack.GetCount() > 0 )
+                pWin = pUser->DialogStack[pUser->DialogStack.GetCount()-1];
         }
 
 #ifdef TARGET_PC
@@ -1813,10 +1825,11 @@ xbool ui_manager::ProcessInput( f32 DeltaTime, s32 UserID )
         // Only do this if there is a target window
         if( pWin )
         {
-            // Issue window calls for mouse
-            if( (pUser->LastCursorX != pUser->CursorX) || (pUser->LastCursorY != pUser->CursorY) )
+            // Fire OnMouseMove only when the mouse actually moved
+            if( pUser->bMouseMode )
             {
-                pWin->OnCursorMove( pWin, pUser->CursorX, pUser->CursorY );
+                if( (pUser->LastMouseX != pUser->MouseX) || (pUser->LastMouseY != pUser->MouseY) )
+                    pWin->OnMouseMove( pWin, pUser->MouseX, pUser->MouseY );
             }
             if( pUser->ButtonLB.nPresses  ) pWin->OnLBDown( pWin );
             if( pUser->ButtonLB.nReleases ) pWin->OnLBUp  ( pWin );
@@ -1894,12 +1907,19 @@ xbool ui_manager::ProcessInput( f32 DeltaTime, s32 UserID )
                     tDPadLeft       += pUser->LStickLeft[i].nPresses  + pUser->LStickLeft[i].nRepeats;
                     tDPadRight      += pUser->LStickRight[i].nPresses + pUser->LStickRight[i].nRepeats;
 
+                    // Pad input switches to gamepad mode, hiding the mouse cursor
+                    if( tDPadUp || tDPadDown || tDPadLeft || tDPadRight )
+                    {
+                        pUser->bMouseMode   = FALSE;
+                        pUser->MouseVisible = FALSE;
+                    }
+
                     // send commands for each controller
                     s_EndDialogCount=0;
                     // Issue window calls for pad navigation
-                    if( tDPadUp    ) 
-                    { 
-                        Iterate = TRUE; pWin->OnPadNavigate( pWin, NAV_UP,    pDPadUp,    rDPadUp,   FALSE,  TRUE ); 
+                    if( tDPadUp    )
+                    {
+                        Iterate = TRUE; pWin->OnPadNavigate( pWin, NAV_UP,    pDPadUp,    rDPadUp,   FALSE,  TRUE );
                     }
                     
                     if( tDPadDown  ) 
@@ -1968,9 +1988,9 @@ xbool ui_manager::ProcessInput( f32 DeltaTime, s32 UserID )
             }
         }
 
-        // Save Last Cursor Position for next time around
-        pUser->LastCursorX = pUser->CursorX;
-        pUser->LastCursorY = pUser->CursorY;
+        // Save last mouse position for next frame
+        pUser->LastMouseX = pUser->MouseX;
+        pUser->LastMouseY = pUser->MouseY;
 
         // Clear DeltaTime in case of next iteration
         DeltaTime = 0.0f;
@@ -2118,7 +2138,7 @@ void ui_manager::Render( void )
         }
 
 #ifdef TARGET_PC
-        // Only render the curosr if the dialogs are visible.
+        // Only render the mouse cursor in mouse mode when dialogs are visible.
         if( RenderCursor )
         {
             irect r;
@@ -2127,8 +2147,11 @@ void ui_manager::Render( void )
             // Get the last user.
             user* pUser = m_Users[m_Users.GetCount()-1];
 
-            Pos.x = pUser->CursorX;
-            Pos.y = pUser->CursorY;
+            if( !pUser->bMouseMode || !pUser->MouseVisible )
+                goto skip_cursor;
+
+            Pos.x = pUser->MouseX;
+            Pos.y = pUser->MouseY;
             
             // Set position to draw the sprite.
             r.Set( Pos.x, Pos.y, Pos.x+m_Mouse.GetWidth(), Pos.y+m_Mouse.GetHeight() );
@@ -2143,6 +2166,8 @@ void ui_manager::Render( void )
             draw_Vertex( vector3(r.l+4,r.t-4,0) );
 
             draw_End();
+
+            skip_cursor:;
         }
 #endif
 
@@ -2320,28 +2345,34 @@ void ui_manager::EndDialog( s32 UserID, xbool ResetCursor )
         // Get dialog pointer
         ui_dialog* pDialog = pUser->DialogStack[Count-1];
 
-        // Reset the cursor
-        if( ResetCursor )
-        {
-            pUser->CursorX = pDialog->m_OldCursorX;
-            pUser->CursorY = pDialog->m_OldCursorY;
-        }
+        (void)ResetCursor;
 
-        // Clear LastWindow under cursor if it was part of this dialog
-        if (pUser->pLastWindowUnderCursor)
+        // Clear focus if it was owned by this dialog
+        if( pUser->pFocusedWindow )
         {
-            if( (pUser->pLastWindowUnderCursor == (ui_win*)pDialog) ||
-                (pUser->pLastWindowUnderCursor->IsChildOf( pDialog )) )
+            if( (pUser->pFocusedWindow == (ui_win*)pDialog) ||
+                (pUser->pFocusedWindow->IsChildOf( pDialog )) )
             {
-                pUser->pLastWindowUnderCursor = NULL;
+                pUser->pFocusedWindow->OnFocusLost( pUser->pFocusedWindow );
+                pUser->pFocusedWindow = NULL;
             }
         }
+
+        // Clear hover if it was over this dialog
+        if( pUser->pHoveredWindow )
+        {
+            if( (pUser->pHoveredWindow == (ui_win*)pDialog) ||
+                (pUser->pHoveredWindow->IsChildOf( pDialog )) )
+            {
+                pUser->pHoveredWindow = NULL;
+            }
+        }
+
         // End the dialog
         pUser->DialogStack.Delete( Count-1 );
         LOG_MESSAGE( "ui_manager::EndDialog", "Dialog closed. ID:0x%08x", pDialog );
         pDialog->Destroy();
         delete pDialog;
-
         s_EndDialogCount++;
     }
 }

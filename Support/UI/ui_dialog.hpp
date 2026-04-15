@@ -120,8 +120,6 @@ protected:
     s32                     m_NavY;
     xarray<ui_win*>         m_NavGraph;
     xcolor                  m_BackgroundColor;
-    s32                     m_OldCursorX;
-    s32                     m_OldCursorY;
     s32                     m_XRes,m_YRes;
     xbool                   m_InputEnabled;
     void*                   m_pUserData;

@@ -220,7 +220,7 @@ void ui_dlg_list::OnLBDown ( ui_win* pWin )
 
 //=========================================================================
 
-void ui_dlg_list::OnCursorMove ( ui_win* pWin, s32 x, s32 y )
+void ui_dlg_list::OnMouseMove ( ui_win* pWin, s32 x, s32 y )
 {
     (void)pWin;
     (void)x;

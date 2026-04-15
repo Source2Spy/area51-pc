@@ -541,7 +541,7 @@ void ui_win::OnRBUp( ui_win* pWin )
 
 //=========================================================================
 
-void ui_win::OnCursorMove( ui_win* pWin, s32 x, s32 y )
+void ui_win::OnMouseMove( ui_win* pWin, s32 x, s32 y )
 {
     (void)pWin;
     (void)x;
@@ -550,7 +550,7 @@ void ui_win::OnCursorMove( ui_win* pWin, s32 x, s32 y )
 
 //=========================================================================
 
-void ui_win::OnCursorEnter( ui_win* pWin )
+void ui_win::OnFocusGained( ui_win* pWin )
 {
     (void)pWin;
     m_Flags |= WF_HIGHLIGHT;
@@ -562,7 +562,7 @@ void ui_win::OnCursorEnter( ui_win* pWin )
 
 //=========================================================================
 
-void ui_win::OnCursorExit( ui_win* pWin )
+void ui_win::OnFocusLost( ui_win* pWin )
 {
     (void)pWin;
     m_Flags &= ~WF_HIGHLIGHT;

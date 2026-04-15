@@ -202,9 +202,9 @@ void ui_combo::Render( s32 ox, s32 oy )
 
 //=========================================================================
 
-void ui_combo::OnCursorEnter( ui_win* pWin )
+void ui_combo::OnFocusGained( ui_win* pWin )
 {
-    ui_control::OnCursorEnter( pWin );
+    ui_control::OnFocusGained( pWin );
 }
 
 //=========================================================================
@@ -535,7 +535,7 @@ void ui_combo::OnLBDown ( ui_win* pWin )
 #ifdef TARGET_PC
     // Get cursor screen position
     s32 cx, cy;
-    g_UiMgr->GetCursorPos( m_UserID, cx, cy );
+    g_UiMgr->GetMousePos( m_UserID, cx, cy );
 
     // Get combo actual screen bounds
     irect r( 0, 0, m_Position.GetWidth(), m_Position.GetHeight() );

@@ -57,12 +57,12 @@ public:
     virtual void    OnPadShoulder2          ( ui_win* pWin, s32 Direction );
     virtual void    OnPadSelect             ( ui_win* pWin );
     virtual void    OnPadBack               ( ui_win* pWin );
-    virtual void    OnCursorMove            ( ui_win* pWin, s32 x, s32 y );
+    virtual void    OnMouseMove             ( ui_win* pWin, s32 x, s32 y );
     virtual void    OnLBDown                ( ui_win* pWin );
     virtual void    OnLBUp                  ( ui_win* pWin );
     virtual void    OnUpdate                ( ui_win* pWin, f32 DeltaTime );
-    virtual void    OnCursorEnter           ( ui_win* pWin );
-    virtual void    OnCursorExit            ( ui_win* pWin );
+    virtual void    OnFocusGained           ( ui_win* pWin );
+    virtual void    OnFocusLost             ( ui_win* pWin );
 
     void            SetLineHeight           ( s32 Height );
 
@@ -138,8 +138,8 @@ protected:
     s32             m_iElement_sb_thumb;
 #ifdef TARGET_PC
     s32             m_TrackHighLight;
-    s32             m_CursorX;
-    s32             m_CursorY;
+    s32             m_MouseX;
+    s32             m_MouseY;
     irect           m_UpArrow;
     irect           m_DownArrow;
     irect           m_ScrollBar;

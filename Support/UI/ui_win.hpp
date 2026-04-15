@@ -149,9 +149,9 @@ public:
     virtual void            OnMBUp              ( ui_win* pWin );
     virtual void            OnRBDown            ( ui_win* pWin );
     virtual void            OnRBUp              ( ui_win* pWin );
-    virtual void            OnCursorMove        ( ui_win* pWin, s32 x, s32 y );
-    virtual void            OnCursorEnter       ( ui_win* pWin );
-    virtual void            OnCursorExit        ( ui_win* pWin );
+    virtual void            OnMouseMove         ( ui_win* pWin, s32 x, s32 y );
+    virtual void            OnFocusGained       ( ui_win* pWin );
+    virtual void            OnFocusLost         ( ui_win* pWin );
     virtual void            OnKeyDown           ( ui_win* pWin, s32 Key );
     virtual void            OnKeyUp             ( ui_win* pWin, s32 Key );
     virtual void            OnPadNavigate       ( ui_win* pWin, s32 Code, s32 Presses, s32 Repeats, xbool WrapX = FALSE, xbool WrapY = FALSE );

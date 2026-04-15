@@ -338,7 +338,7 @@ void ui_slider::OnLBDown( ui_win* pWin )
 #ifdef TARGET_PC
     // Allow dragging when clicking anywhere on the slider bar.
     s32 x, y;
-    m_pManager->GetCursorPos( m_UserID, x, y );
+    m_pManager->GetMousePos( m_UserID, x, y );
     ScreenToLocal( x, y );
 
     m_MouseX = x;
@@ -369,7 +369,7 @@ void ui_slider::OnLBDown( ui_win* pWin )
 
 //=========================================================================
 
-void ui_slider::OnCursorMove( ui_win* pWin, s32 x, s32 y )
+void ui_slider::OnMouseMove( ui_win* pWin, s32 x, s32 y )
 {
     (void) pWin;
     (void)x;
@@ -432,7 +432,7 @@ void ui_slider::OnLBUp( ui_win* pWin )
 
 //=========================================================================
 
-void ui_slider::OnCursorExit ( ui_win* pWin )
+void ui_slider::OnFocusLost ( ui_win* pWin )
 {
     (void)pWin;
 
@@ -443,12 +443,12 @@ void ui_slider::OnCursorExit ( ui_win* pWin )
         m_MouseDown = FALSE;
 
 #endif
-    // Turn off the high light.
-    ui_win::OnCursorExit( pWin );
+    // Turn off the highlight.
+    ui_win::OnFocusLost( pWin );
 
     if( m_pParent )
     {
-        m_pParent->OnCursorExit( pWin );
+        m_pParent->OnFocusLost( pWin );
     }
 }
 

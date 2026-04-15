@@ -398,7 +398,7 @@ xcolor ui_textbox::GetBackgroundColor( void ) const
 
 //=========================================================================
 
-void ui_textbox::OnCursorMove ( ui_win* pWin, s32 x, s32 y )
+void ui_textbox::OnMouseMove ( ui_win* pWin, s32 x, s32 y )
 {
     (void)pWin;
 #ifndef TARGET_PC
@@ -409,11 +409,11 @@ void ui_textbox::OnCursorMove ( ui_win* pWin, s32 x, s32 y )
     
     if( m_ScrollDown )
     {    
-        if( m_ScrollBar.PointInRect( m_CursorX, m_CursorY ) )
+        if( m_ScrollBar.PointInRect( m_MouseX, m_MouseY ) )
         {
             
             s32 FirstVisible = m_iFirstVisibleLine;
-            s32 diff = (y - m_CursorY);
+            s32 diff = (y - m_MouseY);
 
             if( diff > 0 )
             {
@@ -451,12 +451,12 @@ void ui_textbox::OnCursorMove ( ui_win* pWin, s32 x, s32 y )
     if( m_MouseDown )
     {
         // Just move the selected item down one.
-        if( m_DownArrow.PointInRect( m_CursorX, m_CursorY ) )
+        if( m_DownArrow.PointInRect( m_MouseX, m_MouseY ) )
         {
             m_MouseDown = TRUE;
         }
         // Just move the selected item up one.
-        else if( m_UpArrow.PointInRect( m_CursorX, m_CursorY ) )
+        else if( m_UpArrow.PointInRect( m_MouseX, m_MouseY ) )
         {
             m_MouseDown = TRUE;
         }    
@@ -467,8 +467,8 @@ void ui_textbox::OnCursorMove ( ui_win* pWin, s32 x, s32 y )
     }   
 
     // Store the latest mouse position.
-    m_CursorX = x;
-    m_CursorY = y;
+    m_MouseX = x;
+    m_MouseY = y;
 #endif
 }
 
@@ -482,7 +482,7 @@ void ui_textbox::OnLBDown ( ui_win* pWin )
     s32 FirstVisible = m_iFirstVisibleLine;
 
     // Just move the selected item down one.
-    if( m_DownArrow.PointInRect( m_CursorX, m_CursorY ) )
+    if( m_DownArrow.PointInRect( m_MouseX, m_MouseY ) )
     {
         FirstVisible++;
         
@@ -492,7 +492,7 @@ void ui_textbox::OnLBDown ( ui_win* pWin )
     }
 
     // Just move the selected item up one.
-    else if( m_UpArrow.PointInRect( m_CursorX, m_CursorY ) )
+    else if( m_UpArrow.PointInRect( m_MouseX, m_MouseY ) )
     {
         FirstVisible--;
         if( FirstVisible < 0 )
@@ -500,7 +500,7 @@ void ui_textbox::OnLBDown ( ui_win* pWin )
         m_MouseDown = TRUE;
     }
     // Did the mouse click on the scroll bar.    
-    else if( m_ScrollBar.PointInRect( m_CursorX, m_CursorY ) )
+    else if( m_ScrollBar.PointInRect( m_MouseX, m_MouseY ) )
         m_ScrollDown = TRUE;
 
     if( m_MouseDown )
@@ -547,7 +547,7 @@ void ui_textbox::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         s32 FirstVisible = m_iFirstVisibleLine;
 
         // Just move the selected item down one.
-        if( m_DownArrow.PointInRect( m_CursorX, m_CursorY ) )
+        if( m_DownArrow.PointInRect( m_MouseX, m_MouseY ) )
         {
             FirstVisible++;
         
@@ -556,7 +556,7 @@ void ui_textbox::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         }
 
         // Just move the selected item up one.
-        else if( m_UpArrow.PointInRect( m_CursorX, m_CursorY ) )
+        else if( m_UpArrow.PointInRect( m_MouseX, m_MouseY ) )
         {
             FirstVisible--;
             if( FirstVisible < 0 )
@@ -575,13 +575,13 @@ void ui_textbox::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
 //=========================================================================
 
-void ui_textbox::OnCursorExit ( ui_win* pWin )
+void ui_textbox::OnFocusLost ( ui_win* pWin )
 {
 #ifdef TARGET_PC
     m_MouseDown = FALSE;
     m_ScrollDown = FALSE;
 #endif
-    ui_win::OnCursorExit( pWin );
+    ui_win::OnFocusLost( pWin );
 
 }
 

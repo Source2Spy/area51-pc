@@ -38,7 +38,7 @@ public:
 
     virtual void    Render              ( s32 ox=0, s32 oy=0 );
 
-    virtual void    OnCursorMove        ( ui_win* pWin, s32 x, s32 y );
+    virtual void    OnMouseMove         ( ui_win* pWin, s32 x, s32 y );
     virtual void    OnLBDown            ( ui_win* pWin );
     virtual void    OnNotify            ( ui_win* pWin, ui_win* pSender, s32 Command, void* pData );
 

@@ -55,7 +55,7 @@ public:
     virtual void    OnPadSelect         ( ui_win* pWin );
     virtual void    OnPadBack           ( ui_win* pWin );
     virtual void    OnLBDown            ( ui_win* pWin );
-    virtual void    OnCursorMove        ( ui_win* pWin, s32 x, s32 y );
+    virtual void    OnMouseMove         ( ui_win* pWin, s32 x, s32 y );
 
     void            SetBackgroundColor  ( xcolor Color );
     xcolor          GetBackgroundColor  ( void ) const ;
@@ -81,8 +81,8 @@ protected:
     s32                     m_TabWidth;
     s32*                    m_pTabTracker;
 #ifdef TARGET_PC
-    s32                     m_CursorX;
-    s32                     m_CursorY;
+    s32                     m_MouseX;
+    s32                     m_MouseY;
 #endif
 };
 

@@ -601,7 +601,7 @@ void dlg_secrets_menu::OnLBDown( ui_win* pWin )
     if( m_bScreenIsOn && (m_scaleCount == 0) )
     {
         s32 cx, cy;
-        g_UiMgr->GetCursorPos( m_UserID, cx, cy );
+        g_UiMgr->GetMousePos( m_UserID, cx, cy );
         if( m_DrawPos.PointInRect( cx, cy ) )
         {
             // Click on popup image - activate (play video / cheat)

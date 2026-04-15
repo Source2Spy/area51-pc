@@ -52,7 +52,7 @@ public:
     virtual void            OnPadSelect             ( ui_win* pWin );
     virtual void            OnKeyDown               ( ui_win* pWin, s32 Key );
     virtual void            OnKeyUp                 ( ui_win* pWin, s32 Key );
-    virtual void            OnCursorEnter           ( ui_win* pWin );
+    virtual void            OnFocusGained           ( ui_win* pWin );
 
     void                    SetLabelWidth           ( s32 Width );
     void                    SetBufferSize           ( s32 BufferSize );

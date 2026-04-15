@@ -81,8 +81,6 @@ xbool ui_tabbed_dialog::Create( s32                        UserID,
     m_iElementTab = m_pManager->FindElement( "tab" );
     ASSERT( m_iElementTab != -1 );
     m_BackgroundColor   = xcolor(0, 20, 30,192);//FECOL_DIALOG; //-- Jhowa
-    m_OldCursorX        = pUser->CursorX;
-    m_OldCursorY        = pUser->CursorY;
     m_iActiveTab        = -1;
     m_TabWidth          = -1;
     m_pTabTracker       = NULL;
@@ -372,23 +370,9 @@ void ui_tabbed_dialog::ActivateTab( s32 iTab )
     if( m_pTabTracker )
         *m_pTabTracker = iTab;
 
-    // Position cursor at center of Tab
-    s32 x = 0;
-    s32 y = 16;
-    for( s32 i=0 ; i<m_iActiveTab ; i++ )
-    {
-        if( m_TabWidth == -1 )
-            x += m_Tabs[i].w;
-        else
-            x += m_TabWidth;
-    }
-    if( m_TabWidth == -1 )
-        x += m_Tabs[m_iActiveTab].w / 2;
-    else
-        x += m_TabWidth / 2;
-
-    LocalToScreen( x, y );
-    m_pManager->SetCursorPos( m_UserID, x, y );
+    // Focus the newly activated tab dialog
+    if( m_iActiveTab != -1 )
+        m_pManager->SetFocusWindow( m_UserID, m_Tabs[m_iActiveTab].pDialog );
 
     // Send notification on change of tab
     if( m_iActiveTab != OldActiveTab )
@@ -454,8 +438,8 @@ void ui_tabbed_dialog::OnLBDown ( ui_win* pWin )
     // Go through all the tabs.
     for( s32 i = 0; i < m_Tabs.GetCount(); i++ )
     {
-        x = m_CursorX;
-        y = m_CursorY;
+        x = m_MouseX;
+        y = m_MouseY;
         s32 w;
 
         // If the tab width is -1 then the width of the tab is stored inside m_Tabs.
@@ -486,15 +470,15 @@ void ui_tabbed_dialog::OnLBDown ( ui_win* pWin )
 
 //=========================================================================
 
-void ui_tabbed_dialog::OnCursorMove ( ui_win* pWin, s32 x, s32 y )
+void ui_tabbed_dialog::OnMouseMove ( ui_win* pWin, s32 x, s32 y )
 {
     (void)pWin;
     (void)x;
     (void)y;
 
 #ifdef TARGET_PC
-    m_CursorX = x;
-    m_CursorY = y;    
+    m_MouseX = x;
+    m_MouseY = y;
 #endif
 }
 

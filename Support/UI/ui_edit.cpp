@@ -259,10 +259,10 @@ void ui_edit::OnKeyUp ( ui_win* pWin, s32 Key )
 
 //=========================================================================
 
-void ui_edit::OnCursorEnter ( ui_win* pWin )
+void ui_edit::OnFocusGained ( ui_win* pWin )
 {
     (void)pWin;
-    ui_win::OnCursorEnter( pWin );
+    ui_win::OnFocusGained( pWin );
 }
 
 //=========================================================================

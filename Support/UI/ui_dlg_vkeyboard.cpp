@@ -89,7 +89,7 @@ public:
     virtual void    Render              ( s32 ox=0, s32 oy=0 );
     virtual void    OnPadSelect         ( ui_win* pWin );
     virtual void    OnLBDown            ( ui_win* pWin );
-    virtual void    OnCursorEnter       ( ui_win* pWin );
+    virtual void    OnFocusGained       ( ui_win* pWin );
 protected:
 };
 
@@ -190,7 +190,7 @@ void ui_vkey::OnLBDown( ui_win* pWin )
 
 //=========================================================================
 
-void ui_vkey::OnCursorEnter( ui_win* pWin )
+void ui_vkey::OnFocusGained( ui_win* pWin )
 {
     (void)pWin;
     m_Flags |= WF_HIGHLIGHT;
