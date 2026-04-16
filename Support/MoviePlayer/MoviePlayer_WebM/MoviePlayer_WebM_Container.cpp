@@ -25,6 +25,7 @@
 #include "x_files.hpp"
 #include "x_memory.hpp"
 #include "ResourceMgr/ResourceMgr.hpp"
+
 #include "MoviePlayer_WebM_Private.hpp"
 
 using namespace movie_webm;
@@ -348,12 +349,9 @@ xbool container::SelectTracks(player_config& Config)
             Config.AudioCodecId = pTrack->GetCodecId();
 
             const mkvparser::AudioTrack* pAudio = static_cast<const mkvparser::AudioTrack*>(pTrack);
-            if (pAudio)
-            {
-                Config.AudioChannels   = (s32)pAudio->GetChannels();
-                Config.AudioSampleRate = (s32)pAudio->GetSamplingRate();
-                Config.AudioBitDepth   = (s32)pAudio->GetBitDepth();
-            }
+            Config.AudioChannels   = (s32)pAudio->GetChannels();
+            Config.AudioSampleRate = (s32)pAudio->GetSamplingRate();
+            Config.AudioBitDepth   = (s32)pAudio->GetBitDepth();
 
             if (Config.AudioChannels <= 0)
                 Config.AudioChannels = 2;

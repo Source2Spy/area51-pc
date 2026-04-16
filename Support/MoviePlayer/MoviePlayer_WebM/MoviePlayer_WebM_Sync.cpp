@@ -23,6 +23,7 @@
 //==============================================================================
 
 #include "x_time.hpp"
+
 #include "MoviePlayer_WebM_Private.hpp"
 
 using namespace movie_webm;
@@ -85,7 +86,11 @@ void sync_clock::Resume(void)
 
 void sync_clock::Reset(void)
 {
-    Start();
+    m_StartTime      = 0;
+    m_PauseTime      = 0;
+    m_PausedDuration = 0.0;
+    m_bRunning       = FALSE;
+    m_bPaused        = FALSE;
 }
 
 //==============================================================================

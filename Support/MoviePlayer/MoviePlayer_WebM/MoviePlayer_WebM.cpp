@@ -29,6 +29,7 @@
 #include "x_memory.hpp"
 #include "Entropy.hpp"
 #include "../movieplayer.hpp"
+
 #include "MoviePlayer_WebM_Private.hpp"
 
 // Auto include WebM libs
@@ -178,7 +179,6 @@ xbool movie_private::Open(const char* pFilename, xbool PlayResident, xbool IsLoo
     m_PendingVideoSample = movie_webm::sample();
 
     m_Clock.Reset();
-    m_Clock.Start();
 
     m_bPaused           = FALSE;
     m_bVideoEOF         = FALSE;
@@ -187,6 +187,8 @@ xbool movie_private::Open(const char* pFilename, xbool PlayResident, xbool IsLoo
     m_bThreadBusy       = FALSE;
 
     PrimePlayback();
+
+    m_Clock.Start();
 
     m_bPlaybackActive = TRUE;
 
@@ -670,9 +672,7 @@ void movie_private::SleepMilliseconds(f64 Seconds)
     if (Seconds <= 0.0)
         return;
 
-    const f64 clamped = (Seconds > 0.0) ? Seconds : 0.0;
-    const s32 sleepMS = (s32)(clamped * 1000.0 + 0.5);
-
+    const s32 sleepMS = (s32)(Seconds * 1000.0 + 0.5);
     if (sleepMS > 0)
     {
         x_DelayThread(sleepMS);

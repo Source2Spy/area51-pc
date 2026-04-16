@@ -24,6 +24,7 @@
 
 #include "x_files.hpp"
 #include "x_memory.hpp"
+
 #include "MoviePlayer_WebM_Private.hpp"
 
 //==============================================================================
@@ -53,7 +54,7 @@ video_decoder::video_decoder(void)
 {
     x_memset(&m_CodecCtx, 0, sizeof(m_CodecCtx));
     m_pCodecIface      = NULL;
-    m_CodecInitialized = FALSE;
+    m_bCodecInitialized = FALSE;
     m_FramePitch       = 0;
     m_Width            = 0;
     m_Height           = 0;
@@ -100,13 +101,21 @@ xbool video_decoder::InitializeCodec(const player_config& Config)
     {
         m_pCodecIface = vpx_codec_vp9_dx();
     }
-    else
+    else if (CodecId.Find("VP8") != -1) 
     {
         m_pCodecIface = vpx_codec_vp8_dx();
     }
+    else
+    {
+        x_DebugMsg("MoviePlayer_WebM: Unsupported video codec '%s'\n", (const char*)CodecId);
+        return FALSE;
+    }    
 
     if (!m_pCodecIface)
+    {
+        x_DebugMsg("MoviePlayer_WebM: Failed to get codec interface for '%s'\n", (const char*)CodecId);
         return FALSE;
+    }
 
     vpx_codec_err_t Err = vpx_codec_dec_init(&m_CodecCtx, m_pCodecIface, NULL, 0);
     if (Err != VPX_CODEC_OK)
@@ -117,7 +126,7 @@ xbool video_decoder::InitializeCodec(const player_config& Config)
         return FALSE;
     }
 
-    m_CodecInitialized = TRUE;
+    m_bCodecInitialized = TRUE;
     return TRUE;
 }
 
@@ -125,11 +134,11 @@ xbool video_decoder::InitializeCodec(const player_config& Config)
 
 void video_decoder::DestroyCodec(void)
 {
-    if (m_CodecInitialized)
+    if (m_bCodecInitialized)
     {
         vpx_codec_destroy(&m_CodecCtx);
         x_memset(&m_CodecCtx, 0, sizeof(m_CodecCtx));
-        m_CodecInitialized = FALSE;
+        m_bCodecInitialized = FALSE;
     }
 
     m_pCodecIface = NULL;
@@ -139,7 +148,11 @@ void video_decoder::DestroyCodec(void)
 
 xbool video_decoder::DecodeSample(const sample& Sample, mkvparser::IMkvReader* pReader)
 {
-    if (!m_CodecInitialized || !Sample.pBlock || !pReader)
+    ASSERT(m_bCodecInitialized);
+    ASSERT(Sample.pBlock);
+    ASSERT(pReader);        
+    
+    if (!m_bCodecInitialized || !Sample.pBlock || !pReader)
         return FALSE;
 
     const mkvparser::Block* pBlock = Sample.pBlock;
@@ -148,7 +161,7 @@ xbool video_decoder::DecodeSample(const sample& Sample, mkvparser::IMkvReader* p
     for (s32 frameIndex = 0; frameIndex < frameCount; ++frameIndex)
     {
         const mkvparser::Block::Frame& Frame = pBlock->GetFrame(frameIndex);
-        const long frameSize = Frame.len;
+        const s32 frameSize = (s32)Frame.len;
 
         if (frameSize <= 0)
             continue;
@@ -160,10 +173,9 @@ xbool video_decoder::DecodeSample(const sample& Sample, mkvparser::IMkvReader* p
         }
 
         m_CompressedBuffer.SetCount(frameSize);
-        
         if (Frame.Read(pReader, m_CompressedBuffer.GetPtr()) < 0)
         {
-            x_DebugMsg("MoviePlayer_WebM: Failed to read frame data.\n");
+            x_DebugMsg("MoviePlayer_WebM: Failed to read video frame.\n");
             continue;
         }
 
@@ -202,7 +214,7 @@ xbool video_decoder::ConvertFrame(const vpx_image_t& Image)
     if ((Width <= 0) || (Height <= 0))
         return FALSE;
 
-    if ((Width > 32768) || (Height > 32768))  // 32K resolution
+    if ((Width > 8192) || (Height > 8192))  // 8K resolution
         return FALSE;
 
     m_Width      = Width;

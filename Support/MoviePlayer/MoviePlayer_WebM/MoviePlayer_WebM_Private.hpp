@@ -247,7 +247,7 @@ private:
 private:
     vpx_codec_ctx_t             m_CodecCtx;
     const vpx_codec_iface_t*    m_pCodecIface;
-    xbool                       m_CodecInitialized;
+    xbool                       m_bCodecInitialized;
 
     xarray<u8>                  m_CompressedBuffer;
     xarray<u8>                  m_FrameBuffer;
@@ -298,7 +298,6 @@ private:
     xbool           SubmitPCM           (const s16* pSamples, s32 SampleCount);
     xbool           DecodeOpusFrame     (const u8* pData, s32 DataSize);
     xbool           DecodeVorbisPacket  (const u8* pData, s32 DataSize);
-    xbool           ReadFrameData       (const mkvparser::Block::Frame& Frame, mkvparser::IMkvReader* pReader);
     u32             GetChannelMask      (s32 ChannelCount) const;
 
 private:
@@ -308,7 +307,6 @@ private:
     s32                         m_SampleRate;
     s32                         m_BitsPerSample;
     xbool                       m_bInitialized;
-    xbool                       m_bWarned;
     xbool                       m_bVoiceStarted;
     xbool                       m_ComInitialized;
 
@@ -317,7 +315,7 @@ private:
     IXAudio2SourceVoice*        m_pSourceVoice;
     voice_callback*             m_pVoiceCallback;
 
-    xarray<u8>                  m_FrameBuffer;
+    xarray<u8>                  m_CompressedBuffer;
     xarray<s16>                 m_PCMBuffer;
 
     // Opus
@@ -407,7 +405,7 @@ private:
     void            UpdateRenderBuffer  (const movie_webm::sample& Sample);
     void            ResetPlayback       (void);
     xbool           PrimePlayback       (void);
-    void            PreloadAudio        (f64 TargetTime);	
+    void            PreloadAudio        (f64 TargetTime);    
     void            PumpAudio           (f64 TargetTime);
     void            HandleEndOfStream   (void);
     void            SleepMilliseconds   (f64 Seconds);
