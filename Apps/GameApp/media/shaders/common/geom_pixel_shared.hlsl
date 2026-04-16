@@ -61,15 +61,8 @@ void GeomApplyEnvironment( inout GeomDiffuseResult diffuse, uint materialFlags, 
 
         if( materialFlags & MATERIAL_FLAG_ENV_CUBEMAP )
         {
-            float3 viewToSurface = normalize( viewVector );
-            float3 reflectionVec = normalize( reflect( viewToSurface, worldNormal ) );
-
-            if( materialFlags & MATERIAL_FLAG_ENV_VIEWSPACE )
-            {
-                reflectionVec = normalize( mul( (float3x3)View, reflectionVec ) );
-            }
-
-            envColor = txEnvironmentCube.Sample( samLinear, reflectionVec ).rgb;
+            float3 cubeDir = normalize( viewVector );
+            envColor = txEnvironmentCube.Sample( samLinear, cubeDir ).rgb;
         }
         else
         {
