@@ -46,7 +46,7 @@ The following prerequisites are required to build the source tree for PC:
 ## Additional info
 
 <details>
-<summary>Valid WIN32 targets</summary>
+<summary>Valid Win32 targets</summary>
 
 Debug           | OptDebug           | QA                 | Release            | EDITOR-Debug        | VIEWER-Debug 
 ----------------|--------------------|--------------------|--------------------|---------------------|---------------------
