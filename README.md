@@ -43,16 +43,23 @@ The following prerequisites are required to build the source tree for PC:
 4. Put .webm cinema videos from **"area51-pc\Apps\GameApp\media\webms"** to **"C:\GameData\A51\Release\PC"**
 5. Run game.
 
+## Additional info
 
+<details>
+<summary>Valid WIN32 targets</summary>
 
-## List of valid WIN32 targets.
 Debug           | OptDebug           | QA                 | Release            | EDITOR-Debug        | VIEWER-Debug 
 ----------------|--------------------|--------------------|--------------------|---------------------|---------------------
 Yes             | Yes                | Yes                | Yes                | No/Only for Editor! | No/Only for ArtistViewer!
 
+</details>
+
+<details>
+<summary>Compiled apps</summary>
+
 ## Attention: During the migration from VS 2004 to VS 2022, many tools are not functioning. Please use LEGACY branch.
 
-## List of compiled apps.
+
 Name           | Description                                                                             | Status
 ---------------| ----------------------------------------------------------------------------------------|---------------
 AnimCompiler   |                                                                                         | Working
@@ -89,13 +96,19 @@ xCL            |                                                                
 XSCC           |                                                                                         | **DELETED**
 xTool          |                                                                                         | **DELETED**
 
-## List of custom tools.
+</details>
+
+<details>
+<summary>Custom tools</summary>
+
 Name                                                                                         | Description                                                                             
 ---------------------------------------------------------------------------------------------| ----------------------------------------------------------------------------------------
 [Engine-51](https://github.com/bigianb/engine-51)                                            | Area-51 Asset Viewer.                                                                                         
 [Inevitable-MATX-Toolkit](https://github.com/gabengaGamer/Inevitable-MATX-Toolkit)           | Blender plugin for exporting .matx models for GeomCompiler.                                                                                      
 [Json-Playsurface-Processer](https://github.com/gabengaGamer/json-playsurface-processer)     | Script for importing .playsurface maps into blender.                    
 [DAT-Tool](https://github.com/gabengaGamer/DAT-Tool)                                         | Command-line interface (CLI) utility for working with Tribes: Aerial Assault DAT archive format.
+
+</details>
 
 ## Building XBOX Code
 
