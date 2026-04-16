@@ -322,9 +322,9 @@ xbool container::SelectTracks(player_config& Config)
     if (!m_pTracks)
         return FALSE;
 
-    const unsigned long trackCount = m_pTracks->GetTracksCount();
+    const u32 trackCount = (u32)m_pTracks->GetTracksCount();
 
-    for (unsigned long i = 0; i < trackCount; ++i)
+    for (u32 i = 0; i < trackCount; ++i)
     {
         const mkvparser::Track* pTrack = m_pTracks->GetTrackByIndex(i);
         if (!pTrack)
@@ -424,7 +424,7 @@ xbool container::AdvanceEntry(void)
         if (!m_pEntry)
         {
             const mkvparser::BlockEntry* pEntry = NULL;
-            const long status = m_pCluster->GetFirst(pEntry);
+            const s32 status = (s32)m_pCluster->GetFirst(pEntry);
 
             if ((status < 0) || !pEntry || pEntry->EOS())
             {
@@ -439,7 +439,7 @@ xbool container::AdvanceEntry(void)
         }
 
         const mkvparser::BlockEntry* pNext = NULL;
-        const long status = m_pCluster->GetNext(m_pEntry, pNext);
+        const s32 status = (s32)m_pCluster->GetNext(m_pEntry, pNext);
 
         if ((status < 0) || !pNext || pNext->EOS())
         {

@@ -488,7 +488,7 @@ xbool audio_decoder::InitializeOpus(const player_config& Config)
         const u8 mappingFamily = pPrivate[18];
         if (mappingFamily == 0)
         {
-            int err = 0;
+            s32 err = 0;
             m_pOpusDecoder = opus_decoder_create(m_SampleRate, m_Channels, &err);
             if ((err != OPUS_OK) || !m_pOpusDecoder)
             {
@@ -526,7 +526,7 @@ xbool audio_decoder::InitializeOpus(const player_config& Config)
             m_OpusMapping.SetCount(mappingSize);
             x_memcpy(m_OpusMapping.GetPtr(), pPrivate + 21, mappingSize);
 
-            int err = 0;
+            s32 err = 0;
             m_pOpusMSDecoder = opus_multistream_decoder_create(m_SampleRate, m_Channels, streamCount, coupledCount, m_OpusMapping.GetPtr(), &err);
             if ((err != OPUS_OK) || !m_pOpusMSDecoder)
             {
@@ -899,7 +899,7 @@ xbool audio_decoder::DecodeVorbisPacket(const u8* pData, s32 DataSize)
     packet.bytes    = DataSize;
     packet.packetno = ++m_VorbisPacketIndex;
 
-    const int result = vorbis_synthesis(m_pVorbisBlock, &packet);
+    const s32 result = (s32)vorbis_synthesis(m_pVorbisBlock, &packet);
     if (result != 0)
     {
         x_DebugMsg("MoviePlayer_WebM: Vorbis synthesis failed (%d).\n", result);
@@ -914,12 +914,12 @@ xbool audio_decoder::DecodeVorbisPacket(const u8* pData, s32 DataSize)
 
     while (TRUE)
     {
-        float** ppPcm = NULL;
-        const long samples = vorbis_synthesis_pcmout(m_pVorbisDsp, &ppPcm);
+        f32** ppPcm = NULL;
+        const s32 samples = (s32)vorbis_synthesis_pcmout(m_pVorbisDsp, &ppPcm);
         if (samples <= 0)
             break;
 
-        const s32 sampleCount = (s32)samples;
+        const s32 sampleCount = samples;
         if (sampleCount > (INT_MAX / m_Channels))
         {
             x_DebugMsg("MoviePlayer_WebM: Sample count overflow detected.\n");
