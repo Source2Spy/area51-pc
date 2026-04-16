@@ -71,7 +71,7 @@ BitmapEditor   |                                                                
 DecalCompiler  |                                                                                         | Working
 DecalEditor    |                                                                                         | **UNDER CONSTRUCTION**/Lib for: [Editor](https://github.com/gabengaGamer/area51-pc/releases/tag/Editor-1.0)
 DFSTool        |                                                                                         | Working
-EDRscDesc      |                                                                                         | **UNDER CONSTRUCTION**/Lib for: [Editor](https://github.com/gabengaGamer/area51-pc/releases/tag/Editor-1.0)
+EDRscDesc      |                                                                                         | Working
 Editor         |                                                                                         | **UNDER CONSTRUCTION**
 EffectsEditor  |                                                                                         | **UNDER CONSTRUCTION**
 ELFTool        |                                                                                         | **DELETED**
@@ -91,7 +91,7 @@ Viewer         |                                                                
 WinControls    |                                                                                         | **UNDER CONSTRUCTION**/Lib for: [Editor](https://github.com/gabengaGamer/area51-pc/releases/tag/Editor-1.0)
 WorldEditor    |                                                                                         | **UNDER CONSTRUCTION**/Lib for: [Editor](https://github.com/gabengaGamer/area51-pc/releases/tag/Editor-1.0)
 XBMPTool       |                                                                                         | Working
-XBMPViewer     |                                                                                         | **UNDER CONSTRUCTION**
+XBMPViewer     |                                                                                         | Working
 xCL            |                                                                                         | **DELETED**
 XSCC           |                                                                                         | **DELETED**
 xTool          |                                                                                         | **DELETED**
@@ -104,7 +104,7 @@ xTool          |                                                                
 Name                                                                                         | Description                                                                             
 ---------------------------------------------------------------------------------------------| ----------------------------------------------------------------------------------------
 [Engine-51](https://github.com/bigianb/engine-51)                                            | Area-51 Asset Viewer.                                                                                         
-[Inevitable-MATX-Toolkit](https://github.com/gabengaGamer/Inevitable-MATX-Toolkit)           | Blender plugin for exporting .matx models for GeomCompiler.                                                                                      
+[Inevitable-MATX-Toolkit](https://github.com/gabengaGamer/Inevitable-MATX-Toolkit)           | Blender plugin for exporting .matx models for GeomCompiler.                                                                
 [Json-Playsurface-Processer](https://github.com/gabengaGamer/json-playsurface-processer)     | Script for importing .playsurface maps into blender.                    
 [DAT-Tool](https://github.com/gabengaGamer/DAT-Tool)                                         | Command-line interface (CLI) utility for working with Tribes: Aerial Assault DAT archive format.
 
