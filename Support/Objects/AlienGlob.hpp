@@ -158,7 +158,8 @@ protected:
     static s32          m_kInAirCount;
 
     floor_properties    m_FloorProperties;
-    //DECAL rhandle<decal_package>  m_hDecalPackage;
+    rhandle<decal_package>  m_hDecalPackage;
+
     //
     //  Audio
     //
