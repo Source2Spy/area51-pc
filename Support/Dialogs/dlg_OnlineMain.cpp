@@ -40,13 +40,13 @@ ui_manager::control_tem OnlineMenuControls[] =
 {
     // Frames.
     { IDC_ONLINE_JOIN,          "IDS_ONLINE_JOIN",          "button",   90,  40, 120, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_ONLINE_HOST,          "IDS_ONLINE_HOST",          "button",   90,  75, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_ONLINE_FRIENDS,       "IDS_ONLINE_FRIENDS",       "button",   90, 110, 120, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_ONLINE_PLAYERS,       "IDS_ONLINE_PLAYERS",       "button",   90, 145, 120, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_ONLINE_EDIT_PROFILE,  "IDS_ONLINE_EDIT_PROFILE",  "button",   90, 180, 120, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_ONLINE_VIEW_STATS,    "IDS_ONLINE_VIEW_STATS",    "button",   90, 215, 120, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_ONLINE_SIGN_OUT,      "IDS_SIGN_OUT",             "button",   90, 250, 120, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
-    { IDC_ONLINE_DOWNLOAD,      "IDS_ONLINE_DOWNLOAD",      "button",   90, 285, 120, 40, 0, 7, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_ONLINE_HOST,          "IDS_ONLINE_HOST",          "button",   90,  80, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_ONLINE_FRIENDS,       "IDS_ONLINE_FRIENDS",       "button",   90, 120, 120, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_ONLINE_PLAYERS,       "IDS_ONLINE_PLAYERS",       "button",   90, 160, 120, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_ONLINE_EDIT_PROFILE,  "IDS_ONLINE_EDIT_PROFILE",  "button",   90, 200, 120, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_ONLINE_VIEW_STATS,    "IDS_ONLINE_VIEW_STATS",    "button",   90, 240, 120, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_ONLINE_SIGN_OUT,      "IDS_SIGN_OUT",             "button",   90, 280, 120, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
+    { IDC_ONLINE_DOWNLOAD,      "IDS_ONLINE_DOWNLOAD",      "button",   90, 320, 120, 40, 0, 7, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
     { IDC_ONLINE_NAV_TEXT,      "IDS_NULL",                 "text",      0,   0,   0,  0, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_SCALE_XPOS | ui_win::WF_SCALE_XSIZE },
 };
 
