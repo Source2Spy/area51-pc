@@ -257,7 +257,7 @@ xbool match_mgr::Init( net_socket& Local, const net_address Broadcast )
 
     Delta.Start();
     Timeout = 0.0f;
-    m_ForceShutdown = FALSE;	
+    m_ForceShutdown = FALSE;    
     m_pThread = new xthread( s_MatchPeriodicUpdater, "MatchMgr periodic Updater", 8192, 1, 1, (char**)this );
 
 #if defined(X_DEBUG) && defined(bwatson)
@@ -834,7 +834,7 @@ void match_mgr::UpdateState( f32 DeltaTime)
             SetConnectStatus( MATCH_CONN_DISCONNECTED );
             SetState( MATCH_IDLE );
             UnlockBrowser();
-        }		
+        }        
         break;
 
         //-----------------------------------------------------
@@ -852,7 +852,7 @@ void match_mgr::UpdateState( f32 DeltaTime)
             SetConnectStatus( MATCH_CONN_DISCONNECTED );
             SetState( MATCH_IDLE );
             UnlockBrowser();
-        }	
+        }    
         break;
 
         //-----------------------------------------------------
@@ -1503,7 +1503,9 @@ void match_mgr::SetState( match_mgr_state NewState )
             }
 
             Result = ServerBrowserUpdate(m_pBrowser, SBTrue, SBFalse, basicFields, numFields, Filter );
+            #if defined(X_LOGGING)
             LOG_MESSAGE("match_mgr::SetState","ServerBrowserUpdate() returned %d(%s)", Result, ServerBrowserError( Result ) );
+            #endif
             if( Result == sbe_noerror )
             {
                 SetConnectStatus( MATCH_CONN_ACQUIRING_SERVERS );
@@ -1557,8 +1559,10 @@ void match_mgr::SetState( match_mgr_state NewState )
                                                     SBTrue,                      // async
                                                     SBFalse                      // fullUpdate
                     );
+                #if defined(X_LOGGING)    
                 LOG_MESSAGE("match_mgr::SetState","ServerBrowserAuxUpdateIP(%s) returned %d(%s)", Remote.GetStrAddress(), Result, ServerBrowserError( Result ) );
                 x_DebugMsg("match_mgr::SetState: ServerBrowserAuxUpdateIP(%s) returned %d(%s)", Remote.GetStrAddress(), Result, ServerBrowserError( Result ) );
+                #endif
                 if( Result == sbe_noerror )
                 {
                     SetConnectStatus( MATCH_CONN_ACQUIRING_SERVERS );
@@ -1601,7 +1605,9 @@ void match_mgr::SetState( match_mgr_state NewState )
             qr2_register_key( VOICE_KEY, "voice" );
 
             Result = ServerBrowserLANUpdate( m_pBrowser, SBTrue, m_pSocket->GetPort(), m_pSocket->GetPort()+16 );
+            #if defined(X_LOGGING)
             LOG_MESSAGE("match_mgr::SetState","ServerBrowserLANUpdate() returned %d(%s)", Result, ServerBrowserError( Result ) );
+            #endif
             SetConnectStatus( MATCH_CONN_ACQUIRING_SERVERS );
         }
         else
@@ -1650,14 +1656,16 @@ void match_mgr::SetState( match_mgr_state NewState )
                                                 SBTrue,                             // async
                                                 SBTrue                              // fullUpdate
                                               );
+            #if defined(X_LOGGING)
             LOG_MESSAGE("match_mgr::SetState","ServerBrowserAuxUpdateIP(%s) returned %d(%s)", Config.Remote.GetStrAddress(), Result, ServerBrowserError( Result ) );
+            #endif
             if( Result != sbe_noerror )
             {
                 LOG_WARNING( "match_mgr::SetState", "MATCH_INDIRECT_LOOKUP: AuxUpdateIP failed (%d), aborting lookup.", Result );
                 g_ActiveConfig.SetExitReason( GAME_EXIT_SESSION_ENDED );
                 SetConnectStatus( MATCH_CONN_DISCONNECTED );
                 m_StateTimeout = 0.0f;
-            }			
+            }            
 
         }
         UnlockBrowser();
@@ -1770,7 +1778,7 @@ xbool match_mgr::ReceivePacket( net_address& Remote, bitstream& Bitstream )
 
         // Convert our internal addresses from host endian to network endian as the gamespy
         // libs require it to be network endian.
-        from.sin_family = AF_INET;		
+        from.sin_family = AF_INET;        
         from.sin_port = htons(Remote.GetPort());
         from.sin_addr.s_addr = htonl(Remote.GetIP());
         LockBrowser();
