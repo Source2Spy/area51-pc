@@ -144,24 +144,50 @@ material_mgr::material_constants material_mgr::BuildMaterialFlags( const materia
     if( pMaterial->m_Flags & geom::material::FLAG_ILLUM_USES_DIFFUSE )
         constants.Flags |= MATERIAL_FLAG_ILLUM_USE_DIFFUSE;
 
+    if( constants.Flags & MATERIAL_FLAG_ALPHA_TEST )
+        constants.AlphaRef = bPunchThru ? 0.5f : (4.0f / 255.0f);
+
     if( IncludeVertexColor )
         constants.Flags |= MATERIAL_FLAG_VERTEX_COLOR;
 
-    if( !(RenderFlags & render::DISABLE_SPOTLIGHT) )
-        constants.Flags |= MATERIAL_FLAG_PROJ_LIGHT;
-
-    if( !(RenderFlags & render::DISABLE_PROJ_SHADOWS) )
-        constants.Flags |= MATERIAL_FLAG_PROJ_SHADOW;
-
-    if( constants.Flags & MATERIAL_FLAG_ALPHA_TEST )
-    {
-        // Blended alpha surfaces should only drop fully transparent texels,
-        // while explicit punch-through materials keep a tighter cutoff so the
-        // binary mask stays crisp.
-        constants.AlphaRef = bPunchThru ? 0.5f : (4.0f / 255.0f);
-    }
-
     return constants;
+}
+
+//==============================================================================
+
+u32 material_mgr::BuildInstanceFlags( u32 RenderFlags ) const
+{
+    u32 flags = 0;
+
+    if( !(RenderFlags & render::DISABLE_SPOTLIGHT) )
+        flags |= INSTANCE_FLAG_PROJ_LIGHT;
+    
+    if( !(RenderFlags & render::DISABLE_PROJ_SHADOWS) )
+        flags |= INSTANCE_FLAG_PROJ_SHADOW;
+
+    //static f32 fDist = 1200.0f;
+    //if( s_DetailMapPresent && (pc_CalcDistance( *Inst.Data.Rigid.pL2W,s_CurrentBBox ) < fDist) )
+    //    flags |= INSTANCE_FLAG_DETAIL;
+
+    if( render::IsFilterLightEnabled() && !(RenderFlags & render::DISABLE_FILTERLIGHT) )
+        flags |= INSTANCE_FLAG_FILTERLIGHT;
+
+    if( RenderFlags & render::CLIPPED )
+        flags |= INSTANCE_FLAG_CLIPPED;
+
+    //if ( ( RenderFlags & render::SHADOW_PASS ) && s_bMatCanReceiveShadow )
+    //    flags |= INSTANCE_FLAG_SHADOW_PASS;
+
+    if( RenderFlags & render::GLOWING )
+        flags |= INSTANCE_FLAG_GLOWING;
+
+    if( RenderFlags & render::FADING_ALPHA )
+	{
+        flags |= INSTANCE_FLAG_FADING_ALPHA;
+		//flags &= ~(INSTANCE_FLAG_DETAIL | INSTANCE_FLAG_SHADOW_PASS);
+	}
+
+    return flags;
 }
 
 //==============================================================================

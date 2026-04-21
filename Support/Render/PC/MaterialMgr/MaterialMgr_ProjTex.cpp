@@ -153,7 +153,7 @@ xbool material_mgr::UpdateProjTextures( const matrix4& L2W,
 
     s32 nProjShadows = 0;
     if( !(RenderFlags & render::DISABLE_PROJ_SHADOWS) )
-        nProjShadows = g_ProjTextureMgr.CollectShadows( L2W, B, 2 );
+        nProjShadows = g_ProjTextureMgr.CollectShadows( L2W, B, proj_texture_mgr::MAX_PROJ_SHADOWS );
 
     s32 nAppliedShadows = 0;
     for( s32 i = 0; i < nProjShadows; i++ )

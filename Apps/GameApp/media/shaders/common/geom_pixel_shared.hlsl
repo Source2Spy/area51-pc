@@ -311,12 +311,12 @@ GEOM_PIXEL_OUTPUT ShadeGeometryPixel( GEOM_PIXEL_INPUT input )
     float3 specular = GeomComputeSpecular( input, materialFlags, diffuse.Sample.a );    
     float4 finalColor = float4( diffuse.Color.rgb * totalLight + specular, diffuse.Color.a );
 
-    if( materialFlags & MATERIAL_FLAG_PROJ_LIGHT )
+    if( materialFlags & INSTANCE_FLAG_PROJ_LIGHT )
     {
         finalColor.rgb = ApplyProjLights( finalColor.rgb, input.WorldPos );
     }
 
-    if( materialFlags & MATERIAL_FLAG_PROJ_SHADOW )
+    if( materialFlags & INSTANCE_FLAG_PROJ_SHADOW )
     {
         finalColor.rgb = ApplyProjShadows( finalColor.rgb, input.WorldPos );
     }

@@ -120,7 +120,9 @@ void material_mgr::SetRigidMaterial( const matrix4*      pL2W,
                                      const material*     pMaterial,
                                      u32                 RenderFlags,
                                      u8                  UOffset,
-                                     u8                  VOffset )
+                                     u8                  VOffset, 
+                                     u8                  Alpha,
+                                     u8                  OverrideMat )
 {
     if( !g_pd3dDevice || !g_pd3dContext )
         return;
@@ -130,7 +132,7 @@ void material_mgr::SetRigidMaterial( const matrix4*      pL2W,
     g_pd3dContext->PSSetShader( m_pRigidPixelShader, NULL, 0 );
     g_pd3dContext->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
 
-    if( !UpdateRigidConstants( pL2W, pMaterial, RenderFlags, pLighting, UOffset, VOffset ) )
+    if( !UpdateRigidConstants( pL2W, pMaterial, RenderFlags, pLighting, UOffset, VOffset, Alpha, OverrideMat ) )
     {
         x_DebugMsg( "MaterialMgr: Failed to update rigid constants\n" );
         return;
@@ -166,8 +168,13 @@ xbool material_mgr::UpdateRigidConstants( const matrix4*      pL2W,
                                           u32                 RenderFlags,
                                           const d3d_lighting* pLighting,
                                           u8                  UOffset,
-                                          u8                  VOffset )
+                                          u8                  VOffset,
+                                          u8                  Alpha,
+                                          u8                  OverrideMat )
 {
+	(void)Alpha;
+    (void)OverrideMat;	
+	
     if( !m_pRigidFrameBuffer || !m_pRigidLightBuffer || !m_pRigidObjectBuffer )
         return FALSE;
 
@@ -211,7 +218,9 @@ xbool material_mgr::UpdateRigidConstants( const matrix4*      pL2W,
                           detailScale,
                           0.0f );
 
-    const material_constants constants = BuildMaterialFlags( pMaterial, RenderFlags, TRUE );
+    material_constants constants = BuildMaterialFlags( pMaterial, RenderFlags, TRUE );
+    constants.Flags |= BuildInstanceFlags( RenderFlags );	
+	
     frameData.MaterialParams.Set( (f32)constants.Flags,
                                   constants.AlphaRef,
                                   nearZ,

@@ -118,7 +118,9 @@ void material_mgr::SetSkinMaterial( const matrix4*      pL2W,
                                     const material*     pMaterial,
                                     u32                 RenderFlags,
                                     u8                  UOffset,
-                                    u8                  VOffset )
+                                    u8                  VOffset,
+                                    u8                  Alpha,
+                                    u8                  OverrideMat )
 {
     if( !g_pd3dDevice || !g_pd3dContext )
         return;
@@ -128,7 +130,7 @@ void material_mgr::SetSkinMaterial( const matrix4*      pL2W,
     g_pd3dContext->PSSetShader( m_pSkinPixelShader, NULL, 0 );
     g_pd3dContext->IASetPrimitiveTopology( D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
 
-    if( !UpdateSkinConstants( pLighting, pMaterial, RenderFlags, UOffset, VOffset ) )
+    if( !UpdateSkinConstants( pLighting, pMaterial, RenderFlags, UOffset, VOffset, Alpha, OverrideMat ) )
     {
         x_DebugMsg( "MaterialMgr: Failed to update skin constants\n" );
         return;
@@ -163,8 +165,13 @@ xbool material_mgr::UpdateSkinConstants( const d3d_lighting* pLighting,
                                          const material*     pMaterial,
                                          u32                 RenderFlags,
                                          u8                  UOffset,
-                                         u8                  VOffset )
+                                         u8                  VOffset,
+                                         u8                  Alpha,
+                                         u8                  OverrideMat )
 {
+	(void)Alpha;
+    (void)OverrideMat;
+	
     if( !m_pSkinFrameBuffer || !m_pSkinBoneBuffer|| !m_pSkinLightBuffer  )
         return FALSE;
     
@@ -195,7 +202,9 @@ xbool material_mgr::UpdateSkinConstants( const d3d_lighting* pLighting,
                           detailScale,
                           0.0f );
 
-    const material_constants constants = BuildMaterialFlags( pMaterial, RenderFlags, FALSE );
+    material_constants constants = BuildMaterialFlags( pMaterial, RenderFlags, FALSE );
+    constants.Flags |= BuildInstanceFlags( RenderFlags );	
+	
     skinFrame.MaterialParams.Set( (f32)constants.Flags,
                                   constants.AlphaRef,
                                   nearZ,

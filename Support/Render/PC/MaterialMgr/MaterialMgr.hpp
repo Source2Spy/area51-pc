@@ -60,12 +60,25 @@ enum material_flags
     MATERIAL_FLAG_PERPIXEL_ENV      = (1<<9),
     MATERIAL_FLAG_PERPOLY_ENV       = (1<<10),
     MATERIAL_FLAG_DETAIL            = (1<<11),
-    MATERIAL_FLAG_PROJ_LIGHT        = (1<<12),
-    MATERIAL_FLAG_PROJ_SHADOW       = (1<<13),
-    MATERIAL_FLAG_ENV_CUBEMAP       = (1<<14),
-    MATERIAL_FLAG_ENV_VIEWSPACE     = (1<<15),
-    MATERIAL_FLAG_ALPHA_BLEND       = (1<<16),	
-    MATERIAL_FLAG_ILLUM_USE_DIFFUSE = (1<<17),	
+    MATERIAL_FLAG_ENV_CUBEMAP       = (1<<12),
+    MATERIAL_FLAG_ENV_VIEWSPACE     = (1<<13),
+    MATERIAL_FLAG_ENV_WORLDSPACE    = (1<<14),	
+    MATERIAL_FLAG_ALPHA_BLEND       = (1<<15),	
+    MATERIAL_FLAG_ILLUM_USE_DIFFUSE = (1<<16),	
+};
+
+//------------------------------------------------------------------------------
+
+enum instance_flags
+{
+    INSTANCE_FLAG_PROJ_LIGHT        = (1<<0),
+    INSTANCE_FLAG_PROJ_SHADOW       = (1<<1),
+    INSTANCE_FLAG_DETAIL            = (1<<2),
+    INSTANCE_FLAG_FILTERLIGHT       = (1<<3),
+    INSTANCE_FLAG_CLIPPED           = (1<<4),
+    INSTANCE_FLAG_SHADOW_PASS       = (1<<5),
+    INSTANCE_FLAG_GLOWING           = (1<<6),
+    INSTANCE_FLAG_FADING_ALPHA      = (1<<7),	
 };
 
 //==============================================================================
@@ -104,7 +117,7 @@ struct cb_geom_object
 
 struct cb_proj_textures
 {
-    matrix4 ProjLightMatrix[proj_texture_mgr::MAX_PROJ_LIGHTS];
+    matrix4 ProjLightMatrix [proj_texture_mgr::MAX_PROJ_LIGHTS];
     matrix4 ProjShadowMatrix[proj_texture_mgr::MAX_PROJ_SHADOWS];
     u32     ProjLightCount;
     u32     ProjShadowCount;
@@ -194,7 +207,9 @@ public:
                                       const material*     pMaterial,
                                       u32                 RenderFlags,
                                       u8                  UOffset,
-                                      u8                  VOffset );
+                                      u8                  VOffset,
+                                      u8                  Alpha = 255,
+									  u8                  OverrideMat = FALSE );
 
     // Skin material management
     void        SetSkinMaterial     ( const matrix4*      pL2W,
@@ -203,7 +218,9 @@ public:
                                       const material*     pMaterial,
                                       u32                 RenderFlags,
                                       u8                  UOffset,
-                                      u8                  VOffset );
+                                      u8                  VOffset,
+                                      u8                  Alpha = 255,
+									  u8                  OverrideMat = FALSE );
 
     void        ResetProjTextures   ( void );
 
@@ -241,12 +258,16 @@ protected:
                                                  u32                 RenderFlags,
                                                  const d3d_lighting* pLighting,
                                                  u8                  UOffset,
-                                                 u8                  VOffset );
+                                                 u8                  VOffset,
+                                                 u8                  Alpha = 255,
+									             u8                  OverrideMat = FALSE );
     xbool               UpdateSkinConstants    ( const d3d_lighting* pLighting,
                                                  const material*     pMaterial,
                                                  u32                 RenderFlags,
                                                  u8                  UOffset,
-                                                 u8                  VOffset );
+                                                 u8                  VOffset,
+                                                 u8                  Alpha = 255,
+									             u8                  OverrideMat = FALSE );
     xbool               UpdateProjTextures     ( const matrix4& L2W,
                                                  const bbox&    B,
                                                  u32            Slot,
@@ -254,6 +275,7 @@ protected:
     material_constants  BuildMaterialFlags     ( const material* pMaterial,
                                                  u32             RenderFlags,
                                                  xbool           IncludeVertexColor ) const;
+    u32                 BuildInstanceFlags     ( u32 RenderFlags ) const;												 
     cb_lighting         BuildLightingConstants ( const d3d_lighting* pLighting ) const;
 
 protected:

@@ -109,8 +109,6 @@ void platform_ActivateMaterial( const material& Material )
     texture* pEnvironment = Material.m_EnvironmentMap.GetPointer();
     const xbitmap* pEnvironmentMap = pEnvironment ? &pEnvironment->m_Bitmap : NULL;
 
-    // TODO: GS: Make proj tex
-
     // Set primary textures through MaterialMgr
     g_MaterialMgr.SetBitmap( pDiffuseMap, TEXTURE_SLOT_DIFFUSE );
     g_MaterialMgr.SetBitmap( pDetailMap, TEXTURE_SLOT_DETAIL  );
@@ -211,13 +209,15 @@ void platform_RenderRigidInstance( render_instance& Inst )
     if( !g_pd3dDevice )
         return;
 
-    g_MaterialMgr.SetRigidMaterial( Inst.Data.Rigid.pL2W,
+    g_MaterialMgr.SetRigidMaterial(  Inst.Data.Rigid.pL2W,
                                     &Inst.Data.Rigid.pGeom->m_BBox,
                                     (d3d_lighting*)Inst.pLighting,
                                     s_pMaterial,
                                     Inst.Flags,
                                     Inst.UOffset,
-                                    Inst.VOffset );
+                                    Inst.VOffset,
+                                    Inst.Alpha,
+                                    Inst.OverrideMat );
 
     // TODO: GS: At the moment we use a lightmap every call to platform_RenderRigidInstance. 
     // In theory, this is not the best solution, should definitely come up with something else
@@ -241,31 +241,6 @@ void platform_RenderRigidInstance( render_instance& Inst )
     }
 
     g_RigidVertMgr.DrawDList( Inst.hDList, Inst.Data.Rigid.pL2W, NULL );
-
-    // Deprecated since we already got and push render flags for material mgr.
-
-    //if( !(Inst.Flags & render::PULSED) )
-    //{
-    //    g_RigidVertMgr.DrawDList( Inst.hDList, Inst.Data.Rigid.pL2W, NULL );
-    //}
-    //
-    //if( Inst.Flags & render::PULSED )
-    //{
-    //    s32 I = (s32)( 128.0f + (80.0f * x_sin( x_fmod( s_PulseTime * 4, PI*2.0f ) )) );
-    //
-    //    g_RigidVertMgr.DrawDList( Inst.hDList, Inst.Data.Rigid.pL2W, NULL );
-    //}
-    //
-    //if( Inst.Flags & render::WIREFRAME )
-    //{
-    //    g_RigidVertMgr.DrawDList( Inst.hDList, Inst.Data.Rigid.pL2W, NULL );
-    //}
-    //
-    //if( Inst.Flags & render::WIREFRAME2 )
-    //{
-    //    g_RigidVertMgr.DrawDList( Inst.hDList, Inst.Data.Rigid.pL2W, NULL );
-    //}
-    
     g_MaterialMgr.ResetProjTextures();    
 }
 
@@ -283,23 +258,11 @@ void platform_RenderSkinInstance( render_instance& Inst )
                                    s_pMaterial,
                                    Inst.Flags,
                                    Inst.UOffset,
-                                   Inst.VOffset );
+                                   Inst.VOffset,
+                                   Inst.Alpha,
+                                   Inst.OverrideMat );
 
     g_SkinVertMgr.DrawDList( Inst.hDList, Inst.Data.Skin.pBones, (d3d_lighting*)Inst.pLighting );
-
-    // Deprecated since we already got and push render flags for material mgr.
-
-    //if( Inst.Flags & render::FADING_ALPHA )
-    //{
-    //    // TODO: Render transparent geometry        
-    //    g_SkinVertMgr.DrawDList( Inst.hDList, Inst.Data.Skin.pBones, (d3d_lighting*)Inst.pLighting );
-    //}
-    //else
-    //{
-    //    // Normal render
-    //    g_SkinVertMgr.DrawDList( Inst.hDList, Inst.Data.Skin.pBones, (d3d_lighting*)Inst.pLighting );
-    //}
-    
     g_MaterialMgr.ResetProjTextures();
 }
 
