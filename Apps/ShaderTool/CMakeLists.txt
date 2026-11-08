@@ -44,3 +44,10 @@ a51_add_project( ShaderTool EXECUTABLE
     DEPENDENCIES a51_shader_compiler )
 
 target_compile_definitions( a51_shader_compiler PRIVATE A51_DXC_LIBRARY_FILE="$<TARGET_FILE:dxcompiler>" )
+
+if( WIN32 )
+    add_custom_command( TARGET ShaderTool POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+            "$<TARGET_FILE:dxcompiler>" "$<TARGET_FILE_DIR:ShaderTool>"
+        VERBATIM )
+endif()

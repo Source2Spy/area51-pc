@@ -147,12 +147,16 @@ class dxc_snapshot_include : public IDxcIncludeHandler
         if( !pFilename || !ppSource || !m_pSources )
             return E_INVALIDARG;
         *ppSource = NULL;
+#if defined( TARGET_WINDOWS )
+        const std::filesystem::path Path = std::filesystem::absolute( pFilename ).lexically_normal();
+#else
         CW2A Converted( pFilename );
 
         if( !Converted.m_psz )
             return E_FAIL;
 
         const std::filesystem::path Path   = std::filesystem::absolute( Converted.m_psz ).lexically_normal();
+#endif
         const xarray<byte>*         pBytes = NULL;
 
         if( Path.filename() == "a51_shader_contract.hlsl" )

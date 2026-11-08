@@ -25,6 +25,14 @@ endif()
 
 project( Area51 LANGUAGES C CXX )
 
+if( "$ENV{GITHUB_ACTIONS}" STREQUAL "true" )
+    if( MSVC )
+        add_compile_options( /w )
+    else()
+        add_compile_options( -w )
+    endif()
+endif()
+
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     add_compile_options(
         $<$<CONFIG:Release>:-g>
