@@ -38,7 +38,11 @@ int RunShaderTool( int argc, char** argv )
 int main( int argc, char** argv )
 {
     const auto Start = std::chrono::steady_clock::now();
-    setvbuf( stdout, NULL, _IOLBF, 0 );
+#if defined( TARGET_WINDOWS )
+    setvbuf( stdout, NULL, _IONBF, 0 );
+#else
+    setvbuf( stdout, NULL, _IOLBF, BUFSIZ );
+#endif
     x_Init( argc, argv );
     InitializeShaderConsole();
     const int Result = RunShaderTool( argc, argv );
