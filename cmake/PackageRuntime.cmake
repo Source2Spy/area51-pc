@@ -5,6 +5,8 @@ foreach( _a51_argument A51_BINARY A51_SHADER_KIT A51_PACKAGE_DIR )
     if( NOT DEFINED ${_a51_argument} OR "${${_a51_argument}}" STREQUAL "" )
         message( FATAL_ERROR "${_a51_argument} is required." )
     endif()
+    get_filename_component( ${_a51_argument} "${${_a51_argument}}"
+        ABSOLUTE BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}" )
 endforeach()
 
 if( NOT EXISTS "${A51_BINARY}" OR IS_DIRECTORY "${A51_BINARY}" )

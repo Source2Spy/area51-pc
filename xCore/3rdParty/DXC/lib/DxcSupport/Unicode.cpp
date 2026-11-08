@@ -171,8 +171,12 @@ bool WideToEncodedString(const wchar_t *text, size_t cWide, DWORD cp,
       !(cWide == ~(size_t)0 || cWide < INT32_MAX))
     return false;
 
-  bool usedDefaultChar;
-  bool *pUsedDefaultChar = (lossy == nullptr) ? nullptr : &usedDefaultChar;
+#ifdef _WIN32
+  BOOL usedDefaultChar = FALSE;
+#else
+  bool usedDefaultChar = false;
+#endif
+  auto *pUsedDefaultChar = (lossy == nullptr) ? nullptr : &usedDefaultChar;
   if (lossy != nullptr)
     *lossy = false;
 
@@ -205,7 +209,7 @@ bool WideToEncodedString(const wchar_t *text, size_t cWide, DWORD cp,
   }
 
   if (lossy != nullptr)
-    *lossy = usedDefaultChar;
+    *lossy = usedDefaultChar != FALSE;
   return true;
 }
 
