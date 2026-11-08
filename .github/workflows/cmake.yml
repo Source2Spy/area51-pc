@@ -10,6 +10,8 @@ jobs:
     runs-on: windows-2022
     env:
       _CL_: '/w'
+      A51_BUILD_KEY: ${{ secrets.A51_BUILD_KEY }}
+      A51_REQUIRE_BUILD_KEY: 'ON'
 
     steps:
       - name: Checkout
@@ -22,9 +24,6 @@ jobs:
         run: cmake --build --preset prepare-shaders --parallel 4 -- /p:WarningLevel=0 /clp:ErrorsOnly /nologo
 
       - name: Configure
-        env:
-          A51_BUILD_KEY: ${{ github.event_name == 'push' && github.repository == 'Source2Spy/area51-pc' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && secrets.A51_BUILD_KEY || '' }}
-          A51_REQUIRE_BUILD_KEY: ${{ github.event_name == 'push' && github.repository == 'Source2Spy/area51-pc' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && 'ON' || 'OFF' }}
         run: cmake --preset windows-msvc-x64 -DA51_REQUIRE_BUILD_KEY=$env:A51_REQUIRE_BUILD_KEY
 
       - name: Build full Release graph
@@ -53,6 +52,8 @@ jobs:
     env:
       CFLAGS: '-w'
       CXXFLAGS: '-w'
+      A51_BUILD_KEY: ${{ secrets.A51_BUILD_KEY }}
+      A51_REQUIRE_BUILD_KEY: 'ON'
 
     steps:
       - name: Checkout
@@ -86,8 +87,6 @@ jobs:
       - name: Build Release APK
         working-directory: Apps/GameApp/android
         env:
-          A51_BUILD_KEY: ${{ github.event_name == 'push' && github.repository == 'Source2Spy/area51-pc' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && secrets.A51_BUILD_KEY || '' }}
-          A51_REQUIRE_BUILD_KEY: ${{ github.event_name == 'push' && github.repository == 'Source2Spy/area51-pc' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && 'ON' || 'OFF' }}
           CMAKE_BUILD_PARALLEL_LEVEL: '4'
           ANDROID_KEYSTORE_BASE64: ${{ github.event_name == 'push' && secrets.ANDROID_KEYSTORE_BASE64 || '' }}
           ANDROID_KEYSTORE_PASSWORD: ${{ github.event_name == 'push' && secrets.ANDROID_KEYSTORE_PASSWORD || '' }}
@@ -123,6 +122,8 @@ jobs:
     env:
       CFLAGS: '-w'
       CXXFLAGS: '-w'
+      A51_BUILD_KEY: ${{ secrets.A51_BUILD_KEY }}
+      A51_REQUIRE_BUILD_KEY: 'ON'
 
     steps:
       - name: Checkout
@@ -148,9 +149,6 @@ jobs:
         run: cmake --build --preset prepare-shaders --parallel 4
 
       - name: Configure
-        env:
-          A51_BUILD_KEY: ${{ github.event_name == 'push' && github.repository == 'Source2Spy/area51-pc' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && secrets.A51_BUILD_KEY || '' }}
-          A51_REQUIRE_BUILD_KEY: ${{ github.event_name == 'push' && github.repository == 'Source2Spy/area51-pc' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && 'ON' || 'OFF' }}
         run: cmake --preset linux-gcc-x64 -DA51_REQUIRE_BUILD_KEY="$A51_REQUIRE_BUILD_KEY"
 
       - name: Build full Release graph
