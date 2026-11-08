@@ -6,6 +6,11 @@
 
 cmake_minimum_required( VERSION 3.23 )
 
+if( "$ENV{GITHUB_ACTIONS}" STREQUAL "true" )
+    set( CMAKE_SUPPRESS_DEVELOPER_WARNINGS ON CACHE INTERNAL "" FORCE )
+    set( CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE )
+endif()
+
 # Set CMP0091 before project().
 cmake_policy( SET CMP0091 NEW )
 
@@ -187,6 +192,7 @@ if( A51_BUILD_SHADER_TOOL )
     # DXC is a large LLVM project.  Only its compiler targets are needed by
     # ShaderTool, so keep the generated graph and default build small.
     set( ENABLE_SPIRV_CODEGEN ON CACHE BOOL "Enable DXC SPIR-V code generation" FORCE )
+    set( HLSL_DISABLE_SOURCE_GENERATION ON CACHE BOOL "Use checked-in DXC generated sources" FORCE )
     set( LLVM_TARGETS_TO_BUILD None CACHE STRING "LLVM targets used by DXC" FORCE )
     set( LLVM_ENABLE_EH ON CACHE BOOL "Enable DXC exception handling" FORCE )
     set( LLVM_ENABLE_RTTI ON CACHE BOOL "Enable DXC RTTI" FORCE )
@@ -316,7 +322,7 @@ if( TARGET Render )
 endif()
 
 if( TARGET ShaderTool )
-    set( A51_SHADER_JOBS 4 CACHE STRING "Shader preparation worker count" )
+    set( A51_SHADER_JOBS 8 CACHE STRING "Shader preparation worker count" )
     add_custom_target( a51_prepare_shaders
         COMMAND "$<TARGET_FILE:ShaderTool>" -jobs "${A51_SHADER_JOBS}"
             "${CMAKE_SOURCE_DIR}/Apps/GameApp/media/GameApp.shaderscript"

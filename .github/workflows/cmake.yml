@@ -8,6 +8,8 @@ jobs:
   windows-x64:
     name: Windows x64 / MSVC
     runs-on: windows-2022
+    env:
+      _CL_: '/w'
 
     steps:
       - name: Checkout
@@ -48,6 +50,9 @@ jobs:
   android-arm64:
     name: Android ARM64 / NDK
     runs-on: ubuntu-24.04
+    env:
+      CFLAGS: '-w'
+      CXXFLAGS: '-w'
 
     steps:
       - name: Checkout
@@ -115,6 +120,9 @@ jobs:
   linux-x64:
     name: Linux x64 / GCC
     runs-on: ubuntu-24.04
+    env:
+      CFLAGS: '-w'
+      CXXFLAGS: '-w'
 
     steps:
       - name: Checkout
