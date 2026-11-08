@@ -111,6 +111,8 @@ public:
                                                   u32 ContextMask,
                                                   input_action_value_mode ValueMode = INPUT_ACTION_VALUE_AUTO );
 
+    void                RemoveBindings          ( s32 ActionID, input_device Device );
+
     void                SetActiveContext        ( u32 ContextMask );
     u32                 GetActiveContext        ( void ) const;
     void                SetDeviceID             ( s32 DeviceID );

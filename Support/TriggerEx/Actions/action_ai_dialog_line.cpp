@@ -43,7 +43,7 @@ void action_ai_dialog_line::OnEnumProp    ( prop_enum& rPropList )
     
     // Audio resource.
     rPropList.PropEnumExternal( "Audio Package", "Resource\0audiopkg\0", "The audio package associated with this task.", 0 );
-    rPropList.PropEnumExternal( "SoundName",     "Sound\0soundexternal","Sound Descriptor (Label)", PROP_TYPE_MUST_ENUM  );
+    rPropList.PropEnumExternal( "SoundName",     "Sound\0soundexternal\0","Sound Descriptor (Label)", PROP_TYPE_MUST_ENUM  );
     rPropList.PropEnumBool    ( "Interrupt AI",  "Are we interrupting the flow of the AI to play the audio?", 0 ) ;
 
     if( m_InterruptAI )

@@ -26,6 +26,7 @@ struct config_options
     xbool       AutoSplitScreen;
     xbool       AutoServer;
     xbool       AutoClient;
+    char        AutoClientAddress[22];
     s32         AutoLevel;              // If AutoCampaign or AutoServer.
     s32         AutoServerType;         // Only used if AutoServer.  GameMgr.hpp.
     s32         AutoMutateMode;         // Only used if AutoServer.  GameMgr.hpp.

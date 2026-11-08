@@ -179,7 +179,7 @@ void hud_text::OnRender( player* pPlayer )
         if( m_Goals[ iGoal ].InUse )
         {
             f32 PercentOnScreen     = 0.0f;
-            const xwchar* pLine     = m_Goals[ iGoal ].WrappedText;
+            const xwchar* pLine     = m_Goals[ iGoal ].Wrapped.Text;
             
             PercentOnScreen = 1.0f;
 
@@ -237,7 +237,7 @@ void hud_text::OnRender( player* pPlayer )
             // text
             iRect.t-=1;
             iRect.b-=1;
-            RenderLine( pLine, iRect, Alpha, TextColor, 1, ui_font::h_left|ui_font::v_top, CHAT_DROP_SHADOW );
+            RenderLine( m_Goals[ iGoal ].Wrapped, iRect, Alpha, TextColor, 1, ui_font::h_left|ui_font::v_top, CHAT_DROP_SHADOW );
 
             // restore scissor region
             // TODO ?
@@ -253,7 +253,7 @@ void hud_text::OnRender( player* pPlayer )
     if( Offset > 0.0f )
     {
         i               += 1;
-        CurrentOffset   -= (1.0f - Offset) * pFont->TextHeight( m_Lines[ i % MAX_QUEUE ].WrappedText );
+        CurrentOffset   -= (1.0f - Offset) * pFont->TextHeight( m_Lines[ i % MAX_QUEUE ].Wrapped.Text );
     }
 
 
@@ -266,7 +266,7 @@ void hud_text::OnRender( player* pPlayer )
     {
         s32 QueueIndex = i % MAX_QUEUE;
 
-        const xwchar* pLine = m_Lines[ QueueIndex ].WrappedText;
+        const xwchar* pLine = m_Lines[ QueueIndex ].Wrapped.Text;
 
         iRect.t = (s32)CurrentOffset;
         iRect.b = iRect.t + pFont->TextHeight(pLine);//CHAT_BOX_LINEFEED;    
@@ -345,7 +345,7 @@ void hud_text::OnRender( player* pPlayer )
             // text
             iRect.t-=1;
             iRect.b-=1;
-            RenderLine( pLine, iRect, Alpha, TextColor, 1, ui_font::h_left|ui_font::v_top, CHAT_DROP_SHADOW );
+            RenderLine( m_Lines[ QueueIndex ].Wrapped, iRect, Alpha, TextColor, 1, ui_font::h_left|ui_font::v_top, CHAT_DROP_SHADOW );
         }
     }
     
@@ -360,7 +360,7 @@ void hud_text::OnRender( player* pPlayer )
                                         ui_viewport::CONTENT_HEIGHT );
         
         xcolor TextColor = XCOLOR_YELLOW;
-        RenderLine( m_Bonus.SourceText, BonusRect, 255, TextColor, 1, ui_font::h_center|ui_font::v_top, TRUE );
+        RenderLine( m_Bonus.Source, BonusRect, 255, TextColor, 1, ui_font::h_center|ui_font::v_top, TRUE );
     }
 
     // Render Weapon Info Text
@@ -372,7 +372,7 @@ void hud_text::OnRender( player* pPlayer )
         iRect.r = s_wi_r; // 500
 
         xcolor TextColor = XCOLOR_BLUE;
-        RenderLine( m_WeaponInfo.SourceText, iRect, 255, TextColor, 0, ui_font::h_left|ui_font::v_bottom, TRUE );
+        RenderLine( m_WeaponInfo.Source, iRect, 255, TextColor, 0, ui_font::h_left|ui_font::v_bottom, TRUE );
     }
 
 #endif
@@ -395,16 +395,9 @@ inline void hud_text::AddLinesAndChars( s32& NumLines, s32& NumChars, const xwch
                 NumLines++;
             }
 
-            // Normal character?
-            else if( (*pLine & 0xFF00) != 0xFF00 ) 
-            {
-                NumChars++;
-            }
-
-            // Skip color codes.
             else
             {
-                pLine++;
+                NumChars++;
             }
 
             pLine++;
@@ -453,9 +446,9 @@ void hud_text::OnAdvanceSimulation( player* pPlayer, f32 DeltaTime )
         if( !m_Goals[ i ].InUse )
             continue;
 
-        AddLinesAndChars( LinesDisplayed, CharsDisplayed, m_Goals[ i ].WrappedText );
+        AddLinesAndChars( LinesDisplayed, CharsDisplayed, m_Goals[ i ].Wrapped.Text );
 #ifndef X_EDITOR
-        TextWidth = MAX( TextWidth, pFont->TextWidth( m_Goals[ i ].WrappedText ) );
+        TextWidth = MAX( TextWidth, pFont->TextWidth( m_Goals[ i ].Wrapped.Text ) );
 #endif
 
         if( m_Goals[ i ].Time >= 0.0f )
@@ -484,10 +477,10 @@ void hud_text::OnAdvanceSimulation( player* pPlayer, f32 DeltaTime )
 
         for( s32 i = m_TopLine; i >= 0; i-- )
         {
-            AddLinesAndChars( LinesDisplayed, CharsDisplayed, m_Lines[ i % MAX_QUEUE ].WrappedText );
+            AddLinesAndChars( LinesDisplayed, CharsDisplayed, m_Lines[ i % MAX_QUEUE ].Wrapped.Text );
 
 #ifndef X_EDITOR
-            TextWidth = MAX( TextWidth, pFont->TextWidth( m_Lines[ i % MAX_QUEUE ].WrappedText ) );
+            TextWidth = MAX( TextWidth, pFont->TextWidth( m_Lines[ i % MAX_QUEUE ].Wrapped.Text ) );
 #endif
 
             if( (LinesDisplayed > MAX_LINES_HARD) || (CharsDisplayed > MAX_CHARS_HARD) )
@@ -621,18 +614,9 @@ void hud_text::SetMaxWidth( s32 MaxWidth )
 
 //==============================================================================
 
-void hud_text::SetDisplayText( text_display& Display, const xwchar* pText )
+void hud_text::SetDisplayText( text_display& Display, const ui_text_data& Text )
 {
-    if( pText == NULL )
-    {
-        Display.SourceText[ 0 ] = 0;
-    }
-    else
-    {
-        x_wstrncpy( Display.SourceText, pText, MAX_DISPLAY_LENGTH - 1 );
-        Display.SourceText[ MAX_DISPLAY_LENGTH - 1 ] = 0;
-    }
-
+    Display.Source = Text;
     RewrapDisplayText( Display );
 }
 
@@ -643,62 +627,80 @@ void hud_text::RewrapDisplayText( text_display& Display )
 #ifndef X_EDITOR
     if( m_MaxTextWidth > 0 )
     {
-        irect TextRect( 0, 0, m_MaxTextWidth, 400 );
-
-        ui_font* pFont = g_UiMgr->GetFont( "small" );
-        xwstring WrappedLine;
-        pFont->TextWrap( Display.SourceText, TextRect, WrappedLine );
-
-        x_wstrncpy( Display.WrappedText,
-                    (const xwchar*)WrappedLine,
-                    MAX_DISPLAY_LENGTH - 1 );
-        Display.WrappedText[ MAX_DISPLAY_LENGTH - 1 ] = 0;
+        g_UiMgr->GetFont( "small" )->TextWrap( Display.Source, irect( 0, 0, m_MaxTextWidth, 400 ), Display.Wrapped );
         return;
     }
 #endif
-
-    x_wstrncpy( Display.WrappedText,
-                Display.SourceText,
-                MAX_DISPLAY_LENGTH - 1 );
-    Display.WrappedText[ MAX_DISPLAY_LENGTH - 1 ] = 0;
+    Display.Wrapped = Display.Source;
 }
 
 //==============================================================================
 
 void hud_text::AddLine( const xwchar* pLine )
 {
+    ui_text_data Text;
+    Text.Append( pLine );
+
+    AddLine( Text );
+}
+
+//==============================================================================
+
+void hud_text::UpdateGoal( s32 Seq, xbool Enabled, const xwchar* pGoal, f32 Time )
+{
+    ui_text_data Text;
+    Text.Append( pGoal );
+
+    UpdateGoal( Seq, Enabled, Text, Time );
+}
+
+//==============================================================================
+
+void hud_text::SetBonus( const xwchar* pText, f32 Time )
+{
+    ui_text_data Text;
+    Text.Append( pText );
+
+    SetBonus( Text, Time );
+}
+
+//==============================================================================
+
+void hud_text::SetWeaponInfo( const xwchar* pText, f32 Time )
+{
+    ui_text_data Text;
+    Text.Append( pText );
+
+    SetWeaponInfo( Text, Time );
+}
+
+//==============================================================================
+
+void hud_text::AddLine( const ui_text_data& Line )
+{
 #ifndef X_EDITOR
     m_TopLine++;
-
     text_display& Display = m_Lines[ m_TopLine % MAX_QUEUE ];
     Display.Reset();
-    SetDisplayText( Display, pLine );
-
-    s32 NumChars = 0;
-    while( Display.WrappedText[ NumChars ] != 0 )
-        NumChars++;
-
-    f32 StayTime = BASE_MSG_STAY + (NumChars * MSG_STAY_PER_CHAR);
-    if( StayTime > MAX_MSG_STAY )
-        StayTime = MAX_MSG_STAY;
-
+    SetDisplayText( Display, Line );
+    f32 StayTime = BASE_MSG_STAY + Display.Wrapped.Text.GetLength() * MSG_STAY_PER_CHAR;
     Display.InUse = TRUE;
-    Display.Time  = StayTime;
+    Display.Time = MIN( StayTime, MAX_MSG_STAY );
 #else
-    (void)pLine;
+    (void)Line;
 #endif
 }
 
 //==============================================================================
 
-void hud_text::AddGoal( s32 GoalID, const xwchar* pGoal, f32 Time )
+void hud_text::AddGoal( s32 GoalID, const ui_text_data& Goal, f32 Time )
 {
 #ifndef X_EDITOR
     for( s32 i = 0; i < MAX_GOALS; i++ )
     {
         if( !m_Goals[ i ].InUse )
         {
-            SetDisplayText( m_Goals[ i ], pGoal );
+            SetDisplayText( m_Goals[ i ], Goal );
 
             // Play Sound here?
             g_AudioMgr.Play("HUD_Text_Alert", TRUE );
@@ -717,14 +719,14 @@ void hud_text::AddGoal( s32 GoalID, const xwchar* pGoal, f32 Time )
     }
 #else
     (void)GoalID;
-    (void)pGoal;
+    (void)Goal;
     (void)Time;
 #endif
 }
 
 //==============================================================================
 
-void hud_text::UpdateGoal( s32 GoalID, xbool Enabled, const xwchar* pGoal, f32 Time )
+void hud_text::UpdateGoal( s32 GoalID, xbool Enabled, const ui_text_data& Goal, f32 Time )
 {
     s32 i;
     for( i = 0; i < MAX_GOALS; i++ )
@@ -753,7 +755,7 @@ void hud_text::UpdateGoal( s32 GoalID, xbool Enabled, const xwchar* pGoal, f32 T
             }
             
             // Copy the new source text and refresh its wrapped display cache.
-            SetDisplayText( m_Goals[ i ], pGoal );
+            SetDisplayText( m_Goals[ i ], Goal );
 
             //if( m_Goals[ i ].ScrollState > FLARE_START )
             //{
@@ -775,28 +777,28 @@ void hud_text::UpdateGoal( s32 GoalID, xbool Enabled, const xwchar* pGoal, f32 T
     // Creating:
     if( Enabled )
     {
-        AddGoal( GoalID, pGoal, Time );
+        AddGoal( GoalID, Goal, Time );
     }
 }
 
 //==============================================================================
 
-void hud_text::SetBonus( const xwchar* pBonus, f32 Time )
+void hud_text::SetBonus( const ui_text_data& Bonus, f32 Time )
 {
     m_Bonus.Time  = Time;
     m_Bonus.InUse = TRUE;
 
-    SetDisplayText( m_Bonus, pBonus );
+    SetDisplayText( m_Bonus, Bonus );
 }
 
 //==============================================================================
 
-void hud_text::SetWeaponInfo( const xwchar* pWeaponInfo, f32 Time )
+void hud_text::SetWeaponInfo( const ui_text_data& WeaponInfo, f32 Time )
 {
     m_WeaponInfo.Time  = Time;
     m_WeaponInfo.InUse = TRUE;
 
-    SetDisplayText( m_WeaponInfo, pWeaponInfo );
+    SetDisplayText( m_WeaponInfo, WeaponInfo );
 
 }
 

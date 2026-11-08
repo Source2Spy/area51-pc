@@ -1,5 +1,6 @@
 
 #include "Render/PrimitiveDebug.hpp"
+#include "Render/PipelinePrewarm.hpp"
 #include "ClothObject.hpp"
 #include "Parsing/TextIn.hpp"
 #include "Entropy.hpp"
@@ -8,7 +9,7 @@
 #include "GameLib/RigidGeomCollision.hpp"
 #include "Render/Render.hpp"
 #include "Objects/BaseProjectile.hpp"
-#include "NetworkMgr/NetObj.hpp"
+#include "NetworkMgr/Replication/NetObj.hpp"
 #include "Objects/Actor/Actor.hpp"
 #include "Objects/Player/Player.hpp"
 
@@ -25,6 +26,11 @@
 
 static struct cloth_object_desc : public object_desc
 {
+    virtual xbool CollectRenderPipelineRequirements( render::PipelinePrewarmContext& Context ) const
+    {
+        return Context.QueueDynamic();
+    }
+
     //-------------------------------------------------------------------------
 
     cloth_object_desc( void ) : object_desc( 
@@ -120,6 +126,8 @@ void cloth_object::OnInit( void )
     // Call base class
     object::OnInit() ;
 
+    m_FloorProperties.Init( 1.0f, 0.128f, GetGuid(), 10000.0f );
+
     // Reset cloth
     m_ClothSim.SetObjectGuid( GetGuid() );
     m_ClothSim.Reset() ;
@@ -148,6 +156,8 @@ bbox cloth_object::GetLocalBBox( void ) const
 
 void cloth_object::OnAdvanceSimulation( f32 DeltaTime )
 {
+    m_FloorProperties.Update( GetPosition(), DeltaTime );
+
     player* pViewingPlayer = SMP_UTIL_GetActivePlayer();
     if( pViewingPlayer &&
         (pViewingPlayer->GetSimulationView().BBoxInView( GetBBox() ) != view::VISIBLE_NONE) )
@@ -224,8 +234,8 @@ void cloth_object::OnRender( void )
     Flags |= GetRenderMode();
 
     // Render rigid geometry and cloth geometry
-    m_ClothRender.RenderRigidGeometry( m_ClothSim, Flags );
-    m_ClothRender.RenderClothGeometry( m_ClothSim, 0, Flags );
+    m_ClothRender.RenderRigidGeometry( m_ClothSim, m_FloorProperties.GetColor(), Flags );
+    m_ClothRender.RenderClothGeometry( m_ClothSim, m_FloorProperties.GetColor(), 0, Flags );
 
 #ifdef X_EDITOR
 
@@ -251,7 +261,8 @@ void cloth_object::OnRenderShadowCast( u64 ProjMask )
 void cloth_object::OnPain ( const pain& Pain )
 {
     // Prepare pain (just use settings from coke can since the values are good)
-    Pain.ComputeDamageAndForce( "COKE_CAN", GetGuid(), GetBBox().GetCenter() );
+    if( !Pain.ComputeDamageAndForce( "COKE_CAN", GetGuid(), GetBBox().GetCenter() ) )
+        return;
 
     // Let cloth handle it
     m_ClothSim.OnPain( Pain );
@@ -319,7 +330,7 @@ xbool cloth_object::GetColDetails( s32 Key, detail_tri& Tri )
     if( !pRigidGeom )
         return( FALSE );
 
-    if( !pRigidGeom->m_collision.nHighClusters )
+    if( !pRigidGeom->m_Collision.nHighClusters )
         return( FALSE );
 
     return RigidGeom_GetColDetails( pRigidGeom,

@@ -23,13 +23,16 @@
 #include "UI/ui_dialog.hpp"
 #include "UI/ui_manager.hpp"
 #include "UI/ui_renderer.hpp"
+#include "Render/Render.hpp"
 
 #include "Dialogs/dlg_MainMenu.hpp"
 #include "Dialogs/dlg_Settings.hpp"
 #include "Dialogs/dlg_AudioSettings.hpp"
 #include "Dialogs/dlg_Headset.hpp"
 #include "Dialogs/dlg_GraphicsSettings.hpp"
+#include "Dialogs/dlg_GraphicsAdvancedSettings.hpp"
 #include "Dialogs/dlg_DisplaySettings.hpp"
+#include "Dialogs/dlg_UISettings.hpp"
 #include "Dialogs/dlg_LanguageSettings.hpp"
 #include "Dialogs/dlg_PressStart.hpp"
 #include "Dialogs/dlg_MultiOptions.hpp"
@@ -38,17 +41,13 @@
 #include "Dialogs/dlg_ProfileOptions.hpp"
 #include "Dialogs/dlg_ProfileControls.hpp"
 #include "Dialogs/dlg_ProfileMouseControls.hpp"
+#include "Dialogs/dlg_ProfileKeyboardBindings.hpp"
 #include "Dialogs/dlg_ProfileGamepadControls.hpp"
-#include "Dialogs/dlg_ProfileAV.hpp"
-#include "Dialogs/dlg_ProfileHeadset.hpp"
 #include "Dialogs/dlg_OnlineConnect.hpp"
 #include "Dialogs/dlg_OnlineHost.hpp"
 #include "Dialogs/dlg_OnlineHostOptions.hpp"
 #include "Dialogs/dlg_OnlineJoin.hpp"
-#include "Dialogs/dlg_JoinFilter.hpp"
-#include "Dialogs/dlg_OnlinePlayers.hpp"
 #include "Dialogs/dlg_OnlineLevelSelect.hpp"
-#include "Dialogs/dlg_Friends.hpp"
 #include "Dialogs/dlg_Players.hpp"
 #include "Dialogs/dlg_StartGame.hpp"
 #include "Dialogs/dlg_LoadGame.hpp"
@@ -62,7 +61,6 @@
 #include "Dialogs/dlg_Leaderboard.hpp"
 #include "Dialogs/dlg_TeamLeaderboard.hpp"
 #include "Dialogs/dlg_BigLeaderboard.hpp"
-#include "Dialogs/dlg_DemoMainMenu.hpp"
 #include "Dialogs/dlg_AvatarSelect.hpp"
 #include "Dialogs/dlg_ReportError.hpp"
 #include "Dialogs/dlg_CampaignMenu.hpp"
@@ -74,8 +72,6 @@
 #include "Dialogs/dlg_OnlineLogin.hpp"
 #include "Dialogs/dlg_LoreMenu.hpp"
 #include "Dialogs/dlg_TeamChange.hpp"
-#include "Dialogs/dlg_SubMenu.hpp"
-#include "Dialogs/dlg_Feedback.hpp"
 #include "Dialogs/dlg_SecretsMenu.hpp"
 #include "Dialogs/dlg_Stats.hpp"
 #include "Dialogs/dlg_Autosave.hpp"
@@ -92,10 +88,10 @@
 #endif
 
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/GameServer.hpp"
-#include "NetworkMgr/GameClient.hpp"
-#include "NetworkMgr/GameMgr.hpp"
-#include "NetworkMgr/MatchMgr.hpp"
+#include "NetworkMgr/Connection/GameServer.hpp"
+#include "NetworkMgr/Connection/GameClient.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
+#include "NetworkMgr/Match/MatchMgr.hpp"
 
 #include "Parsing/TextIn.hpp"
 #include "AudioMgr/AudioMgr.hpp"
@@ -111,8 +107,6 @@ extern xtimer g_DemoIdleTimer;
 #endif
 
 //=========================================================================
-
-//=========================================================================
 //  Defines
 //=========================================================================
 
@@ -121,8 +115,6 @@ extern xtimer g_DemoIdleTimer;
 
 //=========================================================================
 //  Structs                                                                
-//=========================================================================
-                                                                           
 //=========================================================================
 //  Globals                                                                
 //=========================================================================
@@ -140,31 +132,9 @@ static xbool    s_FirstMap = TRUE;
 static s32 s_ProfileOptLeft    = 106;
 static s32 s_ProfileOptRight   = 406;
 
-static xbool state_mgr_ClearBackBuffer( void )
-{
-    rtarget_backbuffer_pass_desc PassDesc;
-    PassDesc.bUseDepth = FALSE;
-    if( !rtarget_BeginBackBufferPass( PassDesc ) )
-    {
-        x_DebugMsg( "StateMgr: failed to begin clear-only backbuffer pass\n" );
-        eng_ResetAfterException();
-        return FALSE;
-    }
-
-    rtarget_EndPass();
-    return TRUE;
-}
-
-//==============================================================================
-
 static xbool state_mgr_FinishClearOnlyFrame( void )
 {
-    if( !state_mgr_ClearBackBuffer() )
-    {
-        return FALSE;
-    }
-
-    return eng_EndFrame();
+    return render::EndFrame() && eng_EndFrame();
 }
 
 //=========================================================================
@@ -244,17 +214,20 @@ void state_mgr::Init( void )
     dlg_audio_settings_register     ( g_UiMgr );
     dlg_headset_register            ( g_UiMgr );
     dlg_graphics_settings_register  ( g_UiMgr );
+    dlg_graphics_advanced_settings_register
+                                    ( g_UiMgr );
     dlg_display_settings_register   ( g_UiMgr );
+    dlg_ui_settings_register        ( g_UiMgr );
     dlg_language_settings_register  ( g_UiMgr );
     dlg_profile_select_register     ( g_UiMgr );
     dlg_profile_options_register    ( g_UiMgr );
     dlg_profile_controls_register   ( g_UiMgr );
+    dlg_profile_keyboard_bindings_register
+                                    ( g_UiMgr );
     dlg_profile_mouse_controls_register
                                     ( g_UiMgr );
     dlg_profile_gamepad_controls_register
                                     ( g_UiMgr );
-    dlg_profile_av_register         ( g_UiMgr );
-    dlg_profile_headset_register    ( g_UiMgr );
     dlg_press_start_register        ( g_UiMgr );
     dlg_multi_player_register       ( g_UiMgr );
     dlg_multi_options_register      ( g_UiMgr );
@@ -266,10 +239,7 @@ void state_mgr::Init( void )
     dlg_online_host_register        ( g_UiMgr );
     dlg_online_host_options_register( g_UiMgr );
     dlg_online_join_register        ( g_UiMgr );
-    dlg_join_filter_register        ( g_UiMgr );
     dlg_online_level_select_register( g_UiMgr );
-    dlg_online_players_register     ( g_UiMgr );
-    dlg_friends_register            ( g_UiMgr );
     dlg_players_register            ( g_UiMgr );
     dlg_start_game_register         ( g_UiMgr );
     dlg_load_game_register          ( g_UiMgr );
@@ -283,7 +253,6 @@ void state_mgr::Init( void )
     dlg_leaderboard_register        ( g_UiMgr );
     dlg_team_leaderboard_register   ( g_UiMgr );
     dlg_big_leaderboard_register    ( g_UiMgr );
-    dlg_demo_main_menu_register     ( g_UiMgr );
     dlg_avatar_select_register      ( g_UiMgr );
 
     dlg_report_error_register       ( g_UiMgr );
@@ -296,8 +265,6 @@ void state_mgr::Init( void )
     dlg_kick_player_register        ( g_UiMgr );
     dlg_team_change_register        ( g_UiMgr );
     dlg_online_login_register       ( g_UiMgr );
-    dlg_submenu_register            ( g_UiMgr );
-    dlg_feedback_register           ( g_UiMgr );
     dlg_secrets_menu_register       ( g_UiMgr );
     dlg_stats_register              ( g_UiMgr );
     dlg_autosave_register           ( g_UiMgr );
@@ -398,10 +365,10 @@ void state_mgr::Init( void )
     // initialize the secrets list
     g_SecretList.Init();
 
-    g_RscMgr.Load( PRELOAD_FILE("DX_FrontEnd.audiopkg"    ) );
-    g_RscMgr.Load( PRELOAD_FILE("SFX_FrontEnd.audiopkg"   ) );
-    g_RscMgr.Load( PRELOAD_FILE("MUSIC_FrontEnd.audiopkg" ) );
-    g_RscMgr.Load( PRELOAD_FILE("DREAMLAND.audiopkg" ) );    
+    g_RscMgr.Load( PRELOAD_FILE("AUDIO/DX_FRONTEND.AUDIOPKG"    ) );
+    g_RscMgr.Load( PRELOAD_FILE("AUDIO/SFX_FRONTEND.AUDIOPKG"   ) );
+    g_RscMgr.Load( PRELOAD_FILE("AUDIO/MUSIC_FRONTEND.AUDIOPKG" ) );
+    g_RscMgr.Load( PRELOAD_FILE("AUDIO/DREAMLAND.AUDIOPKG" ) );    
 
     // Let's get started!
 #if CONFIG_IS_DEMO
@@ -504,7 +471,9 @@ const char* state_mgr::GetStateName( sm_states State )
         LABEL_STRING( SM_SETTINGS_AUDIO );
         LABEL_STRING( SM_SETTINGS_HEADSET );
         LABEL_STRING( SM_SETTINGS_GRAPHICS );
+        LABEL_STRING( SM_SETTINGS_GRAPHICS_ADVANCED );
         LABEL_STRING( SM_SETTINGS_DISPLAY );
+        LABEL_STRING( SM_SETTINGS_UI );
         LABEL_STRING( SM_SETTINGS_LANGUAGE );
         LABEL_STRING( SM_SETTINGS_SAVE_DATA_SELECT );
         LABEL_STRING( SM_MANAGE_PROFILES );
@@ -544,11 +513,12 @@ const char* state_mgr::GetStateName( sm_states State )
         LABEL_STRING( SM_PROFILE_CONTROLS );
         LABEL_STRING( SM_PROFILE_AVATAR );
         LABEL_STRING( SM_PROFILE_MOUSE_CONTROLS );
+        LABEL_STRING( SM_PROFILE_KEYBOARD_BINDINGS );
         LABEL_STRING( SM_PROFILE_GAMEPAD_CONTROLS );
 
         LABEL_STRING( SM_ONLINE_CONNECT );
         LABEL_STRING( SM_NETWORK_DISCONNECT );
-        LABEL_STRING( SM_ONLINE_AUTHENTICATE );
+        LABEL_STRING( SM_ONLINE_IDENTITY );
         LABEL_STRING( SM_ONLINE_PROFILE_SELECT );
         LABEL_STRING( SM_ONLINE_PROFILE_OPTIONS );
         LABEL_STRING( SM_ONLINE_PROFILE_CONTROLS );
@@ -557,16 +527,8 @@ const char* state_mgr::GetStateName( sm_states State )
         LABEL_STRING( SM_ONLINE_SAVE_DATA_RESELECT );
 
         LABEL_STRING( SM_ONLINE_MAIN_MENU );
-        LABEL_STRING( SM_ONLINE_QUICKMATCH );
-        LABEL_STRING( SM_ONLINE_OPTIMATCH );
-        LABEL_STRING( SM_ONLINE_JOIN_FILTER );
         LABEL_STRING( SM_ONLINE_JOIN_MENU );
         LABEL_STRING( SM_ONLINE_JOIN_SAVE_SETTINGS );
-        LABEL_STRING( SM_SERVER_PLAYERS_MENU );
-        LABEL_STRING( SM_ONLINE_PLAYERS_MENU );
-        LABEL_STRING( SM_ONLINE_FEEDBACK_MENU );
-        LABEL_STRING( SM_ONLINE_FEEDBACK_MENU_FRIEND );
-        LABEL_STRING( SM_ONLINE_FRIENDS_MENU );
         LABEL_STRING( SM_ONLINE_STATS );
         LABEL_STRING( SM_ONLINE_EDIT_PROFILE );
         LABEL_STRING( SM_ONLINE_EDIT_CONTROLS );
@@ -574,8 +536,6 @@ const char* state_mgr::GetStateName( sm_states State )
         LABEL_STRING( SM_ONLINE_LOGIN );    
 
         LABEL_STRING( SM_ONLINE_HOST_MENU );
-        LABEL_STRING( SM_ONLINE_HOST_MENU_OPTIONS );
-        LABEL_STRING( SM_HOST_LEVEL_SELECT );
         LABEL_STRING( SM_HOST_SAVE_SETTINGS );
 
 #ifndef CONFIG_RETAIL
@@ -604,7 +564,9 @@ const char* state_mgr::GetStateName( sm_states State )
         LABEL_STRING( SM_PAUSE_AUDIO );
         LABEL_STRING( SM_PAUSE_HEADSET );
         LABEL_STRING( SM_PAUSE_GRAPHICS );
+        LABEL_STRING( SM_PAUSE_GRAPHICS_ADVANCED );
         LABEL_STRING( SM_PAUSE_DISPLAY );
+        LABEL_STRING( SM_PAUSE_UI );
         LABEL_STRING( SM_PAUSE_LANGUAGE );
         LABEL_STRING( SM_PAUSE_SETTINGS_SELECT );
         LABEL_STRING( SM_PAUSE_PROFILE_SAVE_SELECT );
@@ -618,7 +580,9 @@ const char* state_mgr::GetStateName( sm_states State )
         LABEL_STRING( SM_PAUSE_MP_AUDIO );
         LABEL_STRING( SM_PAUSE_MP_HEADSET );
         LABEL_STRING( SM_PAUSE_MP_GRAPHICS );
+        LABEL_STRING( SM_PAUSE_MP_GRAPHICS_ADVANCED );
         LABEL_STRING( SM_PAUSE_MP_DISPLAY );
+        LABEL_STRING( SM_PAUSE_MP_UI );
         LABEL_STRING( SM_PAUSE_MP_LANGUAGE );
         LABEL_STRING( SM_PAUSE_MP_SETTINGS_SELECT );
         LABEL_STRING( SM_PAUSE_MP_PROFILE_SAVE_SELECT );
@@ -627,10 +591,7 @@ const char* state_mgr::GetStateName( sm_states State )
         LABEL_STRING( SM_PAUSE_ONLINE );
         LABEL_STRING( SM_PAUSE_ONLINE_VOTE_MAP );
         LABEL_STRING( SM_PAUSE_ONLINE_VOTE_KICK );
-        LABEL_STRING( SM_PAUSE_ONLINE_FRIENDS );
         LABEL_STRING( SM_PAUSE_ONLINE_PLAYERS );
-        LABEL_STRING( SM_PAUSE_ONLINE_FEEDBACK );
-        LABEL_STRING( SM_PAUSE_ONLINE_FEEDBACK_FRIEND );
         LABEL_STRING( SM_PAUSE_ONLINE_SERVER_CONFIG );
         LABEL_STRING( SM_PAUSE_ONLINE_OPTIONS );
         LABEL_STRING( SM_PAUSE_ONLINE_CONTROLS );
@@ -638,7 +599,9 @@ const char* state_mgr::GetStateName( sm_states State )
         LABEL_STRING( SM_PAUSE_ONLINE_AUDIO );
         LABEL_STRING( SM_PAUSE_ONLINE_HEADSET );
         LABEL_STRING( SM_PAUSE_ONLINE_GRAPHICS );
+        LABEL_STRING( SM_PAUSE_ONLINE_GRAPHICS_ADVANCED );
         LABEL_STRING( SM_PAUSE_ONLINE_DISPLAY );
+        LABEL_STRING( SM_PAUSE_ONLINE_UI );
         LABEL_STRING( SM_PAUSE_ONLINE_LANGUAGE );
         LABEL_STRING( SM_PAUSE_ONLINE_SAVE_SELECT );
         LABEL_STRING( SM_PAUSE_ONLINE_SAVE_DATA_RESELECT );
@@ -646,9 +609,7 @@ const char* state_mgr::GetStateName( sm_states State )
         LABEL_STRING( SM_PAUSE_ONLINE_KICK_PLAYER );
 
         LABEL_STRING( SM_PAUSE_ONLINE_TEAM_CHANGE );
-        LABEL_STRING( SM_PAUSE_ONLINE_RECONFIG_ONE );
-        LABEL_STRING( SM_PAUSE_ONLINE_RECONFIG_TWO );
-        LABEL_STRING( SM_PAUSE_ONLINE_RECONFIG_MAP );
+        LABEL_STRING( SM_PAUSE_ONLINE_RECONFIG );
         LABEL_STRING( SM_PAUSE_ONLINE_SAVE_SETTINGS );
 
         LABEL_STRING( SM_END_PAUSE );
@@ -672,7 +633,6 @@ const char* state_mgr::GetStateName( sm_states State )
         LABEL_STRING( SM_GAME_EXIT_SETTINGS_SELECT );
         LABEL_STRING( SM_GAME_EXIT_REDIRECT );
         LABEL_STRING( SM_GAME_OVER );
-        LABEL_STRING( SM_FOLLOW_BUDDY );
 
         default:                                ASSERTS( FALSE, "Unknown state" );
     }
@@ -863,13 +823,6 @@ void state_mgr::CheckControllers( void )
     if( !InSystemError() )
     {
         s32 ControllerID;
-#if defined(TARGET_PS2)
-        input_gadget ControllerQuery = INPUT_PS2_QRY_PAD_PRESENT;
-        input_gadget AnalogQuery     = INPUT_PS2_QRY_ANALOG_MODE;
-#elif defined(TARGET_XBOX)
-        input_gadget ControllerQuery = INPUT_XBOX_QRY_PAD_PRESENT;
-        input_gadget AnalogQuery     = INPUT_XBOX_QRY_ANALOG_MODE;
-#endif
 
         switch (m_State)
         {
@@ -1050,7 +1003,7 @@ void state_mgr::Update( f32 DeltaTime )
             default:
             {
                 // keep it looping
-                if( !g_AudioMgr.IsValidVoiceId( s_VoiceID ) )
+                if( !g_AudioMgr.IsValidVoiceIdCached( s_VoiceID ) )
                 {
                     if( s_MusicRestartDelay <= 0.0f )
                     {
@@ -1085,26 +1038,38 @@ void state_mgr::UpdateLevelLoading( f32 DeltaTime )
 
 void state_mgr::Render( void )
 {
-   if ( ( m_State != SM_PLAYING_GAME ) || ( m_bDoSystemError ) )
-   {
-        // Setup camera view
-        eng_MaximizeViewport( m_View );
-        eng_SetView ( m_View );
-        eng_SetBackColor( xcolor( 0,0,0 ) );
+    if( ( m_State != SM_PLAYING_GAME ) || m_bDoSystemError )
+        RenderLoading();
+}
+
+//=========================================================================
+
+void state_mgr::RenderLoading( void )
+{
+    // Setup camera view
+    eng_MaximizeViewport( m_View );
+    eng_SetView ( m_View );
+    eng_SetBackColor( xcolor( 0,0,0 ) );
 
 #if defined( USE_MOVIES )
-        // render the movie in the background
-        if( m_bPlayMovie )
+    // render the movie in the background
+    if( m_bPlayMovie )
+    {
+        if( Movie.IsPlaying() )
         {
-            if( Movie.IsPlaying() )
-            {
-                Movie.Render();
-            }
+            Movie.Render();
         }
+    }
 #endif
 
-        // Render UI
-        g_UiMgr->Render();
+    // Render UI
+    g_UiMgr->Render();
+    if( m_State == SM_PLAYING_GAME && !m_bDoSystemError )
+    {
+        irect TextRect( 0, 0, ui_viewport::CONTENT_WIDTH, ui_viewport::CONTENT_HEIGHT );
+        g_UiMgr->RenderText( g_UiMgr->FindFont( "large" ), TextRect,
+                            ui_font::h_center | ui_font::v_center, XCOLOR_WHITE,
+                            g_StringTableMgr( "ui", "IDS_LOADING_MSG" ) );
     }
 }
 
@@ -1134,6 +1099,7 @@ void state_mgr::DummyScreen( const char* message, xbool canSkip, s32 waitTime )
         {
             break;
         }
+        render::BeginFrame();
 
         const f32 DeltaTime = FrameTimer.TripSec();
         if( !x_isvalid( DeltaTime ) || (DeltaTime <= 0.0f) || (DeltaTime > 0.1f) )
@@ -1174,14 +1140,9 @@ void state_mgr::DummyScreen( const char* message, xbool canSkip, s32 waitTime )
         eng_SetView ( m_View );
         eng_SetBackColor( xcolor(0,0,0) );
 
-        if( !state_mgr_ClearBackBuffer() )
-        {
-            break;
-        }
-
         if( !eng_Begin("DummyScreen") )
         {
-            if( !eng_EndFrame() )
+            if( !render::EndFrame() || !eng_EndFrame() )
             {
                 break;
             }
@@ -1196,11 +1157,11 @@ void state_mgr::DummyScreen( const char* message, xbool canSkip, s32 waitTime )
         H = W/1.3f;
 
         s32     Line = 12;
-        x_printfxy( 30-x_strlen(message)/2, Line++, message );
+        x_printfxy( 30-x_strlen(message)/2, Line++, "%s", message );
 
         eng_End();
 
-        if( !eng_EndFrame() )
+        if( !render::EndFrame( FALSE ) || !eng_EndFrame() )
         {
             break;
         }
@@ -1222,7 +1183,9 @@ void state_mgr::EnterState( sm_states State )
         case SM_SETTINGS_AUDIO:                    EnterSettingsAudio();               break;
         case SM_SETTINGS_HEADSET:                  EnterSettingsHeadset();             break;
         case SM_SETTINGS_GRAPHICS:                 EnterSettingsGraphics();            break;
+        case SM_SETTINGS_GRAPHICS_ADVANCED:        EnterSettingsGraphicsAdvanced();   break;
         case SM_SETTINGS_DISPLAY:                  EnterSettingsDisplay();             break;
+        case SM_SETTINGS_UI:                       EnterSettingsUI();                 break;
         case SM_SETTINGS_LANGUAGE:                 EnterSettingsLanguage();            break;
         case SM_SETTINGS_SAVE_DATA_SELECT:         EnterSettingsSaveDataSelect();      break;
         case SM_MANAGE_PROFILES:                   EnterManageProfiles();              break;
@@ -1248,6 +1211,7 @@ void state_mgr::EnterState( sm_states State )
         case SM_PROFILE_CONTROLS:                  EnterProfileControls();             break;
         case SM_PROFILE_AVATAR:                    EnterProfileAvatar();               break;
         case SM_PROFILE_MOUSE_CONTROLS:            EnterProfileMouseControls();        break;
+        case SM_PROFILE_KEYBOARD_BINDINGS:         EnterProfileKeyboardBindings();     break;
         case SM_PROFILE_GAMEPAD_CONTROLS:          EnterProfileGamepadControls();      break;
         case SM_PROFILE_AVATAR_MP:                 EnterProfileAvatarMP();             break;
         case SM_PROFILE_SAVE_SELECT_MP:            EnterProfileSaveSelectMP();         break;
@@ -1258,10 +1222,9 @@ void state_mgr::EnterState( sm_states State )
         case SM_MP_LEVEL_SELECT:                   EnterMPLevelSelect();               break;
         case SM_MP_SAVE_SETTINGS:                  EnterMPSaveSettings();              break;
         case SM_PROFILE_CONTROLS_MP:               EnterProfileControlsMP();           break;
-        case SM_ONLINE_SILENT_LOGON:               EnterOnlineSilentLogin();           break;
         case SM_ONLINE_CONNECT:                    EnterOnlineConnect();               break;
         case SM_NETWORK_DISCONNECT:                EnterNetworkDisconnect();           break;
-        case SM_ONLINE_AUTHENTICATE:               EnterOnlineAuthenticate();          break;
+        case SM_ONLINE_IDENTITY:               EnterOnlineIdentity();          break;
         case SM_ONLINE_PROFILE_SELECT:             EnterOnlineProfileSelect();         break;
         case SM_ONLINE_PROFILE_OPTIONS:            EnterOnlineProfileOptions();        break;
         case SM_ONLINE_PROFILE_CONTROLS:           EnterOnlineProfileControls();       break;
@@ -1270,23 +1233,13 @@ void state_mgr::EnterState( sm_states State )
         case SM_ONLINE_SAVE_DATA_RESELECT:         EnterOnlineSaveDataReselect();      break;
         case SM_ONLINE_MAIN_MENU:                  EnterOnlineMain();                  break;
         case SM_ONLINE_HOST_MENU:                  EnterOnlineHost();                  break;
-        case SM_ONLINE_HOST_MENU_OPTIONS:          EnterOnlineHostOptions();           break;
         case SM_HOST_SAVE_SETTINGS:                EnterHostSaveSettings();            break;
-        case SM_ONLINE_QUICKMATCH:                 EnterOnlineQuickMatch();            break;
-        case SM_ONLINE_OPTIMATCH:                  EnterOnlineOptiMatch();             break;
-        case SM_ONLINE_JOIN_FILTER:                EnterOnlineJoinFilter();            break;
         case SM_ONLINE_JOIN_MENU:                  EnterOnlineJoin();                  break;
         case SM_ONLINE_JOIN_SAVE_SETTINGS:         EnterOnlineJoinSaveSettings();      break;
-        case SM_SERVER_PLAYERS_MENU:               EnterServerPlayers();               break;
-        case SM_ONLINE_PLAYERS_MENU:               EnterOnlinePlayers();               break;
-        case SM_ONLINE_FEEDBACK_MENU:              EnterOnlineFeedback();              break;
-        case SM_ONLINE_FEEDBACK_MENU_FRIEND:       EnterOnlineFeedbackFriend();        break;
-        case SM_ONLINE_FRIENDS_MENU:               EnterOnlineFriends();               break;
         case SM_ONLINE_STATS:                      EnterOnlineStats();                 break;
         case SM_ONLINE_EDIT_PROFILE:               EnterOnlineEditProfile();           break;
         case SM_ONLINE_EDIT_CONTROLS:              EnterOnlineEditControls();          break;
         case SM_ONLINE_EDIT_AVATAR:                EnterOnlineEditAvatar();            break;
-        case SM_HOST_LEVEL_SELECT:                 EnterHostLevelSelect();             break;
 #ifndef CONFIG_RETAIL                              
         case SM_LEVEL_SELECT:                      EnterLevelSelect();                 break;
 #endif                                             
@@ -1308,7 +1261,9 @@ void state_mgr::EnterState( sm_states State )
         case SM_PAUSE_AUDIO:                       EnterPauseAudio();                  break;
         case SM_PAUSE_HEADSET:                     EnterPauseHeadset();                break;
         case SM_PAUSE_GRAPHICS:                    EnterPauseGraphics();               break;
+        case SM_PAUSE_GRAPHICS_ADVANCED:           EnterPauseGraphicsAdvanced();      break;
         case SM_PAUSE_DISPLAY:                     EnterPauseDisplay();                break;
+        case SM_PAUSE_UI:                          EnterPauseUI();                    break;
         case SM_PAUSE_LANGUAGE:                    EnterPauseLanguage();               break;
         case SM_PAUSE_SETTINGS_SELECT:             EnterPauseSettingsSelect();         break;
         case SM_PAUSE_PROFILE_SAVE_SELECT:         EnterPauseSaveDataSaveSelect();     break;
@@ -1320,7 +1275,9 @@ void state_mgr::EnterState( sm_states State )
         case SM_PAUSE_MP_AUDIO:                    EnterPauseMPAudio();                break;
         case SM_PAUSE_MP_HEADSET:                  EnterPauseMPHeadset();              break;
         case SM_PAUSE_MP_GRAPHICS:                 EnterPauseMPGraphics();             break;
+        case SM_PAUSE_MP_GRAPHICS_ADVANCED:        EnterPauseMPGraphicsAdvanced();    break;
         case SM_PAUSE_MP_DISPLAY:                  EnterPauseMPDisplay();              break;
+        case SM_PAUSE_MP_UI:                       EnterPauseMPUI();                  break;
         case SM_PAUSE_MP_LANGUAGE:                 EnterPauseMPLanguage();             break;
         case SM_PAUSE_MP_SETTINGS_SELECT:          EnterPauseMPSettingsSelect();       break;
         case SM_PAUSE_MP_PROFILE_SAVE_SELECT:      EnterPauseMPSaveDataSaveSelect();   break;
@@ -1328,10 +1285,7 @@ void state_mgr::EnterState( sm_states State )
         case SM_PAUSE_ONLINE:                      EnterPauseOnline();                 break;
         case SM_PAUSE_ONLINE_VOTE_MAP:             EnterPauseOnlineVoteMap();          break;
         case SM_PAUSE_ONLINE_VOTE_KICK:            EnterPauseOnlineVoteKick();         break;
-        case SM_PAUSE_ONLINE_FRIENDS:              EnterPauseOnlineFriends();          break;
         case SM_PAUSE_ONLINE_PLAYERS:              EnterPauseOnlinePlayers();          break;
-        case SM_PAUSE_ONLINE_FEEDBACK:             EnterPauseOnlineFeedback();         break;
-        case SM_PAUSE_ONLINE_FEEDBACK_FRIEND:      EnterPauseOnlineFeedbackFriend();   break;
         case SM_PAUSE_ONLINE_SERVER_CONFIG:        EnterPauseServerConfig();           break;
         case SM_PAUSE_ONLINE_OPTIONS:              EnterPauseOnlineOptions();          break;
         case SM_PAUSE_ONLINE_CONTROLS:             EnterPauseOnlineControls();         break;
@@ -1339,16 +1293,16 @@ void state_mgr::EnterState( sm_states State )
         case SM_PAUSE_ONLINE_AUDIO:                EnterPauseOnlineAudio();            break;
         case SM_PAUSE_ONLINE_HEADSET:              EnterPauseOnlineHeadset();          break;
         case SM_PAUSE_ONLINE_GRAPHICS:             EnterPauseOnlineGraphics();         break;
+        case SM_PAUSE_ONLINE_GRAPHICS_ADVANCED:    EnterPauseOnlineGraphicsAdvanced(); break;
         case SM_PAUSE_ONLINE_DISPLAY:              EnterPauseOnlineDisplay();          break;
+        case SM_PAUSE_ONLINE_UI:                   EnterPauseOnlineUI();              break;
         case SM_PAUSE_ONLINE_LANGUAGE:             EnterPauseOnlineLanguage();         break;
         case SM_PAUSE_ONLINE_SAVE_SELECT:          EnterPauseOnlineSaveSelect();       break;
         case SM_PAUSE_ONLINE_SAVE_DATA_RESELECT:   EnterPauseOnlineSaveDataReselect(); break;
         case SM_PAUSE_ONLINE_CHANGE_MAP:           EnterPauseOnlineChangeMap();        break;
         case SM_PAUSE_ONLINE_KICK_PLAYER:          EnterPauseOnlineKickPlayer();       break;
         case SM_PAUSE_ONLINE_TEAM_CHANGE:          EnterPauseOnlineTeamChange();       break;
-        case SM_PAUSE_ONLINE_RECONFIG_ONE:         EnterPauseOnlineReconfigOne();      break;
-        case SM_PAUSE_ONLINE_RECONFIG_TWO:         EnterPauseOnlineReconfigTwo();      break;
-        case SM_PAUSE_ONLINE_RECONFIG_MAP:         EnterPauseOnlineReconfigMap();      break;
+        case SM_PAUSE_ONLINE_RECONFIG:            EnterPauseOnlineReconfig();         break;
         case SM_PAUSE_ONLINE_SAVE_SETTINGS:        EnterPauseOnlineSaveSettings();     break;
         case SM_PAUSE_MP_SCORE:                    EnterPauseMPScore();                break;
         case SM_END_PAUSE:                         EnterEndPause();                    break;
@@ -1374,7 +1328,6 @@ void state_mgr::EnterState( sm_states State )
         case SM_GAME_OVER:                         EnterGameOver();                    break;
                                                    
         case SM_ONLINE_LOGIN:                      EnterOnlineLogin();                 break;
-        case SM_FOLLOW_BUDDY:                      EnterFollowBuddy();                 break;
         case SM_PLAYING_GAME:                      EnterPlayingGame();                 break;
 
         // No setup required
@@ -1410,7 +1363,6 @@ void state_mgr::ExitState( sm_states State )
         case SM_ONLINE_LOGIN:                   ExitOnlineLogin();              break;
         case SM_NETWORK_DISCONNECT:             ExitNetworkDisconnect();        break;
         case SM_PLAYING_GAME:                   ExitPlayingGame();              break;
-        case SM_ONLINE_QUICKMATCH:              ExitOnlineQuickMatch();         break;
 
         // No clean up required
         default:
@@ -1438,7 +1390,9 @@ void state_mgr::UpdateState( sm_states State, f32 DeltaTime )
         case SM_SETTINGS_AUDIO:                     UpdateSettingsAudio();              break;
         case SM_SETTINGS_HEADSET:                   UpdateSettingsHeadset();            break;
         case SM_SETTINGS_GRAPHICS:                  UpdateSettingsGraphics();           break;
+        case SM_SETTINGS_GRAPHICS_ADVANCED:         UpdateSettingsGraphicsAdvanced();  break;
         case SM_SETTINGS_DISPLAY:                   UpdateSettingsDisplay();            break;
+        case SM_SETTINGS_UI:                        UpdateSettingsUI();                break;
         case SM_SETTINGS_LANGUAGE:                  UpdateSettingsLanguage();           break;
         case SM_SETTINGS_SAVE_DATA_SELECT:          UpdateSettingsSaveDataSelect();     break;
                                                     
@@ -1466,6 +1420,7 @@ void state_mgr::UpdateState( sm_states State, f32 DeltaTime )
         case SM_PROFILE_CONTROLS:                   UpdateProfileControls();            break;
         case SM_PROFILE_AVATAR:                     UpdateProfileAvatar();              break;
         case SM_PROFILE_MOUSE_CONTROLS:             UpdateProfileDeviceControls();      break;
+        case SM_PROFILE_KEYBOARD_BINDINGS:          UpdateProfileDeviceControls();      break;
         case SM_PROFILE_GAMEPAD_CONTROLS:           UpdateProfileDeviceControls();      break;
         case SM_MULTI_PLAYER_MENU:                  UpdateMultiPlayer();                break;
         case SM_MULTI_PLAYER_OPTIONS:               UpdateMultiPlayerOptions();         break;
@@ -1478,7 +1433,7 @@ void state_mgr::UpdateState( sm_states State, f32 DeltaTime )
         case SM_SAVE_DATA_RESELECT_MP:              UpdateSaveDataReselectMP();         break;
         case SM_ONLINE_CONNECT:                     UpdateOnlineConnect();              break;
         case SM_NETWORK_DISCONNECT:                 UpdateNetworkDisconnect();          break;
-        case SM_ONLINE_AUTHENTICATE:                UpdateOnlineAuthenticate();         break;
+        case SM_ONLINE_IDENTITY:                UpdateOnlineIdentity();         break;
         case SM_ONLINE_PROFILE_SELECT:              UpdateOnlineProfileSelect();        break;
         case SM_ONLINE_PROFILE_OPTIONS:             UpdateOnlineProfileOptions();       break;
         case SM_ONLINE_PROFILE_CONTROLS:            UpdateOnlineProfileControls();      break;
@@ -1487,23 +1442,13 @@ void state_mgr::UpdateState( sm_states State, f32 DeltaTime )
         case SM_ONLINE_SAVE_DATA_RESELECT:          UpdateOnlineSaveDataReselect();     break;
         case SM_ONLINE_MAIN_MENU:                   UpdateOnlineMain();                 break;
         case SM_ONLINE_HOST_MENU:                   UpdateOnlineHost();                 break;
-        case SM_ONLINE_HOST_MENU_OPTIONS:           UpdateOnlineHostOptions();          break;
         case SM_HOST_SAVE_SETTINGS:                 UpdateHostSaveSettings();           break;
-        case SM_ONLINE_QUICKMATCH:                  UpdateOnlineQuickMatch();           break;
-        case SM_ONLINE_OPTIMATCH:                   UpdateOnlineOptiMatch();            break;
-        case SM_ONLINE_JOIN_FILTER:                 UpdateOnlineJoinFilter();           break;
         case SM_ONLINE_JOIN_MENU:                   UpdateOnlineJoin();                 break;
         case SM_ONLINE_JOIN_SAVE_SETTINGS:          UpdateOnlineJoinSaveSettings();     break;
-        case SM_SERVER_PLAYERS_MENU:                UpdateServerPlayers();              break;
-        case SM_ONLINE_PLAYERS_MENU:                UpdateOnlinePlayers();              break;
-        case SM_ONLINE_FEEDBACK_MENU:               UpdateOnlineFeedback();             break;
-        case SM_ONLINE_FEEDBACK_MENU_FRIEND:        UpdateOnlineFeedbackFriend();       break;
-        case SM_ONLINE_FRIENDS_MENU:                UpdateOnlineFriends();              break;
         case SM_ONLINE_STATS:                       UpdateOnlineStats();                break;
         case SM_ONLINE_EDIT_PROFILE:                UpdateOnlineEditProfile();          break;
         case SM_ONLINE_EDIT_CONTROLS:               UpdateOnlineEditControls();         break;
         case SM_ONLINE_EDIT_AVATAR:                 UpdateOnlineEditAvatar();           break;
-        case SM_HOST_LEVEL_SELECT:                  UpdateHostLevelSelect();            break;
 #ifndef CONFIG_RETAIL                               
         case SM_LEVEL_SELECT:                       UpdateLevelSelect();                break;
 #endif                                              
@@ -1533,7 +1478,9 @@ void state_mgr::UpdateState( sm_states State, f32 DeltaTime )
         case SM_PAUSE_AUDIO:                      UpdatePauseAudio();                   break;
         case SM_PAUSE_HEADSET:                    UpdatePauseHeadset();                 break;
         case SM_PAUSE_GRAPHICS:                   UpdatePauseGraphics();                break;
+        case SM_PAUSE_GRAPHICS_ADVANCED:          UpdatePauseGraphicsAdvanced();       break;
         case SM_PAUSE_DISPLAY:                    UpdatePauseDisplay();                 break;
+        case SM_PAUSE_UI:                         UpdatePauseUI();                     break;
         case SM_PAUSE_LANGUAGE:                   UpdatePauseLanguage();                break;
         case SM_PAUSE_SETTINGS_SELECT:            UpdatePauseSettingsSelect();          break;
         case SM_PAUSE_PROFILE_SAVE_SELECT:        UpdatePauseSaveDataSaveSelect();      break;
@@ -1545,7 +1492,9 @@ void state_mgr::UpdateState( sm_states State, f32 DeltaTime )
         case SM_PAUSE_MP_AUDIO:                   UpdatePauseMPAudio();                 break;
         case SM_PAUSE_MP_HEADSET:                 UpdatePauseMPHeadset();               break;
         case SM_PAUSE_MP_GRAPHICS:                UpdatePauseMPGraphics();              break;
+        case SM_PAUSE_MP_GRAPHICS_ADVANCED:       UpdatePauseMPGraphicsAdvanced();     break;
         case SM_PAUSE_MP_DISPLAY:                 UpdatePauseMPDisplay();               break;
+        case SM_PAUSE_MP_UI:                      UpdatePauseMPUI();                   break;
         case SM_PAUSE_MP_LANGUAGE:                UpdatePauseMPLanguage();              break;
         case SM_PAUSE_MP_SETTINGS_SELECT:         UpdatePauseMPSettingsSelect();        break;
         case SM_PAUSE_MP_PROFILE_SAVE_SELECT:     UpdatePauseMPSaveDataSaveSelect();    break;
@@ -1554,10 +1503,7 @@ void state_mgr::UpdateState( sm_states State, f32 DeltaTime )
         case SM_PAUSE_ONLINE:                     UpdatePauseOnline();                  break;
         case SM_PAUSE_ONLINE_VOTE_MAP:            UpdatePauseOnlineVoteMap();           break;
         case SM_PAUSE_ONLINE_VOTE_KICK:           UpdatePauseOnlineVoteKick();          break;
-        case SM_PAUSE_ONLINE_FRIENDS:             UpdatePauseOnlineFriends();           break;
         case SM_PAUSE_ONLINE_PLAYERS:             UpdatePauseOnlinePlayers();           break;
-        case SM_PAUSE_ONLINE_FEEDBACK:            UpdatePauseOnlineFeedback();          break;
-        case SM_PAUSE_ONLINE_FEEDBACK_FRIEND:     UpdatePauseOnlineFeedbackFriend();    break;
         case SM_PAUSE_ONLINE_SERVER_CONFIG:       UpdatePauseServerConfig();            break;
         case SM_PAUSE_ONLINE_OPTIONS:             UpdatePauseOnlineOptions();           break;
         case SM_PAUSE_ONLINE_CONTROLS:            UpdatePauseOnlineControls();          break;
@@ -1565,16 +1511,16 @@ void state_mgr::UpdateState( sm_states State, f32 DeltaTime )
         case SM_PAUSE_ONLINE_AUDIO:               UpdatePauseOnlineAudio();             break;
         case SM_PAUSE_ONLINE_HEADSET:             UpdatePauseOnlineHeadset();           break;
         case SM_PAUSE_ONLINE_GRAPHICS:            UpdatePauseOnlineGraphics();          break;
+        case SM_PAUSE_ONLINE_GRAPHICS_ADVANCED:   UpdatePauseOnlineGraphicsAdvanced(); break;
         case SM_PAUSE_ONLINE_DISPLAY:             UpdatePauseOnlineDisplay();           break;
+        case SM_PAUSE_ONLINE_UI:                  UpdatePauseOnlineUI();               break;
         case SM_PAUSE_ONLINE_LANGUAGE:            UpdatePauseOnlineLanguage();          break;
         case SM_PAUSE_ONLINE_SAVE_SELECT:         UpdatePauseOnlineSaveSelect();        break;
         case SM_PAUSE_ONLINE_SAVE_DATA_RESELECT:  UpdatePauseOnlineSaveDataReselect();  break;
         case SM_PAUSE_ONLINE_CHANGE_MAP:          UpdatePauseOnlineChangeMap();         break;
         case SM_PAUSE_ONLINE_KICK_PLAYER:         UpdatePauseOnlineKickPlayer();        break;
         case SM_PAUSE_ONLINE_TEAM_CHANGE:         UpdatePauseOnlineTeamChange();        break;
-        case SM_PAUSE_ONLINE_RECONFIG_ONE:        UpdatePauseOnlineReconfigOne();       break;
-        case SM_PAUSE_ONLINE_RECONFIG_TWO:        UpdatePauseOnlineReconfigTwo();       break;
-        case SM_PAUSE_ONLINE_RECONFIG_MAP:        UpdatePauseOnlineReconfigMap();       break;
+        case SM_PAUSE_ONLINE_RECONFIG:           UpdatePauseOnlineReconfig();          break;
         case SM_PAUSE_ONLINE_SAVE_SETTINGS:       UpdatePauseOnlineSaveSettings();      break;
         case SM_PAUSE_MP_SCORE:                   UpdatePauseMPScore();                 break;
         case SM_END_PAUSE:                        UpdateEndPause();                     break;
@@ -1599,7 +1545,6 @@ void state_mgr::UpdateState( sm_states State, f32 DeltaTime )
         case SM_GAME_EXIT_SETTINGS_SELECT:        UpdateGameExitSettingsSelect();       break;
         case SM_GAME_EXIT_REDIRECT:               UpdateGameExitRedirect();             break;
         case SM_ONLINE_LOGIN:                     UpdateOnlineLogin();                  break;
-        case SM_FOLLOW_BUDDY:                     UpdateFollowBuddy();                  break;
 
         // no update required
         default:
@@ -1809,10 +1754,6 @@ void state_mgr::InitPendingProfile( s32 index )
     ASSERT(index < SM_PROFILE_COUNT); 
     m_PendingProfile = m_Profiles[index]; 
     m_PendingProfileIndex = index;
-    //
-    // Initialize the match manager filter to not filter anything.
-    //
-    g_MatchMgr.SetFilter( GAME_MP, -1, -1 );
 }
 
 //=========================================================================
@@ -1824,27 +1765,15 @@ void state_mgr::ActivatePendingProfile( xbool MarkDirty )
     ASSERT( m_PendingProfileIndex < SM_PROFILE_COUNT );
     m_Profiles[m_PendingProfileIndex] = m_PendingProfile; 
     m_Profiles[m_PendingProfileIndex].Checksum();
+    for( s32 LocalIndex = 0; LocalIndex < MAX_LOCAL_PLAYERS; LocalIndex++ )
+    {
+        if( m_ProfileListIndex[LocalIndex] == m_PendingProfileIndex )
+            g_GameInput.ApplyKeyboardBindings( LocalIndex, m_PendingProfile.GetKeyboardBindings() );
+    }
 
     if( MarkDirty )
     {
         m_Profiles[m_PendingProfileIndex].MarkDirty();
-    }
-
-    g_MatchMgr.ShowOnlineStatus( m_PendingProfile.GetVisibleOnline() );
-    if( m_PendingProfile.GetVisibleOnline() )
-    {
-        if( GameMgr.GameInProgress() )
-        {
-            g_MatchMgr.SetUserStatus( BUDDY_STATUS_INGAME );
-        }
-        else
-        {
-            g_MatchMgr.SetUserStatus( BUDDY_STATUS_ONLINE );
-        }
-    }
-    else
-    {
-        g_MatchMgr.SetUserStatus( BUDDY_STATUS_OFFLINE );
     }
 
     // set nickname
@@ -1887,17 +1816,7 @@ void state_mgr::SetupProfileListIndex( void )
     s32 i;
     s32 p = 0;
     s32 count = 0;
-#if 1   // hack - A profile needs to be assigned for auto modes. this can be removed when that happens.
-    if( CONFIG_IS_AUTOSERVER || CONFIG_IS_AUTOCLIENT )
-    {
-        // until a better fix is found
-        for( i = 0; i < SM_PROFILE_COUNT; i++ )
-        {
-            m_ProfileListIndex[i] = 0;
-        }
-        return;
-    }
-#endif
+
     for( i = 0; i< SM_PROFILE_COUNT; i++ )
     {
         if( m_SelectedProfile[i] != 0 )
@@ -2096,7 +2015,7 @@ u32 state_mgr::GetTotalLoreAcquired( void )
 
 void state_mgr::EnterStartupInfo( void )
 {
-    g_UiMgr->LoadBackground( "startup info", "UI_WARNINGSCREEN.XBMP" );
+    g_UiMgr->LoadBackground( "startup info", "SCREENS/UI_WARNINGSCREEN.XBMP" );
     g_UiMgr->SetUserBackground( g_UiUserID, "startup info" );
 
     m_StartupInfoTime = 10.0f;
@@ -2235,6 +2154,8 @@ void state_mgr::ProcessPendingSimpleMovie( void )
         EnableBackgroundMovie();
         m_bRestoreBackgroundAfterSimpleMovie = FALSE;
     }
+
+    g_UiMgr->SuppressInputUntilRelease();
 
     m_bSimpleMoviePending = FALSE;
     if( m_bSimpleMovieWaitForCompletion )
@@ -2409,14 +2330,7 @@ void state_mgr::UpdatePressStart( void )
             g_UiMgr->SetUserController( g_UiUserID, g_LastControllerID );
             SetState( SM_LOAD_GAME );
 #else
-            if( m_bFollowBuddy )
-            {
-                SetState( SM_FOLLOW_BUDDY );
-            }
-            else
-            {
-                SetState( SM_MAIN_MENU );
-            }
+            SetState( SM_MAIN_MENU );
 #endif
         }
     }
@@ -2509,6 +2423,12 @@ void state_mgr::UpdateMainMenu( void )
     // check for menu automation
     if( CONFIG_IS_AUTOSERVER || CONFIG_IS_AUTOCLIENT )
     {
+        if( GetSelectedProfile( 0 ) == 0 )
+        {
+            m_Profiles[0].SetHash();
+            SetSelectedProfile( 0, m_Profiles[0].GetHash() );
+        }
+
         // activate controller 0
         SetControllerRequested( 0, TRUE );
 
@@ -2690,6 +2610,12 @@ void state_mgr::UpdateSettingsMenu( void )
                     }
                     break;
 
+                    case IDC_SETTINGS_UI:
+                    {
+                        SetState( SM_SETTINGS_UI );
+                    }
+                    break;
+
                     case IDC_SETTINGS_LANGUAGE:
                     {
                         SetState( SM_SETTINGS_LANGUAGE );
@@ -2824,6 +2750,15 @@ void state_mgr::UpdateSettingsGraphics( void )
             }
             break;
 
+            case DIALOG_STATE_SELECT:
+            {
+                if( m_CurrentDialog->GetControl() == IDC_GRAPHICS_ADVANCED )
+                {
+                    SetState( SM_SETTINGS_GRAPHICS_ADVANCED );
+                }
+            }
+            break;
+
             case DIALOG_STATE_SAVE_DATA_ERROR:
             {
                 SetState( SM_SETTINGS_SAVE_DATA_SELECT );
@@ -2836,6 +2771,51 @@ void state_mgr::UpdateSettingsGraphics( void )
 //=========================================================================
 
 void state_mgr::ExitSettingsGraphics( void )
+{
+}
+
+//=========================================================================
+
+void state_mgr::EnterSettingsGraphicsAdvanced( void )
+{
+    g_UiMgr->EndDialog( g_UiUserID, TRUE );
+    irect mainarea(26, DIALOG_TOP, 486, DIALOG_BOTTOM );
+    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID,
+                                           "graphics advanced settings",
+                                           mainarea,
+                                           NULL,
+                                           ui_win::WF_VISIBLE|ui_win::WF_BORDER );
+#ifndef USE_MOVIES
+    g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
+#endif
+}
+
+//=========================================================================
+
+void state_mgr::UpdateSettingsGraphicsAdvanced( void )
+{
+    if( m_CurrentDialog != NULL )
+    {
+        switch( m_CurrentDialog->GetState() )
+        {
+            case DIALOG_STATE_BACK:
+            {
+                SetState( SM_SETTINGS_GRAPHICS );
+            }
+            break;
+
+            case DIALOG_STATE_SAVE_DATA_ERROR:
+            {
+                SetState( SM_SETTINGS_SAVE_DATA_SELECT );
+            }
+            break;
+        }
+    }
+}
+
+//=========================================================================
+
+void state_mgr::ExitSettingsGraphicsAdvanced( void )
 {
 }
 
@@ -2877,6 +2857,47 @@ void state_mgr::UpdateSettingsDisplay( void )
 //=========================================================================
 
 void state_mgr::ExitSettingsDisplay( void )
+{
+}
+
+//=========================================================================
+
+void state_mgr::EnterSettingsUI( void )
+{
+    g_UiMgr->EndDialog( g_UiUserID, TRUE );
+    irect mainarea(26, DIALOG_TOP, 486, DIALOG_BOTTOM );
+    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "ui settings", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
+#ifndef USE_MOVIES
+    g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
+#endif
+}
+
+//=========================================================================
+
+void state_mgr::UpdateSettingsUI( void )
+{
+    if( m_CurrentDialog )
+    {
+        switch( m_CurrentDialog->GetState() )
+        {
+            case DIALOG_STATE_BACK:
+            {
+                SetState( SM_SETTINGS_MENU );
+            }
+            break;
+
+            case DIALOG_STATE_SAVE_DATA_ERROR:
+            {
+                SetState( SM_SETTINGS_SAVE_DATA_SELECT );
+            }
+            break;
+        }
+    }
+}
+
+//=========================================================================
+
+void state_mgr::ExitSettingsUI( void )
 {
 }
 
@@ -4149,6 +4170,23 @@ void state_mgr::EnterProfileMouseControls( void )
 
 //=========================================================================
 
+void state_mgr::EnterProfileKeyboardBindings( void )
+{
+    g_UiMgr->EndDialog( g_UiUserID, TRUE );
+    irect mainarea( 26, DIALOG_TOP, 486, DIALOG_BOTTOM );
+    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "profile keyboard bindings", mainarea, NULL, ui_win::WF_VISIBLE | ui_win::WF_BORDER );
+#ifndef USE_MOVIES
+    g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
+#endif
+
+    if( IsPaused() )
+    {
+        static_cast<dlg_profile_keyboard_bindings*>( m_CurrentDialog )->EnableBlackout();
+    }
+}
+
+//=========================================================================
+
 void state_mgr::EnterProfileGamepadControls( void )
 {
     g_UiMgr->EndDialog( g_UiUserID, TRUE );
@@ -4277,6 +4315,12 @@ void state_mgr::UpdateProfileControlsMenu( sm_states BackState, xbool CheckDisco
 
             switch( Control )
             {
+                case IDC_CONTROLS_KEYBOARD_MENU:
+                {
+                    SetState( SM_PROFILE_KEYBOARD_BINDINGS );
+                }
+                break;
+
                 case IDC_CONTROLS_MOUSE_MENU:
                 {
                     SetState( SM_PROFILE_MOUSE_CONTROLS );
@@ -4887,9 +4931,6 @@ void state_mgr::ExitSaveDataReselectMP( void )
 
 //=========================================================================
 
-void state_mgr::EnterOnlineSilentLogin( void )
-{
-}
 
 //=========================================================================
 
@@ -4899,7 +4940,6 @@ void state_mgr::EnterOnlineConnect( void )
     g_UiMgr->EndDialog( g_UiUserID, TRUE );
     irect mainarea(76, DIALOG_TOP, 436, DIALOG_BOTTOM );
     m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "connect info", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
-    ((dlg_online_connect*)m_CurrentDialog)->Configure( CONNECT_MODE_CONNECT );
 #ifndef USE_MOVIES
     g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
 #endif
@@ -4927,7 +4967,7 @@ void state_mgr::UpdateOnlineConnect( void )
                     // set nickname
                     player_profile& ActiveProfile = GetActiveProfile( GetProfileListIndex(0) );
                     g_MatchMgr.SetNickname( ActiveProfile.GetProfileName() );
-                    SetState( SM_ONLINE_AUTHENTICATE );
+                    SetState( SM_ONLINE_IDENTITY );
                 }
                 else
                 {
@@ -4985,7 +5025,7 @@ void state_mgr::UpdateOnlineProfileSelect( void )
         {
             case DIALOG_STATE_SELECT:
             {
-                SetState( SM_ONLINE_AUTHENTICATE );
+                SetState( SM_ONLINE_IDENTITY );
             }
             break;
 
@@ -5061,7 +5101,7 @@ void state_mgr::UpdateOnlineProfileOptions( void )
 
                     case IDC_PROFILE_OPTIONS_ACCEPT:
                     {
-                        SetState( SM_ONLINE_AUTHENTICATE );
+                        SetState( SM_ONLINE_IDENTITY );
                     }
                     break;
                 }
@@ -5167,72 +5207,34 @@ void state_mgr::ExitOnlineProfileAvatar( void )
 
 //=========================================================================
 
-void state_mgr::EnterOnlineAuthenticate( void )
+void state_mgr::EnterOnlineIdentity( void )
 {
-
-    // Create online main menu
     g_UiMgr->EndDialog( g_UiUserID, TRUE );
-    irect mainarea(76, DIALOG_TOP, 436, DIALOG_BOTTOM );
-    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "connect info", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
-#ifndef USE_MOVIES
-    g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
-#endif
- //   ASSERT( g_MatchMgr.GetState() == MATCH_AUTH_DONE );
-    ((dlg_online_connect*)m_CurrentDialog)->Configure( CONNECT_MODE_AUTH_USER );
+    m_CurrentDialog = NULL;
 }
 
 //=========================================================================
 
-void state_mgr::UpdateOnlineAuthenticate( void )
+void state_mgr::UpdateOnlineIdentity( void )
 {
-    if( CheckForDisconnect() )
+    SetupProfileListIndex();
+    player_profile& Profile = GetActiveProfile( GetProfileListIndex(0) );
+    s32 IdLength = 0;
+    const byte* pId = Profile.GetUniqueId( IdLength );
+    if( IdLength == 0 )
     {
-        return;
+        guid Id = guid_New();
+        Profile.SetUniqueId( (const byte*)&Id, sizeof(Id) );
+        Profile.MarkDirty();
+        pId = Profile.GetUniqueId( IdLength );
     }
-
-    if( m_CurrentDialog != NULL )
-    {
-        u32 DialogState = m_CurrentDialog->GetState();
-
-        switch( DialogState )
-        {
-            case DIALOG_STATE_ACTIVE:
-            {
-            }
-            break;
-
-            case DIALOG_STATE_EXIT:
-            {
-                g_UiMgr->EndDialog( g_UiUserID, TRUE );
-                m_CurrentDialog = NULL;
-            
-                SetState( SM_ONLINE_MAIN_MENU );
-            }
-            break;
-            
-            case DIALOG_STATE_BACK:
-            {
-                g_UiMgr->EndDialog( g_UiUserID, TRUE );
-                m_CurrentDialog = NULL;
-                SetState( SM_MAIN_MENU );
-            }
-            break;
-            
-            default:
-            {
-                ASSERT( FALSE );
-                g_UiMgr->EndDialog( g_UiUserID, TRUE );
-                m_CurrentDialog = NULL;
-                SetState( SM_MAIN_MENU );
-            }
-            break;
-        }
-    }
+    g_MatchMgr.SetLocalIdentity( Profile.GetProfileName(), pId, IdLength );
+    SetState( SM_ONLINE_MAIN_MENU );
 }
 
 //=========================================================================
 
-void state_mgr::ExitOnlineAuthenticate( void )
+void state_mgr::ExitOnlineIdentity( void )
 {
 }
 
@@ -5375,19 +5377,8 @@ void state_mgr::EnterOnlineMain( void )
 void state_mgr::UpdateOnlineMain( void )
 {
     if( CheckForDisconnect() )
-    {
         return;
-    }
 
-    if( m_bFollowBuddy )
-    {
-        m_bFollowBuddy = FALSE;
-        StartLogin( &g_PendingConfig.GetConfig(), LOGIN_FROM_INVITE );
-        return;
-    }
-
-
-    // check for menu automation
     if( CONFIG_IS_AUTOSERVER )
     {
         SetState( SM_ONLINE_HOST_MENU );
@@ -5396,63 +5387,37 @@ void state_mgr::UpdateOnlineMain( void )
     {
         SetState( SM_ONLINE_JOIN_MENU );
     }
-    else
+    else if( m_CurrentDialog != NULL )
     {
-        if( m_CurrentDialog != NULL )
+        switch( m_CurrentDialog->GetState() )
         {
-            u32 DialogState = m_CurrentDialog->GetState();
-
-            switch( DialogState )
+            case DIALOG_STATE_SELECT:
             {
-                case DIALOG_STATE_SELECT:
+                switch( m_CurrentDialog->GetControl() )
                 {
-                    s32 Control = m_CurrentDialog->GetControl();
-
-                    switch( Control )
-                    {
-                        case IDC_ONLINE_JOIN:
-                            #ifdef LAN_PARTY_BUILD
-                                g_MatchMgr.SetFilter( (game_type)-1, -1, -1 );
-                                SetState( SM_ONLINE_JOIN_MENU );
-                            #else
-                                InitPendingSettings();
-                                SetState( SM_ONLINE_JOIN_FILTER );
-                            #endif
-
-                            break;
-                        case IDC_ONLINE_HOST:
-                            InitPendingSettings();
-                            SetState( SM_ONLINE_HOST_MENU );
-                            break;
-
-                        case IDC_ONLINE_FRIENDS:
-                            SetState( SM_ONLINE_FRIENDS_MENU );
-                            break;
-
-                        case IDC_ONLINE_PLAYERS:
-                            SetState( SM_ONLINE_PLAYERS_MENU );
-                            break;
-
-                        case IDC_ONLINE_EDIT_PROFILE:
-                            SetState( SM_ONLINE_EDIT_PROFILE );
-                            break;
-
-                        case IDC_ONLINE_VIEW_STATS:
-                            SetState( SM_ONLINE_STATS );
-                            break;
-                        default:
-                            ASSERTS( FALSE, "Selection not supported!" );
-                            break;
-                    }
+                    case IDC_ONLINE_JOIN:
+                        SetState( SM_ONLINE_JOIN_MENU );
+                        break;
+                    case IDC_ONLINE_HOST:
+                        InitPendingSettings();
+                        SetState( SM_ONLINE_HOST_MENU );
+                        break;
+                    case IDC_ONLINE_EDIT_PROFILE:
+                        SetState( SM_ONLINE_EDIT_PROFILE );
+                        break;
+                    case IDC_ONLINE_VIEW_STATS:
+                        SetState( SM_ONLINE_STATS );
+                        break;
+                    default:
+                        ASSERT( FALSE );
+                        break;
                 }
-                break;
-
-                case DIALOG_STATE_BACK:
-                {
-                    BeginNetworkDisconnect( SM_MAIN_MENU );
-                }
-                break;
             }
+            break;
+
+            case DIALOG_STATE_BACK:
+                BeginNetworkDisconnect( SM_MAIN_MENU );
+                break;
         }
     }
 }
@@ -5469,7 +5434,7 @@ void state_mgr::EnterOnlineHost( void )
 {
     // Create online host menu
     g_UiMgr->EndDialog( g_UiUserID, TRUE );
-    irect mainarea(12, DIALOG_TOP, 500, DIALOG_BOTTOM );
+    irect mainarea(6, DIALOG_TOP, 506, DIALOG_BOTTOM );
     m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "online host", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
 #ifndef USE_MOVIES
     g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
@@ -5489,6 +5454,11 @@ void state_mgr::UpdateOnlineHost( void )
     if( CONFIG_IS_AUTOSERVER )
     {
 #ifndef CONFIG_RETAIL
+        if( !g_MatchMgr.PrepareHost( NET_GAME_PORT ) )
+        {
+            g_Config.AutoServer = FALSE;
+            return;
+        }
         g_PendingConfig.SetGameTypeID( (game_type)g_Config.AutoServerType );
         g_PendingConfig.SetPlayerCount(1);
         g_PendingConfig.SetLevelID( g_Config.AutoLevel );
@@ -5508,7 +5478,7 @@ void state_mgr::UpdateOnlineHost( void )
         // tell the network manager that we want to be a server
         g_NetworkMgr.BecomeServer();
 
-        SetState( SM_ONLINE_HOST_MENU_OPTIONS );
+        SetState( SM_START_GAME );
 #endif
     }
     else if( m_CurrentDialog != NULL )
@@ -5517,9 +5487,16 @@ void state_mgr::UpdateOnlineHost( void )
 
         switch( DialogState )
         {
-            case DIALOG_STATE_SELECT:
+            case DIALOG_STATE_ACTIVATE:
             {
-                SetState( SM_ONLINE_HOST_MENU_OPTIONS );
+                g_NetworkMgr.BecomeServer();
+                SetState( SM_START_GAME );
+            }
+            break;
+
+            case DIALOG_STATE_SAVE_DATA_ERROR:
+            {
+                SetState( SM_HOST_SAVE_SETTINGS );
             }
             break;
 
@@ -5535,60 +5512,6 @@ void state_mgr::UpdateOnlineHost( void )
 //=========================================================================
 
 void state_mgr::ExitOnlineHost( void )
-{
-}
-
-//=========================================================================
-
-void state_mgr::EnterOnlineHostOptions( void )
-{
-    // Create online host menu
-    g_UiMgr->EndDialog( g_UiUserID, TRUE );
-    irect mainarea(12, DIALOG_TOP, 500, DIALOG_BOTTOM );
-    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "host options", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
-#ifndef USE_MOVIES
-    g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
-#endif
-}
-
-//=========================================================================
-
-void state_mgr::UpdateOnlineHostOptions( void )
-{
-    if( CheckForDisconnect() )
-    {
-        return;
-    }
-
-    // check for menu automation
-    if( CONFIG_IS_AUTOSERVER )
-    {
-        SetState( SM_START_GAME );
-    }
-    else if( m_CurrentDialog != NULL )
-    {
-        u32 DialogState = m_CurrentDialog->GetState();
-
-        switch( DialogState )
-        {
-            case DIALOG_STATE_BACK:
-            {
-                SetState( SM_ONLINE_HOST_MENU );
-            }
-            break;
-
-            case DIALOG_STATE_SELECT:
-            {
-                SetState( SM_HOST_LEVEL_SELECT );               
-            }
-            break;
-        }
-    }
-}
-
-//=========================================================================
-
-void state_mgr::ExitOnlineHostOptions( void )
 {
 }
 
@@ -5639,136 +5562,6 @@ void state_mgr::ExitHostSaveSettings( void )
 
 //=========================================================================
 
-void state_mgr::EnterOnlineQuickMatch( void )
-{
-    // Create quick match menu
-    g_UiMgr->EndDialog( g_UiUserID, TRUE );
-    irect mainarea(101, DIALOG_TOP, 411, DIALOG_BOTTOM );
-    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "quick match", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
-#ifndef USE_MOVIES
-    g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
-#endif
-}
-
-//=========================================================================
-
-void state_mgr::UpdateOnlineQuickMatch( void )
-{
-    if( CheckForDisconnect() )
-    {
-        return;
-    }
-
-    if( m_CurrentDialog != NULL )
-    {
-        u32 DialogState = m_CurrentDialog->GetState();
-
-        switch( DialogState )
-        {
-            case DIALOG_STATE_BACK:
-            {
-                SetState( SM_ONLINE_MAIN_MENU );
-            }
-            break;
-
-            case DIALOG_STATE_SELECT:
-            {
-                StartLogin( &g_PendingConfig.GetConfig(), LOGIN_FROM_MAIN );
-            }
-            break;
-
-            case DIALOG_STATE_ACTIVATE:
-            {
-                // could not find a match, create one
-                SetState( SM_ONLINE_HOST_MENU );
-            }
-            break;
-        }
-    }
-}
-
-//=========================================================================
-
-void state_mgr::ExitOnlineQuickMatch( void )
-{
-    g_UiMgr->EndUsersDialogs( g_UiUserID );
-}
-
-//=========================================================================
-
-void state_mgr::EnterOnlineOptiMatch( void )
-{
-}
-
-//=========================================================================
-
-void state_mgr::UpdateOnlineOptiMatch( void )
-{
-}
-
-//=========================================================================
-
-void state_mgr::ExitOnlineOptiMatch( void )
-{
-}
-
-//=========================================================================
-
-void state_mgr::EnterOnlineJoinFilter( void )
-{
-    // Create online host menu
-    g_UiMgr->EndDialog( g_UiUserID, TRUE );
-    irect mainarea(26, DIALOG_TOP, 486, DIALOG_BOTTOM );
-    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "join filter", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
-#ifndef USE_MOVIES
-    g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
-#endif
-}
-
-//=========================================================================
-
-void state_mgr::UpdateOnlineJoinFilter( void )
-{
-    if( CheckForDisconnect() )
-    {
-        return;
-    }
-
-    if( m_CurrentDialog != NULL )
-    {
-        u32 DialogState = m_CurrentDialog->GetState();
-
-        switch( DialogState )
-        {
-            case DIALOG_STATE_BACK:
-            {
-                SetState( SM_ONLINE_MAIN_MENU );
-            }
-            break;
-
-            case DIALOG_STATE_SAVE_DATA_ERROR:
-            {
-                SetState( SM_ONLINE_JOIN_SAVE_SETTINGS );
-            }
-            break;
-
-            case DIALOG_STATE_ACTIVATE:
-            {
-                SetState( SM_ONLINE_JOIN_MENU );
-            }
-            break;
-        }
-    }
-}
-
-//=========================================================================
-
-void state_mgr::ExitOnlineJoinFilter( void )
-{
-}
-
-//=========================================================================
-
 void state_mgr::EnterOnlineJoin( void )
 {
     // Create online join menu
@@ -5796,20 +5589,9 @@ void state_mgr::UpdateOnlineJoin( void )
         switch( DialogState )
         {
             case DIALOG_STATE_BACK:
-            {
-#ifdef LAN_PARTY_BUILD
                 SetState( SM_ONLINE_MAIN_MENU );
-#else
-                SetState( SM_ONLINE_JOIN_FILTER );
-#endif
-            }
-            break;
+                break;
 
-            case DIALOG_STATE_ACTIVATE:
-            {
-                SetState( SM_SERVER_PLAYERS_MENU );
-            }
-            break;
 
             case DIALOG_STATE_SELECT:
             {
@@ -5874,244 +5656,11 @@ void state_mgr::ExitOnlineJoinSaveSettings( void )
 
 //=========================================================================
 
-void state_mgr::EnterServerPlayers( void )
-{
-    // Create server players menu - list of players on the selected server
-    g_UiMgr->EndDialog( g_UiUserID, TRUE );
-    irect mainarea( 0, DIALOG_TOP, ui_viewport::CONTENT_WIDTH, DIALOG_BOTTOM );
-    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "server players", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
-#ifndef USE_MOVIES
-    g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
-#endif
-}
 
 //=========================================================================
 
-void state_mgr::UpdateServerPlayers( void )
-{
-    if( m_CurrentDialog != NULL )
-    {
-        u32 DialogState = m_CurrentDialog->GetState();
-
-        switch( DialogState )
-        {
-            case DIALOG_STATE_BACK:
-            {
-                SetState( SM_ONLINE_JOIN_MENU );
-            }
-            break;
-
-            case DIALOG_STATE_SELECT:
-            {
-                StartLogin( &g_PendingConfig.GetConfig(), LOGIN_FROM_JOIN_MENU );
-            }
-            break;
-        }
-    }
-}
 
 //=========================================================================
-
-void state_mgr::ExitServerPlayers( void )
-{
-}
-
-//=========================================================================
-
-void state_mgr::EnterOnlinePlayers( void )
-{
-    // Create players menu
-    g_UiMgr->EndDialog( g_UiUserID, TRUE );
-    irect mainarea(8, DIALOG_TOP, 504, DIALOG_BOTTOM );
-    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "players list", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
-
-    ((dlg_players*)m_CurrentDialog)->Configure( PLAYER_MODE_RECENT );
-#ifndef USE_MOVIES
-    g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
-#endif
-}
-
-//=========================================================================
-
-void state_mgr::UpdateOnlinePlayers( void )
-{
-    if( CheckForDisconnect() )
-    {
-        return;
-    }
-
-    if( m_CurrentDialog != NULL )
-    {
-        u32 DialogState = m_CurrentDialog->GetState();
-
-        switch( DialogState )
-        {
-            case DIALOG_STATE_BACK:
-            {
-                // this probably should go in the enter state...
-                // set controller back to any
-                g_StateMgr.SetActiveControllerID( -1 );
-                g_UiMgr->SetUserController( g_UiUserID, -1 );
-                SetState( SM_ONLINE_MAIN_MENU );
-            }
-            break;
-
-            case DIALOG_STATE_ACTIVATE:
-            {
-                SetState( SM_ONLINE_FEEDBACK_MENU );
-            }
-            break;
-        }
-    }
-}
-
-//=========================================================================
-
-void state_mgr::ExitOnlinePlayers( void )
-{
-}
-
-//=========================================================================
-
-void state_mgr::EnterOnlineFeedback( void )
-{
-    // Create feedback menu
-    g_UiMgr->EndDialog( g_UiUserID, TRUE );
-    irect mainarea(8, DIALOG_TOP, 504, DIALOG_BOTTOM );
-    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "feedback", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
-}
-
-//=========================================================================
-
-void state_mgr::UpdateOnlineFeedback( void )
-{
-    if( m_CurrentDialog != NULL )
-    {
-        u32 DialogState = m_CurrentDialog->GetState();
-
-        switch( DialogState )
-        {
-            case DIALOG_STATE_BACK:
-            {
-                SetState( SM_ONLINE_PLAYERS_MENU );
-            }
-            break;
-        }
-    }
-}
-
-//=========================================================================
-
-void state_mgr::ExitOnlineFeedback( void )
-{
-}
-
-//=========================================================================
-
-void state_mgr::EnterOnlineFeedbackFriend( void )
-{
-    // Create feedback menu
-    g_UiMgr->EndDialog( g_UiUserID, TRUE );
-    irect mainarea(8, DIALOG_TOP, 504, DIALOG_BOTTOM );
-    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "feedback", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
-
-    for( s32 i=0; i<g_MatchMgr.GetBuddyCount(); i++ )
-    {
-        buddy_info& Buddy = g_MatchMgr.GetBuddy(i);
-        if( Buddy.Identifier == m_FeedbackIdentifier )
-        {
-            if( Buddy.Flags & USER_VOICE_MESSAGE )
-            {
-                ((dlg_feedback*)m_CurrentDialog)->ChangeConfig(dlg_feedback::ATTACHMENT_FEEDBACK);
-                break;
-            }
-        }
-    }
-}
-
-//=========================================================================
-
-void state_mgr::UpdateOnlineFeedbackFriend( void )
-{
-    if( m_CurrentDialog != NULL )
-    {
-        u32 DialogState = m_CurrentDialog->GetState();
-
-        switch( DialogState )
-        {
-            case DIALOG_STATE_BACK:
-            {
-                SetState( SM_ONLINE_FRIENDS_MENU );
-            }
-            break;
-        }
-    }
-}
-
-//=========================================================================
-
-void state_mgr::ExitOnlineFeedbackFriend( void )
-{
-}
-//=========================================================================
-
-void state_mgr::EnterOnlineFriends( void )
-{
-    // Create friends menu
-    g_UiMgr->EndDialog( g_UiUserID, TRUE );
-    irect mainarea(8, DIALOG_TOP, 504, DIALOG_BOTTOM );
-    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "friends list", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
-#ifndef USE_MOVIES
-    g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
-#endif
-}
-
-//=========================================================================
-
-void state_mgr::UpdateOnlineFriends( void )
-{
-    if( CheckForDisconnect() )
-    {
-        return;
-    }
-
-    if( m_CurrentDialog != NULL )
-    {
-        u32 DialogState = m_CurrentDialog->GetState();
-
-        switch( DialogState )
-        {
-            case DIALOG_STATE_BACK:
-            {
-                // this probably should go in the enter state...
-                // set controller back to any
-                g_StateMgr.SetActiveControllerID( -1 );
-                g_UiMgr->SetUserController( g_UiUserID, -1 );
-                SetState( SM_ONLINE_MAIN_MENU );
-            }
-            break;
-
-            case DIALOG_STATE_SELECT:
-            {
-                StartLogin( &g_PendingConfig.GetConfig(), LOGIN_FROM_FRIENDS );
-            }
-            break;
-
-            case DIALOG_STATE_ACTIVATE:
-            {
-                SetState( SM_ONLINE_FEEDBACK_MENU_FRIEND );
-            }
-            break;
-        }
-    }
-}
-
-//=========================================================================
-
-void state_mgr::ExitOnlineFriends( void )
-{
-}
-
 
 
 //=========================================================================
@@ -6317,70 +5866,6 @@ void state_mgr::ExitOnlineEditAvatar( void )
 
 //=========================================================================
 
-void state_mgr::EnterHostLevelSelect( void )
-{
-    //  Create level select screen 
-    g_UiMgr->EndDialog( g_UiUserID, TRUE );
-    irect mainarea(26, DIALOG_TOP, 486, DIALOG_BOTTOM );
-    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "online level select", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
-#ifndef USE_MOVIES
-    g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
-#endif
-}
-
-//=========================================================================
-
-void state_mgr::UpdateHostLevelSelect( void )
-{
-    if( CheckForDisconnect() )
-    {
-        return;
-    }
-
-    if( m_CurrentDialog != NULL )
-    {
-        u32 DialogState = m_CurrentDialog->GetState();
-
-        switch( DialogState )
-        {
-            case DIALOG_STATE_BACK:
-            {
-                SetState( SM_ONLINE_HOST_MENU_OPTIONS );
-            }
-            break;
-
-            case DIALOG_STATE_SAVE_DATA_ERROR:
-            {
-#ifdef TARGET_DESKTOP
-                // advance to game
-                g_NetworkMgr.BecomeServer();
-                SetState( SM_START_GAME );
-#else
-                // save to save data and return to menu
-                SetState( SM_HOST_SAVE_SETTINGS );
-#endif
-            }
-            break;
-
-            case DIALOG_STATE_ACTIVATE:
-            {
-                // tell the network manager that we want to be a server
-                g_NetworkMgr.BecomeServer();
-                SetState( SM_START_GAME );
-            }
-            break;
-        }
-    }
-}
-
-//=========================================================================
-
-void state_mgr::ExitHostLevelSelect( void )
-{
-}
-
-//=========================================================================
-
 void state_mgr::EnterLevelSelect( void )
 {
     //  Create level select screen 
@@ -6475,10 +5960,10 @@ void state_mgr::EnterStartGame( void )
     g_UiMgr->EndDialog( g_UiUserID, TRUE );
     m_CurrentDialog = NULL;
     g_UiMgr->SetUserBackground( g_UiUserID, "" );
-    g_RscMgr.Unload( "DX_FrontEnd.audiopkg"    );
-    g_RscMgr.Unload( "SFX_FrontEnd.audiopkg"   );
-    g_RscMgr.Unload( "MUSIC_FrontEnd.audiopkg" );
-    g_RscMgr.Unload( "DREAMLAND.audiopkg" );
+    g_RscMgr.Unload( "AUDIO/DX_FRONTEND.AUDIOPKG"    );
+    g_RscMgr.Unload( "AUDIO/SFX_FRONTEND.AUDIOPKG"   );
+    g_RscMgr.Unload( "AUDIO/MUSIC_FRONTEND.AUDIOPKG" );
+    g_RscMgr.Unload( "AUDIO/DREAMLAND.AUDIOPKG" );
     g_UiMgr->UnloadBackground( "titlescreen" );
 
 #ifdef USE_MOVIES
@@ -6553,10 +6038,10 @@ void state_mgr::EnterSinglePlayerLoadMission( void )
     g_UiMgr->EndDialog( g_UiUserID, TRUE );
     m_CurrentDialog = NULL;
     g_UiMgr->SetUserBackground( g_UiUserID, "" );
-    g_RscMgr.Unload( "DX_FrontEnd.audiopkg"    );
-    g_RscMgr.Unload( "SFX_FrontEnd.audiopkg"   );
-    g_RscMgr.Unload( "MUSIC_FrontEnd.audiopkg" );
-    g_RscMgr.Unload( "DREAMLAND.audiopkg" );
+    g_RscMgr.Unload( "AUDIO/DX_FRONTEND.AUDIOPKG"    );
+    g_RscMgr.Unload( "AUDIO/SFX_FRONTEND.AUDIOPKG"   );
+    g_RscMgr.Unload( "AUDIO/MUSIC_FRONTEND.AUDIOPKG" );
+    g_RscMgr.Unload( "AUDIO/DREAMLAND.AUDIOPKG" );
     g_UiMgr->UnloadBackground( "titlescreen" );
 
 #ifdef USE_MOVIES
@@ -7073,6 +6558,12 @@ void state_mgr::UpdatePauseSettings( void )
                     }
                     break;
 
+                    case IDC_SETTINGS_UI:
+                    {
+                        SetState( SM_PAUSE_UI );
+                    }
+                    break;
+
                     case IDC_SETTINGS_LANGUAGE:
                     {
                         SetState( SM_PAUSE_LANGUAGE );
@@ -7210,6 +6701,15 @@ void state_mgr::UpdatePauseGraphics( void )
             }
             break;
 
+            case DIALOG_STATE_SELECT:
+            {
+                if( m_CurrentDialog->GetControl() == IDC_GRAPHICS_ADVANCED )
+                {
+                    SetState( SM_PAUSE_GRAPHICS_ADVANCED );
+                }
+            }
+            break;
+
             case DIALOG_STATE_SAVE_DATA_ERROR:
             {
                 SetState( SM_PAUSE_SETTINGS_SELECT );
@@ -7222,6 +6722,52 @@ void state_mgr::UpdatePauseGraphics( void )
 //=========================================================================
 
 void state_mgr::ExitPauseGraphics( void )
+{
+}
+
+//=========================================================================
+
+void state_mgr::EnterPauseGraphicsAdvanced( void )
+{
+    g_UiMgr->EndDialog( g_UiUserID, TRUE );
+    irect mainarea(26, DIALOG_TOP, 486, DIALOG_BOTTOM );
+    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID,
+                                           "graphics advanced settings",
+                                           mainarea,
+                                           NULL,
+                                           ui_win::WF_VISIBLE|ui_win::WF_BORDER );
+#ifndef USE_MOVIES
+    g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
+#endif
+    ((dlg_graphics_advanced_settings*)m_CurrentDialog)->EnableBlackout();
+}
+
+//=========================================================================
+
+void state_mgr::UpdatePauseGraphicsAdvanced( void )
+{
+    if( m_CurrentDialog != NULL )
+    {
+        switch( m_CurrentDialog->GetState() )
+        {
+            case DIALOG_STATE_BACK:
+            {
+                SetState( SM_PAUSE_GRAPHICS );
+            }
+            break;
+
+            case DIALOG_STATE_SAVE_DATA_ERROR:
+            {
+                SetState( SM_PAUSE_SETTINGS_SELECT );
+            }
+            break;
+        }
+    }
+}
+
+//=========================================================================
+
+void state_mgr::ExitPauseGraphicsAdvanced( void )
 {
 }
 
@@ -7264,6 +6810,48 @@ void state_mgr::UpdatePauseDisplay( void )
 //=========================================================================
 
 void state_mgr::ExitPauseDisplay( void )
+{
+}
+
+//=========================================================================
+
+void state_mgr::EnterPauseUI( void )
+{
+    g_UiMgr->EndDialog( g_UiUserID, TRUE );
+    irect mainarea(26, DIALOG_TOP, 486, DIALOG_BOTTOM );
+    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "ui settings", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
+#ifndef USE_MOVIES
+    g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
+#endif
+    ((dlg_ui_settings*)m_CurrentDialog)->EnableBlackout();
+}
+
+//=========================================================================
+
+void state_mgr::UpdatePauseUI( void )
+{
+    if( m_CurrentDialog )
+    {
+        switch( m_CurrentDialog->GetState() )
+        {
+            case DIALOG_STATE_BACK:
+            {
+                SetState( SM_PAUSE_SETTINGS );
+            }
+            break;
+
+            case DIALOG_STATE_SAVE_DATA_ERROR:
+            {
+                SetState( SM_PAUSE_SETTINGS_SELECT );
+            }
+            break;
+        }
+    }
+}
+
+//=========================================================================
+
+void state_mgr::ExitPauseUI( void )
 {
 }
 
@@ -7581,6 +7169,12 @@ void state_mgr::UpdatePauseMPSettings( void )
                     }
                     break;
 
+                    case IDC_SETTINGS_UI:
+                    {
+                        SetState( SM_PAUSE_MP_UI );
+                    }
+                    break;
+
                     case IDC_SETTINGS_LANGUAGE:
                     {
                         SetState( SM_PAUSE_MP_LANGUAGE );
@@ -7718,6 +7312,15 @@ void state_mgr::UpdatePauseMPGraphics( void )
             }
             break;
 
+            case DIALOG_STATE_SELECT:
+            {
+                if( m_CurrentDialog->GetControl() == IDC_GRAPHICS_ADVANCED )
+                {
+                    SetState( SM_PAUSE_MP_GRAPHICS_ADVANCED );
+                }
+            }
+            break;
+
             case DIALOG_STATE_SAVE_DATA_ERROR:
             {
                 SetState( SM_PAUSE_MP_SETTINGS_SELECT );
@@ -7730,6 +7333,52 @@ void state_mgr::UpdatePauseMPGraphics( void )
 //=========================================================================
 
 void state_mgr::ExitPauseMPGraphics( void )
+{
+}
+
+//=========================================================================
+
+void state_mgr::EnterPauseMPGraphicsAdvanced( void )
+{
+    g_UiMgr->EndDialog( g_UiUserID, TRUE );
+    irect mainarea(26, DIALOG_TOP, 486, DIALOG_BOTTOM );
+    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID,
+                                           "graphics advanced settings",
+                                           mainarea,
+                                           NULL,
+                                           ui_win::WF_VISIBLE|ui_win::WF_BORDER );
+#ifndef USE_MOVIES
+    g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
+#endif
+    ((dlg_graphics_advanced_settings*)m_CurrentDialog)->EnableBlackout();
+}
+
+//=========================================================================
+
+void state_mgr::UpdatePauseMPGraphicsAdvanced( void )
+{
+    if( m_CurrentDialog != NULL )
+    {
+        switch( m_CurrentDialog->GetState() )
+        {
+            case DIALOG_STATE_BACK:
+            {
+                SetState( SM_PAUSE_MP_GRAPHICS );
+            }
+            break;
+
+            case DIALOG_STATE_SAVE_DATA_ERROR:
+            {
+                SetState( SM_PAUSE_MP_SETTINGS_SELECT );
+            }
+            break;
+        }
+    }
+}
+
+//=========================================================================
+
+void state_mgr::ExitPauseMPGraphicsAdvanced( void )
 {
 }
 
@@ -7772,6 +7421,48 @@ void state_mgr::UpdatePauseMPDisplay( void )
 //=========================================================================
 
 void state_mgr::ExitPauseMPDisplay( void )
+{
+}
+
+//=========================================================================
+
+void state_mgr::EnterPauseMPUI( void )
+{
+    g_UiMgr->EndDialog( g_UiUserID, TRUE );
+    irect mainarea(26, DIALOG_TOP, 486, DIALOG_BOTTOM );
+    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "ui settings", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
+#ifndef USE_MOVIES
+    g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
+#endif
+    ((dlg_ui_settings*)m_CurrentDialog)->EnableBlackout();
+}
+
+//=========================================================================
+
+void state_mgr::UpdatePauseMPUI( void )
+{
+    if( m_CurrentDialog )
+    {
+        switch( m_CurrentDialog->GetState() )
+        {
+            case DIALOG_STATE_BACK:
+            {
+                SetState( SM_PAUSE_MP_SETTINGS );
+            }
+            break;
+
+            case DIALOG_STATE_SAVE_DATA_ERROR:
+            {
+                SetState( SM_PAUSE_MP_SETTINGS_SELECT );
+            }
+            break;
+        }
+    }
+}
+
+//=========================================================================
+
+void state_mgr::ExitPauseMPUI( void )
 {
 }
 
@@ -8113,11 +7804,6 @@ void state_mgr::UpdatePauseOnline( void )
                     }
                     break;
 
-                    case IDC_PAUSE_ONLINE_FRIENDS:
-                    {
-                        SetState( SM_PAUSE_ONLINE_FRIENDS );
-                    }
-                    break;
 
                     case IDC_PAUSE_ONLINE_PLAYERS:
                     {
@@ -8261,52 +7947,6 @@ void state_mgr::ExitPauseOnlineVoteKick( void )
 
 //=========================================================================
 
-void state_mgr::EnterPauseOnlineFriends( void )
-{
-    // Create friends menu
-    g_UiMgr->EndDialog( g_UiUserID, TRUE );
-    irect mainarea(8, DIALOG_TOP, 504, DIALOG_BOTTOM );
-    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "friends list", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
-#ifndef USE_MOVIES
-    g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
-#endif
-    // enable background filter
-    ((dlg_friends*)m_CurrentDialog)->EnableBlackout();
-}
-
-//=========================================================================
-
-void state_mgr::UpdatePauseOnlineFriends( void )
-{
-    if( m_CurrentDialog != NULL )
-    {
-        u32 DialogState = m_CurrentDialog->GetState();
-
-        switch( DialogState )
-        {
-            case DIALOG_STATE_BACK:
-            {
-                SetState( SM_PAUSE_ONLINE );
-            }
-            break;
-
-            case DIALOG_STATE_ACTIVATE:
-            {
-                SetState( SM_PAUSE_ONLINE_FEEDBACK_FRIEND );
-            }
-            break;
-        }
-    }
-}
-
-//=========================================================================
-
-void state_mgr::ExitPauseOnlineFriends( void )
-{
-}
-
-//=========================================================================
-
 void state_mgr::EnterPauseOnlinePlayers( void )
 {
     // Create players menu
@@ -8318,7 +7958,6 @@ void state_mgr::EnterPauseOnlinePlayers( void )
 #endif
     // enable background filter
     ((dlg_players*)m_CurrentDialog)->EnableBlackout();
-    ((dlg_players*)m_CurrentDialog)->Configure( PLAYER_MODE_INGAME );
 }
 
 //=========================================================================
@@ -8337,11 +7976,6 @@ void state_mgr::UpdatePauseOnlinePlayers( void )
             }
             break;
 
-            case DIALOG_STATE_ACTIVATE:
-            {
-                SetState( SM_PAUSE_ONLINE_FEEDBACK );
-            }
-            break;
         }
     }
 }
@@ -8349,91 +7983,6 @@ void state_mgr::UpdatePauseOnlinePlayers( void )
 //=========================================================================
 
 void state_mgr::ExitPauseOnlinePlayers( void )
-{
-}
-
-//=========================================================================
-
-void state_mgr::EnterPauseOnlineFeedback( void )
-{
-    // Create feedback menu
-    g_UiMgr->EndDialog( g_UiUserID, TRUE );
-    irect mainarea(8, DIALOG_TOP, 504, DIALOG_BOTTOM );
-    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "feedback", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
-    ((dlg_feedback*)m_CurrentDialog)->EnableBlackout();
-}
-
-//=========================================================================
-
-void state_mgr::UpdatePauseOnlineFeedback( void )
-{
-    if( m_CurrentDialog != NULL )
-    {
-        u32 DialogState = m_CurrentDialog->GetState();
-
-        switch( DialogState )
-        {
-            case DIALOG_STATE_BACK:
-            {
-                SetState( SM_PAUSE_ONLINE_PLAYERS );
-            }
-            break;
-        }
-    }
-}
-
-//=========================================================================
-
-void state_mgr::ExitPauseOnlineFeedback( void )
-{
-}
-
-//=========================================================================
-
-void state_mgr::EnterPauseOnlineFeedbackFriend( void )
-{
-    // Create feedback menu
-    g_UiMgr->EndDialog( g_UiUserID, TRUE );
-    irect mainarea(8, DIALOG_TOP, 504, DIALOG_BOTTOM );
-    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "feedback", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
-
-    for( s32 i=0; i<g_MatchMgr.GetBuddyCount(); i++ )
-    {
-        buddy_info& Buddy = g_MatchMgr.GetBuddy(i);
-        if( Buddy.Identifier == m_FeedbackIdentifier )
-        {
-            if( Buddy.Flags & USER_VOICE_MESSAGE )
-            {
-                ((dlg_feedback*)m_CurrentDialog)->ChangeConfig(dlg_feedback::ATTACHMENT_FEEDBACK);
-                break;
-            }
-        }
-    }
-    ((dlg_feedback*)m_CurrentDialog)->EnableBlackout();
-}
-
-//=========================================================================
-
-void state_mgr::UpdatePauseOnlineFeedbackFriend( void )
-{
-    if( m_CurrentDialog != NULL )
-    {
-        u32 DialogState = m_CurrentDialog->GetState();
-
-        switch( DialogState )
-        {
-            case DIALOG_STATE_BACK:
-            {
-                SetState( SM_PAUSE_ONLINE_FRIENDS );
-            }
-            break;
-        }
-    }
-}
-
-//=========================================================================
-
-void state_mgr::ExitPauseOnlineFeedbackFriend( void )
 {
 }
 
@@ -8598,6 +8147,12 @@ void state_mgr::UpdatePauseOnlineSettings( void )
                     }
                     break;
 
+                    case IDC_SETTINGS_UI:
+                    {
+                        SetState( SM_PAUSE_ONLINE_UI );
+                    }
+                    break;
+
                     case IDC_SETTINGS_LANGUAGE:
                     {
                         SetState( SM_PAUSE_ONLINE_LANGUAGE );
@@ -8734,6 +8289,15 @@ void state_mgr::UpdatePauseOnlineGraphics( void )
             }
             break;
 
+            case DIALOG_STATE_SELECT:
+            {
+                if( m_CurrentDialog->GetControl() == IDC_GRAPHICS_ADVANCED )
+                {
+                    SetState( SM_PAUSE_ONLINE_GRAPHICS_ADVANCED );
+                }
+            }
+            break;
+
             case DIALOG_STATE_SAVE_DATA_ERROR:
             {
                 SetState( SM_PAUSE_ONLINE_SAVE_SELECT );
@@ -8746,6 +8310,52 @@ void state_mgr::UpdatePauseOnlineGraphics( void )
 //=========================================================================
 
 void state_mgr::ExitPauseOnlineGraphics( void )
+{
+}
+
+//=========================================================================
+
+void state_mgr::EnterPauseOnlineGraphicsAdvanced( void )
+{
+    g_UiMgr->EndDialog( g_UiUserID, TRUE );
+    irect mainarea(26, DIALOG_TOP, 486, DIALOG_BOTTOM );
+    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID,
+                                           "graphics advanced settings",
+                                           mainarea,
+                                           NULL,
+                                           ui_win::WF_VISIBLE|ui_win::WF_BORDER );
+#ifndef USE_MOVIES
+    g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
+#endif
+    ((dlg_graphics_advanced_settings*)m_CurrentDialog)->EnableBlackout();
+}
+
+//=========================================================================
+
+void state_mgr::UpdatePauseOnlineGraphicsAdvanced( void )
+{
+    if( m_CurrentDialog != NULL )
+    {
+        switch( m_CurrentDialog->GetState() )
+        {
+            case DIALOG_STATE_BACK:
+            {
+                SetState( SM_PAUSE_ONLINE_GRAPHICS );
+            }
+            break;
+
+            case DIALOG_STATE_SAVE_DATA_ERROR:
+            {
+                SetState( SM_PAUSE_ONLINE_SAVE_SELECT );
+            }
+            break;
+        }
+    }
+}
+
+//=========================================================================
+
+void state_mgr::ExitPauseOnlineGraphicsAdvanced( void )
 {
 }
 
@@ -8788,6 +8398,48 @@ void state_mgr::UpdatePauseOnlineDisplay( void )
 //=========================================================================
 
 void state_mgr::ExitPauseOnlineDisplay( void )
+{
+}
+
+//=========================================================================
+
+void state_mgr::EnterPauseOnlineUI( void )
+{
+    g_UiMgr->EndDialog( g_UiUserID, TRUE );
+    irect mainarea(26, DIALOG_TOP, 486, DIALOG_BOTTOM );
+    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "ui settings", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
+#ifndef USE_MOVIES
+    g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
+#endif
+    ((dlg_ui_settings*)m_CurrentDialog)->EnableBlackout();
+}
+
+//=========================================================================
+
+void state_mgr::UpdatePauseOnlineUI( void )
+{
+    if( m_CurrentDialog )
+    {
+        switch( m_CurrentDialog->GetState() )
+        {
+            case DIALOG_STATE_BACK:
+            {
+                SetState( SM_PAUSE_ONLINE_SETTINGS );
+            }
+            break;
+
+            case DIALOG_STATE_SAVE_DATA_ERROR:
+            {
+                SetState( SM_PAUSE_ONLINE_SAVE_SELECT );
+            }
+            break;
+        }
+    }
+}
+
+//=========================================================================
+
+void state_mgr::ExitPauseOnlineUI( void )
 {
 }
 
@@ -8980,7 +8632,7 @@ void state_mgr::UpdatePauseServerConfig( void )
 
                     case IDC_SERVER_CONFIG_RECONFIGURE:
                     {
-                        SetState( SM_PAUSE_ONLINE_RECONFIG_ONE );
+                        SetState( SM_PAUSE_ONLINE_RECONFIG );
                     }
                     break;
 
@@ -9153,22 +8805,20 @@ void state_mgr::ExitPauseOnlineTeamChange( void )
 
 //=========================================================================
 
-void state_mgr::EnterPauseOnlineReconfigOne( void )
+void state_mgr::EnterPauseOnlineReconfig( void )
 {
     // Create online host menu
     g_UiMgr->EndDialog( g_UiUserID, TRUE );
-    irect mainarea(12, DIALOG_TOP, 500, DIALOG_BOTTOM );
+    irect mainarea(6, DIALOG_TOP, 506, DIALOG_BOTTOM );
     m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "online host", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
 #ifndef USE_MOVIES
     g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
 #endif
-    // enable background filter
-    ((dlg_online_host*)m_CurrentDialog)->EnableBlackout();
 }
 
 //=========================================================================
 
-void state_mgr::UpdatePauseOnlineReconfigOne( void )
+void state_mgr::UpdatePauseOnlineReconfig( void )
 {
     if( m_CurrentDialog != NULL )
     {
@@ -9178,7 +8828,14 @@ void state_mgr::UpdatePauseOnlineReconfigOne( void )
         {
             case DIALOG_STATE_SELECT:
             {
-                SetState( SM_PAUSE_ONLINE_RECONFIG_TWO );
+                g_PendingConfig.Commit();
+                g_ActiveConfig.SetExitReason( GAME_EXIT_RELOAD_LEVEL );
+            }
+            break;
+
+            case DIALOG_STATE_ACTIVATE:
+            {
+                SetState( SM_END_PAUSE );
             }
             break;
 
@@ -9193,118 +8850,7 @@ void state_mgr::UpdatePauseOnlineReconfigOne( void )
 
 //=========================================================================
 
-void state_mgr::ExitPauseOnlineReconfigOne( void )
-{
-}
-
-//=========================================================================
-
-void state_mgr::EnterPauseOnlineReconfigTwo( void )
-{
-    // Create online host menu
-    g_UiMgr->EndDialog( g_UiUserID, TRUE );
-    irect mainarea(12, DIALOG_TOP, 500, DIALOG_BOTTOM );
-    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "host options", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
-#ifndef USE_MOVIES
-    g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
-#endif
-    // enable background filter
-    ((dlg_online_host_options*)m_CurrentDialog)->EnableBlackout();
-}
-
-//=========================================================================
-
-void state_mgr::UpdatePauseOnlineReconfigTwo( void )
-{
-    if( m_CurrentDialog != NULL )
-    {
-        u32 DialogState = m_CurrentDialog->GetState();
-
-        switch( DialogState )
-        {
-            case DIALOG_STATE_BACK:
-            {
-                SetState( SM_PAUSE_ONLINE_RECONFIG_ONE );
-            }
-            break;
-
-            case DIALOG_STATE_SELECT:
-            {
-                SetState( SM_PAUSE_ONLINE_RECONFIG_MAP );               
-            }
-            break;
-        }
-    }
-}
-
-//=========================================================================
-
-void state_mgr::ExitPauseOnlineReconfigTwo( void )
-{
-}
-
-//=========================================================================
-
-void state_mgr::EnterPauseOnlineReconfigMap( void )
-{
-    //  Create level select screen 
-    g_UiMgr->EndDialog( g_UiUserID, TRUE );
-    irect mainarea(26, DIALOG_TOP, 486, DIALOG_BOTTOM );
-    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "online level select", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
-#ifndef USE_MOVIES
-    g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
-#endif
-    // enable background filter
-    ((dlg_online_level_select*)m_CurrentDialog)->EnableBlackout();
-    ((dlg_online_level_select*)m_CurrentDialog)->Configure( MAP_SELECT_ONLINE_PAUSE );
-}
-
-//=========================================================================
-
-void state_mgr::UpdatePauseOnlineReconfigMap( void )
-{
-    if( m_CurrentDialog != NULL )
-    {
-        u32 DialogState = m_CurrentDialog->GetState();
-
-        switch( DialogState )
-        {
-            case DIALOG_STATE_BACK:
-            {
-                SetState( SM_PAUSE_ONLINE_RECONFIG_TWO );
-            }
-            break;
-
-            case DIALOG_STATE_ACTIVATE:
-            {
-                // return to game
-                SetState( SM_END_PAUSE );
-            }
-            break;
-
-#if 0 
-            case DIALOG_STATE_SAVE_DATA_ERROR:
-            {
-                // save to save data and return to menu
-                SetState( SM_PAUSE_ONLINE_SAVE_SETTINGS );
-            }
-            break;
-#endif
-
-            case DIALOG_STATE_SELECT:
-            {
-                g_PendingConfig.Commit();
-                g_ActiveConfig.SetExitReason( GAME_EXIT_RELOAD_LEVEL );
-                // TODO: restart the game with the new settings
-            }
-            break;
-        }
-    }
-}
-
-//=========================================================================
-
-void state_mgr::ExitPauseOnlineReconfigMap( void )
+void state_mgr::ExitPauseOnlineReconfig( void )
 {
 }
 
@@ -9686,10 +9232,10 @@ void state_mgr::UpdatePostGame( void )
 
         case GAME_EXIT_PLAYER_QUIT:
         {
-            g_RscMgr.Load( PRELOAD_FILE("DX_FrontEnd.audiopkg"    ) );
-            g_RscMgr.Load( PRELOAD_FILE("SFX_FrontEnd.audiopkg"   ) );
-            g_RscMgr.Load( PRELOAD_FILE("MUSIC_FrontEnd.audiopkg" ) );
-            g_RscMgr.Load( PRELOAD_FILE("DREAMLAND.audiopkg" ) );
+            g_RscMgr.Load( PRELOAD_FILE("AUDIO/DX_FRONTEND.AUDIOPKG"    ) );
+            g_RscMgr.Load( PRELOAD_FILE("AUDIO/SFX_FRONTEND.AUDIOPKG"   ) );
+            g_RscMgr.Load( PRELOAD_FILE("AUDIO/MUSIC_FRONTEND.AUDIOPKG" ) );
+            g_RscMgr.Load( PRELOAD_FILE("AUDIO/DREAMLAND.AUDIOPKG" ) );
             // initialize audio volumes from global settings
             global_settings& Settings = g_StateMgr.GetActiveSettings();
             Settings.CommitAudio();
@@ -9734,31 +9280,6 @@ void state_mgr::UpdatePostGame( void )
         }
         break;
 
-        case GAME_EXIT_FOLLOW_BUDDY:
-        {        
-            if( GameMgr.IsGameOnline()==FALSE )
-            {
-                m_bFollowBuddy = TRUE;
-                // clear the controller requests
-                // EXCEPT for the controller that was in the friends menu
-                for(s32 p=0; p < SM_MAX_PLAYERS; p++)
-                {
-                    if( p != GetActiveControllerID() )
-                    {
-                        g_StateMgr.SetControllerRequested(p, FALSE);
-                    }
-                    // these all need to be reset - they will be reassigned.
-                    g_GameInput.ClearPlayerDevice( p );
-                }
-                game_config::Commit();
-                SetState( SM_ONLINE_CONNECT );
-            }
-            else
-            {
-                StartLogin( &g_PendingConfig.GetConfig(), LOGIN_FOLLOW_FRIEND );
-            }
-        }
-        break;
 
         default:
         {
@@ -10076,20 +9597,17 @@ void state_mgr::EnterAdvanceLevel( void )
 void state_mgr::UpdateAdvanceLevel( void )
 {
     xbool IsReloading;
-    xbool IsFollowing;
 
     exit_reason Reason = g_ActiveConfig.GetExitReason();
 
     if( (Reason!=GAME_EXIT_RELOAD_LEVEL) && 
-        (Reason!=GAME_EXIT_ADVANCE_LEVEL) && 
-        (Reason!=GAME_EXIT_FOLLOW_BUDDY) )
+        (Reason!=GAME_EXIT_ADVANCE_LEVEL) )
     {
         g_StateMgr.SetState( SM_REPORT_ERROR );
         return;
     }
 
     IsReloading= (Reason == GAME_EXIT_RELOAD_LEVEL);
-    IsFollowing= (Reason == GAME_EXIT_FOLLOW_BUDDY);
 
     //
     // We're playing campaign. This means we always go through the level list in sequence
@@ -10140,12 +9658,6 @@ void state_mgr::UpdateAdvanceLevel( void )
     //
     // We're following a player in to a game
     //
-    if( IsFollowing )
-    {
-        server_info& Config = g_PendingConfig.GetConfig();
-        StartLogin( &Config, LOGIN_FOLLOW_FRIEND );
-        return;
-    }
 
     //
     // We're a client. We need to wait until the RequestingMission is complete.
@@ -10579,22 +10091,14 @@ void state_mgr::UpdateServerCooldown( void )
             
             case GAME_EXIT_NETWORK_DOWN:
             case GAME_EXIT_DUPLICATE_LOGIN:
-            case GAME_EXIT_FOLLOW_BUDDY:
-            case GAME_EXIT_PLAYER_DROPPED:
-            case GAME_EXIT_PLAYER_KICKED:
-            case GAME_EXIT_SESSION_ENDED:
             case GAME_EXIT_CONNECTION_LOST:
             case GAME_EXIT_SERVER_BUSY:
-            case GAME_EXIT_PLAYER_QUIT:
             case GAME_EXIT_SERVER_SHUTDOWN:
+            case GAME_EXIT_SESSION_ENDED:
+            case GAME_EXIT_PLAYER_QUIT:
             case GAME_EXIT_GAME_COMPLETE:
-            case GAME_EXIT_BAD_PASSWORD:
-            case GAME_EXIT_SERVER_FULL:
-            case GAME_EXIT_CLIENT_BANNED:
-            case GAME_EXIT_CANNOT_CONNECT:
             case GAME_EXIT_INVALID_MISSION:
             case GAME_EXIT_INVALID_CAMPAIGN_MISSION:
-            case GAME_EXIT_LOGIN_REFUSED:
             {
                 SetState( SM_SERVER_DISCONNECT );
             }
@@ -10620,10 +10124,17 @@ void state_mgr::ExitServerCooldown( void )
 void state_mgr::EnterClientCooldown( void )
 {
     game_client& Client= g_NetworkMgr.GetClientObject();
-    // If we never got off the ground and running, then there's no need to try and kill me.
-    if( Client.GetState()!= STATE_CLIENT_IDLE )
+    switch( Client.GetState() )
     {
+    case STATE_CLIENT_IDLE:
+    case STATE_CLIENT_COOLDOWN:
+    case STATE_CLIENT_DISCONNECT:
+    case STATE_CLIENT_SHUTDOWN:
+    case STATE_CLIENT_KILL:
+        break;
+    default:
         Client.SetState( STATE_CLIENT_COOLDOWN );
+        break;
     }
 }
 
@@ -10647,22 +10158,21 @@ void state_mgr::UpdateClientCooldown( void )
 
             case GAME_EXIT_NETWORK_DOWN:
             case GAME_EXIT_DUPLICATE_LOGIN:
-            case GAME_EXIT_FOLLOW_BUDDY:
             case GAME_EXIT_PLAYER_DROPPED:
             case GAME_EXIT_PLAYER_KICKED:
-            case GAME_EXIT_SESSION_ENDED:
             case GAME_EXIT_CONNECTION_LOST:
             case GAME_EXIT_SERVER_BUSY:
-            case GAME_EXIT_PLAYER_QUIT:
             case GAME_EXIT_SERVER_SHUTDOWN:
+            case GAME_EXIT_SESSION_ENDED:
+            case GAME_EXIT_PLAYER_QUIT:
             case GAME_EXIT_GAME_COMPLETE:
-            case GAME_EXIT_BAD_PASSWORD:
-            case GAME_EXIT_SERVER_FULL:
-            case GAME_EXIT_CLIENT_BANNED:
-            case GAME_EXIT_CANNOT_CONNECT:
-            case GAME_EXIT_INVALID_MISSION:
-            case GAME_EXIT_INVALID_CAMPAIGN_MISSION:
             case GAME_EXIT_LOGIN_REFUSED:
+            case GAME_EXIT_BAD_PASSWORD:
+            case GAME_EXIT_CLIENT_BANNED:
+            case GAME_EXIT_SERVER_FULL:
+            case GAME_EXIT_INVALID_MISSION:
+            case GAME_EXIT_CANNOT_CONNECT:
+            case GAME_EXIT_INVALID_CAMPAIGN_MISSION:
             {
                 SetState( SM_CLIENT_DISCONNECT );
             }
@@ -10672,7 +10182,7 @@ void state_mgr::UpdateClientCooldown( void )
             {
                 // NOTE: DO NOT remove this assert. If we come out of the game with an unexpected error code,
                 // then we need to handle it gracefully and understand WHY this error code appeared.
-                ASSERT(FALSE);
+                ASSERTS( FALSE, GetExitReasonName( Reason ) );
             }
             break;
         }
@@ -11065,10 +10575,10 @@ s32 state_mgr::GetMapCycleMapID( s32 Index )
 void state_mgr::EnterReportError( void )
 {
     // reload the front-end sound effects
-    g_RscMgr.Load( PRELOAD_FILE("DX_FrontEnd.audiopkg"    ) );
-    g_RscMgr.Load( PRELOAD_FILE("SFX_FrontEnd.audiopkg"   ) );
-    g_RscMgr.Load( PRELOAD_FILE("MUSIC_FrontEnd.audiopkg" ) );
-    g_RscMgr.Load( PRELOAD_FILE("DREAMLAND.audiopkg" ) );
+    g_RscMgr.Load( PRELOAD_FILE("AUDIO/DX_FRONTEND.AUDIOPKG"    ) );
+    g_RscMgr.Load( PRELOAD_FILE("AUDIO/SFX_FRONTEND.AUDIOPKG"   ) );
+    g_RscMgr.Load( PRELOAD_FILE("AUDIO/MUSIC_FRONTEND.AUDIOPKG" ) );
+    g_RscMgr.Load( PRELOAD_FILE("AUDIO/DREAMLAND.AUDIOPKG" ) );
     // initialize audio volumes from global settings
     global_settings& Settings = g_StateMgr.GetActiveSettings();
     Settings.CommitAudio();
@@ -11158,11 +10668,7 @@ void state_mgr::UpdateReportError( void )
                 {
                     switch( m_LoginFailureDestination )
                     {
-                        case LOGIN_FROM_FRIENDS:        SetState( SM_ONLINE_FRIENDS_MENU );             break;
-                        case LOGIN_FROM_PLAYERS:        SetState( SM_ONLINE_PLAYERS_MENU );             break;
                         case LOGIN_FROM_JOIN_MENU:      SetState( SM_ONLINE_JOIN_MENU );                break;
-                        case LOGIN_FROM_INVITE:         SetState( SM_MAIN_MENU );                       break;
-                        case LOGIN_FOLLOW_FRIEND:       SetState( SM_ONLINE_FRIENDS_MENU );             break;
                         case LOGIN_FROM_MAIN:           SetState( SM_ONLINE_MAIN_MENU );                break;
                         default:                        SetState( SM_ONLINE_MAIN_MENU ); ASSERT(FALSE); break;             
                     }
@@ -11677,7 +11183,7 @@ void state_mgr::EnterOnlineLogin( void )
     // Create online host menu
     g_UiMgr->EndDialog( g_UiUserID, TRUE );
 
-    irect mainarea(26, DIALOG_TOP, 286, DIALOG_BOTTOM );
+    irect mainarea(26, DIALOG_TOP, 486, DIALOG_BOTTOM );
     m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "login", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
 }
 
@@ -11730,11 +11236,7 @@ void state_mgr::UpdateOnlineLogin( void )
                 // 'Cancel' (or back) was pressed
                 switch( m_LoginFailureDestination )
                 {
-                    case LOGIN_FROM_FRIENDS:                SetState( SM_ONLINE_FRIENDS_MENU );         break;
                     case LOGIN_FROM_JOIN_MENU:              SetState( SM_ONLINE_JOIN_MENU );            break;
-                    case LOGIN_FROM_INVITE:                 SetState( SM_ONLINE_MAIN_MENU );            break;
-                    case LOGIN_FROM_PLAYERS:                SetState( SM_ONLINE_JOIN_MENU );            break;
-                    case LOGIN_FOLLOW_FRIEND:               SetState( SM_ONLINE_FRIENDS_MENU );         break;
                     default:                                ASSERT( FALSE );                            break;
                 }
             }
@@ -11771,7 +11273,7 @@ void state_mgr::StartLogin( const server_info* pInfo, login_source LoginSource )
     Config = *pInfo;
 
     // clear server name if we don't have the data yet.
-    if( (LoginSource != LOGIN_FROM_PLAYERS) && (LoginSource != LOGIN_FROM_JOIN_MENU) )
+    if( LoginSource != LOGIN_FROM_JOIN_MENU )
     {
         Config.Name[0] = '\0';
     }
@@ -11832,10 +11334,10 @@ void state_mgr::UpdateGameOver( void )
     SilentSaveProfile();
 
     // load front end audio
-    g_RscMgr.Load( PRELOAD_FILE("DX_FrontEnd.audiopkg"    ) );
-    g_RscMgr.Load( PRELOAD_FILE("SFX_FrontEnd.audiopkg"   ) );
-    g_RscMgr.Load( PRELOAD_FILE("MUSIC_FrontEnd.audiopkg" ) );
-    g_RscMgr.Load( PRELOAD_FILE("DREAMLAND.audiopkg" ) );    
+    g_RscMgr.Load( PRELOAD_FILE("AUDIO/DX_FRONTEND.AUDIOPKG"    ) );
+    g_RscMgr.Load( PRELOAD_FILE("AUDIO/SFX_FRONTEND.AUDIOPKG"   ) );
+    g_RscMgr.Load( PRELOAD_FILE("AUDIO/MUSIC_FRONTEND.AUDIOPKG" ) );
+    g_RscMgr.Load( PRELOAD_FILE("AUDIO/DREAMLAND.AUDIOPKG" ) );    
     // initialize audio volumes from global settings
     global_settings& Settings = g_StateMgr.GetActiveSettings();
     Settings.CommitAudio();
@@ -11859,7 +11361,6 @@ xbool state_mgr::CheckForDisconnect( void )
         // shutdown or you'll hose everything.
         return FALSE;
     }
-
 
 
     // Ok, we noticed a disconnect occurred, let's just close every open
@@ -11920,7 +11421,8 @@ void state_mgr::SilentSaveProfile( void )
     s32                     i;
     level_check_points*     pOldestCheckpoint;
 
-    player_profile&         ActiveProfile = GetActiveProfile( GetProfileListIndex(0) );
+
+    player_profile& ActiveProfile = GetActiveProfile( GetProfileListIndex(0) );
 
     pOldestCheckpoint = &ActiveProfile.GetCheckpoint(0);
 
@@ -12077,91 +11579,9 @@ void state_mgr::SetActiveControllerID( s32 ID )
 
 //=========================================================================
 
-void state_mgr::EnterFollowBuddy( void )
-{
-    // Create main menu
-    g_UiMgr->EndDialog( g_UiUserID, TRUE );
-
-#ifdef USE_MOVIES
-    // initialize movie player
-    if( !m_bPlayMovie )
-    {
-        Movie.Init();
-        //Movie.SetLanguage(XL_LANG_ENGLISH);
-        m_bPlayMovie = Movie.Open( SelectBestClip("MenuBackground"),TRUE,TRUE );
-    }
-#else
-    // Load the background
-    g_UiMgr->LoadBackground ( "background1", "A51Background.xbmp" );
-#endif
-
-#ifdef USE_MOVIES
-    g_UiMgr->SetUserBackground( g_UiUserID, "" );
-#else
-    g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
-#endif
-
-    irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-    m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  g_UiUserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|ui_win::WF_INPUTMODAL );
-
-    // set nav text
-    xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_YES" ));
-    navText += g_StringTableMgr( "ui", "IDS_NAV_NO" );
-
-    xwstring Title( g_StringTableMgr( "ui", "IDS_MAIN_MENU_INVITE_TITLE" ) );
-    Title += m_FeedbackName;
-    // configure message
-    r.Set(0,0,400,200);
-    m_PopUp->Configure( r, Title, 
-        TRUE, 
-        TRUE, 
-        FALSE, 
-        g_StringTableMgr( "ui", "IDS_ONLINE_MENU_PENDING_INVITE" ),
-        navText,
-        &m_PopUpResult );
-}
-
-//=========================================================================
-
-void state_mgr::UpdateFollowBuddy( void )
-{
-    if ( m_PopUpResult != DLG_POPUP_IDLE )
-    {
-        m_PopUp = NULL;
-        if ( m_PopUpResult == DLG_POPUP_YES )
-        {
-            StartLogin( &g_PendingConfig.GetConfig(), LOGIN_FROM_INVITE );
-        }
-        else
-        {
-            m_bFollowBuddy = FALSE;
-            // Cancel invite and return to online main menu
-            SetState( SM_ONLINE_MAIN_MENU );
-        }
-    }
-}
-
-//=========================================================================
-
-const char* state_mgr::GetFeedbackPlayer( u64& Identifier )
-{ 
-    Identifier = m_FeedbackIdentifier;
-    return m_FeedbackName; 
-}
-
-//=========================================================================
-
-void state_mgr::SetFeedbackPlayer( const char* pName, u64 Identifier )
-{
-    x_strcpy( m_FeedbackName, pName );
-    m_FeedbackIdentifier = Identifier;
-}
-
-//=========================================================================
-
 void state_mgr::KillFrontEndMusic( void )
 {
-    if( g_AudioMgr.IsValidVoiceId( s_VoiceID ) )
+    if( g_AudioMgr.IsValidVoiceIdCached( s_VoiceID ) )
     {
         g_AudioMgr.Release( s_VoiceID, 0.0f );
         s_VoiceID = -1;
@@ -12173,4 +11593,52 @@ void state_mgr::KillFrontEndMusic( void )
 void state_mgr::InitFrontEndMusic( const char* pMusicName )
 {
     s_VoiceID = g_AudioMgr.Play( pMusicName );
+}
+
+//=========================================================================
+
+void state_mgr::SaveMatchStats( const player_stats& Stats )
+{
+    s32 Index = GetProfileListIndex( 0 );
+    if( Index < 0 )
+        return;
+    player_profile& Profile = GetActiveProfile( Index );
+    Profile.AddCareerStats( Stats );
+    if( !Profile.GetAutosaveOn() || GetProfileNotSaved(Index) )
+        return;
+    g_SaveDataMgr.SaveProfileSnapshot( g_SaveDataMgr.GetProfileInfo(Index), Index, Profile,
+                                       this, &state_mgr::SaveMatchStatsReturn );
+}
+
+//=========================================================================
+
+void state_mgr::SaveMatchStatsReturn( void )
+{
+    if( !g_SaveDataMgr.GetLastResult().Succeeded() )
+        LOG_WARNING( "state_mgr::SaveMatchStatsReturn", "Career statistics could not be saved." );
+}
+
+//=========================================================================
+
+void state_mgr::SaveMultiplayerPreferences( void )
+{
+    s32 Index = GetProfileListIndex( 0 );
+
+    if( (Index < 0) || GetProfileNotSaved( Index ) )
+        return;
+
+    player_profile& Profile = GetActiveProfile( Index );
+    g_SaveDataMgr.SaveProfileSnapshot( g_SaveDataMgr.GetProfileInfo(Index), Index, Profile,
+                                       this, &state_mgr::SaveMultiplayerPreferencesReturn );
+}
+
+//=========================================================================
+
+void state_mgr::SaveMultiplayerPreferencesReturn( void )
+{
+    const SaveDataResult& Result = g_SaveDataMgr.GetLastResult();
+
+    if( !Result.Succeeded() )
+        x_DebugMsg( "Multiplayer preferences save failed: profile %d, status %d.\n",
+                    Result.ProfileID, (s32)Result.Status );
 }

@@ -21,15 +21,10 @@
 #include "ResourceMgr/ResourceMgr.hpp"
 #include "Parsing/TextIn.hpp"
 #include "StateMgr/MapList.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "Configuration/GameConfig.hpp"
 
-#ifdef CONFIG_VIEWER
-#include "../../Apps/ArtistViewer/Config.hpp"
-#else
 #include "../../Apps/GameApp/Config.hpp"    
-#endif
-
 
 //=========================================================================
 //  Main Menu Dialog
@@ -56,18 +51,6 @@ ui_manager::dialog_tem LevelSelectDialog =
     &LevelSelectControls[0],
     0
 };
-
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
 
 //=========================================================================
 //  Registration function
@@ -142,7 +125,7 @@ xbool dlg_level_select::Create( s32                        UserID,
     if( !(CONFIG_IS_AUTOSERVER || CONFIG_IS_AUTOCLIENT) )
     {
         // clear in-use controller flags
-        for( int i=0; i<MAX_LOCAL_PLAYERS; i++)
+        for( s32 i=0; i<MAX_LOCAL_PLAYERS; i++)
         {
             g_StateMgr.SetControllerRequested(i, FALSE);
         }
@@ -351,7 +334,13 @@ void dlg_level_select::FillLevelList( void )
             if( Entry.IsAvailable() )
             {
                 // add an entry to the list
-                m_pLevelList->AddItem( Entry.GetDisplayName(), (uaddr)&Entry );
+                xwstring DisplayName;
+                if( !DecodeFontText( Entry.GetDisplayName(), DisplayName ) )
+                {
+                    x_DebugMsg( "Level select: skipping map ID %d with invalid UTF-8 name.\n", Entry.GetMapID() );
+                    continue;
+                }
+                m_pLevelList->AddItem( DisplayName, (uaddr)&Entry );
             }
         }
     }

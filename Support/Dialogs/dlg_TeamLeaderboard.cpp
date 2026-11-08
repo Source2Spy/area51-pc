@@ -15,7 +15,7 @@
 
 #include "StateMgr/StateMgr.hpp"
 #include "StringMgr/StringMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "NetworkMgr/Voice/VoiceMgr.hpp"
 
 //
@@ -50,14 +50,6 @@ ui_manager::dialog_tem TeamLeaderboardDialog =
     &TeamLeaderboardControls[0],
     0
 };
-
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
 
 //=========================================================================
 //  Data
@@ -184,14 +176,14 @@ xbool dlg_team_leaderboard::Create( s32                        UserID,
     navText += g_StringTableMgr( "ui", "IDS_NAV_ONLINE_MENU" );
   
     // Grab a bunch of strings.
-    m_pStrLevelDesc  = g_StringTableMgr( "ui", "IDS_NAV_LEVEL_DESC"  );
-    m_pStrPlayer     = g_StringTableMgr( "ui", "IDS_HEADER_PLAYER"   );
-    m_pStrScore      = g_StringTableMgr( "ui", "IDS_HEADER_SCORE"    );
-    m_pStrIconKills  = g_StringTableMgr( "ui", "IDS_ICON_KILLS"      );
-    m_pStrIconDeaths = g_StringTableMgr( "ui", "IDS_ICON_DEATHS"     );
-    m_pStrIconTKs    = g_StringTableMgr( "ui", "IDS_ICON_TEAM_KILLS" );
-    m_pStrIconFlags  = g_StringTableMgr( "ui", "IDS_ICON_FLAGS"      );
-    m_pStrIconVotes  = g_StringTableMgr( "ui", "IDS_ICON_VOTES"      );
+    m_StrLevelDesc  = g_StringTableMgr( "ui", "IDS_NAV_LEVEL_DESC"  );
+    m_StrPlayer     = g_StringTableMgr( "ui", "IDS_HEADER_PLAYER"   );
+    m_StrScore      = g_StringTableMgr( "ui", "IDS_HEADER_SCORE"    );
+    m_StrIconKills  = g_StringTableMgr( "ui", "IDS_ICON_KILLS"      );
+    m_StrIconDeaths = g_StringTableMgr( "ui", "IDS_ICON_DEATHS"     );
+    m_StrIconTKs    = g_StringTableMgr( "ui", "IDS_ICON_TEAM_KILLS" );
+    m_StrIconFlags  = g_StringTableMgr( "ui", "IDS_ICON_FLAGS"      );
+    m_StrIconVotes  = g_StringTableMgr( "ui", "IDS_ICON_VOTES"      );
 
     SetNavText( navText );
     SetNavTextVisible( TRUE );
@@ -365,7 +357,7 @@ void dlg_team_leaderboard::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
     case LEADERBOARD_INTERLEVEL:
         {
-            NavText = m_pStrLevelDesc;
+            NavText = m_StrLevelDesc;
 
             xwstring LoadText("");
             switch( (s32)(m_LoadTimeElapsed*4.0f) % 4 )
@@ -720,49 +712,49 @@ void dlg_team_leaderboard::RenderScoreList( s32 ox, s32 oy )
     // leave space for speaker icon   
     r.l += 16;
 
-    m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center, ch, m_pStrPlayer );
+    m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center, ch, m_StrPlayer );
     
     r.l += PlayerSize + 5;
     r.r = r.l + 30;
 
     if( ScoreData.ScoreFieldMask & SCORE_POINTS )
     {
-        m_pManager->RenderText( m_Font, r, ui_font::h_right|ui_font::v_center, ch, m_pStrScore );
+        m_pManager->RenderText( m_Font, r, ui_font::h_right|ui_font::v_center, ch, m_StrScore );
     }
     
     if( ScoreData.ScoreFieldMask & SCORE_KILLS )
     {
         r.l += 35;
         r.r += 35;
-        m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_pStrIconKills );
+        m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_StrIconKills );
     }
 
     if( ScoreData.ScoreFieldMask & SCORE_DEATHS )
     {
         r.l += 35;
         r.r += 35;
-        m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_pStrIconDeaths );       
+        m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_StrIconDeaths );
     }
 
     if( ScoreData.ScoreFieldMask & SCORE_TKS )
     {
         r.l += 35;
         r.r += 35;
-        m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_pStrIconTKs );       
+        m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_StrIconTKs );
     }
 
     if( ScoreData.ScoreFieldMask & SCORE_FLAGS )
     {
         r.l += 35;
         r.r += 35;
-        m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_pStrIconFlags );       
+        m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_StrIconFlags );
     }
 
     if( ScoreData.ScoreFieldMask & SCORE_VOTES )
     {
         r.l += 35;
         r.r += 35;
-        m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_pStrIconVotes );       
+        m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_StrIconVotes );
     }
 
     // render bars
@@ -834,7 +826,7 @@ void dlg_team_leaderboard::RenderScoreList( s32 ox, s32 oy )
 
             r.l += 16;
             r.r = r.l + PlayerSize;
-            m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, c1, m_PlayerData[i].NName );            
+            m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, c1, m_PlayerData[i].Name );
 
             r.l += PlayerSize + 5;
             r.r = r.l + 30;
@@ -1022,7 +1014,7 @@ void dlg_team_leaderboard::RenderScoreList( s32 ox, s32 oy )
 
             r.l += 16;
             r.r = r.l + PlayerSize;
-            m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, c1, m_PlayerData[j].NName );            
+            m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, c1, m_PlayerData[j].Name );
 
             r.l += PlayerSize + 5;
             r.r = r.l + 30;
@@ -1146,14 +1138,14 @@ void dlg_team_leaderboard::RenderScoreList( s32 ox, s32 oy )
     {
     case RENDER_TEAM_TWO_LINES:
         r.b = r.t + 27;
-        m_pManager->RenderText( Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, ch, ScoreData.Team[0].NName );
+        m_pManager->RenderText( Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, ch, ScoreData.Team[0].Name );
         r.t += 27;
         r.b += 27;
         m_pManager->RenderText( Font, r, ui_font::h_right|ui_font::v_center, ch, xfs("%d", ScoreData.Team[0].Score) );
         break;
     case RENDER_TEAM_TWO_LINES_SMALL:
         r.b = r.t + 16;
-        m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, ch, ScoreData.Team[0].NName );
+        m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, ch, ScoreData.Team[0].Name );
         r.t += 16;
         r.b += 16;
         m_pManager->RenderText( m_Font, r, ui_font::h_right|ui_font::v_center, ch, xfs("%d", ScoreData.Team[0].Score) );
@@ -1162,7 +1154,7 @@ void dlg_team_leaderboard::RenderScoreList( s32 ox, s32 oy )
         r.b = r.t + 30 + 2;
         g_UiMgr->TextSize( Font, TextRect, ScoreString, 255 ); 
         r.r = r.l + 122 - TextRect.r;
-        m_pManager->RenderText( Font, r, ui_font::h_left|ui_font::v_top|ui_font::clip_ellipsis, ch, ScoreData.Team[0].NName );
+        m_pManager->RenderText( Font, r, ui_font::h_left|ui_font::v_top|ui_font::clip_ellipsis, ch, ScoreData.Team[0].Name );
         r.r = r.l + 122;
         m_pManager->RenderText( Font, r, ui_font::h_right|ui_font::v_top, ch, xfs("%d", ScoreData.Team[0].Score) );
         break;
@@ -1170,7 +1162,7 @@ void dlg_team_leaderboard::RenderScoreList( s32 ox, s32 oy )
         r.b = r.t + 16;
         g_UiMgr->TextSize( m_Font, TextRect, ScoreString, 255 ); 
         r.r = r.l + 122 - TextRect.r;
-        m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, ch, ScoreData.Team[0].NName );
+        m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, ch, ScoreData.Team[0].Name );
         r.r = r.l + 122;
         m_pManager->RenderText( m_Font, r, ui_font::h_right|ui_font::v_center, ch, xfs("%d", ScoreData.Team[0].Score) );
         break;
@@ -1188,14 +1180,14 @@ void dlg_team_leaderboard::RenderScoreList( s32 ox, s32 oy )
     {
     case RENDER_TEAM_TWO_LINES:
         r.b = r.t + 27; 
-        m_pManager->RenderText( Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, ch, ScoreData.Team[1].NName );
+        m_pManager->RenderText( Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, ch, ScoreData.Team[1].Name );
         r.t += 27;
         r.b += 27;
         m_pManager->RenderText( Font, r, ui_font::h_right|ui_font::v_center, ch, xfs("%d", ScoreData.Team[1].Score) );
         break;
     case RENDER_TEAM_TWO_LINES_SMALL:
         r.b = r.t + 16; 
-        m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, ch, ScoreData.Team[1].NName );
+        m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, ch, ScoreData.Team[1].Name );
         r.t += 16;
         r.b += 16;
         m_pManager->RenderText( m_Font, r, ui_font::h_right|ui_font::v_center, ch, xfs("%d", ScoreData.Team[1].Score) );
@@ -1204,7 +1196,7 @@ void dlg_team_leaderboard::RenderScoreList( s32 ox, s32 oy )
         r.b = r.t + 30 + 2; 
         g_UiMgr->TextSize( Font, TextRect, ScoreString2, 255 ); 
         r.r = r.l + 122 - TextRect.r;
-        m_pManager->RenderText( Font, r, ui_font::h_left|ui_font::v_top|ui_font::clip_ellipsis, ch, ScoreData.Team[1].NName );
+        m_pManager->RenderText( Font, r, ui_font::h_left|ui_font::v_top|ui_font::clip_ellipsis, ch, ScoreData.Team[1].Name );
         r.r = r.l + 122;
         m_pManager->RenderText( Font, r, ui_font::h_right|ui_font::v_top, ch, xfs("%d", ScoreData.Team[1].Score) );
         break;
@@ -1212,7 +1204,7 @@ void dlg_team_leaderboard::RenderScoreList( s32 ox, s32 oy )
         r.b = r.t + 16; 
         g_UiMgr->TextSize( m_Font, TextRect, ScoreString2, 255 ); 
         r.r = r.l + 122 - TextRect.r;
-        m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, ch, ScoreData.Team[1].NName );
+        m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, ch, ScoreData.Team[1].Name );
         r.r = r.l + 122;
         m_pManager->RenderText( m_Font, r, ui_font::h_right|ui_font::v_center, ch, xfs("%d", ScoreData.Team[1].Score) );
         break;

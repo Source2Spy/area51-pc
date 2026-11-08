@@ -165,7 +165,7 @@ guid spawn_point::GetSpawnInfo( guid     ActorGuid,
     // Cast a cylinder down to find objects below
     vector3 Start = Position + vector3( 0,   10, 0 );
     vector3 End   = Position + vector3( 0, -100, 0 );
-    g_CollisionMgr.CylinderSetup( ActorGuid, Start, End, 30.0f, 180.0f );
+    g_CollisionMgr.CapsuleSetup( ActorGuid, Start, End, 30.0f, 180.0f );
     g_CollisionMgr.SetMaxCollisions( 5 );
 
     // Did we hit anything?    

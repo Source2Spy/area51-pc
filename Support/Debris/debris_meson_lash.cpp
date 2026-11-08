@@ -1,12 +1,16 @@
+#include "NetworkMgr/Replication/NetUpdate.hpp"
+
 #include "Render/PrimitiveDebug.hpp"
+#include "Render/PrimitiveBatch.hpp"
 #include "debris_meson_lash.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "../MiscUtils/SimpleUtils.hpp"
 #include "../Objects/Player/Player.hpp"
 #include "Objects/ParticleEmiter.hpp"
 #include "Tracers/TracerMgr.hpp"
 #include "../CollisionMgr/CollisionMgr.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "Decals/DecalMgr.hpp"
 #include "Characters/GenericNPC/GenericNPC.hpp"
 #include "Characters/MutantTank/Mutant_Tank.hpp"
@@ -623,6 +627,7 @@ void debris_meson_explosion::OnInit              ( void )
 
     m_MaxRadius = MAX( s_TweakMaxRadius.GetF32(), 100.0f );
     m_hDecalPackage.SetName( PRELOAD_FILE( "BulletHoles.decalpkg" ) );
+    m_Texture.SetName( PRELOAD_FILE( "Tracer_Lightning.xbmp" ) );
     
 }
 
@@ -1836,38 +1841,51 @@ s32 debris_meson_explosion::UpdateLashes( f32 DeltaTime )
 
 void BuildPoints( vector3* pOutPos, s32 nPos, vector3* pSourcePt, vector3* pSourceNrm, s32 nSource, f32 T )
 {
-    f32 TStep = T / (nPos-1);
-    f32 ChunkSize = 1.0f / (nSource - 1);
-
     ASSERT( pOutPos );
     ASSERT( pSourcePt );
     ASSERT( pSourceNrm );
     ASSERT( nPos > 0 );
     ASSERT( nSource > 1 );
-    
+    ASSERT( x_isvalid( T ) );
+
     pOutPos[0] = pSourcePt[0];
+    if (nPos == 1)
+        return;
+
+    f32 EndT = x_clamp( T, 0.0f, 1.0f );
     s32 i;
-    f32 CurT = TStep;
-    for (i=1;i<nPos;i++,CurT+=TStep)
-    {       
-        s32 iBase = (s32)(CurT / ChunkSize);
-        f32 LocalT = (CurT - (iBase * ChunkSize)) / ChunkSize;
+    for (i=1;i<nPos;i++)
+    {
+        f32 ScaledT = (EndT * (f32)i / (f32)(nPos - 1)) * (f32)(nSource - 1);
+        s32 iBase = MIN( (s32)ScaledT, nSource - 2 );
+        f32 LocalT = ScaledT - (f32)iBase;
 
         pOutPos[i] = GetSplinePos( pSourcePt[ iBase ],
                                    pSourceNrm[ iBase ],
                                    pSourcePt[ iBase+1 ],
                                    pSourceNrm[ iBase+1 ],
                                    LocalT );
-                                   
+
         ASSERT( pOutPos[i].IsValid() );
     }
 }
 
 static f32 LashScale = 1000.0f;
 static f32 LashScale2 = 1.0f;
+static f32 RadiusScale = 2.0f;
 
 void debris_meson_explosion::RenderLashes( void )
 {
+    const texture* pTexture = m_Texture.GetPointer();
+    const view* pView = eng_GetView();
+    const render::primitive_draw_desc Material( pTexture,
+                                                render::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                                                render::PRIMITIVE_BLEND_ADDITIVE,
+                                                render::PRIMITIVE_DEPTH_READ_ONLY,
+                                                render::PRIMITIVE_RASTER_SOLID_NO_CULL,
+                                                render::PRIMITIVE_SAMPLER_LINEAR_WRAP );
+    render::PrimitiveBatch Batch( Material );
+    f32 Ofs = x_fmod( m_TotalTime, 0.5f ) / 0.5f;
     s32 i;
     
     vector3 Pt[3];
@@ -1993,13 +2011,24 @@ void debris_meson_explosion::RenderLashes( void )
         nPoints = MAX(k_MIN_SPLINE_POINTS,MIN(k_MAX_SPLINE_POINTS,nPoints));
 
         BuildPoints( Pos, nPoints, Pt, Nrm, 3, T );
-        
+        if (pTexture && pView)
+        {
+            Batch.AddViewOrientedStrand( Pos, nPoints, pView->GetPosition(),
+                                         vector2( Ofs, 0.0f ), vector2( 1.0f + Ofs, 1.0f ),
+                                         L.m_Color, L.m_Color, L.m_Size * RadiusScale );
+        }
+
         L.m_PainDirection = Pos[nPoints-1] - Pos[nPoints-2];    
         L.m_PainDirection.Normalize();
         L.m_EndPoint = Pos[nPoints-1];
     }
 
-    
+    if (Batch.GetIndexCount() > 0)
+    {
+        matrix4 Identity;
+        Identity.Identity();
+        Batch.Submit( Identity );
+    }
 }
 
 //=============================================================================
@@ -2255,6 +2284,15 @@ void debris_meson_explosion::UpdateBeams( f32 DeltaTime )
 
 void debris_meson_explosion::RenderBeams( void )
 {
+    const texture* pTexture = m_Texture.GetPointer();
+    const view* pView = eng_GetView();
+    const render::primitive_draw_desc Material( pTexture,
+                                                render::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                                                render::PRIMITIVE_BLEND_ADDITIVE,
+                                                render::PRIMITIVE_DEPTH_READ_ONLY,
+                                                render::PRIMITIVE_RASTER_SOLID_NO_CULL,
+                                                render::PRIMITIVE_SAMPLER_LINEAR_WRAP );
+    render::PrimitiveBatch Batch( Material );
     s32 i;
 
     vector3 EndPt[ MAX_BEAMS ];
@@ -2301,6 +2339,16 @@ void debris_meson_explosion::RenderBeams( void )
             SrcNrm[2].RotateX( SwimY );
 
             BuildPoints( Pos, k_MAX_BEAM_POINTS, SrcPt, SrcNrm, 3, 1.0f );
+            if (pTexture && pView)
+            {
+                f32 LifeT = x_clamp( B.m_Timer / k_BEAM_LIFE_TIME, 0.0f, 1.0f );
+                f32 Falloff = x_sin( (1.0f - x_abs( 2.0f * LifeT - 1.0f )) * PI * 0.5f );
+                xcolor Color = k_START_COLOR;
+                Color.A = (u8)(Falloff * 255.0f);
+                Batch.AddViewOrientedStrand( Pos, k_MAX_BEAM_POINTS, pView->GetPosition(),
+                                             vector2( 0.0f, 0.0f ), vector2( 1.0f, 1.0f ),
+                                             Color, Color, s_LashSizes[ LASH_EXTEND ] * RadiusScale );
+            }
 
             EndPt[ i ] = Pos[k_MAX_BEAM_POINTS-1];
             ASSERT( EndPt[i].IsValid() );
@@ -2311,6 +2359,12 @@ void debris_meson_explosion::RenderBeams( void )
         {
             EndPt[i] = m_Origin;
         }
+    }
+    if (Batch.GetIndexCount() > 0)
+    {
+        matrix4 Identity;
+        Identity.Identity();
+        Batch.Submit( Identity );
     }
     for (i=0;i<MAX_BEAMS;i++)
     {
@@ -2443,149 +2497,81 @@ void debris_meson_explosion::AddNewTarget( guid NewTarget )
 
 #ifndef X_EDITOR
 
-void debris_meson_explosion::net_AcceptUpdate( const bitstream& BS )
+void debris_meson_explosion::net_AcceptUpdate( const net_meson_update& Update )
 {
-#ifdef DEEP_LOGGING
-    CLOG_MESSAGE( ENABLE_LOGGING, "debris_meson_explosion::net_AcceptUpdate","DirtyBits %08X",m_NetDirtyBits);
-    LOG_FLUSH();
-#endif
-
-    if( BS.ReadFlag() )
+    if( Update.Activate )
     {
-        CLOG_MESSAGE( ENABLE_LOGGING, "debris_meson_explosion::net_AcceptUpdate", 
-            "ACTIVATE_BIT" );
-
-        u16 Zones = 0;
-
-        BS.ReadRangedS32( m_NetSlotOfOwner, -1, 31 );
-        BS.ReadVector( m_Origin );
-        BS.ReadVector( m_OriginNormal );
-        BS.ReadU16( Zones );
-
-        if (!m_bActivated)
+        m_NetSlotOfOwner = Update.Owner;
+        m_Origin         = Update.Origin;
+        m_OriginNormal   = Update.Normal;
+        if( !m_bActivated )
         {
             m_GuidOfOwner = NULL_GUID;
-            if( IN_RANGE( 0, m_NetSlotOfOwner, 31 ) )
+            if( m_NetSlotOfOwner != -1 )
             {
-                actor* pActor = (actor*)NetObjMgr.GetObjFromSlot( m_NetSlotOfOwner );
-
-                if( pActor )
-                { 
-                    m_GuidOfOwner = pActor->GetGuid();
-                }
+                netobj* pOwner = NetObjMgr.GetObjFromSlot( m_NetSlotOfOwner );
+                if( pOwner )
+                    m_GuidOfOwner = pOwner->GetGuid();
             }
-
-            
-            SetZones( Zones );
-
-            CLOG_MESSAGE( ENABLE_LOGGING, "debris_meson_explosion::net_AcceptUpdate", 
-                "ACTIVATE_BIT causing DumbCreate to be called" );
-            DumbCreate( m_Origin, m_OriginNormal, Zones );
-
+            SetZones( Update.Zones );
+            DumbCreate( m_Origin, m_OriginNormal, Update.Zones );
             m_bActivated = TRUE;
-        }
-        else
-        {
-            CLOG_MESSAGE( ENABLE_LOGGING, "debris_meson_explosion::net_AcceptUpdate", 
-                "ACTIVATE_BIT redundant" );
         }
     }
 
-    if (BS.ReadFlag() )
+    //
+    // DIRTY_TARGETING_INFO
+    //
+    if( Update.HasTargets )
     {
         m_NetDirtyBits |= DIRTY_TARGETING_INFO;
-
-        // DIRTY_TARGETING_INFO
-        CLOG_MESSAGE( ENABLE_LOGGING, "debris_meson_explosion::net_AcceptUpdate", 
-            "DIRTY_TARGETING_INFO" );
-
-        BS.ReadRangedS32( m_nLashTargets, 0, MAX_LASH_TARGETS );
-
-        CLOG_MESSAGE( ENABLE_LOGGING, "debris_meson_explosion::net_AcceptUpdate", 
-            "#Targets in stream: %d",m_nLashTargets );
-
-        s32 i;
-        for (i=0;i<m_nLashTargets;i++)
+        m_nLashTargets = Update.TargetCount;
+        for( s32 i = 0; i < m_nLashTargets; i++ )
         {
-            lash_target& T          = m_LashTargets[ i ];
-            s32          NetSlot    = -1;
-            xbool        bValid     = FALSE;
-            s32          Type       = 0;
-            s32          iBone      = 0;
-            s32          LifeSeq    = 0;
-
-            T.gObj = NULL_GUID;
-
-            BS.ReadS32( NetSlot );
-            BS.ReadRangedS32( Type, 0, TARGET_TYPE_MAX );
-            BS.ReadRangedS32( iBone, S8_MIN, S8_MAX );
-            BS.ReadFlag( bValid );
-            BS.ReadRangedS32( LifeSeq, 0, 7 );
-
-            T.bIsValidTarget = bValid;
-            T.TargetType     = (target_type)Type;
-            T.ThetaBoneIndex = iBone;
-            T.NetActorLifeSeq = LifeSeq;
-
-            if (NetSlot != -1)
-            {                
-                netobj* pObj = NetObjMgr.GetObjFromSlot( NetSlot );
-                if (pObj)
-                {
-                    T.gObj = pObj->GetGuid();
-                }
-            }
-            else
+            lash_target& Target = m_LashTargets[i];
+            const net_meson_update::target& Source = Update.Targets[i];
+            Target.gObj            = NULL_GUID;
+            Target.bIsValidTarget  = Source.Valid;
+            Target.TargetType      = (target_type)Source.Type;
+            Target.ThetaBoneIndex  = Source.Bone;
+            Target.NetActorLifeSeq = Source.LifeSeq;
+            if( Source.Slot != -1 )
             {
-                T.gObj = NULL_GUID;
+                netobj* pObject = NetObjMgr.GetObjFromSlot( Source.Slot );
+                if( pObject )
+                    Target.gObj = pObject->GetGuid();
             }
-
-            CLOG_MESSAGE( ENABLE_LOGGING, "debris_meson_explosion::net_AcceptUpdate", 
-                "Target %d: Slot %d, Type %d, iBone %d, Valid %s",
-                i, NetSlot, Type, iBone, bValid?"TRUE":"FALSE" );
         }
-
-        CLOG_MESSAGE( ENABLE_LOGGING, "debris_meson_explosion::net_AcceptUpdate", 
-            "Switching to kill target state" );
         SwitchState( STATE_KILLING_TARGETS );
     }
 
-    if( BS.ReadFlag() )
+    //
+    // DIRTY_NEXT_TARGET_ID
+    //
+    if( Update.HasNextTarget )
     {
         m_NetDirtyBits |= DIRTY_NEXT_TARGET_ID;
-
-        // DIRTY_NEXT_TARGET_ID
-        BS.ReadRangedS32( m_iNetCurrentTarget, 0, MAX_LASH_TARGETS );        
-
-        CLOG_MESSAGE( ENABLE_LOGGING, "debris_meson_explosion::net_AcceptUpdate", 
-            "DIRTY_NEXT_TARGET_ID: %d",m_iNetCurrentTarget);
+        m_iNetCurrentTarget = Update.NextTarget;
     }
 
-    if( BS.ReadFlag() )
+    //
+    // DIRTY_COLLAPSE
+    //
+    if( Update.Collapse )
     {
         m_NetDirtyBits |= DIRTY_COLLAPSE;
-
-        // DIRTY_COLLAPSE
         m_bNetCollapseSignaled = TRUE;
-        CLOG_MESSAGE( ENABLE_LOGGING, "debris_meson_explosion::net_AcceptUpdate", 
-            "DIRTY_COLLAPSE" );
     }
 
-    if( BS.ReadFlag() )
+    //
+    // DIRTY_TARGET_STATUS_INFO
+    //
+    if( Update.HasStatus )
     {
-        // DIRTY_TARGET_STATUS_INFO
         m_NetDirtyBits |= DIRTY_TARGET_STATUS_INFO;
-
-        u16 Data = 0;
-        BS.ReadU16( Data, 8 );
-        m_NetKilledMask                 = (u8)(Data & 0xFF);
-        m_bNetDumbTargetStatusSignaled  = TRUE;
-
-        CLOG_MESSAGE( ENABLE_LOGGING, "debris_meson_explosion::net_AcceptUpdate", 
-            "DIRTY_TARGET_STATUS_INFO" );
+        m_NetKilledMask                = (u8)Update.KilledMask;
+        m_bNetDumbTargetStatusSignaled = TRUE;
     }
-
-    BS.ReadMarker();
 }
 
 //=============================================================================

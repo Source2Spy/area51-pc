@@ -28,7 +28,6 @@
 #include "AudioMgr/AudioMgr.hpp"
 #include "../../Support/Tracers/TracerMgr.hpp"
 #include "PhysicsMgr/PhysicsMgr.hpp"
-#include "Font/font.hpp"
 #include "Music_Mgr/Music_Mgr.hpp"
 #include "ConversationMgr/ConversationMgr.hpp"
 #include "Objects/Render/PostEffectMgr.hpp"
@@ -508,8 +507,12 @@ void CEditorApp::InitGame( void )
 
     // Init data vault and load tweaks
     g_DataVault.Init();
-    LoadTweaks( xfs("%s\\PC",g_Settings.GetReleasePath()) );
-    LoadPain( xfs("%s\\PC",g_Settings.GetReleasePath()) );
+    if( !LoadTweaks( xfs("%s\\PC",g_Settings.GetReleasePath()) ) ||
+        !LoadPain( xfs("%s\\PC",g_Settings.GetReleasePath()) ) )
+    {
+        x_throw( "Unable to load tweak data" );
+        return;
+    }
 
     // Init static anim event stuff
     anim_event::Init();
@@ -527,6 +530,9 @@ void CEditorApp::InitGame( void )
     g_RscMgr.SetRootDirectory( xfs("%s\\PC",g_Settings.GetReleasePath()) );
     g_RscMgr.SetOnDemandLoading( TRUE );
 
+    g_IoMgr.SetDevicePathPrefix( xfs( "%s/", g_RscMgr.GetRootDirectory() ), IO_DEVICE_HOST );
+    g_IOFSMgr.MountFileSystem( "FONTS", 17 );
+
     //
     // Initialize the graphics system
     //
@@ -534,7 +540,6 @@ void CEditorApp::InitGame( void )
     g_DecalMgr.Init();
     g_TracerMgr.Init();
     g_PostEffectMgr.Init();
-    g_Font.Load( xfs( "%s\\%s", g_RscMgr.GetRootDirectory(), "Font_small.xbmp" ) );
 
     //
     // Initialize the physics manager.

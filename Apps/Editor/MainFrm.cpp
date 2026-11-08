@@ -17,6 +17,7 @@
 #include "Obj_mgr/obj_mgr.hpp"
 #include "IOManager/io_mgr.hpp"
 #include "../WorldEditor/Resource.h"
+#include "Render/Render.hpp"
 
 #include "x_log.hpp"
 
@@ -564,6 +565,9 @@ void CMainFrame::OnClose()
         // Destroy the engine ( NOTE/TODO: This may need to go into the OnDestroy message ).
         //
         g_IoMgr.Kill();
+        eng_ResetAfterException();
+        eng_Sync();
+        render::Kill();
         eng_Kill();
     }
 }

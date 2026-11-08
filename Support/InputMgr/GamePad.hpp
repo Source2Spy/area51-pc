@@ -12,11 +12,7 @@
 //=========================================================================
 
 #include "Entropy.hpp"
-#ifdef CONFIG_VIEWER
-#include "../../Apps/ArtistViewer/Config.hpp"
-#else
 #include "../../Apps/GameApp/Config.hpp"
-#endif
 
 #include "../Menu/DebugMenuDefine.hpp"
 #include "../Objects/Player/PlayerDefines.hpp"
@@ -100,16 +96,72 @@ public:
         ACTION_TALK_MODE_TOGGLE,
         ACTION_FIRE_PARASITES,
         ACTION_FIRE_CONTAGION,
-        ACTION_MUTANT_MELEE,
 
-        ACTION_MP_FLASHLIGHT,
-        ACTION_MP_MUTATE,
         ACTION_DROP_FLAG,
         ACTION_SCOREBOARD,
 
         GAMEPLAY_ACTION_END,
         MAX_ACTION = GAMEPLAY_ACTION_END
     };
+
+    // Persisted profile order. Changes require a new save format.
+    enum keyboard_action
+    {
+        KEY_MOVE_FORWARD = 0,
+        KEY_MOVE_BACKWARD = 1,
+        KEY_STRAFE_LEFT = 2,
+        KEY_STRAFE_RIGHT = 3,
+        KEY_ACTION_JUMP = 4,
+        KEY_ACTION_CROUCH = 5,
+        KEY_ACTION_RELOAD = 6,
+        KEY_ACTION_MUTATION = 7,
+        KEY_ACTION_USE = 8,
+        KEY_ACTION_FLASHLIGHT = 9,
+        KEY_ACTION_THROW_GRENADE = 10,
+        KEY_ACTION_MELEE_ATTACK = 11,
+        KEY_ACTION_SWITCH_TO_SCANNER = 12,
+        KEY_ACTION_SWITCH_TO_PISTOL = 13,
+        KEY_ACTION_SWITCH_TO_SMP = 14,
+        KEY_ACTION_SWITCH_TO_SHOTGUN = 15,
+        KEY_ACTION_SWITCH_TO_SNIPER_RIFLE = 16,
+        KEY_ACTION_SWITCH_TO_BBG = 17,
+        KEY_ACTION_SWITCH_TO_MESON_CANNON = 18,
+        KEY_ACTION_VOTE_MENU_ON = 19,
+        KEY_ACTION_VOTE_MENU_OFF = 20,
+        KEY_ACTION_VOTE_YES = 21,
+        KEY_ACTION_VOTE_NO = 22,
+        KEY_ACTION_VOTE_ABSTAIN = 23,
+        KEY_ACTION_CHAT = 24,
+        KEY_LEAN_LEFT = 25,
+        KEY_LEAN_RIGHT = 26,
+        KEY_ACTION_TALK_MODE_TOGGLE = 27,
+        KEY_ACTION_DROP_FLAG = 28,
+        KEY_ACTION_SCOREBOARD = 29,
+        KEYBOARD_ACTION_COUNT = 30,
+        KEYBOARD_SLOT_COUNT = 2,
+    };
+
+    struct keyboard_bindings
+    {
+        s32 Keys[KEYBOARD_ACTION_COUNT][KEYBOARD_SLOT_COUNT];
+    };
+
+    //-------------------------------------------------------------------------
+    //  KEYBOARD BINDINGS
+    //-------------------------------------------------------------------------
+
+    static void         ResetKeyboardBindings   ( keyboard_bindings& Bindings );
+    static xbool        KeyboardBindingsAreValid( const keyboard_bindings& Bindings );
+    static xbool        IsKeyboardKey           ( input_gadget Key );
+    static const char*  GetKeyboardActionLabel  ( s32 Action );
+    static xwstring     GetKeyboardKeyLabel     ( input_gadget Key );
+    static xbool        HasKeyboardConflict     ( const keyboard_bindings& Bindings, s32 Action, input_gadget Key );
+    static void         SetKeyboardBinding      ( keyboard_bindings& Bindings, s32 Action, s32 Slot, input_gadget Key, xbool Replace );
+    void                ApplyKeyboardBindings   ( const keyboard_bindings& Bindings );
+
+    //-------------------------------------------------------------------------
+    //  ACTION MAP
+    //-------------------------------------------------------------------------
 
                         ingame_pad      ( void );
 
@@ -242,6 +294,8 @@ public:
     void                ClearPlayerDevice   ( s32 PlayerIndex );
     void                ClearPlayerDevices  ( void );
     void                ClearPlayerActions  ( s32 PlayerIndex );
+
+    void                ApplyKeyboardBindings( s32 PlayerIndex, const ingame_pad::keyboard_bindings& Bindings );
 
     s32                 GetPauseController  ( void ) const;
 

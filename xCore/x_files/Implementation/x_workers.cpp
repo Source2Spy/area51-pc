@@ -17,7 +17,11 @@
 //==============================================================================
 
 #define X_WORKER_QUEUE_ENTRIES          (X_WORKERS_MAX_JOBS * X_WORKERS_MAX_WORKERS)
+#if defined( TARGET_DESKTOP ) || defined( TARGET_MOBILE )
+#define X_WORKER_STACK_SIZE             X_MEGABYTE(8)
+#else
 #define X_WORKER_STACK_SIZE             X_KILOBYTE(64)
+#endif
 #define X_WORKER_SERVICE_STACK_SIZE     X_KILOBYTE(64)
 #define X_WORKER_PRIORITY               0
 

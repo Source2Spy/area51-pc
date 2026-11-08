@@ -27,6 +27,7 @@
 //  OTHER
 //==============================================================================
 
+class io_request;
 struct io_device_file;
 struct io_open_file
 {
@@ -107,8 +108,15 @@ public:
     xbool               UnmountFileSystem       ( const char* pPathName );
     void                EnableChecksum          ( void* pOpenFile, xbool bEnable );
     io_open_file*       Open                    ( const char* pPathName, const char* pMode );
+#if defined( TARGET_DESKTOP ) || defined( TARGET_MOBILE )
+    X_FILE*             OpenHostFile            ( const char* pPathName, const char* pMode );
+    xbool               WriteHostFileAtomic     ( const char* pPathName, const void* pData, s32 Bytes );
+#endif
     void                Close                   ( io_open_file* pFile );
     s32                 Read                    ( io_open_file* pFile, byte* pBuffer, s32 Bytes );
+    xbool               OwnsFile                ( const X_FILE* pFile ) const;
+    xbool               ReadAsync               ( io_open_file* pFile, io_request& Request, byte* pBuffer,
+                                                  u32 Offset, u32 Size );
     s32                 Write                   ( io_open_file* pFile, const byte* pBuffer, s32 Bytes );
     void                SetRetries              ( s32 Retries );
     const char*         GetFileName             ( const X_FILE* pFile );

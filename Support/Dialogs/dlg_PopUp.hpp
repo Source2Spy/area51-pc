@@ -14,8 +14,6 @@
 #include "UI/ui_dialog.hpp"
 #include "UI/ui_frame.hpp"
 #include "UI/ui_text.hpp"
-#include "NetworkMgr/Voice/Headset.hpp"
-#include "NetworkMgr/MatchMgr.hpp"
 
 //==============================================================================
 //  DEFINES
@@ -116,22 +114,6 @@ public:
                                               const xwchar*             pNavText,
                                                     s32*                pResult = NULL );
 
-    void                ConfigureRecordDialog(      irect&              Position,
-                                              const xwchar*             Title,
-                                              const xwchar*             Message,
-                                                    s32*                pResult = NULL );
-
-    void                ConfigurePlayDialog (       irect&              Position,
-                                              const xwchar*             Title,
-                                              const xwchar*             Message,
-                                              const xwchar*             pNavText,
-                                                    s32*                pResult = NULL );
-
-    void                ConfigurePassword   (       irect&              Position,
-                                              const xwchar*             Title,
-                                              const xwchar*             Message,
-                                              const xwchar*             pNavText,
-                                                    s32*                pResult = NULL );
 
     void                ConfigureAutosaveDialog (   irect&              Position,
                                               const xwchar*             Title,
@@ -139,11 +121,14 @@ public:
                                               const xwchar*             pNavText,
                                                     s32*                pResult = NULL );
 
-    void                SetPassword         (       u8*                 Password );
 
-    void                SetBuddyMode        (       s32                 Mode        );
-    void                SetBuddy            ( const buddy_info&         Buddy       );
-    buddy_info&         GetBuddy            ( void );
+    void                ConfigureMessage    ( const xwchar*             Title,
+                                              const xwchar*             Message,
+                                                    s32*                pResult = NULL );
+    void                ConfigureMessage    (       irect&              Position,
+                                              const xwchar*             Title,
+                                              const xwchar*             Message,
+                                                    s32*                pResult = NULL );
 
     void                Close               ( void );
 
@@ -167,55 +152,9 @@ public:
     virtual void        OnNavigate          ( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX = FALSE, xbool WrapY = FALSE );
     virtual void        OnPage              ( ui_win* pWin, s32 Direction );
 
-    void                OnPadRecord         ( void );
-    void                OnPadStop           ( void );
-    void                OnPadPlay           ( void );
-    void                OnPadSend           ( void );
-    void                OnUpdateRecordDialog( f32 DeltaTime );
-    void                OnUpdatePlayDialog  ( f32 DeltaTime );
-    void                OnUpdatePasswordDialog( f32 DelatTime );
 
     void                EnableBlackout      ( xbool bDoBlackout )       { m_bDoBlackout = bDoBlackout; }
 
-    void                AddPassKey          ( s32 key );
-    xbool               RemovePassKey       ( void );
-
-    enum RECORD_DIALOG_STATES
-    {
-        RECORD_STATE_NONE = 0,
-        RECORD_STATE_INIT,
-        RECORD_STATE_IDLE,
-        RECORD_STATE_RECORD_INIT,
-        RECORD_STATE_RECORD,
-        RECORD_STATE_PLAY_INIT,
-        RECORD_STATE_PLAY,
-        RECORD_STATE_STOP,
-        RECORD_STATE_SEND,
-        RECORD_STATE_SENDING,
-        RECORD_STATE_STOP_PLAYBACK,
-        RECORD_STATE_EXIT
-    };
-
-    enum BUDDY_MODE_STATES
-    {
-        BUDDY_MODE_ADD = 0,
-        BUDDY_MODE_INVITE
-    };
-
-    enum PLAY_DIALOG_STATES
-    {
-        PLAY_STATE_NONE = 0,
-        PLAY_STATE_IDLE,
-        PLAY_STATE_START_DOWNLOAD,
-        PLAY_STATE_DOWNLOADING,
-        PLAY_STATE_MESSAGE_READY,
-        PLAY_STATE_START_PLAY,
-        PLAY_STATE_PLAY,
-        PLAY_STATE_EXIT,
-        PLAY_STATE_INVALID_MESSAGE,
-        PLAY_STATE_INVALID_MESSAGE_EXIT,
-        PLAY_STATE_STOP
-    };
 
     
 protected:
@@ -267,7 +206,6 @@ protected:
     xbool               IsActionEnabled         ( popup_action_type Type ) const;
     void                ApplyInputLayout        ( ui_input_device Device );
     void                LayoutActionButtons     ( void );
-    void                UpdateSpecialActions    ( void );
     void                CompleteAction          ( s32 Result, xbool TrackController = FALSE );
 
     ui_frame*           m_pFrame1;
@@ -284,35 +222,13 @@ protected:
     xwstring            m_Message3;
     f32                 m_Timeout;
     xbool               m_bDoTimeout;
+    xbool               m_DismissOnCancel;
     s32*                m_pResult;
     s32                 m_CurrHL;
     xbool               m_bDoBlackout;
     xbool               m_HasNavText;
     xbool               m_NavTextIsActionPrompt;
 
-    // Record Dialog
-    s32                 m_RecordDialogState;
-    headset*            m_Headset; 
-    f32                 m_ProgressValue;
-
-    buddy_info          m_Buddy;
-    s32                 m_AskMode;
-
-    ui_text*            m_pButtonText[4];
-    xbool               m_EnableRecord;
-    xbool               m_EnablePlay;
-    xbool               m_EnableSend;
-    xbool               m_ShowStop;
-    xbool               m_IsVoiceMailPopUp;
-
-    // Play Dialog
-    s32                 m_PlayDialogState;
-
-    // Password Dialog
-    xbool               m_PasswordDialogActive;
-    u8                  m_Password[4];
-    u8                  m_CheckPassword[4];
-    s32                 m_PasswordIndex;
 
 };
 

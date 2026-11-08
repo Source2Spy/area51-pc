@@ -502,21 +502,6 @@ void auxbmp_ConvertToNative( xbitmap& Bitmap )
     return;
     #endif
 
-    #ifdef TARGET_XBOX
-    auxbmp_ConvertToD3D( Bitmap );
-    return;
-    #endif
-
-    #ifdef TARGET_PS2
-    auxbmp_ConvertToPS2( Bitmap );
-    return;
-    #endif  
-
-    #ifdef TARGET_GCN
-    auxbmp_ConvertToGCN( Bitmap );
-    return;
-    #endif
-
     ASSERT( FALSE );
 }
 
@@ -1361,7 +1346,6 @@ void auxbmp_ConvertToDot3(const xbitmap& SrcBMP, xbitmap& DstBMP)
 
 //=============================================================================
 
-#ifndef TARGET_PS2
 
 #if 1
 #   define VERBOSE0(s        ) x_fprintf( File,s         )
@@ -1540,80 +1524,14 @@ f32 auxbmp_GetDotProduct( xbitmap& BMP,xbitmap& CMP )
 #define D3DFMT_DXT4                 0x0000000F
 #define D3DFMT_DXT5                 0x0000000F
 
-#define XGCOMPRESS_PREMULTIPLY      1
-#define XGCOMPRESS_NEEDALPHA0       2
-#define XGCOMPRESS_NEEDALPHA1       4
-#define XGCOMPRESS_PROTECTNONZERO   8
-
-#ifdef TARGET_XBOX
-extern "C"
-{
-    s32 __stdcall XGCompressRect( const void*,s32,s32,s32,s32,const void*,s32,s32,f32,u32 );
-    u32 __stdcall XGBytesPerPixelFromFormat( u32 );
-}
-#endif
 
 //=============================================================================
 
 xbitmap auxbmp_CompressRect( xbitmap& BMP,s32 Format )
 {
-#ifndef TARGET_XBOX
     (void)Format;
     x_DebugMsg( "auxbmp_CompressRect: XG compression unavailable; returning source bitmap.\n" );
     return BMP;
-#else
-    s32 H = BMP.GetHeight();
-    s32 W = BMP.GetWidth ();
-    s32 N = BMP.GetNMips ();
-    s32 P;
-
-    // create empty result ....................................................
-
-    xbitmap Result;
-    {
-        xbitmap::format RForm; switch( Format )
-        {
-            case D3DFMT_DXT1: RForm = xbitmap::FMT_DXT1; P = W/4* 8; break;
-            case D3DFMT_DXT3: RForm = xbitmap::FMT_DXT3; P = W/4*16; break;
-            case D3DFMT_DXT5: RForm = xbitmap::FMT_DXT5; P = W/4*16; break;
-
-            default:
-                return BMP;
-        }
-        Result.Setup( RForm,W,H,TRUE,NULL,FALSE,NULL,-1,N );
-    }
-
-    // choose source D3D format ...............................................
-
-    s32 SrcFormat; switch( BMP.GetFormat() )
-    {
-@@ -1588,50 +1595,51 @@ xbitmap auxbmp_CompressRect( xbitmap& BMP,s32 Format )
-    }
-
-    // compress all mip levels  ...............................................
-
-    for( s32 Mip=0;Mip<=N;Mip++ )
-    {
-        XGCompressRect
-        (
-            Result.GetPixelData(Mip)                , // pDestBuf
-            Format                                  , // DestFormat
-            P                                       , // dwDestPitch
-            W                                       , // dwWidth
-            H                                       , // dwHeight
-            BMP.GetPixelData(Mip)                   , // pSrcData
-            SrcFormat                               , // SrcFormat
-            XGBytesPerPixelFromFormat( SrcFormat )*W, // dwSrcPitch
-            0.0f                                    , // fAlphaRef
-            XGCOMPRESS_NEEDALPHA0                     // dwFlags
-                |   XGCOMPRESS_PROTECTNONZERO
-        );
-        W >>= 1;
-        H >>= 1;
-        P >>= 1;
-    }
-    return Result;
-#endif
 }
 
 //=============================================================================
@@ -1692,4 +1610,3 @@ void auxbmp_Compress( xbitmap& BMP,const char* pName,s32 nMips )
         return;
     }
 }
-#endif

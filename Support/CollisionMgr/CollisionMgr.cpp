@@ -180,6 +180,24 @@ xbool collision_mgr::fn_CheckCollisions( object::type        ThisType        /*=
                                          u32                 NotTheseAttributes /*= 0x00000000*/ )
 {
     LOG_STAT( k_stats_Collision );
+    X_PROFILE_SCOPE_CATEGORY( "Context", "collision_mgr::CheckCollisions" );
+
+    static xprofile_counter collisionQueries =
+        x_GetProfiler().RegisterCounter( "CollisionQueries", "PhysicsCounter" );
+    static xprofile_counter collisionPlaySurfaceCandidates =
+        x_GetProfiler().RegisterCounter( "CollisionPlaySurfaceCandidates", "PhysicsCounter" );
+    static xprofile_counter collisionObjectCandidates =
+        x_GetProfiler().RegisterCounter( "CollisionObjectCandidates", "PhysicsCounter" );
+    static xprofile_counter collisionObjectCallbacks =
+        x_GetProfiler().RegisterCounter( "CollisionObjectCallbacks", "PhysicsCounter" );
+    static xprofile_counter collisionHits =
+        x_GetProfiler().RegisterCounter( "CollisionQueryHits", "PhysicsCounter" );
+    static xprofile_counter collisionResults =
+        x_GetProfiler().RegisterCounter( "CollisionQueryResults", "PhysicsCounter" );
+
+    s32 PlaySurfaceCandidates = 0;
+    s32 ObjectCandidates = 0;
+    s32 ObjectCallbacks = 0;
 
 #ifdef ENABLE_COLLISION_STATS
     xtimer StatsTimer;
@@ -212,8 +230,8 @@ xbool collision_mgr::fn_CheckCollisions( object::type        ThisType        /*=
         // Confirm Low polys
         ASSERT( m_bUseLowPoly );
         
-        if( m_DynamicPrimitive == PRIMITIVE_DYNAMIC_CYLINDER )
-            ApplyCylinderToPolyCache();
+        if( m_DynamicPrimitive == PRIMITIVE_DYNAMIC_CAPSULE )
+            ApplyCapsuleToPolyCache();
 
         if( m_DynamicPrimitive == PRIMITIVE_DYNAMIC_SPHERE )
             ApplySphereToPolyCache();
@@ -241,6 +259,8 @@ xbool collision_mgr::fn_CheckCollisions( object::type        ThisType        /*=
             playsurface_mgr::surface* pSurface = g_PlaySurfaceMgr.GetNextSurface();
             while ( pSurface != NULL )
             {
+                PlaySurfaceCandidates++;
+
                 playsurface_mgr::surface* pS = pSurface;
                 guid SurfaceGuid = g_PlaySurfaceMgr.GetPlaySurfaceGuid();
                 pSurface = g_PlaySurfaceMgr.GetNextSurface();
@@ -294,6 +314,8 @@ xbool collision_mgr::fn_CheckCollisions( object::type        ThisType        /*=
 
             for( slot_id aID = g_ObjMgr.StartLoop(); aID != SLOT_NULL; aID = g_ObjMgr.GetNextResult(aID) )
             {
+                ObjectCandidates++;
+
                 if( m_MovingObjGuid != g_ObjMgr.GetObjectBySlot(aID)->GetGuid() &&  
                     !IsInIgnoreList( g_ObjMgr.GetObjectBySlot(aID)->GetGuid() )    )
                 {
@@ -311,6 +333,7 @@ xbool collision_mgr::fn_CheckCollisions( object::type        ThisType        /*=
 
                     //xtimer Timer;
                     //Timer.Start();
+                    ObjectCallbacks++;
                     Object.OnColCheck();
                     //Timer.Stop();
 
@@ -350,7 +373,7 @@ xbool collision_mgr::fn_CheckCollisions( object::type        ThisType        /*=
 
         switch( m_DynamicPrimitive )
         {
-            case PRIMITIVE_DYNAMIC_CYLINDER:{m_Stats.Time[0] += MS; m_Stats.Count[0]++;} break;
+            case PRIMITIVE_DYNAMIC_CAPSULE:{m_Stats.Time[0] += MS; m_Stats.Count[0]++;} break;
             case PRIMITIVE_DYNAMIC_SPHERE:  {m_Stats.Time[1] += MS; m_Stats.Count[1]++;} break;
             case PRIMITIVE_DYNAMIC_RAY:     {m_Stats.Time[2] += MS; m_Stats.Count[2]++;} break;
             case PRIMITIVE_DYNAMIC_LOS:     {m_Stats.Time[3] += MS; m_Stats.Count[3]++;} break;
@@ -367,6 +390,13 @@ xbool collision_mgr::fn_CheckCollisions( object::type        ThisType        /*=
 
 #endif // ENABLE_COLLISION_STATS
 
+    collisionQueries.Add();
+    collisionPlaySurfaceCandidates.Add( PlaySurfaceCandidates );
+    collisionObjectCandidates.Add( ObjectCandidates );
+    collisionObjectCallbacks.Add( ObjectCallbacks );
+    collisionHits.Add( m_nCollisions > 0 ? 1 : 0 );
+    collisionResults.Add( m_nCollisions );
+
     return (m_nCollisions > 0);
 }
 
@@ -381,7 +411,7 @@ void collision_mgr::fn_REPORT( void )
     char* PrimName = "NONE";
     switch( m_DynamicPrimitive )
     {
-    case PRIMITIVE_DYNAMIC_CYLINDER:{PrimName = "CYL"; if( m_bDontLogCYL ) return; } break;
+    case PRIMITIVE_DYNAMIC_CAPSULE:{PrimName = "CAP"; if( m_bDontLogCYL ) return; } break;
     case PRIMITIVE_DYNAMIC_SPHERE:  {PrimName = "SPH"; if( m_bDontLogSPH ) return; } break;
     case PRIMITIVE_DYNAMIC_RAY:     {PrimName = "RAY"; if( m_bDontLogRAY ) return; } break;
     case PRIMITIVE_DYNAMIC_LOS:     {PrimName = "LOS"; if( m_bDontLogLOS ) return; } break;
@@ -438,38 +468,22 @@ void collision_mgr::StartApply(       guid      Guid,
     //
     switch( m_DynamicPrimitive )
     {
-    case PRIMITIVE_DYNAMIC_CYLINDER:
+    case PRIMITIVE_DYNAMIC_CAPSULE:
     {
-        // transform start/end bottom/top
-        m_CylinderInfo[1].BotStart = W2L.Transform(m_CylinderInfo[0].BotStart);
-        m_CylinderInfo[1].BotEnd   = W2L.Transform(m_CylinderInfo[0].BotEnd);
-        m_CylinderInfo[1].TopStart = W2L.Transform(m_CylinderInfo[0].TopStart);
-        m_CylinderInfo[1].TopEnd   = W2L.Transform(m_CylinderInfo[0].TopEnd);
+        // Transform both axis endpoints at the start and end of the sweep.
+        m_CapsuleInfo[1].AxisStartA = W2L.Transform(m_CapsuleInfo[0].AxisStartA);
+        m_CapsuleInfo[1].AxisEndA   = W2L.Transform(m_CapsuleInfo[0].AxisEndA);
+        m_CapsuleInfo[1].AxisStartB = W2L.Transform(m_CapsuleInfo[0].AxisStartB);
+        m_CapsuleInfo[1].AxisEndB   = W2L.Transform(m_CapsuleInfo[0].AxisEndB);
 
         // transform radius
         const vector3 Scale = W2L.GetScale();
         ASSERT( x_abs(Scale.GetX()-1.0f) < 0.001f );
 
-        m_CylinderInfo[1].Radius = m_CylinderInfo[0].Radius * Scale.GetX();
-        m_CylinderInfo[1].Height = m_CylinderInfo[0].Height * Scale.GetX();
+        m_CapsuleInfo[1].Radius = m_CapsuleInfo[0].Radius * Scale.GetX();
+        m_CapsuleInfo[1].Height = m_CapsuleInfo[0].Height * Scale.GetX();
         
 
-        // transform spheres
-        s32 i;
-        m_CylinderInfo[1].nStartSpheres = m_CylinderInfo[0].nStartSpheres;
-        m_CylinderInfo[1].nEndSpheres = m_CylinderInfo[0].nEndSpheres;
-        for ( i = 0; i < m_CylinderInfo[1].nStartSpheres; ++i )
-        {
-            m_CylinderInfo[1].StartSpherePositions[i]
-                = W2L.Transform(m_CylinderInfo[0].StartSpherePositions[i]);
-        }
-
-        for ( i = 0; i < m_CylinderInfo[1].nEndSpheres; ++i )
-        {
-            m_CylinderInfo[1].EndSpherePositions[i]
-                = W2L.Transform(m_CylinderInfo[0].EndSpherePositions[i]);
-        }
-        
         break;
     }
 
@@ -506,12 +520,12 @@ void collision_mgr::StartApply(       guid      Guid,
 
 //==============================================================================
 
-void collision_mgr::CylinderSetup (
-          guid      MovingObjGuid,
-    const vector3&  WorldStart,
-    const vector3&  WorldEnd,
-          f32       Radius,
-          f32       Height )
+void collision_mgr::CapsuleSetup(
+    guid           MovingObjGuid,
+    const vector3& WorldStart,
+    const vector3& WorldEnd,
+    f32            Radius,
+    f32            Height )
 {
     LOG_STAT( k_stats_Collision );
 
@@ -519,65 +533,29 @@ void collision_mgr::CylinderSetup (
     InitializeCollisionCheckDefaults();
     UseLowPoly();
 
-    m_DynamicPrimitive      = PRIMITIVE_DYNAMIC_CYLINDER;
-    m_MovingObjGuid         = MovingObjGuid;
+    m_DynamicPrimitive = PRIMITIVE_DYNAMIC_CAPSULE;
+    m_MovingObjGuid    = MovingObjGuid;
 
+    m_CapsuleInfo[0].Radius = Radius;
+    m_CapsuleInfo[0].Height = Height;
 
-    m_CylinderInfo[0].BotStart  = WorldStart;
-    m_CylinderInfo[0].BotEnd    = WorldEnd;
-    m_CylinderInfo[0].TopStart  = WorldStart + vector3(0,Height,0);
-    m_CylinderInfo[0].TopEnd    = WorldEnd + vector3(0,Height,0);
-    m_CylinderInfo[0].Radius    = Radius;
-    m_CylinderInfo[0].Height    = Height;
+    ASSERT( Radius > 0.0f && Height >= Radius * 2.0f );
 
-    //--------------------------------------------------
-    // Find the bbox around the motion
-    //--------------------------------------------------
+    // WorldStart is the capsule bottom. Offset inward to the hemisphere centers.
+    m_CapsuleInfo[0].AxisStartA = WorldStart + vector3( 0.0f, Radius, 0.0f );
+    m_CapsuleInfo[0].AxisStartB = WorldStart + vector3( 0.0f, Height - Radius, 0.0f );
 
-    // Set up two arrays of spheres, representing the
-    // cylinder at the start, and the cylinder at the
-    // end.
-    m_CylinderInfo[0].nStartSpheres = GetCylinderSpherePositions(
-        m_CylinderInfo[0].BotStart,
-        m_CylinderInfo[0].TopStart,
-        m_CylinderInfo[0].Radius,
-        m_CylinderInfo[0].StartSpherePositions,
-        MAX_NUM_SPHERES );
+    const vector3 Delta = WorldEnd - WorldStart;
 
-    // SB 2/21/05:
-    // Compute end sphere positions from start positions + movement delta since
-    // calling GetCylinderSpherePositions() with the BotEnd and TopEnd 
-    // positions can return a different sphere count due to float precision.
-    vector3 MoveDelta = WorldEnd - WorldStart;
-    s32     nSpheres  = m_CylinderInfo[0].nStartSpheres;
-    for( s32 i = 0; i < nSpheres; i++ )
-    {
-        m_CylinderInfo[0].EndSpherePositions[i] = m_CylinderInfo[0].StartSpherePositions[i] + MoveDelta;
-    }
-    m_CylinderInfo[0].nEndSpheres = nSpheres;
+    m_CapsuleInfo[0].AxisEndA = m_CapsuleInfo[0].AxisStartA + Delta;
+    m_CapsuleInfo[0].AxisEndB = m_CapsuleInfo[0].AxisStartB + Delta;
 
-    // Check    
-    ASSERT( m_CylinderInfo[0].nStartSpheres    // Something must be wrong with
-         == m_CylinderInfo[0].nEndSpheres );   // GetCylinderSpherePositions() 
-                                               // or the caller has changed the 
-                                               // size of the cylinder during   
-                                               // the move                      
-
-    const s32 StartLast = m_CylinderInfo[0].nStartSpheres-1;
-    const s32 EndLast   = m_CylinderInfo[0].nEndSpheres-1;
-
-    m_DynamicBBoxes[0].Min = m_CylinderInfo[0].StartSpherePositions[0];
-    m_DynamicBBoxes[0].Max = m_CylinderInfo[0].StartSpherePositions[0];        
-    m_DynamicBBoxes[0].Min.Min( m_CylinderInfo[0].StartSpherePositions[StartLast] );
-    m_DynamicBBoxes[0].Max.Max( m_CylinderInfo[0].StartSpherePositions[StartLast] );
-    m_DynamicBBoxes[0].Min.Min( m_CylinderInfo[0].EndSpherePositions[0] );
-    m_DynamicBBoxes[0].Max.Max( m_CylinderInfo[0].EndSpherePositions[0] );
-    m_DynamicBBoxes[0].Min.Min( m_CylinderInfo[0].EndSpherePositions[EndLast] );
-    m_DynamicBBoxes[0].Max.Max( m_CylinderInfo[0].EndSpherePositions[EndLast] );
-        
-    vector3 vRadius( Radius, Radius, Radius );
-    m_DynamicBBoxes[0].Min -= vRadius;
-    m_DynamicBBoxes[0].Max += vRadius;
+    // Enclose the complete swept axis, then expand by the capsule radius.
+    m_DynamicBBoxes[0].Min = m_DynamicBBoxes[0].Max = m_CapsuleInfo[0].AxisStartA;
+    m_DynamicBBoxes[0].AddVerts( &m_CapsuleInfo[0].AxisEndA, 1 );
+    m_DynamicBBoxes[0].AddVerts( &m_CapsuleInfo[0].AxisStartB, 1 );
+    m_DynamicBBoxes[0].AddVerts( &m_CapsuleInfo[0].AxisEndB, 1 );
+    m_DynamicBBoxes[0].Inflate( Radius, Radius, Radius );
 }
 
 //==============================================================================
@@ -669,6 +647,54 @@ void collision_mgr::LineOfSightSetup(
 
 //==============================================================================
 
+void collision_mgr::ApplyCapsule( const vector3& A, const vector3& B, f32 Radius,
+                                  u32 Flags, s32 PrimitiveKey )
+{
+    ASSERT( m_bApplyStarted );
+
+    vector3 StartA, StartB, Delta;
+    f32     MovingRadius;
+
+    // Express the moving primitive as an axis and radius. Spheres collapse the
+    // axis to a point; rays also use a zero radius.
+    if( m_DynamicPrimitive == PRIMITIVE_DYNAMIC_CAPSULE )
+    {
+        const dynamic_capsule& Capsule = m_CapsuleInfo[m_ContextInfo.Context];
+        StartA                         = Capsule.AxisStartA;
+        StartB                         = Capsule.AxisStartB;
+        Delta                          = Capsule.AxisEndA - Capsule.AxisStartA;
+        MovingRadius                   = Capsule.Radius;
+    }
+    else if( m_DynamicPrimitive == PRIMITIVE_DYNAMIC_SPHERE )
+    {
+        const dynamic_sphere& Sphere = m_SphereInfo[m_ContextInfo.Context];
+        StartA = StartB = Sphere.Start;
+        Delta           = Sphere.End - Sphere.Start;
+        MovingRadius    = Sphere.Radius;
+    }
+    else
+    {
+        StartA = StartB = m_RayInfo[m_ContextInfo.Context].Start;
+        Delta           = m_RayInfo[m_ContextInfo.Context].End - StartA;
+        MovingRadius    = 0.0f;
+    }
+
+    f32     T;
+    vector3 Point, Normal;
+
+    if( !ComputeCapsuleCapsuleCollision( StartA, StartB, Delta, MovingRadius,
+                                       A, B, Radius, T, Point, Normal ) )
+        return;
+
+    plane Plane;
+    Plane.Setup( Point, Normal );
+
+    RecordCollision( collision( T, Point, Plane, Plane, m_ContextInfo.Guid, PrimitiveKey,
+                                PRIMITIVE_STATIC_CAPSULE, FALSE, x_max( A.GetY(), B.GetY() ) + Radius, Flags ) );
+}
+
+//==============================================================================
+
 void collision_mgr::ApplySphere(
     const vector3&  WorldPos,
           f32       Radius,
@@ -690,8 +716,8 @@ void collision_mgr::ApplySphere(
     // what's our moving primitive?
     switch ( m_DynamicPrimitive )
     {
-    case PRIMITIVE_DYNAMIC_CYLINDER:
-        ApplySphereToCylinder( WorldPos, Radius, Flags, PrimitiveKey );
+    case PRIMITIVE_DYNAMIC_CAPSULE:
+        ApplySphereToCapsule( WorldPos, Radius, Flags, PrimitiveKey );
         break;
     case PRIMITIVE_DYNAMIC_SPHERE:
         ApplySphereToSphere( WorldPos, Radius, Flags, PrimitiveKey );
@@ -732,8 +758,8 @@ void collision_mgr::ApplyTriangle(
     // what's our moving primitive?
     switch ( m_DynamicPrimitive )
     {
-    case PRIMITIVE_DYNAMIC_CYLINDER:
-        ApplyTriangleToCylinder( P0, P1, P2, Flags, PrimitiveKey );
+    case PRIMITIVE_DYNAMIC_CAPSULE:
+        ApplyTriangleToCapsule( P0, P1, P2, Flags, PrimitiveKey );
         break;
     case PRIMITIVE_DYNAMIC_SPHERE:
         ApplyTriangleToSphere( P0, P1, P2, Flags, PrimitiveKey );
@@ -773,9 +799,9 @@ void collision_mgr::ApplyQuad( const vector3&    P0,
     // what's our moving primitive?
     switch ( m_DynamicPrimitive )
     {
-    case PRIMITIVE_DYNAMIC_CYLINDER:
-        ApplyTriangleToCylinder( P0, P1, P2, Flags, PrimitiveKey );
-        ApplyTriangleToCylinder( P2, P3, P0, Flags, PrimitiveKey );
+    case PRIMITIVE_DYNAMIC_CAPSULE:
+        ApplyTriangleToCapsule( P0, P1, P2, Flags, PrimitiveKey );
+        ApplyTriangleToCapsule( P2, P3, P0, Flags, PrimitiveKey );
         break;
     case PRIMITIVE_DYNAMIC_SPHERE:
         ApplyTriangleToSphere( P0, P1, P2, Flags, PrimitiveKey );
@@ -811,8 +837,8 @@ void collision_mgr::ApplyAABBox(
     // what's our moving primitive?
     switch ( m_DynamicPrimitive )
     {
-    case PRIMITIVE_DYNAMIC_CYLINDER:
-        ApplyAABBoxToCylinder( BBox, Flags, PrimitiveKey );
+    case PRIMITIVE_DYNAMIC_CAPSULE:
+        ApplyAABBoxToCapsule( BBox, Flags, PrimitiveKey );
         break;
     case PRIMITIVE_DYNAMIC_SPHERE:
         ApplyAABBoxToSphere( BBox, Flags, PrimitiveKey );
@@ -894,77 +920,29 @@ void collision_mgr::ApplyOOBBox ( const bbox&       LocalBBox,
 
 //==============================================================================
 
-void collision_mgr::ApplySphereToCylinder(
-    const vector3&  WorldPos,
-          f32       Radius,
-          u32       Flags,
-          s32       PrimitiveKey    /* = 0 */ )
+void collision_mgr::ApplySphereToCapsule( const vector3& WorldPos, f32 Radius,
+                                          u32 Flags, s32 PrimitiveKey )
 {
-    // required because of data dependencies
-    ASSERT( m_DynamicPrimitive == PRIMITIVE_DYNAMIC_CYLINDER );
+    ASSERT( m_DynamicPrimitive == PRIMITIVE_DYNAMIC_CAPSULE );
 
-    //--------------------------------------------------
-    // Check collisions between matching spheres in
-    // the start cylinder and the end cylinder
-    //--------------------------------------------------
-    s32         i;
-    f32         FinalT;
-    vector3     FinalHitPoint;
-        
-    for ( i = 0; i < m_CylinderInfo[m_ContextInfo.Context].nStartSpheres; ++i )
-    {
-        if ( ComputeSphereSphereCollision(
-              WorldPos,
-              Radius,
-              m_CylinderInfo[m_ContextInfo.Context].Radius,
-              m_CylinderInfo[m_ContextInfo.Context].StartSpherePositions[i],
-              m_CylinderInfo[m_ContextInfo.Context].EndSpherePositions[i],
-              FinalT,
-              FinalHitPoint ) )
-        {
-            // record the collision
-            vector3 Normal = (FinalHitPoint - WorldPos) * (1 / Radius);
-            plane HitPlane;
+    const dynamic_capsule& Capsule = m_CapsuleInfo[m_ContextInfo.Context];
+    f32                    T;
+    vector3                Point, Normal;
 
-            // Deal with creating a plane when we are already inside the collision cylinder
-            if( FinalT == 0 )
-            {
-                Normal = m_CylinderInfo[m_ContextInfo.Context].StartSpherePositions[i] - WorldPos;
-            }
+    // A stationary sphere is a capsule whose two axis endpoints coincide.
+    if( !ComputeCapsuleCapsuleCollision( Capsule.AxisStartA,
+                                       Capsule.AxisStartB,
+                                       Capsule.AxisEndA - Capsule.AxisStartA,
+                                       Capsule.Radius,
+                                       WorldPos, WorldPos, Radius,
+                                       T, Point, Normal ) )
+        return;
 
-            //#### WE SHOULDN'T HAVE TO DO THIS IF STATEMENT. FIGURE OUT WHAT IS
-            //     WRONG WITH THE ABOVE LOGIC!!!!
-            if ( Normal.LengthSquared() < 0.01f )
-            {
-                Normal.Set( 0.0f, 1.0f, 0.0f );
-            }
-            HitPlane.Setup( FinalHitPoint, Normal );
+    plane Plane;
+    Plane.Setup( Point, Normal );
 
-            plane SlipPlane = HitPlane;
-
-            //  This assert is to verify that the number is normalized BUT
-            //  it was causing an assert failure due purely to rounding errors.
-            //  The number was increased to avoid the assert failure but the 
-            //  ASSERT was left to verify that it was still close to 1.0, just
-            //  not as close.  If it fails again with a normalized value, just
-            //  up it again.
-            ASSERT( x_abs(SlipPlane.Normal.LengthSquared() - 1.0f) < 0.0005f );
-
-            collision_mgr::collision TempCollision(
-                FinalT,
-                FinalHitPoint,
-                HitPlane,
-                SlipPlane,
-                m_ContextInfo.Guid,
-                PrimitiveKey,
-                PRIMITIVE_STATIC_SPHERE,
-                FALSE,
-                WorldPos.GetY() + Radius,
-                Flags );
-
-            RecordCollision( TempCollision );
-        }
-    }
+    RecordCollision( collision( T, Point, Plane, Plane, m_ContextInfo.Guid, PrimitiveKey,
+                                PRIMITIVE_STATIC_SPHERE, FALSE, WorldPos.GetY() + Radius, Flags ) );
 }
 
 //==============================================================================
@@ -1069,226 +1047,38 @@ void collision_mgr::ApplySphereToRay(
 
 //==============================================================================
 
-void collision_mgr::ApplyTriangleToCylinder(
-    const   vector3&    P0,
-    const   vector3&    P1,
-    const   vector3&    P2,
-            u32         Flags,
-            s32         PrimitiveKey    )
+void collision_mgr::ApplyTriangleToCapsule( const vector3& P0, const vector3& P1,
+                                            const vector3& P2, u32 Flags, s32 PrimitiveKey )
 {
-    ASSERT( m_DynamicPrimitive == PRIMITIVE_DYNAMIC_CYLINDER );
+    ASSERT( m_DynamicPrimitive == PRIMITIVE_DYNAMIC_CAPSULE );
 
-    //--------------------------------------------------
-    // Check collisions between matching spheres in
-    // the start cylinder and the end cylinder
-    //--------------------------------------------------
-    s32         i;
-    f32         FinalT;
-    vector3     FinalHitPoint;
-    vector3     Triangle[3];
-    //xbool       HitTriangleEdge;
-    Triangle[0] = P0;
-    Triangle[1] = P1;
-    Triangle[2] = P2;
-        
-    for ( i = 0; i < m_CylinderInfo[m_ContextInfo.Context].nStartSpheres; ++i )
-    {
-        if ( ComputeSphereTriCollision(
-              Triangle
-            , m_CylinderInfo[m_ContextInfo.Context].StartSpherePositions[i]
-            , m_CylinderInfo[m_ContextInfo.Context].EndSpherePositions[i]
-            , m_CylinderInfo[m_ContextInfo.Context].Radius
-            , FinalT
-            , FinalHitPoint
-            //, HitTriangleEdge 
-            ) )
-        {
-            // record the collision
-            plane HitPlane;
-            plane SlipPlane;
+    const dynamic_capsule& Capsule     = m_CapsuleInfo[m_ContextInfo.Context];
+    const vector3          Triangle[3] = { P0, P1, P2 };
+    f32                    T;
+    xbool                  HitEdge;
+    vector3                Point, Normal;
 
-            //if ( HitTriangleEdge )
-            {
-                // Our slide plane is defined by the impact point, and a
-                // normal from that point towards the sphere's center,
-                // when the sphere is at the collision T
-                const vector3 SphereImpactPosition
-                    = m_CylinderInfo[m_ContextInfo.Context]
-                        .StartSpherePositions[i]
-                    + ((m_CylinderInfo[m_ContextInfo.Context]
-                            .EndSpherePositions[i]
-                        - m_CylinderInfo[m_ContextInfo.Context]
-                            .StartSpherePositions[i])
-                        * FinalT);
-                vector3 Normal = SphereImpactPosition - FinalHitPoint;
-                Normal.Normalize();
-                SlipPlane.Setup( FinalHitPoint, Normal );
-                ASSERT( x_abs(SlipPlane.Normal.LengthSquared() - 1.0f) < 0.0001f );
-            }
+    if( !ComputeCapsuleTriCollision( Triangle,
+                                   Capsule.AxisStartA,
+                                   Capsule.AxisStartB,
+                                   Capsule.AxisEndA - Capsule.AxisStartA,
+                                   Capsule.Radius,
+                                   T, Point, Normal, HitEdge ) )
+        return;
 
-            HitPlane.Setup( P0, P1, P2 );
-            
-            collision_mgr::collision TempCollision(
-                FinalT,
-                FinalHitPoint,
-                HitPlane,
-                SlipPlane,
-                m_ContextInfo.Guid,
-                PrimitiveKey,
-                PRIMITIVE_STATIC_TRIANGLE,
-                FALSE,//HitTriangleEdge,
-                MAX( P0.GetY(), MAX( P1.GetY(), P2.GetY() ) ),
-                Flags );
+    // Preserve the triangle face plane separately from the closest-feature
+    // normal used for sliding at edges and vertices.
+    plane HitPlane, SlipPlane;
+    HitPlane.Setup( P0, P1, P2 );
+    SlipPlane.Setup( Point, Normal );
 
-            RecordCollision( TempCollision );
-        }
-    }
+    RecordCollision( collision( T, Point, HitPlane, SlipPlane, m_ContextInfo.Guid, PrimitiveKey,
+                                PRIMITIVE_STATIC_TRIANGLE, HitEdge, MAX( P0.GetY(), MAX( P1.GetY(), P2.GetY() ) ), Flags ) );
 }
-
 
 //==============================================================================
 
-void collision_mgr::ApplyTriangleToStretchedSphere(
-    const   vector3&    P0,
-    const   vector3&    P1,
-    const   vector3&    P2,
-            u32         Flags,
-            s32         PrimitiveKey    )
-{
-    ASSERT( m_DynamicPrimitive == PRIMITIVE_DYNAMIC_CYLINDER );
 
-    f32     Radius              = m_CylinderInfo[0].Radius;
-    f32     HalfHeight          = m_CylinderInfo[0].Height * 0.5f;
-    f32     WorldToSphereScale  = Radius/HalfHeight;
-    f32     SphereToWorldScale  = 1.0f / WorldToSphereScale;
-    vector3 WorldSpaceCenter    = m_CylinderInfo[0].BotStart + vector3(0,HalfHeight,0);
-    WorldSpaceCenter.GetX() = 0;
-    WorldSpaceCenter.GetZ() = 0;
-
-    //
-    // Scale all important info from world into sphere space
-    //
-    vector3 SphereSpaceTriangle[3];
-    SphereSpaceTriangle[0] = (P0-WorldSpaceCenter);
-    SphereSpaceTriangle[1] = (P1-WorldSpaceCenter);
-    SphereSpaceTriangle[2] = (P2-WorldSpaceCenter);
-    SphereSpaceTriangle[0].GetY() *= WorldToSphereScale;
-    SphereSpaceTriangle[1].GetY() *= WorldToSphereScale;
-    SphereSpaceTriangle[2].GetY() *= WorldToSphereScale;
-
-    vector3 SphereSpaceStart;
-    vector3 SphereSpaceStop;
-    
-    SphereSpaceStart    = (m_CylinderInfo[0].BotStart + vector3(0,HalfHeight,0)) - WorldSpaceCenter;
-    SphereSpaceStop     = (m_CylinderInfo[0].BotEnd   + vector3(0,HalfHeight,0)) - WorldSpaceCenter;
-    SphereSpaceStart.GetY() *= WorldToSphereScale;
-    SphereSpaceStop.GetY()  *= WorldToSphereScale;
-
-    //
-    // Now compute sphere triangle collision
-    //
-    f32         FinalT;
-    vector3     FinalHitPoint;
-
-    if ( ComputeSphereTriCollision(
-          SphereSpaceTriangle
-        , SphereSpaceStart
-        , SphereSpaceStop
-        , Radius
-        , FinalT
-        , FinalHitPoint
-        //, HitTriangleEdge 
-        ) )
-    {
-        // record the collision
-        plane HitPlane;
-        plane SlipPlane;
-
-        //
-        // Keep sphere space hit point
-        //
-        vector3 SphereSpaceHitPoint = FinalHitPoint;
-
-        //
-        // Transform the final hit point back into world space
-        //
-        FinalHitPoint.GetY() *= SphereToWorldScale;
-        FinalHitPoint   += WorldSpaceCenter;
-
-        // Compute ellipsoid space hit point
-        vector3 SphereSpaceCenterAtImpact = SphereSpaceStart + FinalT*(SphereSpaceStop-SphereSpaceStart);
-        vector3 EllipsoidSpaceHitPoint    = SphereSpaceHitPoint - SphereSpaceCenterAtImpact;
-        EllipsoidSpaceHitPoint.GetY() *= SphereToWorldScale;
-
-        // The normal(Nx,Ny,Nz) of a point(x,y,z) on an ellipsoid of radii (a,b,c) is:
-        //      ( Nx, Ny, Nz ) = ( 2x/a^2, 2y/b^2, 2z/c^2 )
-        // See this link for details on how it is derived:
-        // http://www.peroxide.dk/download/tutorials/tut10/pxdtut10.html
-
-        // Compute slide world normal using ( Nx, Ny, Nz ) = ( x/a^2, y/b^2, z/c^2 )
-        //   where:
-        //      ( x, y, z ) = EllipsoidSpaceHitPoint
-        //      ( a, b, c ) = ( Radius, HalfHeight, Radius )
-        // NOTE: The *2 is skipped since the end result is normalized
-        vector3 WorldSpaceNormal = -EllipsoidSpaceHitPoint;
-        f32     OneOverRadiusSqr = 1.0f / ( Radius * Radius );
-        WorldSpaceNormal.GetX() *= OneOverRadiusSqr;
-        WorldSpaceNormal.GetY() /= HalfHeight * HalfHeight;
-        WorldSpaceNormal.GetZ() *= OneOverRadiusSqr;
-        WorldSpaceNormal.Normalize();
-
-/*
-        // Compute sphere space slip normal
-        //vector3 SphereSpaceCenterAtImpact = SphereSpaceStart + FinalT*(SphereSpaceStop-SphereSpaceStart);
-        //vector3 SphereSpaceNormal = SphereSpaceCenterAtImpact - SphereSpaceHitPoint;
-
-        vector3 OldWorldSpaceNormal;
-        {
-            f32     AbsA, AbsB, AbsC;
-            vector3 Dir;
-            vector3 AxisA;
-            vector3 AxisB;
-
-            // Get a non-parallel axis to normal.
-            AbsA = x_abs( SphereSpaceNormal.GetX() );
-            AbsB = x_abs( SphereSpaceNormal.GetY() );
-            AbsC = x_abs( SphereSpaceNormal.GetZ() );
-            if( (AbsA<=AbsB) && (AbsA<=AbsC) ) Dir = vector3(1,0,0);
-            else
-            if( (AbsB<=AbsA) && (AbsB<=AbsC) ) Dir = vector3(0,1,0);
-            else                               Dir = vector3(0,0,1);
-
-            AxisA = SphereSpaceNormal.Cross(Dir);
-            AxisB = SphereSpaceNormal.Cross(AxisA);
-            AxisA.GetY() *= SphereToWorldScale;
-            AxisB.GetY() *= SphereToWorldScale;
-            OldWorldSpaceNormal = AxisA.Cross(AxisB);
-            OldWorldSpaceNormal.Normalize();
-        }
-*/
-
-        SlipPlane.Setup( FinalHitPoint, WorldSpaceNormal );
-
-        //
-        // Setup the hit plane from the original triangle
-        //
-        HitPlane.Setup( P0, P1, P2 );
-
-        collision_mgr::collision TempCollision(
-            FinalT,
-            FinalHitPoint,
-            HitPlane,
-            SlipPlane,
-            m_ContextInfo.Guid,
-            PrimitiveKey,
-            PRIMITIVE_STATIC_TRIANGLE,
-            FALSE,
-            MAX( P0.GetY(), MAX( P1.GetY(), P2.GetY() ) ),
-            Flags );
-
-        RecordCollision( TempCollision );
-    }
-}
 
 //==============================================================================
 
@@ -1404,52 +1194,22 @@ void collision_mgr::ApplyTriangleToRay(
 
 //==============================================================================
 
-void collision_mgr::ApplyAABBoxToCylinder(
-    const   bbox&       AABBox,
-            u32         Flags,         /* = 0 */
-            s32         PrimitiveKey   /* = 0 */ )
+void collision_mgr::ApplyAABBoxToCapsule( const bbox& Bounds, u32 Flags, s32 PrimitiveKey )
 {
-    ASSERT( m_DynamicPrimitive == PRIMITIVE_DYNAMIC_CYLINDER );
+    // Reuse triangle contact handling for the two triangles on each box face.
+    const vector3& L           = Bounds.Min;
+    const vector3& H           = Bounds.Max;
+    const vector3  P[8]        = { vector3( L.GetX(), L.GetY(), L.GetZ() ), vector3( H.GetX(), L.GetY(), L.GetZ() ),
+                                   vector3( H.GetX(), H.GetY(), L.GetZ() ), vector3( L.GetX(), H.GetY(), L.GetZ() ),
+                                   vector3( L.GetX(), L.GetY(), H.GetZ() ), vector3( H.GetX(), L.GetY(), H.GetZ() ),
+                                   vector3( H.GetX(), H.GetY(), H.GetZ() ), vector3( L.GetX(), H.GetY(), H.GetZ() ) };
+    const s32      Faces[6][4] = { { 0, 3, 2, 1 }, { 4, 5, 6, 7 }, { 0, 4, 7, 3 }, { 1, 2, 6, 5 }, { 0, 1, 5, 4 }, { 3, 7, 6, 2 } };
 
-    //--------------------------------------------------
-    // Check collisions between matching spheres in
-    // the start cylinder and the end cylinder
-    //--------------------------------------------------
-    s32         i;
-    f32         FinalT;
-    vector3     FinalHitPoint;
-    plane       HitPlane;
-    plane       SlipPlane;
-        
-    for ( i = 0; i < m_CylinderInfo[m_ContextInfo.Context].nStartSpheres; ++i )
+    for( s32 i = 0; i < 6; i++ )
     {
-        if ( ComputeSphereAABBoxCollision(
-              AABBox,
-              m_CylinderInfo[m_ContextInfo.Context].StartSpherePositions[i],
-              m_CylinderInfo[m_ContextInfo.Context].EndSpherePositions[i],
-              m_CylinderInfo[m_ContextInfo.Context].Radius,
-              FinalT,
-              FinalHitPoint,
-              HitPlane,
-              SlipPlane) )
-        {
-            ASSERT( x_abs(SlipPlane.Normal.LengthSquared() - 1.0f) < 0.01f );
-            // record the collision
-
-            collision_mgr::collision TempCollision(
-                FinalT,
-                FinalHitPoint,
-                HitPlane,
-                SlipPlane,
-                m_ContextInfo.Guid,
-                PrimitiveKey,
-                PRIMITIVE_STATIC_AA_BBOX,
-                FALSE,
-                AABBox.Max.GetY(),
-                Flags );
-
-            RecordCollision( TempCollision );
-        }
+        const s32* F = Faces[i];
+        ApplyTriangleToCapsule( P[F[0]], P[F[1]], P[F[2]], Flags, PrimitiveKey );
+        ApplyTriangleToCapsule( P[F[0]], P[F[2]], P[F[3]], Flags, PrimitiveKey );
     }
 }
 
@@ -1543,50 +1303,6 @@ void collision_mgr::ApplyAABBoxToRay(
 
 
 //==============================================================================
-
-s32 collision_mgr::GetCylinderSpherePositions(
-    const vector3&  Bottom,
-    const vector3&  Top,
-    f32             Radius,
-    vector3*        SpherePositions,
-    s32             MaxnSpheres )
-{
-    ASSERT( (Top-Bottom).LengthSquared() > 0.0001f );
-
-    vector3 Dir = Top - Bottom;
-    Dir.Normalize();
-
-    // Position the bottom and top spheres
-    const vector3 RadiusDir = Dir * Radius;
-    const vector3 First = Bottom + RadiusDir;
-    const vector3 Last = Top - RadiusDir;
-
-    // Determine the number of spheres
-    const f32 Dist = (Last-First).Length();
-    s32 nSpheres = (s32)(Dist / Radius);
-
-    // Patch for cases where Dist ~=~ Radius
-    f32 fSpheres = (Dist / Radius) - (f32)nSpheres;
-    if( fSpheres > 0.9f ) nSpheres++;
-
-    nSpheres+=2;
-    while ( nSpheres > MaxnSpheres ) --nSpheres;
-
-    // Determine the spacing between the spheres
-    const f32 Interval = Dist / (nSpheres - 1);
-    const vector3 IntervalDir = Dir * Interval;
-
-    // Create and store the sphere positions
-    s32 i;
-    vector3 Cur = First;
-    for ( i = 0; i < nSpheres; ++i )
-    {
-        SpherePositions[i] = Cur;
-        Cur += IntervalDir;
-    }
-
-    return nSpheres;
-}
 
 //==============================================================================
 
@@ -1866,7 +1582,7 @@ void collision_mgr::ApplySphereToPolyCache( void )
                 P4[0] = &CL.pPoint[ QD.iP[0] ];
                 P4[1] = &CL.pPoint[ QD.iP[1] ];
                 P4[2] = &CL.pPoint[ QD.iP[2] ];
-                P4[3] = &CL.pPoint[ QD.iP[3] ];
+                P4[3] = (CL.pBounds[iQ].Flags & BOUNDS_IS_QUAD) ? &CL.pPoint[ QD.iP[3] ] : NULL;
 
                 ApplyTriangleToSphere( *P4[0], *P4[1], *P4[2], 0, CL.PrimKey );
 
@@ -1886,44 +1602,31 @@ void collision_mgr::ApplySphereToPolyCache( void )
 
 //==============================================================================
 
-void collision_mgr::ApplyCylinderToPolyCache( void )
+void collision_mgr::ApplyCapsuleToPolyCache( void )
 {
     bbox DynamicBBox = m_DynamicBBoxes[0];
-    DynamicBBox.Inflate(1,1,1);
+    DynamicBBox.Inflate( 1, 1, 1 );
 
     //
     // Gather factored out list of clusters in dynamic area
     //
-    g_PolyCache.BuildClusterList( DynamicBBox, 
-                                  m_FilterThisType, 
-                                  m_FilterTheseAttributes, 
-                                  m_FilterNotTheseAttributes, 
-                                  m_IgnoreList, 
+    g_PolyCache.BuildClusterList( DynamicBBox,
+                                  m_FilterThisType,
+                                  m_FilterTheseAttributes,
+                                  m_FilterNotTheseAttributes,
+                                  m_IgnoreList,
                                   m_nIgnoredObjects );
 
     //
     // Were there no clusters?
     //
-    if( g_PolyCache.m_nClusters==0 )
+    if( g_PolyCache.m_nClusters == 0 )
         return;
-
-    //
-    // Build culling flags
-    //
-    u32 CullFlags=0;
-    vector3 Dir = m_CylinderInfo[0].BotEnd - m_CylinderInfo[0].BotStart;
-    Dir.Normalize();
-    if( Dir.GetX() > +0.001f ) CullFlags |= BOUNDS_X_POS;
-    if( Dir.GetX() < -0.001f ) CullFlags |= BOUNDS_X_NEG;
-    if( Dir.GetY() > +0.001f ) CullFlags |= BOUNDS_Y_POS;
-    if( Dir.GetY() < -0.001f ) CullFlags |= BOUNDS_Y_NEG;
-    if( Dir.GetZ() > +0.001f ) CullFlags |= BOUNDS_Z_POS;
-    if( Dir.GetZ() < -0.001f ) CullFlags |= BOUNDS_Z_NEG;
 
     //
     // Loop through the clusters and process the triangles
     //
-    for( s32 iCL=0; iCL<g_PolyCache.m_nClusters; iCL++ )
+    for( s32 iCL = 0; iCL < g_PolyCache.m_nClusters; iCL++ )
     {
         poly_cache::cluster& CL = *g_PolyCache.m_ClusterList[iCL];
 
@@ -1933,61 +1636,49 @@ void collision_mgr::ApplyCylinderToPolyCache( void )
         s32 iQ = -1;
         while( 1 )
         {
-            // Do tight loop on bbox checks and cull flags
+            // Find the next intersecting triangle bound.
             {
                 iQ++;
                 while( iQ < CL.nQuads )
                 {
-                    // Do flag culling
-                    if( (CL.pBounds[iQ].Flags & CullFlags) == 0 )
+                    if( DynamicBBox.Intersect( *(const bbox*)&CL.pBounds[iQ] ) )
                     {
-                        // Do bbox culling
-                        //#### This could be moved outside the loop
-                        // and do a pointer incremenet after we
-                        // optimized the vector3/bbox stuff
-                        bbox* pBBox = (bbox*)(&CL.pBounds[iQ]);
-                        if( DynamicBBox.Intersect( *pBBox ) ) 
-                        {
-                            break;
-                        }
+                        break;
                     }
                     iQ++;
                 }
-                if( iQ==CL.nQuads )
+                if( iQ == CL.nQuads )
                     break;
             }
 
             // Process this quad
             poly_cache::cluster::quad& QD = CL.pQuad[iQ];
 
-            // Skip if moving away from quad
-            if( CL.pNormal[QD.iN].Dot(Dir) > -0.0001f )
-                continue;
-
             {
                 vector3* P4[4];
-                P4[0] = &CL.pPoint[ QD.iP[0] ];
-                P4[1] = &CL.pPoint[ QD.iP[1] ];
-                P4[2] = &CL.pPoint[ QD.iP[2] ];
-                P4[3] = &CL.pPoint[ QD.iP[3] ];
+                P4[0] = &CL.pPoint[QD.iP[0]];
+                P4[1] = &CL.pPoint[QD.iP[1]];
+                P4[2] = &CL.pPoint[QD.iP[2]];
+                P4[3] = ( CL.pBounds[iQ].Flags & BOUNDS_IS_QUAD ) ? &CL.pPoint[QD.iP[3]] : NULL;
 
-                ApplyTriangleToStretchedSphere( *P4[0], *P4[1], *P4[2], 0, CL.PrimKey );
+                ApplyTriangleToCapsule( *P4[0], *P4[1], *P4[2], 0, CL.PrimKey );
                 if( CL.pBounds[iQ].Flags & BOUNDS_IS_QUAD )
                 {
-                    ApplyTriangleToStretchedSphere( *P4[0], *P4[2], *P4[3], 0, CL.PrimKey );
+                    ApplyTriangleToCapsule( *P4[0], *P4[2], *P4[3], 0, CL.PrimKey );
                 }
             }
         }
 
         EndApply();
 
-        if( (m_nCollisions>0) && (m_bStopOnFirstCollisionFound) )
+        if( ( m_nCollisions > 0 ) && ( m_bStopOnFirstCollisionFound ) )
             return;
     }
 }
 
 //==============================================================================
-static xbool ClipRay( const bbox&    BBox,
+static
+xbool ClipRay( const bbox&    BBox,
                       const vector3& P0,
                       const vector3& P1,
                       f32&           T0,
@@ -2162,7 +1853,7 @@ void collision_mgr::ApplyRayToPolyCache( void )
                     P4[0] = &CL.pPoint[ QD.iP[0] ];
                     P4[1] = &CL.pPoint[ QD.iP[1] ];
                     P4[2] = &CL.pPoint[ QD.iP[2] ];
-                    P4[3] = &CL.pPoint[ QD.iP[3] ];
+                    P4[3] = (CL.pBounds[iQ].Flags & BOUNDS_IS_QUAD) ? &CL.pPoint[ QD.iP[3] ] : NULL;
 
                     ApplyTriangleToRay( *P4[0], *P4[1], *P4[2], 0, CL.PrimKey );
                     if( CL.pBounds[iQ].Flags & BOUNDS_IS_QUAD )
@@ -2219,4 +1910,3 @@ void    collision_mgr::AddToIgnoreList( guid* Guid, s32 nGuids )
 }
 
 //==============================================================================
-

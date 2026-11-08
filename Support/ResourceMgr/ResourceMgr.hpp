@@ -37,7 +37,7 @@ public:
                     rhandle_base    ( const char* pResourceName );
                    ~rhandle_base    ( void );
 
-    void            SetName         ( const char* pResourceName );
+    void            SetName         ( const char* pResourceName, xbool LoadOnBind = TRUE );
     const char*     GetName         ( void ) const;
 
     void*           GetPointer      ( void ) const;
@@ -107,6 +107,9 @@ public:
         void        RefreshAll      ( void );
         void        UnloadAll       ( xbool bIgnoreTagged = FALSE );
         void        TagResources    ( void );
+        typedef xbool loaded_resource_fn( const char* pName, const char* pExtension,
+                                          const void* pData, void* pContext );
+        xbool       VisitLoadedResources( loaded_resource_fn* pFunction, void* pContext ) const;
 
 #ifdef RSC_MGR_COLLECT_STATS
         struct
@@ -129,7 +132,7 @@ private:
         void        FreeEntry       ( s16 I );
         s16         FindEntry       ( const char* pResourceName );
 
-        void        AddRHandle      ( rhandle_base& RHandle, const char* pResourceName );
+        void        AddRHandle      ( rhandle_base& RHandle, const char* pResourceName, xbool LoadOnBind );
         const char* GetRHandleName  ( const rhandle_base& RHandle ) const;
         void*       GetPointer      ( const rhandle_base& RHandle );
         void*       GetPointerSlow  ( const rhandle_base& RHandle );
@@ -156,6 +159,7 @@ private:
         state       State;
         void*       pData;
         rsc_loader* pLoader;
+        xbool       LoadOnAccess;
         s16         bTagged;
         s16         Next;       // in the used or free list
         s16         Prev;       // in the used or free list

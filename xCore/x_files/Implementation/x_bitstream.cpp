@@ -15,7 +15,7 @@
 
 #define TO_U32(x)       (*((u32*)(&(x))))
 #define TO_F32(x)       (*((f32*)(&(x))))
-#define LOWER_BITS(x)   ((u32)(~(-1<<(x))))
+#define LOWER_BITS(x)   ((u32)((1ULL << (x)) - 1ULL))
 
 static s32 s_VarLenBitOptions[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,32};
 
@@ -41,6 +41,10 @@ bitstream::bitstream( void )
     m_MaxGrowSize       = 1024;
     m_SectionCursor     = -1;
     m_bOverwrite        = FALSE;
+    m_bReadError        = FALSE;
+    m_bReadFiniteFloats = FALSE;
+    m_WriteLimit = m_DataSizeInBits;
+    m_SectionWriteLimit = -1;
 }
 
 //=========================================================================
@@ -62,6 +66,11 @@ void bitstream::Kill( void )
     m_HighestBitWritten = -1;
     m_Cursor = 0;
     m_bOwnsData = FALSE;
+    m_bOverwrite = FALSE;
+    m_bReadError = FALSE;
+    m_bReadFiniteFloats = FALSE;
+    m_WriteLimit = m_DataSizeInBits;
+    m_SectionWriteLimit = -1;
 }
 
 //=========================================================================
@@ -81,6 +90,11 @@ void    bitstream::Init( s32 DataSize )
     m_HighestBitWritten  = -1;
     m_Cursor             = 0;
     m_SectionCursor      = -1;
+    m_bOverwrite         = FALSE;
+    m_bReadError         = FALSE;
+    m_bReadFiniteFloats  = FALSE;
+    m_WriteLimit = m_DataSizeInBits;
+    m_SectionWriteLimit = -1;
 }
 
 //=========================================================================
@@ -93,6 +107,12 @@ void    bitstream::Init( const byte* pData, s32 DataSize )
     m_DataSizeInBits    = m_DataSize<<3;
     m_HighestBitWritten = -1;
     m_Cursor            =  0;
+    m_SectionCursor     = -1;
+    m_bOverwrite        = FALSE;
+    m_bReadError        = FALSE;
+    m_bReadFiniteFloats = FALSE;
+    m_WriteLimit = m_DataSizeInBits;
+    m_SectionWriteLimit = -1;
 }
 
 //=========================================================================
@@ -108,12 +128,19 @@ void bitstream::Grow ( void )
 {
     ASSERT( m_bOwnsData );
 
+    xbool FullLimit = (m_WriteLimit == m_DataSizeInBits);
+    xbool FullSectionLimit = (m_SectionWriteLimit == m_DataSizeInBits);
+
     s32 GrowSize        = 16 + (m_DataSize/2);
     GrowSize            = MIN( GrowSize, m_MaxGrowSize );
 
     m_DataSize         += GrowSize;
     m_DataSizeInBits    = m_DataSize<<3;
     m_Data              = (byte *)x_realloc(m_Data, m_DataSize);
+    if( FullLimit )
+        m_WriteLimit = m_DataSizeInBits;
+    if( FullSectionLimit )
+        m_SectionWriteLimit = m_DataSizeInBits;
 
     ASSERT( m_Data );
 }
@@ -129,7 +156,7 @@ void bitstream::SetMaxGrowSize( s32 MaxGrowSize )
 
 xbool     bitstream::Overwrite       ( void ) const
 {
-    return m_bOverwrite;
+    return m_bOverwrite || m_bReadError;
 }
 
 //=========================================================================
@@ -165,7 +192,7 @@ s32     bitstream::GetNBytesUsed   ( void ) const
 
 s32     bitstream::GetNBytesFree   ( void ) const
 {
-    return m_DataSize - GetNBytesUsed();
+    return MAX(0, (m_WriteLimit - GetNBitsUsed()) / 8);
 }
 
 //=========================================================================
@@ -179,7 +206,7 @@ s32     bitstream::GetNBitsUsed    ( void ) const
 
 s32     bitstream::GetNBitsFree    ( void ) const
 {
-    return m_DataSizeInBits - GetNBitsUsed();
+    return MAX(0, m_WriteLimit - GetNBitsUsed());
 }
 
 //=========================================================================
@@ -193,7 +220,7 @@ byte*   bitstream::GetDataPtr      ( void ) const
 
 xbool   bitstream::IsFull          ( void ) const
 {
-    return (m_Cursor>=m_DataSizeInBits);
+    return (m_Cursor>=m_WriteLimit);
 }
 
 //=========================================================================
@@ -216,7 +243,7 @@ void    bitstream::SetCursor       ( s32 BitIndex )
 {
     ASSERT( BitIndex>=0 );
     m_Cursor = BitIndex;
-    m_bOverwrite = (m_Cursor >= m_DataSizeInBits);
+    m_bOverwrite = (m_Cursor > m_WriteLimit);
 }
 
 //=========================================================================
@@ -241,24 +268,43 @@ void    bitstream::ReadMarker  ( void ) const
 #if defined(X_DEBUG)
     u32 R;
     ReadU32( R );
-    ASSERT( R == 0xDEADBEEF );
+    if( R != 0xDEADBEEF )
+        SetReadError();
 #endif
 }
 
 //=========================================================================
 
-xbool   bitstream::OpenSection     ( xbool Flag )
+xbool   bitstream::OpenSection     ( xbool Flag, s32 ReserveBits )
 {
     ASSERT( m_SectionCursor == -1 );
+    ASSERT( ReserveBits >= 0 );
 
-    if( m_Cursor > m_DataSizeInBits )
-        return( FALSE );
+    if( m_Cursor >= m_WriteLimit )
+    {
+        if( m_bOwnsData && (m_WriteLimit == m_DataSizeInBits) )
+        {
+            Grow();
+        }
+        else
+        {
+            m_bOverwrite = TRUE;
+            return FALSE;
+        }
+    }
+
+    if( Flag && (ReserveBits >= m_WriteLimit - m_Cursor) )
+        Flag = FALSE;
 
     if( Flag )
+    {
         m_SectionCursor = GetCursor();
+        m_SectionWriteLimit = m_WriteLimit;
+        m_WriteLimit -= ReserveBits;
+    }
 
     WriteFlag( Flag );
-    return( Flag );
+    return Flag;
 }
 
 //=========================================================================
@@ -266,6 +312,9 @@ xbool   bitstream::OpenSection     ( xbool Flag )
 xbool   bitstream::CloseSection    ( void )
 {
     ASSERT( m_SectionCursor >= 0 );
+
+    m_WriteLimit = m_SectionWriteLimit;
+    m_SectionWriteLimit = -1;
 
     if( Overwrite() )
     {
@@ -275,6 +324,7 @@ xbool   bitstream::CloseSection    ( void )
         // to the start of the section and write a flag now stating
         // that the section does not exist.
         WriteFlag( FALSE );
+        Truncate();
         m_SectionCursor = -1;
         return( FALSE );
     }
@@ -292,9 +342,9 @@ void    bitstream::WriteRangedS32  ( s32 Value, s32 Min, s32 Max )
     ASSERT( Value >= Min );
     ASSERT( Value <= Max );
     
-    s32 Range = Max - Min;
+    u32 Range = (u32)Max - (u32)Min;
     s32 NBits = GetHighestBit(Range);
-    WriteU32( Value - Min, NBits );
+    WriteU32( (u32)Value - (u32)Min, NBits );
 }
 
 //=========================================================================
@@ -306,9 +356,9 @@ void    bitstream::WriteRangedU32  ( u32 Value, s32 Min, s32 Max )
     ASSERT( Value >= (u32)Min );
     ASSERT( Value <= (u32)Max );
     
-    s32 Range = Max - Min;
+    u32 Range = (u32)Max - (u32)Min;
     s32 NBits = GetHighestBit(Range);
-    WriteU32( Value - Min, NBits );
+    WriteU32( (u32)Value - (u32)Min, NBits );
 }
 
 //=========================================================================
@@ -317,18 +367,10 @@ void    bitstream::WriteVariableLenS32 ( s32 Value )
 {
     ASSERT( ( *(u32*)&Value ) != 0xFEEDC0DE );
 
-    s32 i;
-
-    // Write sign and flip to positive
+    u32 Magnitude = (u32)Value;
     if( WriteFlag( Value < 0 ) )
-        Value = -Value;
-
-    s32 nBits = GetHighestBit( Value );
-    for( i=0; i<16; i++ )
-        if( nBits <= s_VarLenBitOptions[i] ) break;
-
-    WriteU32( i, 4 );
-    WriteU32( Value, s_VarLenBitOptions[i] );
+        Magnitude = 0u - Magnitude;
+    WriteVariableLenU32( Magnitude );
 }
 
 //=========================================================================
@@ -351,6 +393,13 @@ void    bitstream::WriteVariableLenU32 ( u32 Value )
 
 void    bitstream::ReadU64( u64& Value, s32 NBits ) const
 {
+    if( (NBits < 0) || (NBits > 64) )
+    {
+        SetReadError();
+        Value = 0;
+        return;
+    }
+
     s32 NBits0 = MIN(NBits,32);
     s32 NBits1 = NBits - NBits0;
     u32 V0;
@@ -368,25 +417,32 @@ void    bitstream::ReadU64( u64& Value, s32 NBits ) const
 
 void    bitstream::ReadRangedS32   ( s32& Value, s32 Min, s32 Max ) const
 {
-    ASSERT( Max>Min );
-    s32 Range = Max - Min;
-    s32 NBits = GetHighestBit(Range);
-    u32 V;
-    ReadU32( V, NBits );
-    Value = (s32)V+Min;
-    ASSERT( (Value>=Min) && (Value<=Max) );
+    ASSERT( Max > Min );
+    u32 Range = (u32)Max - (u32)Min;
+    u32 V = ReadRaw32( GetHighestBit(Range) );
+    if( ReadError() || (V > Range) )
+    {
+        SetReadError();
+        Value = Min;
+        return;
+    }
+    Value = (s32)((s64)Min + V);
 }
 
 //=========================================================================
 
 void    bitstream::ReadRangedU32   ( u32& Value, s32 Min, s32 Max ) const
 {
-    ASSERT( Max>Min );
-    s32 Range = Max - Min;
-    s32 NBits = GetHighestBit(Range);
-    ReadU32( Value, NBits );
-    Value += Min;
-    ASSERT( (Value>=(u32)Min) && (Value<=(u32)Max) );
+    ASSERT( Max > Min );
+    u32 Range = (u32)Max - (u32)Min;
+    u32 V = ReadRaw32( GetHighestBit(Range) );
+    if( ReadError() || (V > Range) )
+    {
+        SetReadError();
+        Value = (u32)Min;
+        return;
+    }
+    Value = V + (u32)Min;
 }
 
 //=========================================================================
@@ -439,19 +495,16 @@ void    bitstream::ReadVariableLenU32 ( u32& Value ) const
 
 void    bitstream::ReadVariableLenS32 ( s32& Value ) const
 {
-    u32 nBitsOption;
-    u32 V;
-
-    // Read sign and keep
-    xbool bNeg = ReadFlag();
-
-    ReadU32( nBitsOption, 4 );
-    ReadU32( V, s_VarLenBitOptions[nBitsOption] );
-
-    Value = (s32)V;
-
-    if( bNeg )
-        Value = -Value;
+    xbool Negative = ReadFlag();
+    u32 Magnitude;
+    ReadVariableLenU32( Magnitude );
+    if( ReadError() || (Magnitude > (Negative ? 0x80000000u : 0x7FFFFFFFu)) )
+    {
+        SetReadError();
+        Value = 0;
+        return;
+    }
+    Value = (s32)(Negative ? -(s64)Magnitude : (s64)Magnitude);
 }
 
 //=========================================================================
@@ -487,6 +540,12 @@ void bitstream::WriteVariableLenF32( f32 Value )
 void    bitstream::ReadF32         ( f32& Value ) const
 {
     u32 UValue = ReadRaw32( 32 );
+    if( m_bReadFiniteFloats && ((UValue & 0x7F800000u) == 0x7F800000u) )
+    {
+        SetReadError();
+        Value = 0.0f;
+        return;
+    }
     Value = TO_F32(UValue);
 }
 
@@ -497,6 +556,11 @@ void    bitstream::ReadRangedF32   ( f32& Value, s32 NBits, f32 Min, f32 Max ) c
     if( NBits==32 )
     {
         ReadF32( Value );
+        if( !((Value >= Min) && (Value <= Max)) )
+        {
+            SetReadError();
+            Value = Min;
+        }
         return;
     }
     ASSERT( Max>Min );
@@ -776,13 +840,40 @@ void    bitstream::WriteString         ( const char* pBuf )
 
 //=========================================================================
 
-void    bitstream::ReadString          ( char* pBuf, s32 MaxLength ) const
+xbool   bitstream::ReadString          ( char* pBuf, s32 MaxLength ) const
 {
-    (void)MaxLength;
-    u32 L;
-    ReadU32( L, 8 );
-    ReadRawBits( pBuf, L*8 );
-    pBuf[L-1] = '\0';
+    if( !pBuf || (MaxLength <= 0) )
+    {
+        SetReadError();
+        return FALSE;
+    }
+    pBuf[0] = 0;
+
+    u32 Length;
+    ReadU32( Length, 8 );
+    if( !Length || (Length > (u32)MaxLength) || !CanRead(Length * 8) )
+    {
+        SetReadError();
+        return FALSE;
+    }
+    ReadRawBits( pBuf, Length * 8 );
+    for( u32 i = 0; i + 1 < Length; i++ )
+    {
+        if( pBuf[i] == 0 )
+        {
+            pBuf[0] = 0;
+            SetReadError();
+            return FALSE;
+        }
+    }
+
+    if( pBuf[Length - 1] != 0 )
+    {
+        pBuf[0] = 0;
+        SetReadError();
+        return FALSE;
+    }
+    return TRUE;
 }
 
 //=========================================================================
@@ -810,13 +901,40 @@ void    bitstream::WriteWString         ( const xwchar* pBuf )
 
 //=========================================================================
 
-void    bitstream::ReadWString          ( xwchar* pBuf, s32 MaxLength ) const
+xbool   bitstream::ReadWString          ( xwchar* pBuf, s32 MaxLength ) const
 {
-    u32 L;
-    (void)MaxLength;
-    ReadU32( L, 8 );
-    ReadRawBits( pBuf, L*16 );
-    pBuf[L] = '\0';
+    if( !pBuf || (MaxLength <= 0) )
+    {
+        SetReadError();
+        return FALSE;
+    }
+    pBuf[0] = 0;
+
+    u32 Length;
+    ReadU32( Length, 8 );
+    if( !Length || (Length > (u32)MaxLength) || !CanRead(Length * 16) )
+    {
+        SetReadError();
+        return FALSE;
+    }
+    ReadRawBits( pBuf, Length * 16 );
+    for( u32 i = 0; i + 1 < Length; i++ )
+    {
+        if( pBuf[i] == 0 )
+        {
+            pBuf[0] = 0;
+            SetReadError();
+            return FALSE;
+        }
+    }
+
+    if( pBuf[Length - 1] != 0 )
+    {
+        pBuf[0] = 0;
+        SetReadError();
+        return FALSE;
+    }
+    return TRUE;
 }
 
 //=========================================================================
@@ -867,6 +985,35 @@ void    bitstream::Clear( void )
     x_memset( m_Data, 0, m_DataSize );
     m_Cursor = 0;
     m_HighestBitWritten = -1;
+    m_SectionCursor = -1;
+    m_bOverwrite = FALSE;
+    m_bReadError = FALSE;
+    m_bReadFiniteFloats = FALSE;
+    m_WriteLimit = m_DataSizeInBits;
+    m_SectionWriteLimit = -1;
+}
+
+//=========================================================================
+
+void bitstream::Truncate( void )
+{
+    ASSERT( (m_Cursor >= 0) && (m_Cursor <= m_DataSizeInBits) );
+    m_HighestBitWritten = m_Cursor - 1;
+}
+
+//=========================================================================
+
+s32 bitstream::GetWriteLimit( void ) const
+{
+    return m_WriteLimit;
+}
+
+//=========================================================================
+
+void bitstream::SetWriteLimit( s32 NBits )
+{
+    ASSERT( (NBits >= 0) && (NBits <= m_DataSizeInBits) );
+    m_WriteLimit = NBits;
 }
 
 //=========================================================================
@@ -883,13 +1030,14 @@ xbool   bitstream::WriteFlag       ( xbool Value )
 {
     ASSERT( ( *(u32*)&Value ) != 0xFEEDC0DE );
 
-    if( m_Cursor >= m_DataSizeInBits )
+    if( m_Cursor >= m_WriteLimit )
     {
-        // Special case:  Only trigger overwrite when writing TRUE.
-        if( Value )
+        if( m_bOwnsData && (m_WriteLimit == m_DataSizeInBits) ) Grow();
+        else
+        {
             m_bOverwrite = TRUE;
-        if( m_bOwnsData )   Grow();
-        else                return( Value );
+            return( Value );
+        }
     }
 
     if( Value )
@@ -905,11 +1053,63 @@ xbool   bitstream::WriteFlag       ( xbool Value )
 
 //=========================================================================
 
+xbool bitstream::ReadStream( bitstream& Stream, s32 NBits ) const
+{
+    if( !CanRead(NBits) || (&Stream == this) )
+    {
+        SetReadError();
+        return FALSE;
+    }
+    s32 Offset = m_Cursor & 7;
+    Stream.Kill();
+    Stream.Init( m_Data ? m_Data + (m_Cursor >> 3) : NULL, (Offset + NBits + 7) >> 3 );
+    Stream.m_Cursor = Offset;
+    Stream.m_DataSizeInBits = Offset + NBits;
+    Stream.m_WriteLimit = Stream.m_DataSizeInBits;
+    Stream.m_bReadFiniteFloats = m_bReadFiniteFloats;
+    m_Cursor += NBits;
+    return TRUE;
+}
+
+//=========================================================================
+
+void bitstream::RequireFiniteFloats( void ) const
+{
+    m_bReadFiniteFloats = TRUE;
+}
+
+//=========================================================================
+
+xbool bitstream::CanRead( s32 NBits ) const
+{
+    return !m_bReadError && (NBits >= 0) && (m_Cursor >= 0) &&
+           (m_Cursor <= m_DataSizeInBits) &&
+           (NBits <= m_DataSizeInBits - m_Cursor);
+}
+
+//=========================================================================
+
+xbool bitstream::ReadError( void ) const
+{
+    return m_bReadError;
+}
+
+//=========================================================================
+
+void bitstream::SetReadError( void ) const
+{
+    m_bReadError = TRUE;
+}
+
+//=========================================================================
+
 xbool   bitstream::ReadFlag        ( void ) const
 {
-//  ASSERT( m_Cursor < m_DataSizeInBits );
-    if( m_Cursor >= m_DataSizeInBits )
-        return( FALSE );
+    if( !CanRead(1) )
+    {
+        SetReadError();
+        return FALSE;
+    }
     xbool B = (*(m_Data + (m_Cursor >> 3)) & (1 << (7-(m_Cursor & 0x7)))) != 0; 
     m_Cursor++;
     return B;
@@ -928,7 +1128,7 @@ void    bitstream::WriteRawBits       ( const void* pData, s32 NBits )
 {
 #ifdef X_ASSERT
     u8* pI = (u8*)pData;
-    ASSERT(     !(      ( pI[0] == 0xFE )
+    ASSERT( (NBits < 32) || !( ( pI[0] == 0xFE )
                     &&  ( pI[1] == 0xED )
                     &&  ( pI[2] == 0xC0 )
                     &&  ( pI[3] == 0xDE ) ) );
@@ -941,11 +1141,14 @@ void    bitstream::WriteRawBits       ( const void* pData, s32 NBits )
     ASSERT(NBits>0);
 
     // Check if writing out of bounds
-    while (NBits + m_Cursor >= m_DataSizeInBits)
+    while( NBits > m_WriteLimit - m_Cursor )
     {
-        m_bOverwrite = TRUE;
-        if( m_bOwnsData )   Grow();
-        else                return;
+        if( m_bOwnsData && (m_WriteLimit == m_DataSizeInBits) ) Grow();
+        else
+        {
+            m_bOverwrite = TRUE;
+            return;
+        }
     }
 
     s32     NBitsRemaining = NBits;
@@ -991,14 +1194,13 @@ void    bitstream::WriteRawBits       ( const void* pData, s32 NBits )
 
 void    bitstream::ReadRawBits        ( void* pData, s32 NBits ) const
 {
-    // Check that we actually have bits to read
+    if( !CanRead(NBits) || ((NBits > 0) && !pData) )
+    {
+        SetReadError();
+        return;
+    }
     if( NBits == 0 )
         return;
-
-    // Check if reading out of bounds
-    ASSERTS( (NBits+m_Cursor) <= m_DataSizeInBits, 
-             (const char*)xfs( "NBits:%d  m_Cursor:%d  m_DataSizeInBits:%d", 
-                               NBits, m_Cursor, m_DataSizeInBits ) );
 
     s32     NBitsRemaining = NBits;
     s32     NBitsInBuffer = 0;
@@ -1014,7 +1216,7 @@ void    bitstream::ReadRawBits        ( void* pData, s32 NBits ) const
 
         // Read bits into the buffer
         byte Byte = (*pSrc) >> ((8-SrcOffset)-NBitsToRead);
-        BitBuffer |= (Byte & (~(-1<<NBitsToRead))) << NBitsInBuffer;
+        BitBuffer |= (Byte & ((1u << NBitsToRead) - 1u)) << NBitsInBuffer;
 
         pSrc++;
         SrcOffset=0;
@@ -1053,11 +1255,14 @@ void    bitstream::WriteRaw32         ( u32 Value, s32 NBits )
     ASSERT((NBits>0) && (NBits<=32));
 
     // Check if writing out of bounds
-    if( (NBits+m_Cursor) > m_DataSizeInBits )
+    while( NBits > m_WriteLimit - m_Cursor )
     {
-        m_bOverwrite = TRUE;
-        if( m_bOwnsData )   Grow();
-        else                return;
+        if( m_bOwnsData && (m_WriteLimit == m_DataSizeInBits) ) Grow();
+        else
+        {
+            m_bOverwrite = TRUE;
+            return;
+        }
     }
 
     byte*   pDst        = m_Data + (m_Cursor>>3);
@@ -1093,16 +1298,13 @@ void    bitstream::WriteRaw32         ( u32 Value, s32 NBits )
 
 u32    bitstream::ReadRaw32          ( s32 NBits ) const
 {
-    if( NBits==0 )
+    if( (NBits > 32) || !CanRead(NBits) )
+    {
+        SetReadError();
         return 0;
-
-    // Check that we actually have bits to read
-    ASSERT((NBits>0) && (NBits<=32));
-
-    // Check if reading out of bounds
-    ASSERTS( (NBits+m_Cursor) <= m_DataSizeInBits, 
-             (const char*)xfs( "NBits:%d  m_Cursor:%d  m_DataSizeInBits:%d", 
-                               NBits, m_Cursor, m_DataSizeInBits ) );
+    }
+    if( NBits == 0 )
+        return 0;
 
     s32     LeftOffset  = (m_Cursor & 0x7);
     s32     RightOffset = (40-LeftOffset-NBits);

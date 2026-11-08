@@ -62,7 +62,7 @@ swap (char *a, char *b, size_t size)
 
 void
 backtrace_qsort (void *basearg, size_t count, size_t size,
-         int (*compar) (const void *, const void *))
+		 int (*compar) (const void *, const void *))
 {
   char *base = (char *) basearg;
   size_t i;
@@ -82,11 +82,11 @@ backtrace_qsort (void *basearg, size_t count, size_t size,
   for (i = 1; i < count; i++)
     {
       if ((*compar) (base, base + i * size) > 0)
-    {
-      ++mid;
-      if (i != mid)
-        swap (base + mid * size, base + i * size, size);
-    }
+	{
+	  ++mid;
+	  if (i != mid)
+	    swap (base + mid * size, base + i * size, size);
+	}
     }
 
   if (mid > 0)
@@ -104,7 +104,7 @@ backtrace_qsort (void *basearg, size_t count, size_t size,
   else
     {
       backtrace_qsort (base + (mid + 1) * size, count - (mid + 1),
-               size, compar);
+		       size, compar);
       count = mid;
       goto tail_recurse;
     }

@@ -9,6 +9,8 @@
 //==============================================================================
 
 #include "fx_Mgr.hpp"
+#include "fx_Render.hpp"
+#include "Render/PipelinePrewarm.hpp"
 
 #include "x_profile.hpp"
 
@@ -17,6 +19,24 @@
 //==============================================================================
 
 fx_mgr              FXMgr;
+
+xbool fx_mgr::QueueLoadedPipelines( render::PipelinePrewarmContext& Context ) const
+{
+    for( s32 i = 0; i < MAX_EFFECT_DEFINITIONS; ++i )
+    {
+        const fx_def* pDef = m_pEffectDef[i];
+        if( !pDef )
+            continue;
+        for( s32 j = 0; j < pDef->NElements; ++j )
+        {
+            const fx_element_def& Element = *pDef->pElementDef[j];
+            if( !Context.QueuePrimitive( fx_BuildMaterial( Element.CombineMode, Element.ReadZ,
+                                                           render::PRIMITIVE_SAMPLER_LINEAR_WRAP ) ) )
+                return FALSE;
+        }
+    }
+    return TRUE;
+}
 
 s32                     fx_mgr::m_NCtrlTypes = 0;
 fx_ctrl_type            fx_mgr::m_CtrlType[ MAX_CTRL_TYPES ];
@@ -127,7 +147,7 @@ fx_mgr::fx_mgr( void )
     s_DefaultBounds.Clear();
 
 #ifdef DEBUG_FX
-    x_memset( &FXDebug, 0, sizeof(fx_debug) / 4 );
+    x_memset( &FXDebug, 0, sizeof(FXDebug) );
 #endif // DEBUG_FX
 
     // Reference registration anchors so every element/controller translation
@@ -787,8 +807,7 @@ void fx_mgr::Render( const fx_handle& Handle )
                               FXDebug.ElementBounds       |
                               FXDebug.ElementWire         |
                               FXDebug.ElementSpriteCenter |
-                              FXDebug.ElementSpriteCount  |
-                              FXDebug.ElementCustom;
+                              FXDebug.ElementSpriteCount;
 #endif // DEBUG_FX
 
     // Let 'er rip!

@@ -20,7 +20,6 @@
 #define SPACE_BOTTOM    4
 #define LINE_HEIGHT     16
 #define HEADER_HEIGHT   22
-#define TEXT_OFFSET     -2
 
 //=========================================================================
 //  Structs
@@ -78,6 +77,8 @@ xbool ui_listbox::Create( s32 UserID, ui_manager* pManager, const irect& Positio
     m_LineHeight            = LINE_HEIGHT;
     m_ExitOnSelect          = TRUE;
     m_ExitOnBack            = FALSE;
+    m_AcceptOnRepeatClick   = FALSE;
+    m_LastPointerSelection  = -1;
     m_iSelection            = -1;
     m_iSelectionBackup      = -1;
     m_iFirstVisibleItem     = 0;
@@ -104,9 +105,8 @@ void ui_listbox::Render( s32 ox, s32 oy )
     {
         xcolor  TextColor2  = XCOLOR_BLACK;
         // Calculate rectangle
-        irect   r;
-        r.Set( (m_Position.l+ox), (m_Position.t+oy), (m_Position.r+ox), (m_Position.b+oy) );
-        r.r -= 14;
+        irect r = GetListRect();
+        r.Translate( ox, oy );
 
         if( m_Flags & WF_DISABLED )
         {
@@ -143,17 +143,7 @@ void ui_listbox::Render( s32 ox, s32 oy )
         rl.r -= 2;
         rl.Translate( 0, SPACE_TOP );
 
-        // check for empty list
-        if ( m_Items.GetCount() == 0 )
-        {
-            if( IsActive() )
-            {
-                // render cursor bar
-                s32 alpha = 128 + (m_pManager->GetHighlightAlpha(8) * 8); // 64<->192
-                m_pManager->RenderRect( rl, xcolor(79,214,60,alpha), FALSE );
-            }
-        }
-        else
+        if( m_Items.GetCount() )
         {
             for( i=0 ; i<m_nVisibleItems ; i++ )
             {
@@ -166,20 +156,13 @@ void ui_listbox::Render( s32 ox, s32 oy )
                         (m_ShowBorders)          &&
                         (m_DisableCursor == FALSE) )
                     {
-                        if( IsActive() )
-                        {
-                            s32 alpha = 128 + (m_pManager->GetHighlightAlpha(8) * 8); // 64<->192
-                            m_pManager->RenderRect( rl, xcolor(79,214,60,alpha), FALSE );
-                        }
-                        else
-                        {
-                            m_pManager->RenderRect( rl, xcolor(66,158,11,128), FALSE );
-                        }
+                        RenderSelection( rl );
                     }
                     // Pointer hover is independent from the persistent selection.
-                    if( (iItem == m_HoveredItem) && m_Items[iItem].Enabled )
+                    if( (iItem == m_HoveredItem) &&
+                        (iItem != m_iSelection) && m_Items[iItem].Enabled )
                     {
-                        m_pManager->RenderRect( rl, xcolor( 79, 214, 60, 48 ), FALSE );
+                        RenderHighlightRect( rl, HS_HOVERED );
                     }
 
                     // Render Text
@@ -237,10 +220,18 @@ void ui_listbox::Render( s32 ox, s32 oy )
 
 void ui_listbox::RenderHeader( irect r )
 {
-    r.l += 2;
-    m_pManager->RenderText( m_Font, r, ui_font::h_center | ui_font::v_center, XCOLOR_BLACK, m_Label );
-    r.Translate( -1, -1 );
+    irect Shadow = r;
+    Shadow.Translate( 1, 1 );
+
+    m_pManager->RenderText( m_Font, Shadow, ui_font::h_center | ui_font::v_center, XCOLOR_BLACK, m_Label );
     m_pManager->RenderText( m_Font, r, ui_font::h_center | ui_font::v_center, m_HeaderColor, m_Label );
+}
+
+//=========================================================================
+
+void ui_listbox::RenderSelection( irect r )
+{
+    RenderHighlightRect( r, IsActive() ? HS_ACTIVE : HS_SELECTED );
 }
 
 //=========================================================================
@@ -248,9 +239,11 @@ void ui_listbox::RenderHeader( irect r )
 void ui_listbox::RenderItem( irect r, const item& Item, const xcolor& c1, const xcolor& c2 )
 {
     r.Deflate( 4, 0 );
-    r.Translate( 1, -2 );
-    m_pManager->RenderText( m_Font, r, m_LabelFlags, c2, Item.Label );
-    r.Translate( -1, -1 );
+
+    irect Shadow = r;
+    Shadow.Translate( 1, 1 );
+
+    m_pManager->RenderText( m_Font, Shadow, m_LabelFlags, c2, Item.Label );
     m_pManager->RenderText( m_Font, r, m_LabelFlags, c1, Item.Label );
 }
 
@@ -467,6 +460,8 @@ s32 ui_listbox::AddItem( const xwchar* Label, uaddr Data, uaddr Data2, xbool Sta
 
 void ui_listbox::DeleteAllItems( void )
 {
+    m_LastPointerSelection = -1;
+
     s32 const OldSelection = m_iSelection;
     m_iSelection        = -1;
     m_iFirstVisibleItem = 0;
@@ -482,6 +477,8 @@ void ui_listbox::DeleteAllItems( void )
 void ui_listbox::DeleteItem( s32 iItem )
 {
     ASSERT( (iItem >= 0) && (iItem < m_Items.GetCount()) );
+
+    m_LastPointerSelection = -1;
 
     s32 const OldSelection = m_iSelection;
     xbool const DeletedSelection = (iItem == OldSelection);
@@ -691,6 +688,8 @@ void ui_listbox::SetSelection( s32 iSelection )
 {
     ASSERT( (iSelection >= -1) && (iSelection < m_Items.GetCount()) );
 
+    m_LastPointerSelection = -1;
+
     if( iSelection < -1 )
         iSelection = -1;
     if( iSelection > (m_Items.GetCount()-1) )
@@ -767,6 +766,8 @@ s32 ui_listbox::GetCursorOffset( void ) const
 void ui_listbox::SetSelectionWithOffset( s32 iSelection, s32 Offset )
 {
     ASSERT( (iSelection >= -1) && (iSelection < m_Items.GetCount()) );
+
+    m_LastPointerSelection = -1;
 
     if( (iSelection == -1) || m_Items[iSelection].Enabled )
     {
@@ -885,8 +886,12 @@ xbool ui_listbox::ScrollItems( s32 ItemDelta )
 s32 ui_listbox::GetItemAt( s32 x, s32 y ) const
 {
     ScreenToLocal( x, y );
+    irect Bounds = GetListRect();
+    Bounds.Translate( -m_Position.l, -m_Position.t );
+    if( (x < Bounds.l) || (x >= Bounds.r) )
+        return -1;
 
-    s32 const ContentTop = SPACE_TOP + (m_ShowHeaderBar ? HEADER_HEIGHT : 0);
+    s32 const ContentTop = Bounds.t + SPACE_TOP + (m_ShowHeaderBar ? HEADER_HEIGHT : 0);
     s32 const RelativeY = y - ContentTop;
     if( (RelativeY < 0) || (RelativeY >= m_nVisibleItems * m_LineHeight) )
     {
@@ -923,6 +928,8 @@ s32 ui_listbox::FindEnabledItem( s32 Start, s32 Direction ) const
 
 xbool ui_listbox::SelectUserItem( s32 iItem )
 {
+    m_LastPointerSelection = -1;
+
     if( (iItem < 0) ||
         (iItem >= m_Items.GetCount()) ||
         !m_Items[iItem].Enabled ||
@@ -935,6 +942,15 @@ xbool ui_listbox::SelectUserItem( s32 iItem )
     EnsureVisible( m_iSelection );
     Notify( ui_notification_type::ListSelectionChanged, m_iSelection );
     return TRUE;
+}
+
+//=========================================================================
+
+irect ui_listbox::GetListRect( void ) const
+{
+    irect Bounds = m_Position;
+    Bounds.r -= 14;
+    return Bounds;
 }
 
 //=========================================================================
@@ -955,7 +971,7 @@ void ui_listbox::UpdateScrollBar( void )
 void ui_listbox::UpdateVisibleItemCount( void )
 {
     s32 const HeaderHeight = m_ShowHeaderBar ? HEADER_HEIGHT : 0;
-    s32 const ContentHeight = m_Position.GetHeight()
+    s32 const ContentHeight = GetListRect().GetHeight()
                             - SPACE_TOP
                             - SPACE_BOTTOM
                             - HeaderHeight;
@@ -1018,6 +1034,7 @@ void ui_listbox::OnPointerDown( ui_win* pWin, s32 x, s32 y )
     UpdateScrollBar();
     if( m_ShowBorders && m_ScrollBar.OnPointerDown( x, y ) )
     {
+        m_LastPointerSelection = -1;
         m_HoveredItem = -1;
         SetFirstVisibleItem( m_ScrollBar.GetPosition() );
         if( m_ScrollBar.IsInteracting() )
@@ -1030,17 +1047,29 @@ void ui_listbox::OnPointerDown( ui_win* pWin, s32 x, s32 y )
     s32 const iItem = GetItemAt( x, y );
     if( iItem == -1 )
     {
+        m_LastPointerSelection = -1;
         return;
     }
 
     if( !m_Items[iItem].Enabled )
     {
+        m_LastPointerSelection = -1;
         g_AudioMgr.Play( "InvalidEntry" );
         return;
     }
 
+    xbool const Accept = !m_AcceptOnRepeatClick || (m_LastPointerSelection == iItem);
     SelectUserItem( iItem );
-    OnAccept( pWin );
+
+    if( Accept )
+    {
+        m_LastPointerSelection = -1;
+        OnAccept( pWin );
+    }
+    else
+    {
+        m_LastPointerSelection = iItem;
+    }
 }
 
 //=========================================================================
@@ -1084,6 +1113,7 @@ void ui_listbox::OnFocusGained( ui_win* pWin )
 void ui_listbox::OnFocusLost ( ui_win* pWin )
 {
     xbool const HadScrollCapture = m_ScrollBar.IsInteracting();
+    m_LastPointerSelection = -1;
     m_ScrollBar.CancelInteraction();
     SetActive( FALSE );
     if( HadScrollCapture )

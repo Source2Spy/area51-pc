@@ -10,7 +10,7 @@
 #include "Objects/Corpse.hpp"
 #include "Characters/ActorEffects.hpp"
 #include "PerceptionMgr/PerceptionMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "Objects/Render/PostEffectMgr.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
 #include "InputMgr/GamePad.hpp"
@@ -174,7 +174,7 @@ void player::RespondToPain( const pain& Pain )
     if( !m_bInTurret )
     {
         vector3 ForceVel = Pain.GetForceVelocity() * PLAYER_FORCE_VEL;
-        m_Physics.AddVelocity( ForceVel );
+        m_Physics.ApplyImpulse( ForceVel );
     }
 */
 }
@@ -492,7 +492,7 @@ void player::OnDeath( void )
     if ( m_bInTurret )
     {
         // make sure we don't go flying
-        GetLocoPointer()->m_Physics.SetVelocity( vector3(0.0f,0.0f,0.0f) );
+        GetLocoPointer()->m_Physics.SetMotionVelocity( vector3(0.0f,0.0f,0.0f) );
     }
     
     m_bInTurret     = FALSE;
@@ -600,6 +600,7 @@ void player::OnAliveLogic( f32 DeltaTime )
     m_Physics.CatchUpWithRidingPlatform( DeltaTime );
     m_Physics.WatchForRidingPlatform();
 
+    UpdateCrouchHeight( AlteredDeltaTime );
     UpdateMovement( DeltaTime );
 
     // Call base class
@@ -612,7 +613,6 @@ void player::OnAliveLogic( f32 DeltaTime )
     // Handles rotation.
     UpdateRotation          ( AlteredDeltaTime );
     UpdateCharacterRotation ( AlteredDeltaTime );
-    UpdateCrouchHeight      ( AlteredDeltaTime );
 
 }
 
@@ -756,23 +756,18 @@ void player::UpdateMultiplayerDeath( void )
 
 //=========================================================================
 
-void player::UpdateFallState( xbool WasFlung )
+void player::UpdateFallState( xbool HadLaunchResponse )
 {
-    SetIsAirborn( m_Physics.IsAirborn() );
+    SetIsAirborn( m_Physics.IsAirborne() );
+    m_bFalling = m_Physics.IsAirborne();
 
-    if( m_Physics.GetFallMode() )
-    {
-        m_bFalling = TRUE;
-    }
-    else if( m_bFalling )
+    if( m_Physics.HasLanded() )
     {
         m_bJustLanded = TRUE;
-        if( !WasFlung )
+        if( !HadLaunchResponse )
         {
             TakeFallPain();
         }
-
-        m_bFalling = FALSE;
     }
 
     if( !m_bFalling )
@@ -791,7 +786,7 @@ void player::ResetFallStateAfterDiscontinuity( void )
     m_JumpBufferTime = 0.0f;
     m_bJumpStarted = FALSE;
     m_JumpedOffLadderGuid = NULL_GUID;
-    SetIsAirborn( m_Physics.IsAirborn() );
+    SetIsAirborn( m_Physics.IsAirborne() );
 }
 
 void player::UpdateStunnedNE( f32 DeltaTime )

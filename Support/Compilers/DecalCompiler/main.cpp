@@ -13,7 +13,7 @@
 #include "Auxiliary/Bitmap/aux_Bitmap.hpp"
 #include "../Support/Decals/DecalPackage.hpp"
 #include "../Support/Decals/DecalPackageFile.hpp"
-#include "../Support/Compilers/GeomCompiler/BMPUtil.hpp"
+#include "Compilers/Shared/BMPUtil.hpp"
 #include <windows.h>
 
 //=========================================================================
@@ -336,8 +336,8 @@ const char* CompileBitmap( const char* pOutputPath, const char* pSourceBitmap, u
     // see if the output file is already up-to-date by comparing it to
     // the source bitmap and to the timestamp of this exe
     xbool bOutOfDate = FALSE;
-    intptr_t SrcFindHandle = -1;
-    intptr_t DstFindHandle = -1;
+    sptr SrcFindHandle = -1;
+    sptr DstFindHandle = -1;
     s_SrcBitmapData.time_write = 0;
     s_DstBitmapData.time_write = 0;
     SrcFindHandle = _findfirst( pSourceBitmap, &s_SrcBitmapData );
@@ -906,7 +906,7 @@ int main( int argc, char* argv[] )
 
     // save out the exe timestamp for doing dependancy checks
     xstring ExePath(argv[0]);
-    intptr_t ExeFindHandle;
+    sptr ExeFindHandle;
     s_ExeData.time_write = 0;
     ExeFindHandle = _findfirst( ExePath, &s_ExeData );
     if ( ExeFindHandle != -1 )

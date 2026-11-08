@@ -8,6 +8,7 @@
 #include "ui_manager.hpp"
 #include "ui_win.hpp"
 #include "ui_font.hpp"
+#include "ui_text_data.hpp"
 #include "ui_dialog.hpp"
 #include "ui_button.hpp"
 #include "ui_frame.hpp"
@@ -22,13 +23,13 @@
 #include "ui_bitmap.hpp"
 #include "ui_joinlist.hpp"
 #include "ui_playerlist.hpp"
-#include "ui_friendlist.hpp"
 #include "ui_maplist.hpp"
 #include "ui_textbox.hpp"
 #include "ui_dlg_vkeyboard.hpp"
 #include "ui_tabbed_dialog.hpp"
 #include "ui_dlg_list.hpp"
 #include "ui_renderer.hpp"
+#include "Render/Render.hpp"
 #include "ResourceMgr/ResourceMgr.hpp"
 #include "StateMgr/StateMgr.hpp"
 #include "InputMgr/GamePad.hpp"
@@ -39,50 +40,50 @@
 #include "AudioMgr/AudioMgr.hpp"
 
 static const char*  m_ButtonTexturesNames[] = {
-PRELOAD_XBOX_FILE("UI_ButtonsXBOX_A.xbmp"),
-PRELOAD_XBOX_FILE("UI_ButtonsXBOX_B.xbmp"),
-PRELOAD_XBOX_FILE("UI_ButtonsXBOX_X.xbmp"),
-PRELOAD_XBOX_FILE("UI_ButtonsXBOX_Y.xbmp"),
-PRELOAD_XBOX_FILE("UI_ButtonsXBOX_DirectionalDown.xbmp"),
-PRELOAD_XBOX_FILE("UI_ButtonsXBOX_DirectionalLeft.xbmp"),
-PRELOAD_XBOX_FILE("UI_ButtonsXBOX_Directionalup.xbmp"),
-PRELOAD_XBOX_FILE("UI_ButtonsXBOX_DirectionalRight.xbmp"),
-PRELOAD_XBOX_FILE("UI_ButtonsPS2_directionalUpDown.xbmp"),
-PRELOAD_XBOX_FILE("UI_ButtonsPS2_directionalLeftRight.xbmp"),
-PRELOAD_XBOX_FILE("UI_ButtonsXBOX_StickR.xbmp"),
-PRELOAD_XBOX_FILE("UI_ButtonsXBOX_StickL.xbmp"),
-PRELOAD_XBOX_FILE("UI_ButtonsXBOX_TriggerL.xbmp"),
-PRELOAD_XBOX_FILE("UI_ButtonsXBOX_TriggerR.xbmp"),
-PRELOAD_XBOX_FILE("UI_ButtonsXBOX_Black.xbmp"),
-PRELOAD_XBOX_FILE("UI_ButtonsXBOX_White.xbmp"),
-PRELOAD_XBOX_FILE("UI_ButtonsXBOX_Start.xbmp"),
+PRELOAD_XBOX_FILE("CONTROLS/XBOX/UI_BUTTONSXBOX_A.XBMP"),
+PRELOAD_XBOX_FILE("CONTROLS/XBOX/UI_BUTTONSXBOX_B.XBMP"),
+PRELOAD_XBOX_FILE("CONTROLS/XBOX/UI_BUTTONSXBOX_X.XBMP"),
+PRELOAD_XBOX_FILE("CONTROLS/XBOX/UI_BUTTONSXBOX_Y.XBMP"),
+PRELOAD_XBOX_FILE("CONTROLS/XBOX/UI_BUTTONSXBOX_DIRECTIONALDOWN.XBMP"),
+PRELOAD_XBOX_FILE("CONTROLS/XBOX/UI_BUTTONSXBOX_DIRECTIONALLEFT.XBMP"),
+PRELOAD_XBOX_FILE("CONTROLS/XBOX/UI_BUTTONSXBOX_DIRECTIONALUP.XBMP"),
+PRELOAD_XBOX_FILE("CONTROLS/XBOX/UI_BUTTONSXBOX_DIRECTIONALRIGHT.XBMP"),
+PRELOAD_XBOX_FILE("CONTROLS/PS2/UI_BUTTONSPS2_DIRECTIONALUPDOWN.XBMP"),
+PRELOAD_XBOX_FILE("CONTROLS/PS2/UI_BUTTONSPS2_DIRECTIONALLEFTRIGHT.XBMP"),
+PRELOAD_XBOX_FILE("CONTROLS/XBOX/UI_BUTTONSXBOX_STICKR.XBMP"),
+PRELOAD_XBOX_FILE("CONTROLS/XBOX/UI_BUTTONSXBOX_STICKL.XBMP"),
+PRELOAD_XBOX_FILE("CONTROLS/XBOX/UI_BUTTONSXBOX_TRIGGERL.XBMP"),
+PRELOAD_XBOX_FILE("CONTROLS/XBOX/UI_BUTTONSXBOX_TRIGGERR.XBMP"),
+PRELOAD_XBOX_FILE("CONTROLS/XBOX/UI_BUTTONSXBOX_BLACK.XBMP"),
+PRELOAD_XBOX_FILE("CONTROLS/XBOX/UI_BUTTONSXBOX_WHITE.XBMP"),
+PRELOAD_XBOX_FILE("CONTROLS/XBOX/UI_BUTTONSXBOX_START.XBMP"),
 
-PRELOAD_PS2_FILE("UI_ButtonsPS2_x.xbmp"),
-PRELOAD_PS2_FILE("UI_ButtonsPS2_square.xbmp"),
-PRELOAD_PS2_FILE("UI_ButtonsPS2_triangle.xbmp"),
-PRELOAD_PS2_FILE("UI_ButtonsPS2_circle.xbmp"),
-PRELOAD_PS2_FILE("UI_ButtonsPS2_directionalDown.xbmp"),
-PRELOAD_PS2_FILE("UI_ButtonsPS2_directionalLeft.xbmp"),
-PRELOAD_PS2_FILE("UI_ButtonsPS2_directionalUp.xbmp"),
-PRELOAD_PS2_FILE("UI_ButtonsPS2_directionalRight.xbmp"),
-PRELOAD_PS2_FILE("UI_ButtonsPS2_directionalUpDown.xbmp"),
-PRELOAD_PS2_FILE("UI_ButtonsPS2_directionalLeftRight.xbmp"),
-PRELOAD_PS2_FILE("UI_ButtonsPS2_stickR.xbmp"),
-PRELOAD_PS2_FILE("UI_ButtonsPS2_stickL.xbmp"),
-PRELOAD_PS2_FILE("UI_ButtonsPS2_L1.xbmp"),
-PRELOAD_PS2_FILE("UI_ButtonsPS2_L2.xbmp"),
-PRELOAD_PS2_FILE("UI_ButtonsPS2_R1.xbmp"),
-PRELOAD_PS2_FILE("UI_ButtonsPS2_R2.xbmp"),
-PRELOAD_PS2_FILE("UI_ButtonsPS2_start.xbmp"),
+PRELOAD_PS2_FILE("CONTROLS/PS2/UI_BUTTONSPS2_X.XBMP"),
+PRELOAD_PS2_FILE("CONTROLS/PS2/UI_BUTTONSPS2_SQUARE.XBMP"),
+PRELOAD_PS2_FILE("CONTROLS/PS2/UI_BUTTONSPS2_TRIANGLE.XBMP"),
+PRELOAD_PS2_FILE("CONTROLS/PS2/UI_BUTTONSPS2_CIRCLE.XBMP"),
+PRELOAD_PS2_FILE("CONTROLS/PS2/UI_BUTTONSPS2_DIRECTIONALDOWN.XBMP"),
+PRELOAD_PS2_FILE("CONTROLS/PS2/UI_BUTTONSPS2_DIRECTIONALLEFT.XBMP"),
+PRELOAD_PS2_FILE("CONTROLS/PS2/UI_BUTTONSPS2_DIRECTIONALUP.XBMP"),
+PRELOAD_PS2_FILE("CONTROLS/PS2/UI_BUTTONSPS2_DIRECTIONALRIGHT.XBMP"),
+PRELOAD_PS2_FILE("CONTROLS/PS2/UI_BUTTONSPS2_DIRECTIONALUPDOWN.XBMP"),
+PRELOAD_PS2_FILE("CONTROLS/PS2/UI_BUTTONSPS2_DIRECTIONALLEFTRIGHT.XBMP"),
+PRELOAD_PS2_FILE("CONTROLS/PS2/UI_BUTTONSPS2_STICKR.XBMP"),
+PRELOAD_PS2_FILE("CONTROLS/PS2/UI_BUTTONSPS2_STICKL.XBMP"),
+PRELOAD_PS2_FILE("CONTROLS/PS2/UI_BUTTONSPS2_L1.XBMP"),
+PRELOAD_PS2_FILE("CONTROLS/PS2/UI_BUTTONSPS2_L2.XBMP"),
+PRELOAD_PS2_FILE("CONTROLS/PS2/UI_BUTTONSPS2_R1.XBMP"),
+PRELOAD_PS2_FILE("CONTROLS/PS2/UI_BUTTONSPS2_R2.XBMP"),
+PRELOAD_PS2_FILE("CONTROLS/PS2/UI_BUTTONSPS2_START.XBMP"),
 
-PRELOAD_FILE("UI_Kills.xbmp"),
-PRELOAD_FILE("UI_TeamKills.xbmp"),
-PRELOAD_FILE("UI_Deaths.xbmp"),
-PRELOAD_FILE("UI_Flags.xbmp"),
-PRELOAD_FILE("UI_Votes.xbmp"),
-PRELOAD_FILE("UI_Flags.xbmp"),  // DUMMY
-PRELOAD_FILE("UI_Flags.xbmp"),  // DUMMY
-PRELOAD_FILE("UI_Flags.xbmp")   // DUMMY
+PRELOAD_FILE("ICONS/UI_KILLS.XBMP"),
+PRELOAD_FILE("ICONS/UI_TEAMKILLS.XBMP"),
+PRELOAD_FILE("ICONS/UI_DEATHS.XBMP"),
+PRELOAD_FILE("ICONS/UI_FLAGS.XBMP"),
+PRELOAD_FILE("ICONS/UI_VOTES.XBMP"),
+PRELOAD_FILE("ICONS/UI_FLAGS.XBMP"),  // DUMMY
+PRELOAD_FILE("ICONS/UI_FLAGS.XBMP"),  // DUMMY
+PRELOAD_FILE("ICONS/UI_FLAGS.XBMP")   // DUMMY
 };
 
 // TexelsPerUIUnit describes asset density, independently of on-screen UI scale.
@@ -90,23 +91,23 @@ PRELOAD_FILE("UI_Flags.xbmp")   // DUMMY
 static const ui_manager::element_desc s_ElementDescs[] =
 {
 //   Name               Bitmap                                      States  Columns  Rows  TexelsPerUIUnit
-    { "frame",          PRELOAD_FILE("UI_FRAME_PIECES.xbmp"),          2,      3,      3,          2.0f },
-    { "frame2",         PRELOAD_FILE("UI_INNER_FRAME.xbmp"),           1,      3,      3,          2.0f },
-    { "glow",           PRELOAD_FILE("UI_BARGLOW.xbmp"),               1,      1,      1,          2.0f },
-    { "highlight",      PRELOAD_FILE("UI_SELECTION_GLOW.xbmp"),        1,      3,      3,          2.0f },
-    { "screenglow",     PRELOAD_FILE("UI_SCREEN_GLOW.xbmp"),           1,      3,      3,          2.0f },
-    { "button",         PRELOAD_FILE("UI_UIBUTTON.xbmp"),              5,      3,      1,          2.0f },
-    { "button_check",   PRELOAD_FILE("UI_CHECKBOX.xbmp"),              5,      1,      1,          2.0f },
-    { "sb_frame",       PRELOAD_FILE("UI_INNER_FRAME.xbmp"),           1,      3,      3,          2.0f },
-    { "sb_arrowdown",   PRELOAD_FILE("UI_DOWNARROW.xbmp"),             5,      1,      1,          2.0f },
-    { "sb_arrowup",     PRELOAD_FILE("UI_UPARROW.xbmp"),               5,      1,      1,          2.0f },
-    { "sb_container",   PRELOAD_FILE("UI_CONTAINER.xbmp"),             5,      3,      3,          2.0f },
-    { "sb_thumb",       PRELOAD_FILE("UI_THUMB.xbmp"),                 5,      1,      3,          2.0f },
-    { "slider_bar",     PRELOAD_FILE("UI_SLIDER_CONTAINER.xbmp"),      1,      3,      1,          2.0f },
-    { "slider_thumb",   PRELOAD_FILE("UI_SLIDER_THUMB.xbmp"),          5,      1,      1,          2.0f },
-    { "button_combo1",  PRELOAD_FILE("UI_COMBO_BOX.xbmp"),             5,      3,      1,          2.0f },
-    { "button_combo2",  PRELOAD_FILE("UI_COMBO_BOX_128.xbmp"),         1,      3,      1,          2.0f },
-    { "button_edit",    PRELOAD_FILE("UI_TEXT_BOX.xbmp"),              5,      3,      1,          2.0f },
+    { "frame",          PRELOAD_FILE("WIDGETS/UI_FRAME_PIECES.XBMP"),          2,      3,      3,          2.0f },
+    { "frame2",         PRELOAD_FILE("WIDGETS/UI_INNER_FRAME.XBMP"),           1,      3,      3,          2.0f },
+    { "glow",           PRELOAD_FILE("WIDGETS/UI_BARGLOW.XBMP"),               1,      1,      1,          2.0f },
+    { "highlight",      PRELOAD_FILE("WIDGETS/UI_SELECTION_GLOW.XBMP"),        1,      3,      3,          2.0f },
+    { "screenglow",     PRELOAD_FILE("WIDGETS/UI_SCREEN_GLOW.XBMP"),           1,      3,      3,          2.0f },
+    { "button",         PRELOAD_FILE("WIDGETS/UI_UIBUTTON.XBMP"),              5,      3,      1,          2.0f },
+    { "button_check",   PRELOAD_FILE("WIDGETS/UI_CHECKBOX.XBMP"),              5,      1,      1,          2.0f },
+    { "sb_frame",       PRELOAD_FILE("WIDGETS/UI_INNER_FRAME.XBMP"),           1,      3,      3,          2.0f },
+    { "sb_arrowdown",   PRELOAD_FILE("WIDGETS/UI_DOWNARROW.XBMP"),             5,      1,      1,          2.0f },
+    { "sb_arrowup",     PRELOAD_FILE("WIDGETS/UI_UPARROW.XBMP"),               5,      1,      1,          2.0f },
+    { "sb_container",   PRELOAD_FILE("WIDGETS/UI_CONTAINER.XBMP"),             5,      3,      3,          2.0f },
+    { "sb_thumb",       PRELOAD_FILE("WIDGETS/UI_THUMB.XBMP"),                 5,      1,      3,          2.0f },
+    { "slider_bar",     PRELOAD_FILE("WIDGETS/UI_SLIDER_CONTAINER.XBMP"),      1,      3,      1,          2.0f },
+    { "slider_thumb",   PRELOAD_FILE("WIDGETS/UI_SLIDER_THUMB.XBMP"),          5,      1,      1,          2.0f },
+    { "button_combo1",  PRELOAD_FILE("WIDGETS/UI_COMBO_BOX.XBMP"),             5,      3,      1,          2.0f },
+    { "button_combo2",  PRELOAD_FILE("WIDGETS/UI_COMBO_BOX_128.XBMP"),         1,      3,      1,          2.0f },
+    { "button_edit",    PRELOAD_FILE("WIDGETS/UI_TEXT_BOX.XBMP"),              5,      3,      1,          2.0f },
 };
 
 static const s32 s_nElementDescs = sizeof(s_ElementDescs) / sizeof(s_ElementDescs[0]);
@@ -425,6 +426,28 @@ static_assert( ui_manager::MAX_INPUT_CONTROLLERS == frontend_input::MAX_CONTROLL
 //  Helpers
 //=========================================================================
 
+#if !defined(X_RETAIL) || defined(X_QA)
+static
+void RenderDebugText( const char* pText, s32 X, s32 Y )
+{
+    if( !g_UiMgr || !g_UIRenderer.IsInitialized() )
+        return;
+
+    const s32 Font = g_UiMgr->FindFont( "small" );
+    if( Font < 0 )
+        return;
+
+    const irect Bounds = g_UIRenderer.GetViewport().GetLogicalClipBounds();
+    const s32 LineHeight = g_UiMgr->GetLineHeight( Font );
+    irect Position( Bounds.l + 8 + X * 8, Bounds.t + 8 + Y * LineHeight,
+                    Bounds.r - 8, Bounds.t + 8 + ( Y + 1 ) * LineHeight );
+    g_UiMgr->RenderText( Font, Position, ui_font::h_left | ui_font::v_top, XCOLOR_WHITE,
+                         pText, TRUE, FALSE );
+}
+
+//=========================================================================
+#endif
+
 static
 xbool IsUILogicalDown( s32 ControllerID, frontend_pad::logical_id LogicalID )
 {
@@ -548,6 +571,7 @@ ui_manager::ui_manager( void )
     m_GlowStepAccumulator   = 0.0f;
     m_CallbackDepth         = 0;
     m_EnableUserInput       = 0;
+    m_WaitForInputRelease   = FALSE;
     m_log                   = 0;
     m_isInitialized          = FALSE;
 }
@@ -608,7 +632,6 @@ s32 ui_manager::Init( void )
     // extended listbox classes
     RegisterWinClass( "joinlist",   &ui_joinlist_factory    );
     RegisterWinClass( "playerlist", &ui_playerlist_factory  );
-    RegisterWinClass( "friendlist", &ui_friendlist_factory  );
     RegisterWinClass( "maplist",    &ui_maplist_factory     );
 
 
@@ -633,39 +656,34 @@ s32 ui_manager::Init( void )
     s32 MemoryStart = x_MemGetFree();
 
     //-- Load String Table.
-    g_StringTableMgr.LoadTable( "ui", "ENG_ui_strings.stringbin" );
+    VERIFY( g_StringTableMgr.LoadTable( "ui", "ENG_UI_STRINGS.string" ) );
 
     // load scan strings
-    g_StringTableMgr.LoadTable( "scan", "ENG_character_scan_strings.stringbin" );
+    VERIFY( g_StringTableMgr.LoadTable( "scan", "ENG_CHARACTER_SCAN_STRINGS.string" ) );
 
     // load lore_ingame strings
-    g_StringTableMgr.LoadTable( "lore_ingame", "ENG_ingame_lore_strings.stringbin");
+    VERIFY( g_StringTableMgr.LoadTable( "lore_ingame", "ENG_INGAME_LORE_STRINGS.string" ) );
 
     //-- Load Elements
     //-- Fonts
-    LoadFont        ( "large",          PRELOAD_FILE("UI_A51FontLarge.xbmp"  ) ); // PRELOAD_FILE("UI_A51FontLarge.font"  )  
-    LoadFont        ( "small",          PRELOAD_FILE("UI_A51FontLegal.xbmp"  ) ); // PRELOAD_FILE("UI_A51FontLegal.font"  ) 
-    LoadFont        ( "hudnum",         PRELOAD_FILE("UI_A51FontHUD.xbmp"    ) ); // PRELOAD_FILE("UI_A51FontHUD.font"    )
-    LoadFont        ( "loadscr",        PRELOAD_FILE("UI_A51FontLoadscr.xbmp") ); // PRELOAD_FILE("UI_A51FontLoadscr.font")
+    LoadFont        ( "large",          "config.font" );
+    LoadFont        ( "small",          "config.font" );
+    LoadFont        ( "hudnum",         "config.font" );
+    LoadFont        ( "loadscr",        "config.font" );
 
     for( s32 i=0; i<s_nElementDescs; i++ )
     {
         LoadElement( s_ElementDescs[i] );
     }
 
-    LoadBitmap      ( "a51_logo",               PRELOAD_FILE("UI_A51_Logo.xbmp"                        ) );
+    LoadBitmap      ( "a51_logo",               PRELOAD_FILE("VARIANTS/PRELOAD/SCREENS/UI_A51_LOGO.XBMP"                        ) );
 
     //-- Presence Icons
-    LoadBitmap      ( "icon_friend",            PRELOAD_PS2_FILE("UI_PS2_Friend.xbmp"                   ) );
-    LoadBitmap      ( "icon_voice_on",          PRELOAD_PS2_FILE("UI_PS2_Voice_On.xbmp"                 ) );
-    LoadBitmap      ( "icon_voice_muted",       PRELOAD_PS2_FILE("UI_PS2_Voice_Muted.xbmp"              ) );
-    LoadBitmap      ( "icon_voice_thru_tv",     PRELOAD_PS2_FILE("UI_PS2_Voice_Thru_TV.xbmp"            ) );
-    LoadBitmap      ( "icon_friend_req_sent",   PRELOAD_PS2_FILE("UI_PS2_Friend_Sent.xbmp"              ) );
-    LoadBitmap      ( "icon_friend_req_rcvd",   PRELOAD_PS2_FILE("UI_PS2_Friend_Rec.xbmp"               ) );
-    LoadBitmap      ( "icon_invite_sent",       PRELOAD_PS2_FILE("UI_Invite_Sent.xbmp"                  ) );
-    LoadBitmap      ( "icon_invite_rcvd",       PRELOAD_PS2_FILE("UI_Invite_Received.xbmp"              ) );
-    LoadBitmap      ( "icon_voice_speaking",    PRELOAD_PS2_FILE("UI_Voice_Speaking.xbmp"               ) );
-    LoadBitmap      ( "gamespy_logo",           PRELOAD_PS2_FILE("UI_PS2_GameSpy_Logo.xbmp"             ) );
+    LoadBitmap      ( "icon_friend",            PRELOAD_PS2_FILE("ONLINE/UI_PS2_FRIEND.XBMP"                   ) );
+    LoadBitmap      ( "icon_voice_on",          PRELOAD_PS2_FILE("ONLINE/UI_PS2_VOICE_ON.XBMP"                 ) );
+    LoadBitmap      ( "icon_voice_muted",       PRELOAD_PS2_FILE("ONLINE/UI_PS2_VOICE_MUTED.XBMP"              ) );
+    LoadBitmap      ( "icon_voice_thru_tv",     PRELOAD_PS2_FILE("ONLINE/UI_PS2_VOICE_THRU_TV.XBMP"            ) );
+    LoadBitmap      ( "icon_voice_speaking",    PRELOAD_PS2_FILE("ONLINE/UI_VOICE_SPEAKING.XBMP"               ) );
 
     for (s32 i=0;i<NUM_BUTTON_TEXTURES;i++)
     {
@@ -703,6 +721,10 @@ s32 ui_manager::Init( void )
 
     m_isInitialized = TRUE;
 
+#if !defined(X_RETAIL) || defined(X_QA)
+    x_SetPrintAtHook( RenderDebugText );
+#endif
+
     return( MemoryBudget );
 }
 
@@ -713,6 +735,10 @@ void ui_manager::Kill( void )
 
     if( !m_isInitialized )
         return;
+
+#if !defined(X_RETAIL) || defined(X_QA)
+    x_SetPrintAtHook( NULL );
+#endif
 
     ASSERT( m_CallbackDepth == 0 );
     DestroyDeferredDialogs();
@@ -1285,17 +1311,37 @@ s32 ui_manager::LoadFont( const char* pName, const char* pPathName )
 
     // Setup Font
     pFont->Name = pName;
+    pFont->PathName = pPathName;
 
     // Create and load font
     pFont->pFont = new ui_font;
     ASSERT( pFont->pFont );
-    VERIFY( pFont->pFont->Load( this, pPathName ) );
+    VERIFY( pFont->pFont->Load( this, pPathName, pName ) );
 
     // Add to array of fonts
     m_Fonts.Append() = pFont;
 
     // Return Font ID
     return m_Fonts.GetCount()-1;
+}
+
+//=========================================================================
+
+xbool ui_manager::ReloadFonts( void )
+{
+    xbool Result = TRUE;
+
+    for( s32 i = 0; i < m_Fonts.GetCount(); i++ )
+    {
+        font* pFont = m_Fonts[i];
+
+        if( !pFont->pFont->Load( this, pFont->PathName, pFont->Name ) )
+        {
+            Result = FALSE;
+        }
+    }
+
+    return Result;
 }
 
 //=========================================================================
@@ -1727,6 +1773,22 @@ void ui_manager::SetHoveredWindow( user* pUser, ui_win* pWin )
 
 //=========================================================================
 
+void ui_manager::UpdateMousePosition( user* pUser, s32 ScreenDeltaX, s32 ScreenDeltaY )
+{
+    vector2 const LogicalDelta = g_UIRenderer.GetViewport().ScreenDeltaToLogical(
+        vector2( (f32)ScreenDeltaX, (f32)ScreenDeltaY ) );
+    pUser->MouseX += LogicalDelta.X;
+    pUser->MouseY += LogicalDelta.Y;
+
+    // Clamp to screen bounds
+    pUser->MouseX = MAX( pUser->MouseX, (f32)pUser->Bounds.l );
+    pUser->MouseX = MIN( pUser->MouseX, (f32)(pUser->Bounds.r - 1) );
+    pUser->MouseY = MAX( pUser->MouseY, (f32)pUser->Bounds.t );
+    pUser->MouseY = MIN( pUser->MouseY, (f32)(pUser->Bounds.b - 1) );
+}
+
+//=========================================================================
+
 void ui_manager::SetInputMode( user* pUser, ui_input_device Device, input_platform Platform )
 {
     ASSERT( pUser );
@@ -1908,8 +1970,58 @@ xbool ui_manager::ProcessInput( f32 DeltaTime )
     s32     i;
     xbool   Continue = TRUE;
 
-    // disable input when screen is scaling
-    if( !m_isScaling )
+    if( m_WaitForInputRelease )
+    {
+        const input_snapshot& Snapshot = g_Input.GetFrameSnapshot();
+        for( s32 i = 0; i < INPUT_GADGET_COUNT; i++ )
+        {
+            const input_gadget Gadget = static_cast<input_gadget>( i );
+            const input_control_kind Kind = input_system::GetGadgetControlKind( Gadget );
+            if( (Kind != INPUT_CONTROL_KEY) && (Kind != INPUT_CONTROL_BUTTON) )
+                continue;
+
+            for( s32 j = 0; j < INPUT_MAX_DEVICES; j++ )
+            {
+                if( Snapshot.IsPressed( Gadget, j ) || Snapshot.WasPressed( Gadget, j ) )
+                    return TRUE;
+            }
+        }
+
+        for( s32 i = 0; i < MAX_INPUT_CONTROLLERS; i++ )
+        {
+            for( s32 j = frontend_pad::UI_UP; j <= frontend_pad::UI_HELP; j++ )
+            {
+                if( IsUILogicalDown( i, static_cast<frontend_pad::logical_id>( j ) ) )
+                    return TRUE;
+            }
+        }
+
+        // Consume the neutral frame before accepting new input.
+        m_WaitForInputRelease = FALSE;
+        return TRUE;
+    }
+
+    // Keep the cursor moving during transitions without dispatching UI actions.
+    if( m_isScaling )
+    {
+        UpdateViewport();
+        s32 const ScreenDeltaX = g_Input.GetFrameMouseDeltaX();
+        s32 const ScreenDeltaY = g_Input.GetFrameMouseDeltaY();
+        if( ScreenDeltaX || ScreenDeltaY )
+        {
+            for( i=0 ; i<m_Users.GetCount() ; i++ )
+            {
+                user* pUser = m_Users[i];
+                ASSERT( pUser );
+                if( pUser->Enabled )
+                {
+                    UpdateMousePosition( pUser, ScreenDeltaX, ScreenDeltaY );
+                    SetInputMode( pUser, ui_input_device::Mouse, INPUT_PLATFORM_DESKTOP );
+                }
+            }
+        }
+    }
+    else
     {
         // Loop through each user
         for( i=0 ; i<m_Users.GetCount() ; i++ )
@@ -2018,16 +2130,7 @@ xbool ui_manager::ProcessInput( f32 DeltaTime, s32 UserID )
 
             if( ScreenDeltaX || ScreenDeltaY )
             {
-                vector2 const LogicalDelta = g_UIRenderer.GetViewport().ScreenDeltaToLogical(
-                    vector2( (f32)ScreenDeltaX, (f32)ScreenDeltaY ) );
-                pUser->MouseX += LogicalDelta.X;
-                pUser->MouseY += LogicalDelta.Y;
-
-                // Clamp to screen bounds
-                pUser->MouseX = MAX( pUser->MouseX, (f32)pUser->Bounds.l );
-                pUser->MouseX = MIN( pUser->MouseX, (f32)(pUser->Bounds.r - 1) );
-                pUser->MouseY = MAX( pUser->MouseY, (f32)pUser->Bounds.t );
-                pUser->MouseY = MIN( pUser->MouseY, (f32)(pUser->Bounds.b - 1) );
+                UpdateMousePosition( pUser, ScreenDeltaX, ScreenDeltaY );
             }
 
             const xbool HasMouseInput =
@@ -2413,7 +2516,21 @@ void ui_manager::EnableUserInput( void )
 void ui_manager::DisableUserInput( void )
 {
     m_EnableUserInput = FALSE;
+    ClearUserInput();
+}
 
+//=========================================================================
+
+void ui_manager::SuppressInputUntilRelease( void )
+{
+    m_WaitForInputRelease = TRUE;
+    ClearUserInput();
+}
+
+//=========================================================================
+
+void ui_manager::ClearUserInput( void )
+{
     for( s32 i=0 ; i<m_Users.GetCount() ; i++ )
     {
         user* pUser = m_Users[i];
@@ -2867,171 +2984,25 @@ void ui_manager::PopClipWindow( void )
 
 //=========================================================================
 
-void ui_manager::WordWrapString( s32 iFont, const irect& r, const char* pString, xwstring& RetVal )
+void ui_manager::WordWrapString( s32 iFont, const irect& Rect, const char* pString, xwstring& Result )
 {
-    s32 i;
-    s32 x           = 0;
-    s32 iString     = 0;
-    s32 iLineStart  = 0;
-    s32 iStringWrap = -1;
-    s32 cPrev       = 0;
-    s32 c;
-    s32 w;
+    xwstring Text;
 
-    RetVal.Clear();
-    RetVal.FreeExtra();
-
-    ASSERT( (iFont >= 0) && (iFont < m_Fonts.GetCount()) );
-    ui_font* pFont = m_Fonts[iFont]->pFont;
-
-    // Word Wrap Text
-    while( pString[iString] )
+    if( !DecodeFontText( pString, Text ) )
     {
-        // Get Character
-        c = pString[iString++];
-
-        // Check for end of word
-        if( x_isspace(c) && !x_isspace(cPrev) )
-        {
-            iStringWrap = iString-1;
-        }
-
-        // Update previous character
-        cPrev = c;
-
-        // Advance cursor before checking wrap
-        w = pFont->GetCharacter(c).W;
-        x += w+1;
-
-        // Check for NewLine
-        if( c == '\n' )
-        {
-            // Copy String up to wrap point
-            for( i=iLineStart ; i<iString ; i++ )
-            {
-                RetVal += pString[i];
-            }
-            
-            iLineStart  = iString;
-            iStringWrap = -1;
-            x           = 0;
-        }
-        else if( x > r.GetWidth() )
-        {
-            ASSERT( iStringWrap != -1 );
-
-            // Copy String up to wrap point
-            for( i=iLineStart ; i<iStringWrap ; i++ )
-            {
-                RetVal += pString[i];
-            }
-            RetVal += '\n';
-
-            // Skip Space
-            while( x_isspace(pString[i]) )
-                i++;
-
-            // Reset line scanner
-            iLineStart  = i;
-            iString     = i;
-            iStringWrap = -1;
-            x           = 0;
-        }
+        x_throw( "Invalid UTF-8 text" );
+        return;
     }
 
-    // Output last line
-    while( iLineStart < iString )
-        RetVal += pString[iLineStart++];
+    m_Fonts[iFont]->pFont->TextWrap( Text, Rect, Result );
 }
 
 //=========================================================================
-void ui_manager::WordWrapString( s32 iFont, const irect& r, const xwstring& String, xwstring& RetVal )
+
+void ui_manager::WordWrapString( s32 iFont, const irect& Rect, const xwstring& Text, xwstring& Result )
 {
-    s32 i;
-    s32 x           = 0;
-    s32 iString     = 0;
-    s32 iLineStart  = 0;
-    s32 iStringWrap = -1;
-    s32 cPrev       = 0;
-    s32 c;
-    s32 w;
-    RetVal.Clear();
-    RetVal.FreeExtra();
-
-    ASSERT( (iFont >= 0) && (iFont < m_Fonts.GetCount()) );
-    ui_font* pFont = m_Fonts[iFont]->pFont;
-
-    // Word Wrap Text
-    while( String[iString] )
-    {
-        // Get Character
-        c = String[iString++];
-
-        // Skip Color Codes
-        if( (c & 0xff00) == 0xff00 )
-        {
-            iString++;
-        }
-        else
-        {
-            // Check for end of word
-            if( x_isspace(c) && !x_isspace(cPrev) )
-            {
-                iStringWrap = iString-1;
-            }
-
-            // Update previous character
-            cPrev = c;
-
-            // Advance cursor before checking wrap
-            w = pFont->GetCharacter(c).W;
-            
-            x += w+1;
-
-            // Check for NewLine
-            if( c == '\n' )
-            {
-                // Copy String up to wrap point
-                for( i=iLineStart ; i<iString ; i++ )
-                {
-                    RetVal += String[i];
-                }
-            
-                iLineStart  = iString;
-                iStringWrap = -1;
-                x           = 0;
-            }
-            else if( x > r.GetWidth() )
-            {
-                // Break overlong words when no earlier wrap point exists.
-                if (iStringWrap == -1)
-                    iStringWrap = iString-1;
-
-                // Copy String up to wrap point
-                for( i=iLineStart ; i<iStringWrap ; i++ )
-                {
-                    RetVal += String[i];
-                }
-                RetVal += '\n';
-
-                // Skip Space
-                while( x_isspace(String[i]) )
-                    i++;
-
-                // Reset line scanner
-                iLineStart  = i;
-                iString     = i;
-                iStringWrap = -1;
-                x           = 0;
-            }
-        }
-    }
-
-    // Output last line
-    while( iLineStart < iString )
-        RetVal += String[iLineStart++];
+    m_Fonts[iFont]->pFont->TextWrap( Text, Rect, Result );
 }
-
 
 //=========================================================================
 
@@ -3041,22 +3012,6 @@ texture* ui_manager::GetButtonTexture( s32 buttonCode )
 }
 
 //=========================================================================
-
-static
-xbool ReadButtonCodeString( const xwchar* pString, s32 iStart, xwstring& CodeString )
-{
-    s32 c = pString[iStart];
-
-    CodeString.Clear();
-    while( c && (c != 0xBB) )
-    {
-        CodeString += pString[iStart];
-        iStart++;
-        c = pString[iStart];
-    }
-
-    return( CodeString.GetLength() > 0 );
-}
 
 //=========================================================================
 
@@ -3069,8 +3024,6 @@ s32 ui_manager::LookUpButtonCode( const xwchar* pString, s32 iStart, input_devic
     if( !pString )
         return -1;
 
-    while( pString[iStart] == 0xAB )
-        iStart++;
  
     if( IsGamepad )
     {
@@ -3083,8 +3036,8 @@ s32 ui_manager::LookUpButtonCode( const xwchar* pString, s32 iStart, input_devic
         }
     }
  
-    if( !ReadButtonCodeString( pString, iStart, codeString ) )
-        return -1;
+    codeString = pString + iStart;
+    if( codeString.GetLength() == 0 ) return -1;
  
     const button_code* pButtonCodeTable = GetButtonCodeTable( Platform );
  
@@ -3323,7 +3276,7 @@ void ui_manager::RenderScreenHighlight( void )
         return;
 
     // render the background highlight
-    u32 val = 64 + (m_HighlightAlpha * 1);
+    u32 val = 64 + GetHighlightAlpha();
     RenderElement( m_ScreenHighlightID, m_ScreenHighlightPos, 0, xcolor(val,val,val,val), TRUE );
 }
 
@@ -3370,7 +3323,7 @@ void ui_manager::RenderScreenGlow( void )
     irect pos  = m_ScreenHighlightPos;
     pos.l -= 4;
     pos.r += 4;
-    u32 val = 128 + (m_HighlightAlpha * 2);
+    u32 val = 128 + (GetHighlightAlpha() * 2);
     RenderElement( m_ScreenGlowID, pos, 0, xcolor(val,val,val,val), TRUE );
 }
 
@@ -3516,16 +3469,7 @@ void ui_manager::RenderProgressBar( xbool mustDraw )
     {
         return;
     }
-
-    rtarget_backbuffer_pass_desc PassDesc;
-    PassDesc.bUseDepth = FALSE;
-    if( !rtarget_BeginBackBufferPass( PassDesc ) )
-    {
-        x_DebugMsg( "UI: failed to begin progress backbuffer pass\n" );
-        eng_ResetAfterException();
-        return;
-    }
-    rtarget_EndPass();
+    render::BeginFrame();
 
     if( eng_Begin("Progress Bar") )
     {
@@ -3573,17 +3517,17 @@ void ui_manager::RenderProgressBar( xbool mustDraw )
         rb.r += 50;
 
         RenderText( FindFont( "small" ), rb, ui_font::h_left, TextColor, "Level Name:");
-        xwstring LevelString  = (const char *)xfs( "%s",  g_ActiveConfig.GetLevelName() );
+        xwstring LevelString  = g_ActiveConfig.GetLevelName();
         RenderText( FindFont( "small" ), rb, ui_font::h_right, TextColor, LevelString );
 #endif
 
         eng_End();
     }
 
-    if( !eng_EndFrame() )
-    {
-        x_DebugMsg( "UI: failed to submit progress frame\n" );
-    }
+    xbool const renderReady = render::EndFrame();
+    xbool const engineReady = eng_EndFrame();
+    if ( renderReady && !engineReady )
+        x_throw( "UI: failed to submit progress frame" );
 }
 
 //=========================================================================
@@ -3654,4 +3598,106 @@ s32 ui_manager::PingToColor( f32 ping, xcolor& responsecolor )
     else if (ping > 100.0f)  { responsecolor = S_GREEN; return 2;   }
     else if (ping > 75.0f)   { responsecolor = S_GREEN; return 1;   }
     else                     { responsecolor = S_GREEN; return 0;   }
+}
+
+//=========================================================================
+
+void ui_manager::BuildTextData( const xwchar* pString,
+                                ui_text_data& Result,
+                                xarray<s32>* pSourceOffsets ) const
+{
+    Result.Text.Clear();
+    Result.Runs.Clear();
+
+    if( pSourceOffsets )
+    {
+        pSourceOffsets->Clear();
+    }
+
+    const f32 InputHintSpacing = 6.0f;
+    xwstring  Literal;
+    xbool     HasInputButton = FALSE;
+
+    for( s32 i = 0; pString && pString[i]; )
+    {
+        static const xwchar Prefix[] = { '{', 'I', 'n', 'p', 'u', 't', ':', 0 };
+
+        if( x_wstrncmp( pString + i, Prefix, 7 ) == 0 )
+        {
+            s32 End = i + 7;
+
+            while( pString[End] && pString[End] != '}' )
+            {
+                End++;
+            }
+
+            if( !pString[End] )
+            {
+                x_throw( "Unterminated input placeholder" );
+                return;
+            }
+
+            xwstring Token;
+
+            for( s32 j = i + 7; j < End; j++ )
+            {
+                Token += pString[j];
+            }
+
+            s32 Code = LookUpButtonCode( Token,
+                                         0,
+                                         g_Input.GetCurrentInputDevice(),
+                                         g_Input.GetCurrentInputPlatform() );
+
+            xbool HasSeparator = FALSE;
+            if( Literal.GetLength() )
+            {
+                xwchar Last = Literal[Literal.GetLength() - 1];
+                HasSeparator = ( Last == ' ' || Last == '\t' || Last == '\n' || Last == '\r' );
+            }
+
+            f32 Spacing = HasInputButton && !HasSeparator ? InputHintSpacing : 0.0f;
+
+            Result.Append( Literal );
+            Literal.Clear();
+
+            if( Code >= 0 && Code < NUM_BUTTON_TEXTURES )
+            {
+                f32 Width = Code == INPUT_KBD_RETURN ? 24.0f : (f32)BUTTON_SPRITE_WIDTH;
+                Result.AppendButton( Code, vector2( Width, (f32)BUTTON_SPRITE_WIDTH ), Spacing );
+                HasInputButton = TRUE;
+
+                if( pSourceOffsets )
+                {
+                    pSourceOffsets->Append() = i;
+                }
+            }
+
+            i = End + 1;
+        }
+        else
+        {
+            if( pSourceOffsets )
+            {
+                pSourceOffsets->Append() = i;
+            }
+
+            Literal += pString[i++];
+        }
+    }
+
+    Result.Append( Literal );
+
+    if( pSourceOffsets )
+    {
+        pSourceOffsets->Append() = pString ? x_wstrlen( pString ) : 0;
+    }
+}
+
+//=========================================================================
+
+ui_font* ui_manager::GetFont( s32 Index ) const
+{
+    ASSERT( Index >= 0 && Index < m_Fonts.GetCount() );
+    return m_Fonts[Index]->pFont;
 }

@@ -612,18 +612,12 @@ void anim_key_set::GetRawKey( s32 iFrame, anim_key& Key ) const
         {
             vector3* pD = (vector3*)m_pScale;
             Key.Scale = pD[iFrame];
-            #ifdef TARGET_GCN   
-            SwapEndian( Key.Scale );  
-            #endif
         }
         else
         if( m_ScaleFormat == SINGLE_VALUE )
         {
             vector3* pD = (vector3*)m_pScale;
             Key.Scale = pD[0];
-            #ifdef TARGET_GCN   
-            SwapEndian( Key.Scale );  
-            #endif
         }
     }
 
@@ -640,11 +634,6 @@ void anim_key_set::GetRawKey( s32 iFrame, anim_key& Key ) const
             s32 iQ    = iFrame & 7;
             u64 PA = *((u64*)(m_pRotation + sizeof(u64)*(iPack<<1) + 0));
             u64 PB = *((u64*)(m_pRotation + sizeof(u64)*(iPack<<1) + sizeof(u64)));
-
-            #ifdef TARGET_GCN
-            SwapEndian(PA);
-            SwapEndian(PB);
-            #endif
 
             // unpack boundary quaternions
             quaternion QA,QB;
@@ -683,17 +672,6 @@ void anim_key_set::GetRawKey( s32 iFrame, anim_key& Key ) const
             Max[2] = ((f32*)m_pRotation)[6];
             Max[3] = ((f32*)m_pRotation)[7];
 
-            #ifdef TARGET_GCN
-            SwapEndian( Min[0] );
-            SwapEndian( Min[1] );
-            SwapEndian( Min[2] );
-            SwapEndian( Min[3] );
-            SwapEndian( Max[0] );
-            SwapEndian( Max[1] );
-            SwapEndian( Max[2] );
-            SwapEndian( Max[3] );
-            #endif
-
             byte* pI = m_pRotation + (sizeof(f32)*8) + (iFrame<<2);
 
             Key.Rotation.X = Min[0] + (pI[0]/255.0f)*(Max[0]-Min[0]);
@@ -712,13 +690,6 @@ void anim_key_set::GetRawKey( s32 iFrame, anim_key& Key ) const
             D[2] = pD[2];
             D[3] = pD[3];
 
-            #ifdef TARGET_GCN
-            SwapEndian(D[0]);
-            SwapEndian(D[1]);
-            SwapEndian(D[2]);
-            SwapEndian(D[3]);
-            #endif
-
             Key.Rotation.X = (f32)D[0] * (1.0f/16384.0f);
             Key.Rotation.Y = (f32)D[1] * (1.0f/16384.0f);
             Key.Rotation.Z = (f32)D[2] * (1.0f/16384.0f);
@@ -729,18 +700,12 @@ void anim_key_set::GetRawKey( s32 iFrame, anim_key& Key ) const
         {
             quaternion* pD = (quaternion*)m_pRotation;
             Key.Rotation = pD[iFrame];
-            #ifdef TARGET_GCN   
-            SwapEndian( Key.Rotation );  
-            #endif
         }
         else
         if( m_RotationFormat == SINGLE_VALUE )
         {
             quaternion* pD = (quaternion*)m_pRotation;
             Key.Rotation = pD[0];
-            #ifdef TARGET_GCN
-            SwapEndian( Key.Rotation );
-            #endif
         }
 
     }
@@ -757,12 +722,6 @@ void anim_key_set::GetRawKey( s32 iFrame, anim_key& Key ) const
             D[1] = pD[1];
             D[2] = pD[2];
 
-            #ifdef TARGET_GCN
-            SwapEndian(D[0]);
-            SwapEndian(D[1]);
-            SwapEndian(D[2]);
-            #endif
-
             Key.Translation.X = (f32)D[0]*(1.0f/16.0f);
             Key.Translation.Y = (f32)D[1]*(1.0f/16.0f);
             Key.Translation.Z = (f32)D[2]*(1.0f/16.0f);
@@ -777,12 +736,6 @@ void anim_key_set::GetRawKey( s32 iFrame, anim_key& Key ) const
             D[1] = pD[1];
             D[2] = pD[2];
 
-            #ifdef TARGET_GCN
-            SwapEndian(D[0]);
-            SwapEndian(D[1]);
-            SwapEndian(D[2]);
-            #endif
-
             Key.Translation.X = (f32)D[0]*(1.0f/16.0f);
             Key.Translation.Y = (f32)D[1]*(1.0f/16.0f);
             Key.Translation.Z = (f32)D[2]*(1.0f/16.0f);
@@ -792,18 +745,12 @@ void anim_key_set::GetRawKey( s32 iFrame, anim_key& Key ) const
         {
             vector3* pD = (vector3*)m_pTranslation;
             Key.Translation = pD[iFrame];
-            #ifdef TARGET_GCN   
-            SwapEndian( Key.Translation );  
-            #endif
         }
         else
         if( m_TranslationFormat == SINGLE_VALUE )
         {
             vector3* pD = (vector3*)m_pTranslation;
             Key.Translation = pD[0];
-            #ifdef TARGET_GCN   
-            SwapEndian( Key.Translation );  
-            #endif
         }
     }
 }

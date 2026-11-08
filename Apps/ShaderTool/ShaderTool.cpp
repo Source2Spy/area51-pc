@@ -11,13 +11,21 @@
 #include "ShaderTool.hpp"
 
 #include <errno.h>
-#include <stdio.h>
+#include <cstdio>
+#include <algorithm>
+#include <vector>
+#include <filesystem>
+#include <atomic>
+#include <thread>
+#include <map>
+#include "x_threads.hpp"
 
 #if defined( TARGET_WINDOWS )
 #include <direct.h>
 #include <windows.h>
 #else
 #include <sys/stat.h>
+#include <unistd.h>
 #endif
 
 //==============================================================================
@@ -36,12 +44,12 @@ s32 FindOption( command_line& CommandLine, const char* pName )
 static
 xbool IsSlash( char C )
 {
-    return (C == '/') || (C == '\\');
+    return ( C == '/' ) || ( C == '\\' );
 }
 
 //==============================================================================
 
-static 
+static
 xbool CreateDirectoryOne( const xstring& Path )
 {
     if( Path.IsEmpty() )
@@ -49,16 +57,18 @@ xbool CreateDirectoryOne( const xstring& Path )
 
 #if defined( TARGET_WINDOWS )
     DWORD Attrib = GetFileAttributesA( (const char*)Path );
-    if( (Attrib != INVALID_FILE_ATTRIBUTES) && (Attrib & FILE_ATTRIBUTE_DIRECTORY) )
+
+    if( ( Attrib != INVALID_FILE_ATTRIBUTES ) && ( Attrib & FILE_ATTRIBUTE_DIRECTORY ) )
         return TRUE;
 
     if( _mkdir( (const char*)Path ) == 0 )
         return TRUE;
 
     Attrib = GetFileAttributesA( (const char*)Path );
-    return ((Attrib != INVALID_FILE_ATTRIBUTES) && (Attrib & FILE_ATTRIBUTE_DIRECTORY));
+    return ( ( Attrib != INVALID_FILE_ATTRIBUTES ) && ( Attrib & FILE_ATTRIBUTE_DIRECTORY ) );
 #else
     struct stat Info;
+
     if( stat( (const char*)Path, &Info ) == 0 )
         return S_ISDIR( Info.st_mode ) ? TRUE : FALSE;
 
@@ -68,13 +78,13 @@ xbool CreateDirectoryOne( const xstring& Path )
     if( errno != EEXIST )
         return FALSE;
 
-    return (stat( (const char*)Path, &Info ) == 0) && S_ISDIR( Info.st_mode );
+    return ( stat( (const char*)Path, &Info ) == 0 ) && S_ISDIR( Info.st_mode );
 #endif
 }
 
 //==============================================================================
 
-static 
+static
 const char* TargetFolder( const char* pTarget )
 {
     if( x_stricmp( pTarget, "vulkan" ) == 0 )
@@ -93,7 +103,7 @@ const char* TargetFolder( const char* pTarget )
 
 //==============================================================================
 
-static 
+static
 const char* TargetExt( const char* pTarget )
 {
     if( x_stricmp( pTarget, "vulkan" ) == 0 )
@@ -112,488 +122,21 @@ const char* TargetExt( const char* pTarget )
 
 //==============================================================================
 
-static 
+static
 xstring BlobFileName( const shader_entry& Shader, const char* pExt )
 {
     return xstring( (const char*)xfs( "%s.%s.%s", (const char*)Shader.Name,
-                                                  (const char*)Shader.StageShort,
-                                                  pExt ) );
+                                      (const char*)Shader.StageShort,
+                                      pExt ) );
 }
 
 //==============================================================================
 
-static 
+static
 xstring MetaFileName( const shader_entry& Shader )
 {
     return xstring( (const char*)xfs( "%s.%s.meta", (const char*)Shader.Name,
-                                                   (const char*)Shader.StageShort ) );
-}
-
-//==============================================================================
-
-static
-xstring EcsFileName( const shader_entry& Shader )
-{
-    return xstring( (const char*)xfs( "%s.%s.ecs", (const char*)Shader.Name,
-                                                  (const char*)Shader.StageShort ) );
-}
-
-//==============================================================================
-
-static
-xbool EcsAppendZeros( xarray<byte>& Data, u32 Count )
-{
-    const u32 OldCount = (u32)Data.GetCount();
-    if( Count > (0x7FFFFFFFu - OldCount) )
-        return FALSE;
-
-    Data.SetCount( (s32)(OldCount + Count) );
-    if( Count )
-        x_memset( Data.GetPtr() + OldCount, 0, Count );
-    return TRUE;
-}
-
-//==============================================================================
-
-static
-xbool EcsAppendBytes( xarray<byte>& Data, const void* pBytes, u32 Count )
-{
-    const u32 Offset = (u32)Data.GetCount();
-    if( !EcsAppendZeros( Data, Count ) )
-        return FALSE;
-
-    if( Count )
-        x_memcpy( Data.GetPtr() + Offset, pBytes, Count );
-    return TRUE;
-}
-
-//==============================================================================
-
-static
-xbool EcsAlignData( xarray<byte>& Data, u32 Alignment )
-{
-    const u32 Count = (u32)Data.GetCount();
-    u32 Aligned = 0;
-    if( Alignment == 4 )
-        Aligned = (u32)ALIGN_4( Count );
-    else if( Alignment == 16 )
-        Aligned = (u32)ALIGN_16( Count );
-    else
-        return FALSE;
-
-    if( Aligned < Count )
-        return FALSE;
-
-    return EcsAppendZeros( Data, Aligned - Count );
-}
-
-//==============================================================================
-
-static
-u32 EcsAddString( xarray<byte>&          Strings,
-                  xarray<xstring>&       Values,
-                  xarray<u32>&           Offsets,
-                  const char*            pValue )
-{
-    if( !pValue || !pValue[0] )
-        return 0;
-
-    for( s32 i=0; i<Values.GetCount(); i++ )
-    {
-        if( x_strcmp( Values[i], pValue ) == 0 )
-            return Offsets[i];
-    }
-
-    const s32 Length = x_strlen( pValue ) + 1;
-    const u32 Offset = (u32)Strings.GetCount();
-    if( !EcsAppendBytes( Strings, pValue, (u32)Length ) )
-        return 0;
-
-    Values.Append( xstring( pValue ) );
-    Offsets.Append( Offset );
-    return Offset;
-}
-
-//==============================================================================
-
-static
-xbool EcsShaderStage( const shader_entry& Shader, u32& Stage )
-{
-    if( Shader.Stage == "vertex" )
-        Stage = ECS_SHADER_STAGE_VERTEX;
-    else if( (Shader.Stage == "pixel") || (Shader.Stage == "fragment") )
-        Stage = ECS_SHADER_STAGE_FRAGMENT;
-    else if( Shader.Stage == "compute" )
-        Stage = ECS_SHADER_STAGE_COMPUTE;
-    else
-        return FALSE;
-
-    return TRUE;
-}
-
-//==============================================================================
-
-static
-u32 EcsBindingKind( shader_reflection_binding_type Type )
-{
-    switch( Type )
-    {
-        case SHADER_REFLECT_SAMPLED_TEXTURE: return ECS_BINDING_SAMPLED_TEXTURE;
-        case SHADER_REFLECT_UNIFORM_BUFFER:  return ECS_BINDING_UNIFORM_BUFFER;
-        case SHADER_REFLECT_STORAGE_TEXTURE: return ECS_BINDING_STORAGE_TEXTURE;
-        case SHADER_REFLECT_STORAGE_BUFFER:  return ECS_BINDING_STORAGE_BUFFER;
-        default:                             return 0xFFFFFFFFu;
-    }
-}
-
-//==============================================================================
-
-static
-xbool BuildEcsMeta( const shader_entry&                         Shader,
-                    const shader_resource_counts&              Resources,
-                    const xarray<shader_reflection_binding>&   Bindings,
-                    xarray<byte>&                              Meta )
-{
-    u32 Stage = 0;
-    if( !EcsShaderStage( Shader, Stage ) )
-        return FALSE;
-
-    xarray<byte>    BindingData;
-    xarray<byte>    Strings;
-    xarray<xstring> StringValues;
-    xarray<u32>     StringOffsets;
-
-    if( !EcsAppendZeros( Strings, 1 ) )
-        return FALSE;
-
-    const u32 NameOffset  = EcsAddString( Strings, StringValues, StringOffsets, Shader.Name );
-    const u32 EntryOffset = EcsAddString( Strings, StringValues, StringOffsets, Shader.Entry );
-    if( (NameOffset == 0) || (EntryOffset == 0) )
-        return FALSE;
-
-    u32 BindingCount = 0;
-    for( u32 Type=SHADER_REFLECT_SAMPLED_TEXTURE; Type<=SHADER_REFLECT_STORAGE_BUFFER; Type++ )
-    {
-        for( s32 i=0; i<Bindings.GetCount(); i++ )
-        {
-            const shader_reflection_binding& Binding = Bindings[i];
-            if( Binding.Type != (shader_reflection_binding_type)Type )
-                continue;
-
-            const u32 Kind       = EcsBindingKind( Binding.Type );
-            const u32 Name       = EcsAddString( Strings, StringValues, StringOffsets, Binding.Name );
-            const u32 RecordBase = (u32)BindingData.GetCount();
-            if( (Kind == 0xFFFFFFFFu) || (Name == 0) || (Binding.Count == 0) ||
-                !EcsAppendZeros( BindingData, ECS_BINDING_RECORD_SIZE ) )
-            {
-                return FALSE;
-            }
-
-            x_store_le32( BindingData.GetPtr() + RecordBase + ECS_BINDING_KIND,        Kind );
-            x_store_le32( BindingData.GetPtr() + RecordBase + ECS_BINDING_SLOT,        Binding.Slot );
-            x_store_le32( BindingData.GetPtr() + RecordBase + ECS_BINDING_COUNT,       Binding.Count );
-            x_store_le32( BindingData.GetPtr() + RecordBase + ECS_BINDING_NAME_OFFSET, Name );
-            BindingCount++;
-        }
-    }
-
-    Meta.Clear();
-    if( !EcsAppendZeros( Meta, ECS_META_HEADER_SIZE ) )
-        return FALSE;
-
-    const u32 BindingsOffset = (u32)Meta.GetCount();
-    if( !EcsAppendBytes( Meta, BindingData.GetPtr(), (u32)BindingData.GetCount() ) ||
-        !EcsAlignData( Meta, 4 ) )
-    {
-        return FALSE;
-    }
-
-    const u32 StringsOffset = (u32)Meta.GetCount();
-    if( !EcsAppendBytes( Meta, Strings.GetPtr(), (u32)Strings.GetCount() ) )
-        return FALSE;
-
-    byte* pMeta = Meta.GetPtr();
-    x_store_le32( pMeta + ECS_META_HEADER_SIZE_FIELD,      ECS_META_HEADER_SIZE );
-    x_store_le32( pMeta + ECS_META_INTERFACE_ID,           0 );
-    x_store_le32( pMeta + ECS_META_STAGE,                  Stage );
-    x_store_le32( pMeta + ECS_META_BINDING_ABI,            ECS_BINDING_ABI_V1 );
-    x_store_le32( pMeta + ECS_META_FLAGS,                  0 );
-    x_store_le32( pMeta + ECS_META_SAMPLER_COUNT,          Resources.SamplerCount );
-    x_store_le32( pMeta + ECS_META_UNIFORM_COUNT,          Resources.UniformBufferCount );
-    x_store_le32( pMeta + ECS_META_STORAGE_TEXTURE_COUNT,  Resources.StorageTextureCount );
-    x_store_le32( pMeta + ECS_META_STORAGE_BUFFER_COUNT,   Resources.StorageBufferCount );
-    x_store_le32( pMeta + ECS_META_BINDING_COUNT,          BindingCount );
-    x_store_le32( pMeta + ECS_META_BINDING_STRIDE,         ECS_BINDING_RECORD_SIZE );
-    x_store_le32( pMeta + ECS_META_BINDINGS_OFFSET,        BindingsOffset );
-    x_store_le32( pMeta + ECS_META_STRINGS_OFFSET,         StringsOffset );
-    x_store_le32( pMeta + ECS_META_STRINGS_SIZE,           (u32)Strings.GetCount() );
-    x_store_le32( pMeta + ECS_META_NAME_OFFSET,            NameOffset );
-    x_store_le32( pMeta + ECS_META_ENTRY_OFFSET,           EntryOffset );
-    return TRUE;
-}
-
-//==============================================================================
-
-static
-u32 EcsTargetFormat( const xstring& Target )
-{
-    if( Target == "vulkan" ) return ECS_SHADER_FORMAT_SPIRV;
-    if( Target == "d3d12" )  return ECS_SHADER_FORMAT_DXIL;
-    if( Target == "metal" )  return ECS_SHADER_FORMAT_METALLIB;
-    return 0;
-}
-
-//==============================================================================
-
-static
-xbool ValidateEcsBytecode( u32 Format, const byte* pCode, u32 CodeSize )
-{
-    if( !pCode || !CodeSize )
-        return FALSE;
-
-    if( Format == ECS_SHADER_FORMAT_SPIRV )
-    {
-        return (CodeSize >= 20) &&
-               ((CodeSize & 3) == 0) &&
-               (x_load_le32( pCode ) == 0x07230203u) &&
-               (x_load_le32( pCode + 16 ) == 0);
-    }
-
-    if( Format == ECS_SHADER_FORMAT_DXIL )
-    {
-        if( (CodeSize < 32) ||
-            (pCode[0] != 'D') || (pCode[1] != 'X') ||
-            (pCode[2] != 'B') || (pCode[3] != 'C') ||
-            (x_load_le32( pCode + 24 ) != CodeSize) )
-        {
-            return FALSE;
-        }
-
-        const u32 PartCount = x_load_le32( pCode + 28 );
-        if( PartCount > ((CodeSize - 32) / 4) )
-            return FALSE;
-
-        const u32 PartTableEnd = 32 + (PartCount * 4);
-        for( u32 i=0; i<PartCount; i++ )
-        {
-            const u32 PartOffset = x_load_le32( pCode + 32 + (i * 4) );
-            if( (PartOffset < PartTableEnd) || (PartOffset > (CodeSize - 8)) )
-                return FALSE;
-
-            const u32 PartSize = x_load_le32( pCode + PartOffset + 4 );
-            if( PartSize > (CodeSize - PartOffset - 8) )
-                return FALSE;
-        }
-        return TRUE;
-    }
-
-    return (Format == ECS_SHADER_FORMAT_METALLIB);
-}
-
-//==============================================================================
-
-static
-xbool BuildEcsCode( const shader_compile_output& Output, xarray<byte>& CodeChunk )
-{
-    const u32 Format = EcsTargetFormat( Output.Target );
-    if( !Format || !ValidateEcsBytecode( Format, Output.Code.GetPtr(), (u32)Output.Code.GetCount() ) )
-    {
-        x_printf( "Error: Invalid %s bytecode for ECS output\n", (const char*)Output.Target );
-        return FALSE;
-    }
-
-    CodeChunk.Clear();
-    if( !EcsAppendZeros( CodeChunk, ECS_CODE_HEADER_SIZE ) ||
-        !EcsAppendBytes( CodeChunk, Output.Code.GetPtr(), (u32)Output.Code.GetCount() ) )
-    {
-        return FALSE;
-    }
-
-    byte* pCode = CodeChunk.GetPtr();
-    x_store_le32( pCode + ECS_CODE_HEADER_SIZE_FIELD, ECS_CODE_HEADER_SIZE );
-    x_store_le32( pCode + ECS_CODE_FORMAT,            Format );
-    x_store_le32( pCode + ECS_CODE_FLAGS,             0 );
-    x_store_le32( pCode + ECS_CODE_VARIANT_ID,        0 );
-    x_store_le32( pCode + ECS_CODE_INTERFACE_ID,      0 );
-    x_store_le32( pCode + ECS_CODE_ENTRY_OFFSET,      0 );
-    x_store_le32( pCode + ECS_CODE_DATA_OFFSET,       ECS_CODE_HEADER_SIZE );
-    x_store_le32( pCode + ECS_CODE_DATA_SIZE,         (u32)Output.Code.GetCount() );
-    return TRUE;
-}
-
-//==============================================================================
-
-static
-void WriteEcsChunkDesc( xarray<byte>& Container,
-                        u32           Index,
-                        u32           Type,
-                        u16           Major,
-                        u16           Minor,
-                        u32           Flags,
-                        u32           Offset,
-                        u32           Size )
-{
-    byte* pDesc = Container.GetPtr() + ECS_HEADER_SIZE + (Index * ECS_CHUNK_DESC_SIZE);
-    x_store_le32( pDesc + ECS_CHUNK_TYPE,         Type );
-    x_store_le16( pDesc + ECS_CHUNK_MAJOR,        Major );
-    x_store_le16( pDesc + ECS_CHUNK_MINOR,        Minor );
-    x_store_le32( pDesc + ECS_CHUNK_FLAGS,        Flags );
-    x_store_le32( pDesc + ECS_CHUNK_OFFSET,       Offset );
-    x_store_le32( pDesc + ECS_CHUNK_STORED_SIZE,  Size );
-    x_store_le32( pDesc + ECS_CHUNK_DECODED_SIZE, Size );
-    x_store_le32( pDesc + ECS_CHUNK_CRC32,        x_chksum( Container.GetPtr() + Offset, (s32)Size ) );
-    x_store_le32( pDesc + ECS_CHUNK_RESERVED,     0 );
-}
-
-//==============================================================================
-
-static
-xbool BuildEcsContainer( const shader_script&                         Script,
-                         const shader_entry&                          Shader,
-                         const shader_resource_counts&                Resources,
-                         const xarray<shader_reflection_binding>&     Bindings,
-                         const xarray<shader_compile_output>&         Outputs,
-                         xarray<byte>&                                Container )
-{
-    if( Script.BindingModel != SHADER_BINDING_SDL )
-    {
-        x_printf( "Error: ECS v1 requires binding_model=sdl for shader %s\n",
-                  (const char*)Shader.Name );
-        return FALSE;
-    }
-
-    if( (Outputs.GetCount() <= 0) || ((Outputs.GetCount() + 1) > ECS_MAX_CHUNK_COUNT) )
-        return FALSE;
-
-    const u32 ChunkCount = (u32)Outputs.GetCount() + 1;
-    Container.Clear();
-    if( !EcsAppendZeros( Container, ECS_HEADER_SIZE + (ChunkCount * ECS_CHUNK_DESC_SIZE) ) ||
-        !EcsAlignData( Container, ECS_CHUNK_ALIGNMENT ) )
-    {
-        return FALSE;
-    }
-
-    xarray<byte> Meta;
-    if( !BuildEcsMeta( Shader, Resources, Bindings, Meta ) )
-        return FALSE;
-
-    const u32 MetaOffset = (u32)Container.GetCount();
-    if( !EcsAppendBytes( Container, Meta.GetPtr(), (u32)Meta.GetCount() ) )
-        return FALSE;
-    WriteEcsChunkDesc( Container, 0, ecs_ChunkMeta(), ECS_META_MAJOR, ECS_META_MINOR,
-                       ECS_CHUNK_REQUIRED, MetaOffset, (u32)Meta.GetCount() );
-
-    u32 CodeIndex = 1;
-    for( u32 Format=ECS_SHADER_FORMAT_SPIRV; Format<=ECS_SHADER_FORMAT_PRIVATE; Format++ )
-    {
-        for( s32 i=0; i<Outputs.GetCount(); i++ )
-        {
-            if( EcsTargetFormat( Outputs[i].Target ) != Format )
-                continue;
-
-            if( !EcsAlignData( Container, ECS_CHUNK_ALIGNMENT ) )
-                return FALSE;
-
-            xarray<byte> Code;
-            if( !BuildEcsCode( Outputs[i], Code ) )
-                return FALSE;
-
-            const u32 CodeOffset = (u32)Container.GetCount();
-            if( !EcsAppendBytes( Container, Code.GetPtr(), (u32)Code.GetCount() ) )
-                return FALSE;
-            WriteEcsChunkDesc( Container, CodeIndex++, ecs_ChunkCode(), ECS_CODE_MAJOR, ECS_CODE_MINOR,
-                               0, CodeOffset, (u32)Code.GetCount() );
-        }
-    }
-
-    if( CodeIndex != ChunkCount )
-        return FALSE;
-
-    byte* pHeader = Container.GetPtr();
-    pHeader[ECS_HEADER_MAGIC + 0] = 'E';
-    pHeader[ECS_HEADER_MAGIC + 1] = 'C';
-    pHeader[ECS_HEADER_MAGIC + 2] = 'S';
-    pHeader[ECS_HEADER_MAGIC + 3] = 0;
-    x_store_le16( pHeader + ECS_HEADER_MAJOR,           ECS_CONTAINER_MAJOR );
-    x_store_le16( pHeader + ECS_HEADER_MINOR,           ECS_CONTAINER_MINOR );
-    x_store_le32( pHeader + ECS_HEADER_HEADER_SIZE,     ECS_HEADER_SIZE );
-    x_store_le32( pHeader + ECS_HEADER_FILE_SIZE,       (u32)Container.GetCount() );
-    x_store_le32( pHeader + ECS_HEADER_CHUNK_COUNT,     ChunkCount );
-    x_store_le32( pHeader + ECS_HEADER_CHUNK_DESC_SIZE, ECS_CHUNK_DESC_SIZE );
-    x_store_le32( pHeader + ECS_HEADER_FLAGS,           0 );
-    x_store_le32( pHeader + ECS_HEADER_RESERVED,        0 );
-    return TRUE;
-}
-
-//==============================================================================
-
-static
-xbool ValidateBuiltEcs( const xarray<byte>& Container )
-{
-    const u32 Size = (u32)Container.GetCount();
-    if( Size < ECS_HEADER_SIZE )
-        return FALSE;
-
-    const byte* pData = Container.GetPtr();
-    if( (pData[0] != 'E') || (pData[1] != 'C') || (pData[2] != 'S') || pData[3] ||
-        (x_load_le16( pData + ECS_HEADER_MAJOR ) != ECS_CONTAINER_MAJOR) ||
-        (x_load_le16( pData + ECS_HEADER_MINOR ) != ECS_CONTAINER_MINOR) ||
-        (x_load_le32( pData + ECS_HEADER_HEADER_SIZE ) != ECS_HEADER_SIZE) ||
-        (x_load_le32( pData + ECS_HEADER_FILE_SIZE ) != Size) ||
-        (x_load_le32( pData + ECS_HEADER_CHUNK_DESC_SIZE ) != ECS_CHUNK_DESC_SIZE) )
-    {
-        return FALSE;
-    }
-
-    const u32 ChunkCount = x_load_le32( pData + ECS_HEADER_CHUNK_COUNT );
-    if( (ChunkCount < 2) || (ChunkCount > ECS_MAX_CHUNK_COUNT) ||
-        (ChunkCount > ((Size - ECS_HEADER_SIZE) / ECS_CHUNK_DESC_SIZE)) )
-    {
-        return FALSE;
-    }
-
-    u32 MetaCount = 0;
-    u32 CodeCount = 0;
-    for( u32 i=0; i<ChunkCount; i++ )
-    {
-        const byte* pDesc = pData + ECS_HEADER_SIZE + (i * ECS_CHUNK_DESC_SIZE);
-        const u32 Offset  = x_load_le32( pDesc + ECS_CHUNK_OFFSET );
-        const u32 Stored  = x_load_le32( pDesc + ECS_CHUNK_STORED_SIZE );
-        const u32 Decoded = x_load_le32( pDesc + ECS_CHUNK_DECODED_SIZE );
-        if( !Stored || (Stored != Decoded) || (Offset & (ECS_CHUNK_ALIGNMENT - 1)) ||
-            (Offset > Size) || (Stored > (Size - Offset)) ||
-            (x_load_le32( pDesc + ECS_CHUNK_CRC32 ) != x_chksum( pData + Offset, (s32)Stored )) )
-        {
-            return FALSE;
-        }
-
-        const u32 Type = x_load_le32( pDesc + ECS_CHUNK_TYPE );
-        if( Type == ecs_ChunkMeta() )
-            MetaCount++;
-        else if( Type == ecs_ChunkCode() )
-        {
-            CodeCount++;
-            if( Stored < ECS_CODE_HEADER_SIZE )
-                return FALSE;
-
-            const byte* pCodeChunk = pData + Offset;
-            const u32 CodeOffset = x_load_le32( pCodeChunk + ECS_CODE_DATA_OFFSET );
-            const u32 CodeSize   = x_load_le32( pCodeChunk + ECS_CODE_DATA_SIZE );
-            const u32 Format     = x_load_le32( pCodeChunk + ECS_CODE_FORMAT );
-            if( (CodeOffset < ECS_CODE_HEADER_SIZE) || (CodeOffset > Stored) ||
-                (CodeSize != (Stored - CodeOffset)) ||
-                !ValidateEcsBytecode( Format, pCodeChunk + CodeOffset, CodeSize ) )
-            {
-                return FALSE;
-            }
-        }
-        else if( x_load_le32( pDesc + ECS_CHUNK_FLAGS ) & ECS_CHUNK_REQUIRED )
-        {
-            return FALSE;
-        }
-    }
-
-    return (MetaCount == 1) && (CodeCount > 0);
+                                      (const char*)Shader.StageShort ) );
 }
 
 //==============================================================================
@@ -601,7 +144,7 @@ xbool ValidateBuiltEcs( const xarray<byte>& Container )
 static
 void RemoveTempOutputs( const xarray<shader_compile_output>& Outputs )
 {
-    for( s32 i=0; i<Outputs.GetCount(); i++ )
+    for( s32 i = 0; i < Outputs.GetCount(); i++ )
         RemoveFile( Outputs[i].TempPdb );
 }
 
@@ -610,11 +153,12 @@ void RemoveTempOutputs( const xarray<shader_compile_output>& Outputs )
 static
 xbool RemovePublishedPdbs( const xarray<shader_compile_output>& Outputs )
 {
-    for( s32 i=0; i<Outputs.GetCount(); i++ )
+    for( s32 i = 0; i < Outputs.GetCount(); i++ )
     {
-        if( (Outputs[i].Target == "d3d12") && !RemoveFile( Outputs[i].Pdb ) )
+        if( ( Outputs[i].Target == "d3d12" ) && !RemoveFile( Outputs[i].Pdb ) )
             return FALSE;
     }
+
     return TRUE;
 }
 
@@ -623,16 +167,18 @@ xbool RemovePublishedPdbs( const xarray<shader_compile_output>& Outputs )
 static
 xbool CommitPdbOutputs( const xarray<shader_compile_output>& Outputs )
 {
-    for( s32 i=0; i<Outputs.GetCount(); i++ )
+    for( s32 i = 0; i < Outputs.GetCount(); i++ )
     {
         const shader_compile_output& Output = Outputs[i];
-        if( (Output.Target == "d3d12") && Output.HasPdb &&
+
+        if( ( Output.Target == "d3d12" ) && Output.HasPdb &&
             !ReplaceFile( Output.TempPdb, Output.Pdb ) )
         {
             x_printf( "Error: Failed to replace PDB %s\n", (const char*)Output.Pdb );
             return FALSE;
         }
     }
+
     return TRUE;
 }
 
@@ -651,10 +197,10 @@ xstring ToLower( const xstring& Text )
 
 xbool IsAbsolutePath( const xstring& Path )
 {
-    if( (Path.GetLength() >= 2) && (Path[1] == ':') )
+    if( ( Path.GetLength() >= 2 ) && ( Path[1] == ':' ) )
         return TRUE;
 
-    if( (Path.GetLength() >= 1) && IsSlash( Path[0] ) )
+    if( ( Path.GetLength() >= 1 ) && IsSlash( Path[0] ) )
         return TRUE;
 
     return FALSE;
@@ -688,7 +234,7 @@ xstring NormalizePath( const xstring& Path )
     char  Buffer[MAX_PATH];
     DWORD Length = GetFullPathNameA( (const char*)Path, MAX_PATH, Buffer, NULL );
 
-    if( (Length > 0) && (Length < MAX_PATH) )
+    if( ( Length > 0 ) && ( Length < MAX_PATH ) )
         return xstring( Buffer );
 #endif
 
@@ -721,24 +267,25 @@ xstring GetDirectory( const xstring& PathName )
 xbool EnsureParentDir( const xstring& PathName )
 {
     xstring Path = GetDirectory( PathName );
+
     if( Path.IsEmpty() )
         return TRUE;
 
     xstring Current;
     s32     Start = 0;
 
-    if( (Path.GetLength() >= 2) && (Path[1] == ':') )
+    if( ( Path.GetLength() >= 2 ) && ( Path[1] == ':' ) )
     {
         Current = Path.Left( 2 );
         Start   = 2;
     }
-    else if( (Path.GetLength() > 0) && IsSlash( Path[0] ) )
+    else if( ( Path.GetLength() > 0 ) && IsSlash( Path[0] ) )
     {
         Current = Path.Left( 1 );
         Start   = 1;
     }
 
-    for( s32 i=Start; i<Path.GetLength(); i++ )
+    for( s32 i = Start; i < Path.GetLength(); i++ )
     {
         Current += Path[i];
 
@@ -757,10 +304,12 @@ xbool EnsureParentDir( const xstring& PathName )
 xbool LoadBinaryFile( const xstring& PathName, xarray<byte>& Data )
 {
     X_FILE* pFile = x_fopen( PathName, "rb" );
+
     if( !pFile )
         return FALSE;
 
     const s32 Size = x_flength( pFile );
+
     if( Size <= 0 )
     {
         x_fclose( pFile );
@@ -771,7 +320,7 @@ xbool LoadBinaryFile( const xstring& PathName, xarray<byte>& Data )
     const s32 Read = x_fread( Data.GetPtr(), 1, Size, pFile );
     x_fclose( pFile );
 
-    return (Read == Size);
+    return ( Read == Size );
 }
 
 //==============================================================================
@@ -782,13 +331,14 @@ xbool WriteBinaryFile( const xstring& PathName, const void* pData, s32 Size )
         return FALSE;
 
     X_FILE* pFile = x_fopen( PathName, "wb" );
+
     if( !pFile )
         return FALSE;
 
     const s32 Written = x_fwrite( pData, Size, 1, pFile );
     x_fclose( pFile );
 
-    return (Written == 1);
+    return ( Written == 1 );
 }
 
 //==============================================================================
@@ -800,12 +350,13 @@ xbool RemoveFile( const xstring& PathName )
         return TRUE;
 
     const DWORD Error = GetLastError();
-    return (Error == ERROR_FILE_NOT_FOUND) || (Error == ERROR_PATH_NOT_FOUND);
+    return ( Error == ERROR_FILE_NOT_FOUND ) || ( Error == ERROR_PATH_NOT_FOUND );
 #else
     if( remove( (const char*)PathName ) == 0 )
         return TRUE;
 
     X_FILE* pFile = x_fopen( PathName, "rb" );
+
     if( !pFile )
         return TRUE;
 
@@ -824,7 +375,7 @@ xbool ReplaceFile( const xstring& TempPath, const xstring& FinalPath )
                         MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH );
 #else
     RemoveFile( FinalPath );
-    return (rename( (const char*)TempPath, (const char*)FinalPath ) == 0);
+    return ( rename( (const char*)TempPath, (const char*)FinalPath ) == 0 );
 #endif
 }
 
@@ -839,11 +390,6 @@ xstring BlobPath( const shader_script& Script,
 }
 
 //==============================================================================
-
-xstring EcsPath( const shader_script& Script, const shader_entry& Shader )
-{
-    return JoinPath( JoinPath( Script.OutRoot, Script.Config ), EcsFileName( Shader ) );
-}
 
 //==============================================================================
 
@@ -866,9 +412,9 @@ xstring TempPathFor( const xstring& PathName )
 {
 #if defined( TARGET_WINDOWS )
     return xstring( (const char*)xfs( "%s.tmp.%u", (const char*)PathName,
-                                                  (u32)GetCurrentProcessId() ) );
+                                      (u32)GetCurrentProcessId() ) );
 #else
-    return PathName + ".tmp";
+    return xstring( (const char*)xfs( "%s.tmp.%u", (const char*)PathName, (u32)getpid() ) );
 #endif
 }
 
@@ -878,9 +424,9 @@ const char* BindingModelName( shader_binding_model Model )
 {
     if( Model == SHADER_BINDING_SDL )
         return "sdl";
-    
+
     if( Model == SHADER_BINDING_NATIVE )
-        return "native";    
+        return "native";
 
     // Should never get here! How?
     x_printf( "Error: Unknown model '%d' in BindingModelName\n", Model );
@@ -900,6 +446,10 @@ void DisplayHelp( void )
     x_printf( "options:\n" );
     x_printf( "         -clean      - Remove old blobs before writing new ones\n" );
     x_printf( "         -v          - Verbose output\n" );
+    x_printf( "         -stage name[*] - Compile selected stages without publishing a kit\n" );
+    x_printf( "         -config debug|release - Override the script build configuration\n" );
+    x_printf( "         -jobs 1..12  - Shader compilation workers (default: 1)\n" );
+    x_printf( "         -generate   - Generate shared ABI and identities without compiling stages\n" );
     x_printf( "\n" );
 }
 
@@ -909,36 +459,195 @@ xbool ParseCommandLine( s32 argc, char** argv, compile_options& Options )
 {
     command_line CommandLine;
 
-    CommandLine.AddOptionDef( "CLEAN"   );
-    CommandLine.AddOptionDef( "V"       );
+    CommandLine.AddOptionDef( "CLEAN" );
+    CommandLine.AddOptionDef( "V" );
+    CommandLine.AddOptionDef( "GENERATE" );
+    CommandLine.AddOptionDef( "STAGE", command_line::STRING );
+    CommandLine.AddOptionDef( "JOBS", command_line::STRING );
+    CommandLine.AddOptionDef( "CONFIG", command_line::STRING );
 
     xbool NeedHelp = CommandLine.Parse( argc, argv );
-    if( NeedHelp || (CommandLine.GetNumArguments() == 0) )
+
+    if( NeedHelp || ( CommandLine.GetNumArguments() == 0 ) )
         return FALSE;
 
-    Options.Clean   = (FindOption( CommandLine, "CLEAN" ) != -1);
-    Options.Verbose = (FindOption( CommandLine, "V"     ) != -1);
+    const s32 Config = FindOption( CommandLine, "CONFIG" );
 
-    for( s32 i=0; i<CommandLine.GetNumArguments(); i++ )
+    if( Config >= 0 )
+    {
+        Options.Config = CommandLine.GetOptionString( Config );
+
+        if( Options.Config != "debug" && Options.Config != "release" )
+        {
+            x_printf( "Error: config must be debug or release\n" );
+            return FALSE;
+        }
+    }
+
+    const s32 Stage = FindOption( CommandLine, "STAGE" );
+
+    if( Stage >= 0 )
+        Options.StageFilter = CommandLine.GetOptionString( Stage );
+    const s32 Jobs = FindOption( CommandLine, "JOBS" );
+
+    if( Jobs >= 0 )
+    {
+        const xstring& Count       = CommandLine.GetOptionString( Jobs );
+        const s32      WorkerCount = x_atoi( Count );
+
+        if( !( ( Count.GetLength() == 1 && Count[0] >= '1' && Count[0] <= '9' ) ||
+               ( Count.GetLength() == 2 && Count[0] == '1' && Count[1] >= '0' && Count[1] <= '2' ) ) )
+        {
+            x_printf( "Error: -jobs must be between 1 and 12\n" );
+            return FALSE;
+        }
+
+        Options.WorkerCount = WorkerCount;
+    }
+
+    Options.GenerateOnly = ( FindOption( CommandLine, "GENERATE" ) != -1 );
+    Options.Clean        = ( FindOption( CommandLine, "CLEAN" ) != -1 );
+    Options.Verbose      = ( FindOption( CommandLine, "V" ) != -1 );
+
+    for( s32 i = 0; i < CommandLine.GetNumArguments(); i++ )
         Options.Scripts.Append( CommandLine.GetArgument( i ) );
 
     return TRUE;
 }
+
 //==============================================================================
 
-xbool CompileShader( const shader_script&  Script,
-                     const shader_entry&   Shader,
+static
+void RetainReflection( shader_script& Script, shader_compile_output const& Output )
+{
+    shader_compile_output& Final = Script.FinalOutputs.Append();
+    Final.Target                 = Output.Target;
+    Final.RequiredCapabilities   = Output.RequiredCapabilities;
+    Final.ShaderName             = Output.ShaderName;
+    Final.BinarySize             = Output.BinarySize ? Output.BinarySize : Output.Code.GetCount();
+    Final.Resources              = Output.Resources;
+    Final.Bindings               = Output.Bindings;
+    Final.Inputs                 = Output.Inputs;
+    Final.Outputs                = Output.Outputs;
+    Final.Members                = Output.Members;
+}
+
+//==============================================================================
+
+xbool CompileShader( shader_script&         Script,
+                     const shader_entry&    SourceShader,
                      const compile_options& Options )
 {
-    x_printf( "Shader: %s\n", (const char*)Shader.Name );
+    shader_entry Shader = SourceShader;
+
+    if( Options.Verbose )
+        x_printf( "Shader: %s\n", (const char*)Shader.Name );
+    xarray<shader_compile_output> Cached;
+
+    if( LoadShaderCache( Script, Shader, Options, Cached, FALSE ) && Cached.GetCount() )
+    {
+        for( s32 i = 0; i < Cached.GetCount(); ++i )
+            RetainReflection( Script, Cached[i] );
+        if( Options.Verbose )
+            x_printf( "  content cache hit\n" );
+        return TRUE;
+    }
+
+    const u32             TargetMask = Script.TargetMask;
+    shader_compile_output CachedDxil, CachedSpirv;
+    xbool                 HaveDxil = FALSE, HaveSpirv = FALSE;
+
+    for( u32 Target = 1; Target <= 2; Target <<= 1 )
+    {
+        Script.TargetMask = Target;
+        xarray<shader_compile_output> TargetOutput;
+
+        if( LoadShaderCache( Script, Shader, Options, TargetOutput, FALSE ) )
+        {
+            if( Target == SHADER_TARGET_D3D12 )
+            {
+                CachedDxil = TargetOutput[0];
+                HaveDxil   = TRUE;
+            }
+            else
+            {
+                CachedSpirv = TargetOutput[0];
+                HaveSpirv   = TRUE;
+            }
+        }
+    }
+
+    Script.TargetMask = TargetMask;
+    shader_script Discovery;
+    Discovery.Sources          = Script.Sources;
+    Discovery.Metrics          = Script.Metrics;
+    Discovery.SourceRoot       = Script.SourceRoot;
+    Discovery.OutRoot          = Script.OutRoot;
+    Discovery.Config           = Script.Config;
+    Discovery.BindingModel     = Script.BindingModel;
+    Discovery.DiscoverBindings = TRUE;
+    Discovery.TargetMask       = SHADER_TARGET_D3D12;
+    Discovery.AbiId            = Script.AbiId;
+    Discovery.CacheRoot        = JoinPath( Script.CacheRoot.IsEmpty() ? Script.OutRoot : Script.CacheRoot, "discovery" );
+    xarray<shader_compile_output> DiscoveryOutputs;
+
+    if( !LoadShaderCache( Discovery, Shader, Options, DiscoveryOutputs, TRUE, TRUE ) )
+    {
+        DiscoveryOutputs.Clear();
+        shader_compile_output& Output = DiscoveryOutputs.Append();
+
+        if( !CompileDxcTarget( Discovery, Shader, Options, "d3d12", Output ) ||
+            !WriteShaderCache( Discovery, Shader, Options, DiscoveryOutputs ) )
+            return FALSE;
+    }
+
+    shader_compile_output&                        Discovered          = DiscoveryOutputs[0];
+    const shader_resource_counts&                 DiscoveredResources = Discovered.Resources;
+    const xarray<shader_reflection_binding>&      DiscoveredBindings  = Discovered.Bindings;
+    xbool                                         DenseBindings       = TRUE;
+    std::vector<const shader_reflection_binding*> Ordered;
+
+    for( s32 i = 0; i < DiscoveredBindings.GetCount(); ++i )
+        Ordered.push_back( &DiscoveredBindings[i] );
+    std::sort( Ordered.begin(), Ordered.end(), []( const shader_reflection_binding* A, const shader_reflection_binding* B )
+               { return A->Type == B->Type ? A->Slot < B->Slot : A->Type < B->Type; } );
+    u32 ResourceSlot = 0;
+    u32 UniformSlot  = 0;
+
+    for( const shader_reflection_binding* Binding : Ordered )
+    {
+        u32 Original = Binding->Slot;
+
+        if( Binding->Type == SHADER_REFLECT_STORAGE_TEXTURE )
+            Original += DiscoveredResources.SamplerCount;
+        if( Binding->Type == SHADER_REFLECT_STORAGE_BUFFER )
+            Original += DiscoveredResources.SamplerCount + DiscoveredResources.StorageTextureCount;
+        if( Original + Binding->Count > 64 )
+            return FALSE;
+
+        for( u32 i = 0; i < Binding->Count; ++i )
+        {
+            if( Binding->Type == SHADER_REFLECT_UNIFORM_BUFFER )
+            {
+                if( Original + i != UniformSlot )
+                    DenseBindings = FALSE;
+                Shader.UniformSlots[Original + i] = UniformSlot++;
+            }
+            else
+            {
+                if( Original + i != ResourceSlot )
+                    DenseBindings = FALSE;
+                Shader.ResourceSlots[Original + i] = ResourceSlot++;
+            }
+        }
+    }
 
     if( Options.Clean )
     {
-        RemoveFile( EcsPath( Script, Shader ) );
         RemoveFile( MetaPath( Script, Shader ) );
         RemoveFile( BlobPath( Script, Shader, "vulkan" ) );
         RemoveFile( BlobPath( Script, Shader, "d3d12" ) );
-        RemoveFile( BlobPath( Script, Shader, "metal" ) );        
+        RemoveFile( BlobPath( Script, Shader, "metal" ) );
         RemoveFile( PdbPath( Script, Shader ) );
     }
 
@@ -949,15 +658,66 @@ xbool CompileShader( const shader_script&  Script,
         return FALSE;
     }
 
-    shader_resource_counts       Resources;
+    shader_resource_counts Resources;
     xarray<shader_reflection_binding>
-                                 Bindings;
+                                  Bindings;
     xarray<shader_compile_output> Outputs;
 
+    shader_compile_output Dxil;
+
+    if( HaveDxil )
+    {
+        if( Discovered.HasPdb )
+            RemoveFile( Discovered.TempPdb );
+        Dxil = CachedDxil;
+    }
+    else if( Script.BindingModel == SHADER_BINDING_NATIVE || DenseBindings )
+    {
+        if( Script.BindingModel == SHADER_BINDING_SDL && Discovered.Resources.UniformBufferCount > 4 )
+        {
+            x_printf( "Error: SDL supports at most four uniform buffers per graphics stage\n" );
+
+            if( Discovered.HasPdb )
+                RemoveFile( Discovered.TempPdb );
+            return FALSE;
+        }
+
+        Dxil = Discovered;
+
+        if( Options.Verbose )
+            x_printf( "  discovery DXIL reused\n" );
+    }
+    else
+    {
+        if( Discovered.HasPdb )
+            RemoveFile( Discovered.TempPdb );
+        if( !CompileDxcTarget( Script, Shader, Options, "d3d12", Dxil ) )
+            return FALSE;
+    }
+
+    if( !ValidateDeclaredBuffers( Script, Dxil ) )
+    {
+        if( Dxil.HasPdb )
+            RemoveFile( Dxil.TempPdb );
+        return FALSE;
+    }
+
     if( Script.TargetMask & SHADER_TARGET_D3D12 )
+        Outputs.Append() = Dxil;
+    else if( Dxil.HasPdb )
+        RemoveFile( Dxil.TempPdb );
+    Resources = Dxil.Resources;
+    Bindings  = Dxil.Bindings;
+
+    if( Script.TargetMask & SHADER_TARGET_VULKAN )
     {
         shader_compile_output& Output = Outputs.Append();
-        if( !CompileDxcTarget( Script, Shader, Options, "d3d12", Output ) )
+
+        if( HaveSpirv )
+            Output = CachedSpirv;
+        if( ( !HaveSpirv && !CompileDxcTarget( Script, Shader, Options, "vulkan", Output ) ) ||
+            !ValidateTargetReflections( Shader, Dxil, Output ) ||
+            !ValidateDeclaredBuffers( Script, Output ) )
         {
             RemoveTempOutputs( Outputs );
             return FALSE;
@@ -965,67 +725,30 @@ xbool CompileShader( const shader_script&  Script,
 
         Resources = Output.Resources;
         Bindings  = Output.Bindings;
-    }
-    else
-    {
-        // D3D12 not requested as an output target; still need its
-        // reflection data to populate the .meta resource counts.
-        if( !ReflectDxcShader( Script, Shader, Options, Resources, Bindings ) )
-            return FALSE;
-    }
 
-    if( Script.TargetMask & SHADER_TARGET_VULKAN )
-    {
-        shader_compile_output& Output = Outputs.Append();
-        if( !CompileDxcTarget( Script, Shader, Options, "vulkan", Output ) )
+        if( Shader.ColorArithmetic )
         {
-            RemoveTempOutputs( Outputs );
-            return FALSE;
+            shader_entry Variant        = Shader;
+            Variant.CompileCapabilities = ECS_SHADER_CAPABILITY_FLOAT16;
+            shader_compile_output Native;
+
+            if( !CompileDxcTarget( Script, Variant, Options, "vulkan", Native ) ||
+                !ValidateTargetReflections( Shader, Dxil, Native ) || !ValidateDeclaredBuffers( Script, Native ) )
+            {
+                RemoveTempOutputs( Outputs );
+                return FALSE;
+            }
+
+            Outputs.Append() = Native;
         }
     }
 
-    xarray<byte> EcsData;
-    if( !BuildEcsContainer( Script, Shader, Resources, Bindings, Outputs, EcsData ) ||
-        !ValidateBuiltEcs( EcsData ) )
-    {
-        x_printf( "Error: Failed to build ECS container for %s\n", (const char*)Shader.Name );
-        RemoveTempOutputs( Outputs );
-        return FALSE;
-    }
-
-    const xstring Ecs     = EcsPath( Script, Shader );
-    const xstring TempEcs = TempPathFor( Ecs );
-    RemoveFile( TempEcs );
-    if( !WriteBinaryFile( TempEcs, EcsData.GetPtr(), EcsData.GetCount() ) )
-    {
-        x_printf( "Error: Failed to write ECS output %s\n", (const char*)TempEcs );
-        RemoveTempOutputs( Outputs );
-        RemoveFile( TempEcs );
-        return FALSE;
-    }
-
-    xarray<byte> WrittenEcs;
-    if( !LoadBinaryFile( TempEcs, WrittenEcs ) || !ValidateBuiltEcs( WrittenEcs ) )
-    {
-        x_printf( "Error: ECS post-write validation failed for %s\n", (const char*)TempEcs );
-        RemoveTempOutputs( Outputs );
-        RemoveFile( TempEcs );
-        return FALSE;
-    }
+    for( s32 i = 0; i < Outputs.GetCount(); ++i )
+        RetainReflection( Script, Outputs[i] );
 
     if( !RemovePublishedPdbs( Outputs ) )
     {
-        x_printf( "Error: Failed to remove stale shader PDB\n" );
         RemoveTempOutputs( Outputs );
-        RemoveFile( TempEcs );
-        return FALSE;
-    }
-
-    if( !ReplaceFile( TempEcs, Ecs ) )
-    {
-        x_printf( "Error: Failed to replace ECS output %s\n", (const char*)Ecs );
-        RemoveTempOutputs( Outputs );
-        RemoveFile( TempEcs );
         return FALSE;
     }
 
@@ -1035,8 +758,311 @@ xbool CompileShader( const shader_script&  Script,
         return FALSE;
     }
 
+    if( !WriteShaderCache( Script, Shader, Options, Outputs ) )
+        return FALSE;
+
+    return TRUE;
+}
+
+//==============================================================================
+
+namespace
+{
+struct CompileJobs
+{
+    shader_script const*                       Script;
+    compile_options const*                     Options;
+    std::atomic<s32>                           Next{ 0 };
+    std::atomic<u32>                           Completed{ 0 };
+    std::atomic<bool>                          Failed{ false };
+    std::vector<xarray<shader_compile_output>> Results;
+    std::vector<s32>                           Canonical;
+    std::vector<shader_compile_metrics>        Metrics;
+};
+
+//==============================================================================
+
+void CompileWorker( s32, char** Arguments )
+{
+    CompileJobs&  Jobs = *reinterpret_cast<CompileJobs*>( Arguments[0] );
+    shader_script Local;
+    Local.Sources      = Jobs.Script->Sources;
+    Local.SourceRoot   = Jobs.Script->SourceRoot;
+    Local.OutRoot      = Jobs.Script->OutRoot;
+    Local.CacheRoot    = Jobs.Script->CacheRoot;
+    Local.Config       = Jobs.Script->Config;
+    Local.BindingModel = Jobs.Script->BindingModel;
+    Local.TargetMask   = Jobs.Script->TargetMask;
+    Local.CatalogId    = Jobs.Script->CatalogId;
+    Local.AbiId        = Jobs.Script->AbiId;
+    Local.Buffers      = Jobs.Script->Buffers;
+
+    while( !Jobs.Failed.load() )
+    {
+        const s32 Index = Jobs.Next.fetch_add( 1 );
+
+        if( Index >= Jobs.Script->Shaders.GetCount() )
+            break;
+        if( Jobs.Canonical[Index] != Index )
+            continue;
+        Local.Metrics = &Jobs.Metrics[Index];
+        Local.FinalOutputs.Clear();
+
+        if( !CompileShader( Local, Jobs.Script->Shaders[Index], *Jobs.Options ) )
+        {
+            Jobs.Failed.store( true );
+            break;
+        }
+
+        Jobs.Results[Index] = Local.FinalOutputs;
+        Jobs.Completed.fetch_add( 1 );
+    }
+}
+
+//==============================================================================
+
+xbool CompileCatalog( shader_script& Script, compile_options const& Options )
+{
+    CompileJobs Jobs;
+    Jobs.Script  = &Script;
+    Jobs.Options = &Options;
+    Jobs.Results.resize( Script.Shaders.GetCount() );
+    Jobs.Canonical.resize( Script.Shaders.GetCount() );
+    Jobs.Metrics.resize( Script.Shaders.GetCount() );
+    std::map<std::string, s32> Inputs;
+
+    for( s32 i = 0; i < Script.Shaders.GetCount(); ++i )
+    {
+        const shader_entry& Shader   = Script.Shaders[i];
+        const xstring*      Fields[] = { &Shader.Source, &Shader.Stage, &Shader.Entry, &Shader.Profile,
+                                         &Shader.CommonArgs, &Shader.VulkanArgs, &Shader.D3D12Args };
+        std::string         Key;
+
+        for( const xstring* Field : Fields )
+        {
+            Key.append( (const char*)*Field, Field->GetLength() );
+            Key.push_back( 0 );
+        }
+
+        Key.push_back( Shader.ColorArithmetic ? 1 : 0 );
+
+        if( Script.Config != "release" )
+            Key.append( (const char*)Shader.Name, Shader.Name.GetLength() );
+        Jobs.Canonical[i] = Inputs.emplace( Key, i ).first->second;
+    }
+
+    char*       Arguments[] = { reinterpret_cast<char*>( &Jobs ) };
+    const u32   Count       = std::min( std::max( 1u, std::min( 12u, Options.WorkerCount ) ),
+                                        std::max( 1u, std::thread::hardware_concurrency() ) );
+    xthread*    Workers[12] = {};
+    const xtick Start       = x_GetTime();
+    xtick       LastReport  = Start;
+    DisplayShaderProgress( "Compile", 0, Inputs.size(), 0 );
+
+    for( u32 i = 0; i < Count; ++i )
+        Workers[i] = new xthread( CompileWorker, "ShaderTool compile", 2 * 1024 * 1024, 0, 1, Arguments );
+    for( ;; )
+    {
+        xbool Active = FALSE;
+
+        for( u32 i = 0; i < Count; ++i )
+            Active |= Workers[i]->IsActive();
+        const xtick Now = x_GetTime();
+
+        if( !Active || x_TicksToMs( Now - LastReport ) >= 1000 )
+        {
+            DisplayShaderProgress( "Compile", Jobs.Completed.load(), Inputs.size(), x_TicksToMs( Now - Start ) );
+            LastReport = Now;
+        }
+
+        if( !Active )
+            break;
+        x_DelayThread( 10 );
+    }
+
+    for( u32 i = 0; i < Count; ++i )
+        delete Workers[i];
+    shader_compile_metrics Totals;
+
+    for( const shader_compile_metrics& Metric : Jobs.Metrics )
+    {
+        Totals.DiscoveryCalls += Metric.DiscoveryCalls;
+        Totals.DxilCalls += Metric.DxilCalls;
+        Totals.SpirvCalls += Metric.SpirvCalls;
+        Totals.DiscoveryMs += Metric.DiscoveryMs;
+        Totals.DxilMs += Metric.DxilMs;
+        Totals.SpirvMs += Metric.SpirvMs;
+    }
+
     if( Options.Verbose )
-        x_printf( "  ECS -> %s\n", (const char*)Ecs );
+        x_printf( "DXC calls: discovery=%u DXIL=%u SPIR-V=%u; accumulated worker ms: %.3f %.3f %.3f\n",
+                  Totals.DiscoveryCalls, Totals.DxilCalls, Totals.SpirvCalls,
+                  Totals.DiscoveryMs, Totals.DxilMs, Totals.SpirvMs );
+    if( Jobs.Failed.load() )
+        return FALSE;
+
+    for( s32 i = 0; i < Script.Shaders.GetCount(); ++i )
+    {
+        if( Jobs.Canonical[i] == i )
+            continue;
+        compile_options CacheOptions = Options;
+        CacheOptions.Clean           = FALSE;
+        xarray<shader_compile_output> Outputs;
+
+        if( !LoadShaderCache( Script, Script.Shaders[Jobs.Canonical[i]], CacheOptions, Outputs ) )
+            return FALSE;
+
+        for( s32 j = 0; j < Outputs.GetCount(); ++j )
+            Outputs[j].ShaderName = Script.Shaders[i].Name;
+        if( !WriteShaderCache( Script, Script.Shaders[i], Options, Outputs ) )
+            return FALSE;
+
+        shader_script Local;
+
+        for( s32 j = 0; j < Outputs.GetCount(); ++j )
+            RetainReflection( Local, Outputs[j] );
+        Jobs.Results[i] = Local.FinalOutputs;
+    }
+
+    if( Options.Verbose )
+        x_printf( "Compile tasks: %u canonical inputs, %d logical stages\n", (u32)Inputs.size(), Script.Shaders.GetCount() );
+    for( const auto& Result : Jobs.Results )
+        for( s32 i = 0; i < Result.GetCount(); ++i )
+            Script.FinalOutputs.Append() = Result[i];
+    DisplayShaderProgress( "Compile", Script.Shaders.GetCount(), Script.Shaders.GetCount(), x_TicksToMs( x_GetTime() - Start ), TRUE );
+    return TRUE;
+}
+}
+
+//==============================================================================
+
+xbool WriteComputeShaderHeaders( const shader_script& Script, const compile_options& Options )
+{
+    for( s32 i = 0; i < Script.ComputeShaders.GetCount(); ++i )
+    {
+        const shader_entry& Shader = Script.ComputeShaders[i];
+
+        if( Shader.Name.IsEmpty() )
+        {
+            return FALSE;
+        }
+
+        for( s32 j = 0; j < Shader.Name.GetLength(); ++j )
+        {
+            const char Character = Shader.Name[j];
+
+            if( !( ( Character >= 'a' && Character <= 'z' ) ||
+                   ( Character >= '0' && Character <= '9' ) || Character == '_' ) )
+            {
+                return FALSE;
+            }
+        }
+
+        xstring               Header( "// Generated by ShaderTool. Do not edit.\n#pragma once\n#include \"e_Shader.hpp\"\n" );
+        shader_compile_output Layout;
+        xbool                 HaveLayout = FALSE;
+
+        for( u32 Target = 0; Target < 2; ++Target )
+        {
+            if( !( Script.TargetMask & ( 1u << Target ) ) )
+            {
+                continue;
+            }
+
+            shader_compile_output Output;
+
+            if( !CompileDxcTarget( Script, Shader, Options, Target == 0 ? "vulkan" : "d3d12", Output ) )
+            {
+                return FALSE;
+            }
+
+            if( HaveLayout && !ValidateTargetReflections( Shader, Layout, Output ) )
+            {
+                return FALSE;
+            }
+
+            if( !HaveLayout )
+            {
+                Layout.Target    = Output.Target;
+                Layout.Resources = Output.Resources;
+                Layout.Compute   = Output.Compute;
+                Layout.Bindings  = Output.Bindings;
+                Layout.Members   = Output.Members;
+                HaveLayout       = TRUE;
+            }
+
+            if( Output.HasPdb && !ReplaceFile( Output.TempPdb, Output.Pdb ) )
+            {
+                return FALSE;
+            }
+
+            Header += xstring( xfs( "alignas( 4 ) inline constexpr u8 A51Compute_%s_%s[] =\n{\n",
+                                    (const char*)Shader.Name, Target == 0 ? "SPIRV" : "DXIL" ) );
+            for( s32 Byte = 0; Byte < Output.Code.GetCount(); ++Byte )
+            {
+                if( ( Byte & 15 ) == 0 )
+                {
+                    Header += "    ";
+                }
+
+                Header += xstring( xfs( "0x%02x,%s", static_cast<u8>( Output.Code[Byte] ),
+                                        ( Byte & 15 ) == 15 ? "\n" : " " ) );
+            }
+
+            Header += "\n};\n";
+            Header += xstring( xfs( "#define A51_COMPUTE_%s_%s 1\n", (const char*)Shader.Name,
+                                    Target == 0 ? "SPIRV" : "DXIL" ) );
+        }
+
+        if( !HaveLayout )
+        {
+            return FALSE;
+        }
+
+        Header += xstring( xfs( "\ninline xbool A51Compute_%s_GetDesc( shader_desc& Desc, shader_format Format )\n{\n",
+                                (const char*)Shader.Name ) );
+        Header += "    Desc = shader_desc();\n    Desc.Stage = SHADER_STAGE_COMPUTE;\n    Desc.Format = Format;\n";
+        Header += xstring( xfs( "    Desc.pEntryPoint = \"%s\";\n    Desc.pDebugName = \"%s\";\n",
+                                (const char*)Shader.Entry, (const char*)Shader.Name ) );
+        Header += xstring( xfs( "    Desc.Resources.SamplerCount = %u;\n"
+                                "    Desc.Resources.StorageTextureCount = %u;\n"
+                                "    Desc.Resources.StorageBufferCount = %u;\n"
+                                "    Desc.Resources.UniformBufferCount = %u;\n"
+                                "    Desc.Compute.ReadWriteTextureCount = %u;\n"
+                                "    Desc.Compute.ReadWriteBufferCount = %u;\n"
+                                "    Desc.Compute.ThreadCountX = %u;\n"
+                                "    Desc.Compute.ThreadCountY = %u;\n"
+                                "    Desc.Compute.ThreadCountZ = %u;\n",
+                                Layout.Resources.SamplerCount, Layout.Resources.StorageTextureCount,
+                                Layout.Resources.StorageBufferCount, Layout.Resources.UniformBufferCount,
+                                Layout.Compute.ReadWriteTextureCount, Layout.Compute.ReadWriteBufferCount,
+                                Layout.Compute.ThreadCountX, Layout.Compute.ThreadCountY, Layout.Compute.ThreadCountZ ) );
+        Header += "    switch( Format )\n    {\n";
+
+        for( u32 Target = 0; Target < 2; ++Target )
+        {
+            if( !( Script.TargetMask & ( 1u << Target ) ) )
+            {
+                continue;
+            }
+
+            Header += xstring( xfs( "        case SHADER_FORMAT_%s:\n        {\n"
+                                    "            Desc.Blob = shader_blob( A51Compute_%s_%s, sizeof( A51Compute_%s_%s ) );\n"
+                                    "            return TRUE;\n        }\n",
+                                    Target == 0 ? "SPIRV" : "DXIL", (const char*)Shader.Name,
+                                    Target == 0 ? "SPIRV" : "DXIL", (const char*)Shader.Name,
+                                    Target == 0 ? "SPIRV" : "DXIL" ) );
+        }
+
+        Header += "        default:\n        {\n            return FALSE;\n        }\n    }\n}\n";
+
+        const xstring FileName = JoinPath( JoinPath( JoinPath( Script.OutRoot, Script.Config ), "generated" ),
+                                           xstring( "a51_compute_" ) + Shader.Name + ".hpp" );
+        if( !WriteBinaryFile( FileName, (const char*)Header, Header.GetLength() ) )
+        {
+            return FALSE;
+        }
+    }
 
     return TRUE;
 }
@@ -1045,42 +1071,165 @@ xbool CompileShader( const shader_script&  Script,
 
 xbool ProcessScript( const char* pFileName, const compile_options& Options )
 {
+    const xtick   ProcessStart = x_GetTime();
     shader_script Script;
 
     if( !ParseScript( pFileName, Script ) )
         return FALSE;
 
-    x_printf( "Processing script '%s'\n", pFileName );
-    x_printf( "Config:        %s\n", (const char*)Script.Config );
-    x_printf( "Binding model: %s\n", BindingModelName( Script.BindingModel ) );
-    x_printf( "OutRoot:       %s\n", (const char*)Script.OutRoot );
+    if( !Options.Config.IsEmpty() )
+        Script.Config = Options.Config;
+    BeginShaderConsole( pFileName, Script, Options );
 
-    xbool Success = TRUE;
-    for( s32 i=0; i<Script.Shaders.GetCount(); i++ )
-        Success = CompileShader( Script, Script.Shaders[i], Options ) && Success;
+    if( !ExpandSurfaceRecipes( Script ) )
+        return FALSE;
 
-    return Success;
+    Script.CompilerFingerprint = Options.CompilerFingerprint;
+
+    if( !GenerateShaderContract( Script, FALSE ) )
+        return FALSE;
+
+    if( Options.Verbose )
+        x_printf( "Catalog preparation: %.3f ms\n", x_TicksToMs( x_GetTime() - ProcessStart ) );
+    if( Options.GenerateOnly )
+    {
+        Script.OutRoot = JoinPath( Script.OutRoot, ".preview" );
+
+        if( !GenerateShaderContract( Script, TRUE ) )
+            return FALSE;
+
+        SetShaderConsoleOutput( JoinPath( JoinPath( Script.OutRoot, Script.Config ), "generated" ) );
+        return TRUE;
+    }
+
+    if( !Options.StageFilter.IsEmpty() )
+    {
+        const xstring PublishedRoot = Script.OutRoot;
+        Script.CacheRoot            = JoinPath( PublishedRoot, ".cache" );
+        Script.OutRoot              = JoinPath( PublishedRoot, ".stage_checks" );
+
+        if( !GenerateShaderContract( Script, TRUE ) )
+            return FALSE;
+
+        const xbool   Prefix = Options.StageFilter[Options.StageFilter.GetLength() - 1] == '*';
+        const xstring Filter = Prefix ? Options.StageFilter.Left( Options.StageFilter.GetLength() - 1 ) : Options.StageFilter;
+
+        for( s32 i = Script.Shaders.GetCount() - 1; i >= 0; --i )
+            if( ( Prefix && Script.Shaders[i].Name.GetLength() < Filter.GetLength() ) ||
+                ( Prefix ? Script.Shaders[i].Name.Left( Filter.GetLength() ) : Script.Shaders[i].Name ) != Filter )
+                Script.Shaders.Delete( i );
+        for( s32 i = Script.ComputeShaders.GetCount() - 1; i >= 0; --i )
+        {
+            const xstring& Name = Script.ComputeShaders[i].Name;
+
+            if( ( Prefix && Name.GetLength() < Filter.GetLength() ) ||
+                ( Prefix ? Name.Left( Filter.GetLength() ) : Name ) != Filter )
+            {
+                Script.ComputeShaders.Delete( i );
+            }
+        }
+
+        if( !Script.Shaders.GetCount() && !Script.ComputeShaders.GetCount() )
+        {
+            x_printf( "Error: stage filter matched no shaders\n" );
+            return FALSE;
+        }
+
+        // Partial compilation can populate the content cache, never a runtime kit.
+        return ( !Script.Shaders.GetCount() || CompileCatalog( Script, Options ) ) &&
+               WriteComputeShaderHeaders( Script, Options ) && ShaderSourcesUnchanged( Script );
+    }
+
+    if( !Options.Clean && ShaderKitIsCurrent( Script ) && ShaderSourcesUnchanged( Script ) )
+    {
+        x_printf( "Up to date: compilation and ECS packaging skipped\n" );
+        SetShaderConsoleOutput( JoinPath( Script.OutRoot, Script.Config ) );
+        return TRUE;
+    }
+
+    // A failed stage or VS/PS validation must leave the published kit intact.
+    const xstring   PublishedRoot = Script.OutRoot;
+    const xstring   StagingRoot   = JoinPath( PublishedRoot, xstring( ".staging_" ) + Script.Config );
+    std::error_code Error;
+    std::filesystem::remove_all( (const char*)StagingRoot, Error );
+
+    if( Error )
+    {
+        x_printf( "Error: cannot clear staging directory: %s\n", Error.message().c_str() );
+        return FALSE;
+    }
+
+    Script.CacheRoot = JoinPath( PublishedRoot, ".cache" );
+    Script.OutRoot   = StagingRoot;
+
+    if( !GenerateShaderContract( Script, TRUE ) )
+    {
+        x_printf( "Error: cannot generate staged shader contract\n" );
+        return FALSE;
+    }
+
+    const xtick CompileStart = x_GetTime();
+
+    if( !CompileCatalog( Script, Options ) )
+        return FALSE;
+
+    if( Options.Verbose )
+        x_printf( "Compilation and cache: %.3f ms\n", x_TicksToMs( x_GetTime() - CompileStart ) );
+    const xtick CatalogStart = x_GetTime();
+
+    if( !WriteShaderCatalog( Script ) )
+        return FALSE;
+
+    Script.FinalOutputs.Clear();
+
+    if( Options.Verbose )
+        x_printf( "Catalog serialization: %.3f ms\n", x_TicksToMs( x_GetTime() - CatalogStart ) );
+    const xtick PackStart = x_GetTime();
+
+    if( !WriteShaderPackages( Script, Options ) || !WriteComputeShaderHeaders( Script, Options ) ||
+        !WriteShaderKitManifest( Script ) || !WriteShaderKitState( Script ) || !ShaderSourcesUnchanged( Script ) )
+        return FALSE;
+
+    const xtick   PackEnd   = x_GetTime();
+    const xstring Published = JoinPath( PublishedRoot, Script.Config );
+    const xstring Staged    = JoinPath( StagingRoot, Script.Config );
+    const xstring Backup    = Published + ".previous";
+    std::filesystem::remove_all( (const char*)Backup, Error );
+
+    if( Error )
+        return FALSE;
+
+    const bool HadPublished = std::filesystem::exists( (const char*)Published );
+
+    if( HadPublished )
+        std::filesystem::rename( (const char*)Published, (const char*)Backup, Error );
+    if( Error )
+        return FALSE;
+
+    std::filesystem::rename( (const char*)Staged, (const char*)Published, Error );
+
+    if( Error )
+    {
+        std::error_code Rollback;
+
+        if( HadPublished )
+            std::filesystem::rename( (const char*)Backup, (const char*)Published, Rollback );
+        x_printf( "Error: failed to publish shader kit: %s\n", Error.message().c_str() );
+        return FALSE;
+    }
+
+    std::filesystem::remove_all( (const char*)Backup, Error );
+    std::filesystem::remove_all( (const char*)StagingRoot, Error );
+    SetShaderConsoleOutput( Published );
+
+    if( Options.Verbose )
+        x_printf( "Final ECS kit: packing/writing/verification %.3f s; publication %.3f s\n",
+                  x_TicksToMs( PackEnd - PackStart ) / 1000.0, x_TicksToMs( x_GetTime() - PackEnd ) / 1000.0 );
+    if( Options.Verbose )
+        x_printf( "Total shader build: %.3f ms\n", x_TicksToMs( x_GetTime() - ProcessStart ) );
+    if( Options.Verbose )
+        x_printf( "Published catalog %016llx: %d recipes, %d stages\n", (unsigned long long)Script.CatalogId, Script.Programs.GetCount(), Script.Shaders.GetCount() );
+    return TRUE;
 }
 
 //==============================================================================
-
-int main( int argc, char** argv )
-{
-    compile_options Options;
-
-    x_Init( argc, argv );
-
-    if( !ParseCommandLine( argc, argv, Options ) )
-    {
-        DisplayHelp();
-        x_Kill();
-        return 10;
-    }
-
-    xbool Success = TRUE;
-    for( s32 i=0; i<Options.Scripts.GetCount(); i++ )
-        Success = ProcessScript( (const char*)Options.Scripts[i], Options ) && Success;
-
-    x_Kill();
-    return Success ? 0 : 1;
-}

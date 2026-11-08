@@ -1,0 +1,283 @@
+buffers:
+    buffer GeomLightingData GeomLightingConstants GeomLighting
+    {
+        float4 LightVec 4
+        float4 LightCol 4
+        float4 LightDir 4
+        float4 LightCone 4
+        float4 LightRadial 4
+    }
+    buffer GeomFrameData GeomFrameConstants cbFrameConstants
+    {
+        matrix4 View 1
+        matrix4 Projection 1
+        u32 SurfaceTwoSided 1
+        f32 AlphaRef 1
+        f32 NearZ 1
+        f32 FarZ 1
+        u32 IlluminationUsesDiffuse 1
+        u32 CoverageUsesTextureAlpha 1
+        uint2 SurfacePadding 1
+        float4 UVAnim 1
+        float4 CameraPosition 1
+        float4 EnvParams 1
+        float4 FilterLightColor 1
+        float4 ScreenAOParams 1
+        matrix4 DistortionNormalMatrix 1
+        float4 DistortionParams 1
+    }
+    buffer ProjectionTextureData ProjectionTextureConstants cbProjTextures
+    {
+        matrix4 ProjLightMatrix 4
+        matrix4 ProjShadowMatrix 8
+        float4 ProjLightAtlas 4
+        float4 ProjShadowAtlas 8
+        float4 ProjLightTileBounds 4
+        float4 ProjShadowTileBounds 8
+        float4 ProjLightInfo 4
+        float4 ProjShadowInfo 8
+        u32 ProjLightCount 1
+        u32 ProjShadowCount 1
+        uint2 Padding 1
+        float4 ProjectionAtlasParams 1
+    }
+    buffer RigidInstanceData RigidInstanceData RigidInstances
+    {
+        matrix4 World 1
+        u32 ShaderFlags 1
+        u32 ColorOffset 1
+        u32 LightingIndex 1
+        f32 FadeAlpha 1
+    }
+    buffer SkinInstanceData SkinInstanceData SkinInstances
+    {
+        u32 ShaderFlags 1
+        u32 BoneOffset 1
+        u32 LightingIndex 1
+        u32 Padding0 1
+        f32 FadeAlpha 1
+        f32 Padding 3
+    }
+    buffer SkinBoneMatrix SkinBoneConstants SkinBoneMatrices
+    {
+        matrix4 L2W 1
+    }
+
+buffers:
+    buffer PrimitiveDrawData PrimitiveDrawConstants cbPrimitiveDraw
+    {
+        matrix4 LocalToClip 1
+        matrix4 LocalToView 1
+        uint2 Reserved 1
+        f32 DistortionScale 1
+        f32 Padding 1
+        float4 PassDimensions 1
+    }
+
+interfaces:
+    interface A51_SURFACE_PIXEL_INPUT
+    {
+        float4 Pos SV_POSITION smooth always
+        float2 UV TEXCOORD0 smooth "A51_SURFACE_INTERFACE & 1"
+        float4 Color COLOR0 smooth "A51_SURFACE_INTERFACE & 2"
+        float3 WorldPos TEXCOORD1 smooth "A51_SURFACE_INTERFACE & 4"
+        float3 Normal TEXCOORD2 smooth "A51_SURFACE_INTERFACE & 8"
+        float3 ViewVector TEXCOORD3 smooth "A51_SURFACE_INTERFACE & 16"
+        float ViewDepth TEXCOORD4 smooth "A51_SURFACE_INTERFACE & 32"
+        uint DrawFlags TEXCOORD5 flat "A51_SURFACE_INTERFACE & 64"
+        uint LightingIndex TEXCOORD6 flat "A51_SURFACE_INTERFACE & 128"
+        float FadeAlpha TEXCOORD7 flat "A51_SURFACE_INTERFACE & 256"
+    }
+
+buffers:
+    buffer DecalFrameData DecalFrameConstants cbDecalFrame
+    {
+        matrix4 WorldToClip 1
+        matrix4 WorldToView 1
+        float4 CameraPosition 1
+        float4 EnvParams 1
+    }
+interfaces:
+    interface A51_DECAL_PIXEL_INPUT
+    {
+        float4 Position SV_POSITION smooth always
+        float4 Color COLOR0 smooth always
+        float2 UV TEXCOORD0 smooth always
+        float3 WorldPos TEXCOORD1 smooth "A51_DECAL_BLEND == 0 || A51_DECAL_BLEND == 2"
+        float3 Normal TEXCOORD2 smooth "A51_DECAL_BLEND == 0 || A51_DECAL_BLEND == 2"
+        float3 ViewVector TEXCOORD3 smooth A51_DECAL_ENV
+        float ViewDepth TEXCOORD4 smooth A51_DECAL_FOG
+        uint LightingIndex TEXCOORD5 flat "A51_DECAL_BLEND == 0 || A51_DECAL_BLEND == 2"
+    }
+
+buffers:
+    buffer DynamicDrawData DynamicDrawConstants cbDynamicGeometry
+    {
+        u32 LightingIndex 1
+        u32 ShaderFlags 1
+        uint2 Reserved 1
+    }
+
+buffers:
+    buffer ShadowCastData cb_shadow_cast cbShadowCast
+    {
+        matrix4 ShadowViewProjection 1
+        float4 ShadowOrigin 1
+        u32 CoverageUsesTextureAlpha 1
+        u32 Reserved 1
+        uint2 Padding 1
+    }
+    buffer ShadowAlphaData cb_shadow_alpha cbShadowAlpha
+    {
+        f32 AlphaRef 1
+        f32 Padding 1
+        float2_values UVOffset 1
+    }
+    buffer ShadowFilterData cb_shadow_filter cbShadowFilter
+    {
+        float4 TextureParams 1
+        float4 SourceClampRect 1
+        float4 FilterParams 1
+        float4 DepthParams 1
+        float4 SourceProjectionParams 1
+    }
+interfaces:
+    interface A51_SHADOW_PIXEL_INPUT
+    {
+        float4 Position SV_POSITION smooth always
+        float2 UV TEXCOORD0 smooth A51_SHADOW_MASKED
+    }
+
+buffers:
+    buffer FogData RenderFogGpuConstants cbFogConstants
+    {
+        float4 "FogColor=Color" 1
+        float4 "FogDepth=Depth" 1
+        float4 "FogPolynomial=Polynomial" 1
+        float4 "FogPrepared=Prepared" 1
+        u32 "SceneFogMode=SceneMode" 1
+        u32 "BloomFogMode=BloomMode" 1
+        u32 XboxFogEnabled 1
+        u32 "FogPadding=Padding" 1
+    }
+    buffer UIDrawData UIDrawConstants cbUIDraw
+    {
+        float2_values LogicalOrigin 1
+        float2_values InverseLogicalSize 1
+        u32 Coverage 1
+        u32 FontPadding0 1
+        u32 FontPadding1 1
+        u32 FontPadding2 1
+    }
+    buffer CompositeData composite_params CompositeParams
+    {
+        float4 BlendColor 1
+        s32 BlendMode 1
+        f32 Padding0 1
+        f32 Padding1 1
+        f32 Padding2 1
+    }
+    buffer PostFilterData PostFilterConstants FilterParams
+    {
+        float4 "FilterParams0=Params0" 1
+        float4 "FilterParams1=Params1" 1
+        float4 "FilterParams2=Params2" 1
+        float4 "FilterParams3=Params3" 1
+        float4 "FilterParams4=Params4" 1
+        float4 "FilterParams5=Params5" 1
+        float4 "FilterParams6=Params6" 1
+        float4 ScreenWarps 8
+        float4 WarpSpheres 8
+        float4 WarpSphereConstants 2
+    }
+    buffer PostGlowData PostGlowConstants GlowParams
+    {
+        float4 "GlowParams0=Params0" 1
+        float4 "GlowParams1=Params1" 1
+    }
+
+buffers:
+    buffer GeomProjectionLightingData GeomProjectionLightingConstants GeomProjectionLighting
+    {
+        float4 LightCookieU 4
+        float4 LightCookieV 4
+        float4 LightCookieAtlas 4
+        float4 LightCookieTileBounds 4
+        float4 LightCookieInfo 4
+        uint4 LightShadowIndex 1
+    }
+    buffer GeomAmbientData GeomAmbientConstants GeomAmbient
+    {
+        float4 LightAmbCol 1
+        u32 LightCount 1
+        u32 Padding0 1
+        u32 Padding1 1
+        u32 Padding2 1
+    }
+
+resources:
+    resource CompositeParams
+    resource CompositeSource
+    resource GlowParams
+    resource GlowSource
+    resource GlowAux
+    resource FilterParams
+    resource FilterSource0
+    resource FilterSource1
+    resource FilterRamp
+    resource WarpMask1
+    resource cbFogConstants
+    resource FogPalette
+    resource SceneDepthSource
+    resource txScreenAO
+    resource SceneColorSource
+    resource SceneColorGradeParams
+    resource SceneRegionParams
+    resource PostSource
+    resource SceneColor
+    resource cbFrameConstants
+    resource cbProjTextures
+    resource cbDynamicGeometry
+    resource RigidInstances
+    resource RigidVertexColors
+    resource SkinInstances
+    resource SkinBoneMatrices
+    resource SkinBoneRemaps
+    resource FaceShadowMatrices
+    resource ShadowMapData
+    resource GeomLighting
+    resource GeomProjectionLighting
+    resource GeomAmbient
+    resource txDiffuse
+    resource txDetail
+    resource txEnvironment
+    resource txEnvironmentCube
+    resource txFaceShadowAtlas
+    resource txFaceShadowDepthAtlas
+    resource txDistortionScene
+    resource txProjectionAtlas
+    resource txDamage
+    resource cbPrimitiveDraw
+    resource txPrimitive
+    resource txPrimitiveScene
+    resource cbDecalFrame
+    resource txDecal
+    resource cbShadowCast
+    resource ShadowRigidWorld
+    resource ShadowSkinBones
+    resource cbShadowAlpha
+    resource cbShadowFilter
+    resource txShadowDepth
+    resource txShadowMoments
+    resource cbUIDraw
+    resource txUI
+
+buffers:
+    buffer SceneRegionCopyData SceneRegionCopyConstants SceneRegionParams
+    {
+        float4 SourceUV 1
+    }
+    buffer SceneColorGradeData SceneColorGradeConstants SceneColorGradeParams
+    {
+        float4 Adjustments 1
+    }

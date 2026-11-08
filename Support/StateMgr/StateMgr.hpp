@@ -22,15 +22,13 @@
 // 5. Fill out the body of the new functions as required
 //
 //==============================================================================
-
-//==============================================================================
 //  Includes
 //==============================================================================
 #include "Entropy.hpp"
 #include "UI/ui_dialog.hpp"
 #include "Dialogs/dlg_PopUp.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "Configuration/GameConfig.hpp"
 #include "Inventory/Inventory2.hpp"
 #include "CheckPointMgr/CheckPointMgr.hpp"
@@ -41,7 +39,6 @@
 //  Defines
 //==============================================================================
 
-//#define LAN_PARTY_BUILD  1
 //#define OPM_REVIEW_BUILD  1
 
 enum sm_states
@@ -59,7 +56,9 @@ enum sm_states
     SM_SETTINGS_AUDIO,
     SM_SETTINGS_HEADSET,
     SM_SETTINGS_GRAPHICS,
+    SM_SETTINGS_GRAPHICS_ADVANCED,
     SM_SETTINGS_DISPLAY,
+    SM_SETTINGS_UI,
     SM_SETTINGS_LANGUAGE,
     SM_SETTINGS_SAVE_DATA_SELECT,
     SM_MANAGE_PROFILES,
@@ -99,27 +98,19 @@ enum sm_states
     SM_PROFILE_CONTROLS,
     SM_PROFILE_AVATAR,
     SM_PROFILE_MOUSE_CONTROLS,
+    SM_PROFILE_KEYBOARD_BINDINGS,
     SM_PROFILE_GAMEPAD_CONTROLS,
 
-    SM_ONLINE_SILENT_LOGON,
     SM_ONLINE_CONNECT,
     SM_NETWORK_DISCONNECT,
-    SM_ONLINE_AUTHENTICATE,
+    SM_ONLINE_IDENTITY,
     SM_ONLINE_PROFILE_SELECT,
     SM_ONLINE_PROFILE_OPTIONS,
     SM_ONLINE_PROFILE_CONTROLS,
     SM_ONLINE_PROFILE_AVATAR,
     SM_ONLINE_MAIN_MENU,
-    SM_ONLINE_QUICKMATCH,
-    SM_ONLINE_OPTIMATCH,
-    SM_ONLINE_JOIN_FILTER,
     SM_ONLINE_JOIN_MENU,
     SM_ONLINE_JOIN_SAVE_SETTINGS,
-    SM_SERVER_PLAYERS_MENU,
-    SM_ONLINE_PLAYERS_MENU,
-    SM_ONLINE_FEEDBACK_MENU,
-    SM_ONLINE_FEEDBACK_MENU_FRIEND,
-    SM_ONLINE_FRIENDS_MENU,
     SM_ONLINE_STATS,
     SM_ONLINE_EDIT_PROFILE,
     SM_ONLINE_EDIT_CONTROLS,
@@ -129,8 +120,6 @@ enum sm_states
     SM_ONLINE_LOGIN,    
 
     SM_ONLINE_HOST_MENU,
-    SM_ONLINE_HOST_MENU_OPTIONS,
-    SM_HOST_LEVEL_SELECT,
     SM_HOST_SAVE_SETTINGS,
 
 #ifndef CONFIG_RETAIL
@@ -159,7 +148,9 @@ enum sm_states
     SM_PAUSE_AUDIO,
     SM_PAUSE_HEADSET,
     SM_PAUSE_GRAPHICS,
+    SM_PAUSE_GRAPHICS_ADVANCED,
     SM_PAUSE_DISPLAY,
+    SM_PAUSE_UI,
     SM_PAUSE_LANGUAGE,
     SM_PAUSE_SETTINGS_SELECT,
     SM_PAUSE_PROFILE_SAVE_SELECT,
@@ -172,7 +163,9 @@ enum sm_states
     SM_PAUSE_MP_AUDIO,
     SM_PAUSE_MP_HEADSET,
     SM_PAUSE_MP_GRAPHICS,
+    SM_PAUSE_MP_GRAPHICS_ADVANCED,
     SM_PAUSE_MP_DISPLAY,
+    SM_PAUSE_MP_UI,
     SM_PAUSE_MP_LANGUAGE,
     SM_PAUSE_MP_SETTINGS_SELECT,
     SM_PAUSE_MP_PROFILE_SAVE_SELECT,
@@ -181,10 +174,7 @@ enum sm_states
     SM_PAUSE_ONLINE,
     SM_PAUSE_ONLINE_VOTE_MAP,
     SM_PAUSE_ONLINE_VOTE_KICK,
-    SM_PAUSE_ONLINE_FRIENDS,
     SM_PAUSE_ONLINE_PLAYERS,
-    SM_PAUSE_ONLINE_FEEDBACK,
-    SM_PAUSE_ONLINE_FEEDBACK_FRIEND,
     SM_PAUSE_ONLINE_SERVER_CONFIG,
     SM_PAUSE_ONLINE_OPTIONS,
     SM_PAUSE_ONLINE_CONTROLS,
@@ -192,7 +182,9 @@ enum sm_states
     SM_PAUSE_ONLINE_AUDIO,
     SM_PAUSE_ONLINE_HEADSET,
     SM_PAUSE_ONLINE_GRAPHICS,
+    SM_PAUSE_ONLINE_GRAPHICS_ADVANCED,
     SM_PAUSE_ONLINE_DISPLAY,
+    SM_PAUSE_ONLINE_UI,
     SM_PAUSE_ONLINE_LANGUAGE,
     SM_PAUSE_ONLINE_SAVE_SELECT,
     SM_PAUSE_ONLINE_SAVE_DATA_RESELECT,
@@ -201,9 +193,7 @@ enum sm_states
     SM_PAUSE_ONLINE_KICK_PLAYER,
 
     SM_PAUSE_ONLINE_TEAM_CHANGE,
-    SM_PAUSE_ONLINE_RECONFIG_ONE,
-    SM_PAUSE_ONLINE_RECONFIG_TWO,
-    SM_PAUSE_ONLINE_RECONFIG_MAP,
+    SM_PAUSE_ONLINE_RECONFIG,
     SM_PAUSE_ONLINE_SAVE_SETTINGS,
 
     SM_END_PAUSE,
@@ -227,7 +217,6 @@ enum sm_states
     SM_GAME_EXIT_SETTINGS_SELECT,
     SM_GAME_EXIT_REDIRECT,
     SM_GAME_OVER,
-    SM_FOLLOW_BUDDY,
 
     SM_NUM_STATES
 };
@@ -301,11 +290,7 @@ enum sm_system_error
 // from ReportError
 enum login_source
 {
-    LOGIN_FROM_FRIENDS,
-    LOGIN_FROM_PLAYERS,
     LOGIN_FROM_JOIN_MENU,
-    LOGIN_FROM_INVITE,
-    LOGIN_FOLLOW_FRIEND,
     LOGIN_FROM_MAIN,
 };
 
@@ -341,6 +326,7 @@ public:
     void                    Update                          ( f32 DeltaTime );
     void                    UpdateLevelLoading              ( f32 DeltaTime );
     void                    Render                          ( void );
+    void                    RenderLoading                   ( void );
     void                    DummyScreen                     ( const char* message, xbool canSkip, s32 waitTime);  
 
     void                    SetTimeoutTime                  ( f32 Time )                            { m_TimeoutTime = Time; }
@@ -451,12 +437,14 @@ public:
 
     void                    StartLogin                      ( const server_info* pInfo, login_source LoginSource );
 
-    const char*             GetFeedbackPlayer               ( u64& Identifier );
-    void                    SetFeedbackPlayer               ( const char* pName, u64 Identifier );
     xbool                   IsShowingScores                 ( void )                                { return m_bShowingScores;      }
     void                    SetShowingScores                ( xbool Flag )                          { m_bShowingScores = Flag;      }
 
     void                    SilentSaveProfile               ( void );
+    void                    SaveMatchStats                  ( const player_stats& Stats );
+    void                    SaveMatchStatsReturn            ( void );
+    void                    SaveMultiplayerPreferences      ( void );
+    void                    SaveMultiplayerPreferencesReturn( void );
     xbool                   IsAutosaveInProgress            ( void )                                { return m_bAutosaveInProgress;     }
     xbool                   GetAutosaveProfile              ( void )                                { return m_bAutosaveProfile;        }
     void                    SetAutosaveProfile              ( xbool IsEnabled )                     { m_bAutosaveProfile = IsEnabled;   }
@@ -465,7 +453,6 @@ public:
     global_settings&        GetActiveSettings               ( void )                                { return m_ActiveSettings;          }
     void                    InitPendingSettings             ( void );                                
     void                    ActivatePendingSettings         ( xbool MarkDirty = FALSE );                                
-    xbool                   IsFollowingBuddy                ( void )                                { return m_bFollowBuddy;            }
 
 private:
 
@@ -515,9 +502,17 @@ private:
     void                    UpdateSettingsGraphics          ( void );
     void                    ExitSettingsGraphics            ( void );
 
+    void                    EnterSettingsGraphicsAdvanced   ( void );
+    void                    UpdateSettingsGraphicsAdvanced  ( void );
+    void                    ExitSettingsGraphicsAdvanced    ( void );
+
     void                    EnterSettingsDisplay            ( void );
     void                    UpdateSettingsDisplay           ( void );
     void                    ExitSettingsDisplay             ( void );
+
+    void                    EnterSettingsUI                 ( void );
+    void                    UpdateSettingsUI                ( void );
+    void                    ExitSettingsUI                  ( void );
 
     void                    EnterSettingsLanguage           ( void );
     void                    UpdateSettingsLanguage          ( void );
@@ -616,6 +611,7 @@ private:
     void                    ExitProfileControls             ( void );
 
     void                    EnterProfileMouseControls       ( void );
+    void                    EnterProfileKeyboardBindings    ( void );
     void                    EnterProfileGamepadControls     ( void );
     void                    UpdateProfileDeviceControls     ( void );
     void                    UpdateProfileControlsMenu       ( sm_states BackState, xbool CheckDisconnect );
@@ -660,7 +656,6 @@ private:
     void                    UpdateSaveDataReselectMP         ( void );
     void                    ExitSaveDataReselectMP           ( void );
 
-    void                    EnterOnlineSilentLogin          ( void );
 
     void                    EnterOnlineConnect              ( void );
     void                    UpdateOnlineConnect             ( void );
@@ -694,9 +689,9 @@ private:
     void                    UpdateOnlineSaveDataReselect     ( void );
     void                    ExitOnlineSaveDataReselect       ( void );
 
-    void                    EnterOnlineAuthenticate         ( void );
-    void                    UpdateOnlineAuthenticate        ( void );
-    void                    ExitOnlineAuthenticate          ( void );
+    void                    EnterOnlineIdentity         ( void );
+    void                    UpdateOnlineIdentity        ( void );
+    void                    ExitOnlineIdentity          ( void );
 
     void                    EnterOnlineMain                 ( void );
     void                    UpdateOnlineMain                ( void );
@@ -706,25 +701,11 @@ private:
     void                    UpdateOnlineHost                ( void );
     void                    ExitOnlineHost                  ( void );
 
-    void                    EnterOnlineHostOptions          ( void );
-    void                    UpdateOnlineHostOptions         ( void );
-    void                    ExitOnlineHostOptions           ( void );
 
     void                    EnterHostSaveSettings           ( void );
     void                    UpdateHostSaveSettings          ( void );
     void                    ExitHostSaveSettings            ( void );
 
-    void                    EnterOnlineQuickMatch           ( void );
-    void                    UpdateOnlineQuickMatch          ( void );
-    void                    ExitOnlineQuickMatch            ( void );
-
-    void                    EnterOnlineOptiMatch            ( void );
-    void                    UpdateOnlineOptiMatch           ( void );
-    void                    ExitOnlineOptiMatch             ( void );
-
-    void                    EnterOnlineJoinFilter           ( void );
-    void                    UpdateOnlineJoinFilter          ( void );
-    void                    ExitOnlineJoinFilter            ( void );
 
     void                    EnterOnlineJoin                 ( void );
     void                    UpdateOnlineJoin                ( void );
@@ -734,25 +715,7 @@ private:
     void                    UpdateOnlineJoinSaveSettings    ( void );
     void                    ExitOnlineJoinSaveSettings      ( void );
 
-    void                    EnterServerPlayers              ( void );
-    void                    UpdateServerPlayers             ( void );
-    void                    ExitServerPlayers               ( void );
 
-    void                    EnterOnlinePlayers              ( void );
-    void                    UpdateOnlinePlayers             ( void );
-    void                    ExitOnlinePlayers               ( void );
-
-    void                    EnterOnlineFeedback             ( void );
-    void                    UpdateOnlineFeedback            ( void );
-    void                    ExitOnlineFeedback              ( void );
-
-    void                    EnterOnlineFeedbackFriend       ( void );
-    void                    UpdateOnlineFeedbackFriend      ( void );
-    void                    ExitOnlineFeedbackFriend        ( void );
-
-    void                    EnterOnlineFriends              ( void );
-    void                    UpdateOnlineFriends             ( void );
-    void                    ExitOnlineFriends               ( void );
 
     void                    EnterOnlineStats                ( void );
     void                    UpdateOnlineStats               ( void );
@@ -770,9 +733,6 @@ private:
     void                    UpdateOnlineEditAvatar          ( void );
     void                    ExitOnlineEditAvatar            ( void );
 
-    void                    EnterHostLevelSelect            ( void );
-    void                    UpdateHostLevelSelect           ( void );
-    void                    ExitHostLevelSelect             ( void );
 
     void                    EnterLevelSelect                ( void );
     void                    UpdateLevelSelect               ( void );
@@ -829,9 +789,17 @@ private:
     void                    UpdatePauseGraphics             ( void );
     void                    ExitPauseGraphics               ( void );
 
+    void                    EnterPauseGraphicsAdvanced      ( void );
+    void                    UpdatePauseGraphicsAdvanced     ( void );
+    void                    ExitPauseGraphicsAdvanced       ( void );
+
     void                    EnterPauseDisplay               ( void );
     void                    UpdatePauseDisplay              ( void );
     void                    ExitPauseDisplay                ( void );
+
+    void                    EnterPauseUI                    ( void );
+    void                    UpdatePauseUI                   ( void );
+    void                    ExitPauseUI                     ( void );
 
     void                    EnterPauseLanguage              ( void );
     void                    UpdatePauseLanguage             ( void );
@@ -869,9 +837,17 @@ private:
     void                    UpdatePauseMPGraphics           ( void );
     void                    ExitPauseMPGraphics             ( void );
 
+    void                    EnterPauseMPGraphicsAdvanced    ( void );
+    void                    UpdatePauseMPGraphicsAdvanced   ( void );
+    void                    ExitPauseMPGraphicsAdvanced     ( void );
+
     void                    EnterPauseMPDisplay             ( void );
     void                    UpdatePauseMPDisplay            ( void );
     void                    ExitPauseMPDisplay              ( void );
+
+    void                    EnterPauseMPUI                  ( void );
+    void                    UpdatePauseMPUI                 ( void );
+    void                    ExitPauseMPUI                   ( void );
 
     void                    EnterPauseMPLanguage            ( void );
     void                    UpdatePauseMPLanguage           ( void );
@@ -909,17 +885,6 @@ private:
     void                    UpdatePauseOnlineVoteKick       ( void );
     void                    ExitPauseOnlineVoteKick         ( void );
 
-    void                    EnterPauseOnlineFriends         ( void );
-    void                    UpdatePauseOnlineFriends        ( void );
-    void                    ExitPauseOnlineFriends          ( void );
-
-    void                    EnterPauseOnlineFeedback        ( void );
-    void                    UpdatePauseOnlineFeedback       ( void );
-    void                    ExitPauseOnlineFeedback         ( void );
-
-    void                    EnterPauseOnlineFeedbackFriend  ( void );
-    void                    UpdatePauseOnlineFeedbackFriend ( void );
-    void                    ExitPauseOnlineFeedbackFriend   ( void );
 
     void                    EnterPauseOnlinePlayers         ( void );
     void                    UpdatePauseOnlinePlayers        ( void );
@@ -949,9 +914,17 @@ private:
     void                    UpdatePauseOnlineGraphics       ( void );
     void                    ExitPauseOnlineGraphics         ( void );
 
+    void                    EnterPauseOnlineGraphicsAdvanced ( void );
+    void                    UpdatePauseOnlineGraphicsAdvanced( void );
+    void                    ExitPauseOnlineGraphicsAdvanced  ( void );
+
     void                    EnterPauseOnlineDisplay         ( void );
     void                    UpdatePauseOnlineDisplay        ( void );
     void                    ExitPauseOnlineDisplay          ( void );
+
+    void                    EnterPauseOnlineUI              ( void );
+    void                    UpdatePauseOnlineUI             ( void );
+    void                    ExitPauseOnlineUI               ( void );
 
     void                    EnterPauseOnlineLanguage        ( void );
     void                    UpdatePauseOnlineLanguage       ( void );
@@ -981,17 +954,11 @@ private:
     void                    UpdatePauseOnlineTeamChange     ( void );
     void                    ExitPauseOnlineTeamChange       ( void );
 
-    void                    EnterPauseOnlineReconfigOne     ( void );
-    void                    UpdatePauseOnlineReconfigOne    ( void );
-    void                    ExitPauseOnlineReconfigOne      ( void );
+    void                    EnterPauseOnlineReconfig        ( void );
+    void                    UpdatePauseOnlineReconfig       ( void );
+    void                    ExitPauseOnlineReconfig         ( void );
 
-    void                    EnterPauseOnlineReconfigTwo     ( void );
-    void                    UpdatePauseOnlineReconfigTwo    ( void );
-    void                    ExitPauseOnlineReconfigTwo      ( void );
 
-    void                    EnterPauseOnlineReconfigMap     ( void );
-    void                    UpdatePauseOnlineReconfigMap    ( void );
-    void                    ExitPauseOnlineReconfigMap      ( void );
 
     void                    EnterPauseOnlineSaveSettings    ( void );
     void                    UpdatePauseOnlineSaveSettings   ( void );
@@ -1109,9 +1076,6 @@ private:
     void                    UpdateGameOver                  ( void );
     void                    ExitGameOver                    ( void );
 
-    void                    EnterFollowBuddy                ( void );
-    void                    UpdateFollowBuddy               ( void );
-    void                    ExitFollowBuddy                 ( void );
 
     void                    BeginNetworkDisconnect          ( sm_states Destination );
     // This should be used at the start of every online state update function. This will make
@@ -1202,8 +1166,6 @@ private:
     xbool                   m_bUseDefault;                  // use the default map cycle
 
     // feedback player name 
-    char                    m_FeedbackName[SM_PROFILE_NAME_LENGTH];                        
-    u64                     m_FeedbackIdentifier;
 
     // leaderboard status
     u32                     m_LeaderboardID;
@@ -1221,7 +1183,6 @@ private:
     xbool                   m_bCreatingProfile;                     // we are creating a new profile
     xbool                   m_bAutosaveProfile;                     // Autosave profile is enabled.
     xbool                   m_bAutosaveInProgress;                  // Autosave is currently in progress
-    xbool                   m_bFollowBuddy;                         // Following your buddy in to a game, SessionID in g_Pending
     login_source            m_LoginFailureDestination;
     xbool                   m_bSilentSigninStarted;
 

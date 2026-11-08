@@ -8,7 +8,7 @@
 #include "GameLib/RigidGeomCollision.hpp"
 #include "Render/Render.hpp"
 #include "EventMgr/EventMgr.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "AudioMgr/AudioMgr.hpp"
 #include "Dictionary/Global_Dictionary.hpp"
 #include "GameLib/RenderContext.hpp"

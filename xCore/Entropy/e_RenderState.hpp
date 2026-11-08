@@ -82,6 +82,14 @@ enum rstate_blend_preset
     RSTATE_BLEND_PRESET_MULTIPLY,
     RSTATE_BLEND_PRESET_INTENSITY,
     RSTATE_BLEND_PRESET_COLOR_WRITE_DISABLE,
+    RSTATE_BLEND_PRESET_NONE_RGB,
+    RSTATE_BLEND_PRESET_ALPHA_RGB,
+    RSTATE_BLEND_PRESET_PREMULT_ALPHA_RGB,
+    RSTATE_BLEND_PRESET_PREMULT_ADD_RGB,
+    RSTATE_BLEND_PRESET_PREMULT_SUB_RGB,
+    RSTATE_BLEND_PRESET_ADD_RGB,
+    RSTATE_BLEND_PRESET_ALPHA_WRITE_ONLY,
+    RSTATE_BLEND_PRESET_MAX_RGB,
     RSTATE_BLEND_PRESET_COUNT
 };
 
@@ -232,7 +240,7 @@ enum rstate_raster_preset
     RSTATE_RASTER_PRESET_WIRE,
     RSTATE_RASTER_PRESET_SOLID_NO_CULL,
     RSTATE_RASTER_PRESET_WIRE_NO_CULL,
-    RSTATE_RASTER_PRESET_COLLISION_BIASED,
+    RSTATE_RASTER_PRESET_DEPTH_BIASED,
     RSTATE_RASTER_PRESET_COUNT
 };
 
@@ -273,7 +281,20 @@ enum rstate_filter
     RSTATE_FILTER_ANISOTROPIC,
     RSTATE_FILTER_COMPARISON_POINT,
     RSTATE_FILTER_COMPARISON_LINEAR,
-    RSTATE_FILTER_COMPARISON_ANISOTROPIC
+    RSTATE_FILTER_COMPARISON_ANISOTROPIC,
+    RSTATE_FILTER_BILINEAR
+};
+
+//------------------------------------------------------------------------------
+
+enum rstate_texture_filtering
+{
+    RSTATE_TEXTURE_FILTER_BILINEAR = 0,
+    RSTATE_TEXTURE_FILTER_TRILINEAR,
+    RSTATE_TEXTURE_FILTER_ANISOTROPIC_2,
+    RSTATE_TEXTURE_FILTER_ANISOTROPIC_4,
+    RSTATE_TEXTURE_FILTER_ANISOTROPIC_8,
+    RSTATE_TEXTURE_FILTER_ANISOTROPIC_16
 };
 
 //------------------------------------------------------------------------------
@@ -298,6 +319,8 @@ enum rstate_sampler_preset
     RSTATE_SAMPLER_PRESET_POINT_CLAMP,
     RSTATE_SAMPLER_PRESET_ANISOTROPIC_WRAP,
     RSTATE_SAMPLER_PRESET_ANISOTROPIC_CLAMP,
+    RSTATE_SAMPLER_PRESET_MATERIAL_WRAP,
+    RSTATE_SAMPLER_PRESET_MATERIAL_CLAMP,
     RSTATE_SAMPLER_PRESET_COUNT
 };
 
@@ -315,6 +338,7 @@ struct rstate_sampler_desc
     f32                    MinLOD;
     f32                    MaxLOD;
     const char*            pDebugName;
+    xbool                  UseTextureFiltering;
 
     rstate_sampler_desc( void ) :
         Filter        ( RSTATE_FILTER_LINEAR ),
@@ -326,7 +350,8 @@ struct rstate_sampler_desc
         ComparisonFunc( RSTATE_COMPARE_ALWAYS ),
         MinLOD        ( 0.0f ),
         MaxLOD        ( 3.402823466e+38F ),
-        pDebugName    ( NULL )
+        pDebugName    ( NULL ),
+        UseTextureFiltering( FALSE )
     {
     }
 };
@@ -404,6 +429,29 @@ struct render_pipeline
     operator xbool( void ) const { return pBackend != NULL; }
 };
 
+//------------------------------------------------------------------------------
+
+struct render_pipeline_create_backend;
+
+//------------------------------------------------------------------------------
+
+struct render_pipeline_create_request
+{
+    render_pipeline_create_backend* pBackend;
+
+    render_pipeline_create_request( void ) : pBackend( NULL ) {}
+};
+
+//------------------------------------------------------------------------------
+
+enum render_pipeline_create_status
+{
+    RENDER_PIPELINE_CREATE_PENDING,
+    RENDER_PIPELINE_CREATE_READY,
+    RENDER_PIPELINE_CREATE_FAILED,
+    RENDER_PIPELINE_CREATE_CANCELLED
+};
+
 //==============================================================================
 //  PRESET DESCRIPTORS
 //==============================================================================
@@ -415,6 +463,8 @@ const rstate_blend_desc&    rstate_GetBlendDesc       ( rstate_blend_preset   Pr
 const rstate_depth_desc&    rstate_GetDepthDesc       ( rstate_depth_preset   Preset );
 const rstate_raster_desc&   rstate_GetRasterDesc      ( rstate_raster_preset  Preset );
 const rstate_sampler_desc&  rstate_GetSamplerDesc     ( rstate_sampler_preset Preset );
+xbool                      rstate_SetTextureFiltering( rstate_texture_filtering Filtering );
+rstate_texture_filtering   rstate_GetTextureFiltering( void );
 
 //==============================================================================
 //  PIPELINE AND SAMPLER OBJECTS
@@ -423,6 +473,17 @@ const rstate_sampler_desc&  rstate_GetSamplerDesc     ( rstate_sampler_preset Pr
 xbool                       render_CreatePipeline     ( render_pipeline& Pipeline,
                                                         const render_pipeline_desc& Desc );
 void                        render_DestroyPipeline    ( render_pipeline& Pipeline );
+xbool                       render_BeginPipelineCreate( render_pipeline_create_request& Request,
+                                                        const render_pipeline_desc& Desc );
+render_pipeline_create_status render_PollPipelineCreate( render_pipeline_create_request& Request,
+                                                         render_pipeline* pPipeline );
+xbool                       render_FinishPipelineCreate( render_pipeline_create_request& Request,
+                                                          render_pipeline& Pipeline );
+void                        render_CancelPipelineCreate( render_pipeline_create_request& Request );
+void                        render_ReleasePipelineCreate( render_pipeline_create_request& Request );
+void                        render_TrimPipelineCache  ( void );
+u64                         render_GetPipelineSerial  ( const render_pipeline& Pipeline );
+u32                         render_GetPipelineCacheCount( void );
 xbool                       render_BindPipeline       ( const render_pipeline& Pipeline );
 
 xbool                       rstate_CreateSampler      ( rstate_sampler& Sampler,

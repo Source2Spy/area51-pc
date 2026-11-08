@@ -21,43 +21,45 @@
 //  FUNCTIONS
 //==============================================================================
 
-float GeomComputeLocalLightShadowVisibility( GEOM_PIXEL_INPUT input,
-                                             uint lightIndex,
-                                             float3 geometricNormal )
+float GeomComputeLocalLightShadowVisibility( GEOM_PIXEL_INPUT Input,
+                                             uint LightIndex,
+                                             float3 GeometricNormal,
+                                             float3 PointToLightDir,
+                                             float LightDistance )
 {
-    if( ( GeomGetMaterialFlags( input ) & INSTANCE_FLAG_RECEIVE_LOCAL_SHADOW ) == 0u )
+    if( ( GeomGetMaterialFlags( Input ) & GEOM_INST_FLAG_RECEIVE_LOCAL_SHADOW ) == 0u )
     {
         return 1.0f;
     }
 
-    const float4 lightDir = GeomGetLightDir( input, lightIndex );
-    if( GeomIsCharFillLight( lightDir ) )
+    const float4 LightDir = GeomGetLightDir( Input, LightIndex );
+    if( GeomIsCharFillLight( LightDir ) )
     {
         return 1.0f;
     }
 
-    const uint shadowIndex = GeomGetLightShadowIndex( input, lightIndex );
-    if( shadowIndex == 0xFFFFFFFFu )
+    const uint ShadowIndex = GeomGetLightShadowIndex( Input, LightIndex );
+    if( ShadowIndex == 0xFFFFFFFFu )
     {
         return 1.0f;
     }
 
-    if( lightDir.w >= 0.5f )
+    if( LightDir.w >= 0.5f )
     {
-        if( ( shadowIndex >= GetFaceShadowCount() ) || FaceShadowIsPointFace( shadowIndex ) )
+        if( ( ShadowIndex >= GetFaceShadowCount() ) || FaceShadowIsPointFace( ShadowIndex ) )
         {
             return 1.0f;
         }
 
-        return SampleFaceShadowSource( shadowIndex, input.WorldPos, input.Normal, geometricNormal );
+        return SampleFaceShadowSource( ShadowIndex, Input.WorldPos, GeometricNormal, PointToLightDir, LightDistance );
     }
 
-    if( shadowIndex >= GetPointShadowLightCount() )
+    if( ShadowIndex >= GetPointShadowLightCount() )
     {
         return 1.0f;
     }
 
-    return SamplePointShadowLight( shadowIndex, input.WorldPos, input.Normal, geometricNormal );
+    return SamplePointShadowLight( ShadowIndex, Input.WorldPos, GeometricNormal, PointToLightDir, LightDistance );
 }
 
 //==============================================================================

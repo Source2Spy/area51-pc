@@ -87,27 +87,27 @@ void hud_ammo::Init( void )
     // Load Art
     if( m_MultiPlayerHud )
     {
-        m_AmmoBoxBMP.SetName(PRELOAD_FILE("HUD_Campaign_ammobox_Q.xbmp"));     // frame
-        m_AmmoBoxBMP_Clip.SetName(PRELOAD_FILE("HUD_Campaign_ammobox_000_Q.xbmp"));
-        m_AmmoBoxBMP_Resv.SetName(PRELOAD_FILE("HUD_Campaign_ammobox_002_Q.xbmp"));
-        m_AmmoBoxBMP_Nads.SetName(PRELOAD_FILE("HUD_Campaign_ammobox_001_Q.xbmp"));
+        m_AmmoBoxBMP.SetName(PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_AMMOBOX_Q.XBMP"));     // frame
+        m_AmmoBoxBMP_Clip.SetName(PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_AMMOBOX_000_Q.XBMP"));
+        m_AmmoBoxBMP_Resv.SetName(PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_AMMOBOX_002_Q.XBMP"));
+        m_AmmoBoxBMP_Nads.SetName(PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_AMMOBOX_001_Q.XBMP"));
 
         // initialize nade icons
-        m_FragAmmoIcon.SetName  (PRELOAD_FILE("HUD_Campaign_grenade_frag.xbmp"));    
-        m_JBeanAmmoIcon.SetName (PRELOAD_FILE("HUD_Campaign_grenade_jellybean.xbmp"));
-        m_JBeanXAmmoIcon.SetName(PRELOAD_FILE("HUD_Campaign_grenade_jellybeanx.xbmp"));
+        m_FragAmmoIcon.SetName  (PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_GRENADE_FRAG.XBMP"));    
+        m_JBeanAmmoIcon.SetName (PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_GRENADE_JELLYBEAN.XBMP"));
+        m_JBeanXAmmoIcon.SetName(PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_GRENADE_JELLYBEANX.XBMP"));
     }
     else
     {    
-        m_AmmoBoxBMP.SetName(PRELOAD_FILE("HUD_Campaign_ammobox.xbmp"));     // frame
-        m_AmmoBoxBMP_Clip.SetName(PRELOAD_FILE("HUD_Campaign_ammobox_000.xbmp"));
-        m_AmmoBoxBMP_Resv.SetName(PRELOAD_FILE("HUD_Campaign_ammobox_002.xbmp"));
-        m_AmmoBoxBMP_Nads.SetName(PRELOAD_FILE("HUD_Campaign_ammobox_001.xbmp"));
+        m_AmmoBoxBMP.SetName(PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_AMMOBOX.XBMP"));     // frame
+        m_AmmoBoxBMP_Clip.SetName(PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_AMMOBOX_000.XBMP"));
+        m_AmmoBoxBMP_Resv.SetName(PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_AMMOBOX_002.XBMP"));
+        m_AmmoBoxBMP_Nads.SetName(PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_AMMOBOX_001.XBMP"));
 
         // initialize nade icons
-        m_FragAmmoIcon.SetName  (PRELOAD_FILE("HUD_Campaign_grenade_frag.xbmp"));    
-        m_JBeanAmmoIcon.SetName (PRELOAD_FILE("HUD_Campaign_grenade_jellybean.xbmp"));
-        m_JBeanXAmmoIcon.SetName(PRELOAD_FILE("HUD_Campaign_grenade_jellybeanx.xbmp"));
+        m_FragAmmoIcon.SetName  (PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_GRENADE_FRAG.XBMP"));    
+        m_JBeanAmmoIcon.SetName (PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_GRENADE_JELLYBEAN.XBMP"));
+        m_JBeanXAmmoIcon.SetName(PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_GRENADE_JELLYBEANX.XBMP"));
     }
 
     // Set the offsets for the ammo text to appear.
@@ -265,13 +265,13 @@ void hud_ammo::UpdateAmmoState( player* pPlayer, f32 DeltaTime )
 
 void hud_ammo::UpdateWarningAlpha( f32 DeltaTime )
 {
-    const s32 AlphaStep = (s32)(960.0f * DeltaTime);
+    const f32 AlphaStep = 960.0f * DeltaTime;
     m_WarningClipALPHA = m_WarningClip
-                       ? MIN( m_WarningClipALPHA + AlphaStep, 100 )
-                       : MAX( m_WarningClipALPHA - AlphaStep,   0 );
+                       ? MIN( m_WarningClipALPHA + AlphaStep, 100.0f )
+                       : MAX( m_WarningClipALPHA - AlphaStep,   0.0f );
     m_WarningResvALPHA = m_WarningResv
-                       ? MIN( m_WarningResvALPHA + AlphaStep, 100 )
-                       : MAX( m_WarningResvALPHA - AlphaStep,   0 );
+                       ? MIN( m_WarningResvALPHA + AlphaStep, 100.0f )
+                       : MAX( m_WarningResvALPHA - AlphaStep,   0.0f );
 }
 
 //==============================================================================
@@ -403,7 +403,7 @@ void hud_ammo::RenderAmmoBar( player* pPlayer )
     DrawLayer( pClipTexture, AMMO_INSIDE_COLOR );
     if( m_WarningClip )
     {
-        xcolor warning = xcolor( 200,50,0,m_WarningClipALPHA);
+        xcolor warning = xcolor( 200,50,0,(u8)m_WarningClipALPHA);
         if( m_CriticalClip )
         {
             warning.A = (u8)MIN( hud_object::m_PulseAlpha, 100.0f );
@@ -414,7 +414,7 @@ void hud_ammo::RenderAmmoBar( player* pPlayer )
     }    
     else
     {
-        xcolor warning = xcolor( 200,50,0,m_WarningClipALPHA);
+        xcolor warning = xcolor( 200,50,0,(u8)m_WarningClipALPHA);
         DrawLayer( pClipTexture, warning );
     }
 
@@ -423,7 +423,7 @@ void hud_ammo::RenderAmmoBar( player* pPlayer )
     DrawLayer( pReserveTexture, AMMO_INSIDE_COLOR );
     if( m_WarningResv )
     {
-        xcolor warning = xcolor( 200,50,0,m_WarningResvALPHA);
+        xcolor warning = xcolor( 200,50,0,(u8)m_WarningResvALPHA);
         if( m_CriticalResv )
         {
             warning.A = (u8)MIN( hud_object::m_PulseAlpha, 100.0f );
@@ -434,7 +434,7 @@ void hud_ammo::RenderAmmoBar( player* pPlayer )
     }    
     else
     {
-        xcolor warning = xcolor( 200,50,0,m_WarningResvALPHA);
+        xcolor warning = xcolor( 200,50,0,(u8)m_WarningResvALPHA);
         DrawLayer( pReserveTexture, warning );
     }
 

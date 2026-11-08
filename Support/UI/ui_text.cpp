@@ -54,6 +54,7 @@ xbool ui_text::Create( s32 UserID, ui_manager* pManager, const irect& Position, 
 
     // Initialize Data
     m_UseSmallText = FALSE;
+    m_UseShadow = FALSE;
 
     return Success;
 }
@@ -87,6 +88,22 @@ void ui_text::Render( s32 ox, s32 oy )
         else
         {
             FontID = m_pManager->FindFont("large");
+        }
+
+        if( m_UseShadow )
+        {
+            irect Shadow = r;
+            Shadow.Translate( 1, 1 );
+            xcolor ShadowColor( 0, 0, 0, TextColor.A );
+            if( HasInputGlyphs )
+            {
+                m_pManager->RenderInputText( FontID, Shadow, m_LabelFlags & ~ui_font::input_glyphs,
+                    ShadowColor, m_Label, m_pManager->GetInputPlatform(m_UserID) );
+            }
+            else
+            {
+                m_pManager->RenderText( FontID, Shadow, m_LabelFlags, ShadowColor, m_Label );
+            }
         }
 
         if( HasInputGlyphs )

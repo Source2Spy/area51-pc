@@ -8,6 +8,8 @@
 //  INCLUDES
 //==============================================================================
 
+#include "NetworkMgr/Replication/NetUpdate.hpp"
+
 #include "Render/PrimitiveDebug.hpp"
 #include "NetProjectile.hpp"
 #include "Objects/ClothObject.hpp"
@@ -40,6 +42,7 @@
 #define MAX_BOUNCES_PER_LOGIC   2
 
 static f32 NET_PROJECTILE_CLOTH_IMPACT_FORCE = 1000.0f;
+static const f32 kExplosionFadeDuration = 0.25f;
 
 
 //==============================================================================
@@ -166,8 +169,7 @@ void net_proj::SetPosition( const vector3& Position,
                                   m_ZoneTracker,
                                   GetPosition(),
                                   GetZone1(),
-                                  GetZone2(),
-                                  zone_mgr::SeedSource::Destination );
+                                  GetZone2() );
 
     #ifndef X_EDITOR
     m_NetDirtyBits |= DIRTY_POSITION;
@@ -258,27 +260,6 @@ s32 net_proj::GetMaterial( void ) const
 
 //==============================================================================
 
-u32 net_proj::GetRenderMode( void )
-{
-    u32 Mode = render::WIREFRAME;
-
-    if( GetAttrBits() & ATTR_EDITOR_PLACEMENT_OBJECT )
-    {
-        Mode = render::PULSED;
-    }
-    else if( GetAttrBits() & ATTR_EDITOR_SELECTED )
-    {
-        if( GetAttrBits() & ATTR_EDITOR_BLUE_PRINT )
-            Mode |= render::WIREFRAME2;
-        else
-            Mode |= render::WIREFRAME;
-    }
-
-    return( Mode );
-}
-
-//==============================================================================
-
 void net_proj::OnColCheck( void )
 {
     // TO DO
@@ -307,6 +288,17 @@ void net_proj::UpdateZoneTrack( void )
 
 //==============================================================================
 
+f32 net_proj::GetExplosionFade( void ) const
+{
+    if( !m_Exploded )
+        return 1.0f;
+
+    f32 T = x_clamp( m_ExplodedTimer / kExplosionFadeDuration, 0.0f, 1.0f );
+    return T * T * (3.0f - 2.0f * T);
+}
+
+//==============================================================================
+
 void net_proj::OnRender( void )
 {
 }
@@ -329,11 +321,11 @@ void net_proj::OnAdvanceSimulation( f32 DeltaTime )
     // Projectile has exploded and now just needs to time out and destroy itself
     if( m_Exploded )
     {
+        m_ExplodedTimer = MAX( m_ExplodedTimer - MAX( DeltaTime, 0.0f ), 0.0f );
 #ifndef X_EDITOR
         if( m_OwningClient == g_NetworkMgr.GetClientIndex() )
 #endif
         {
-            m_ExplodedTimer -= DeltaTime;
             if( m_ExplodedTimer <= 0.0f )
             {
                 // LOG_MESSAGE( "net_proj::OnAdvanceSimulation", "Destroyed after Exploded" );
@@ -370,7 +362,16 @@ void net_proj::OnAdvanceSimulation( f32 DeltaTime )
                 // follow the stuck object around
                 // Update position
                 actor* pActor = (actor*)pTarget;
-                const matrix4& L2W = pActor->GetLocoPointer()->m_Player.GetBoneL2W( m_AttachedBoneIndex );
+                loco* pLoco = pActor->GetLocoPointer();
+                if( !pLoco || (m_AttachedBoneIndex >= pLoco->GetNBones()) )
+                {
+                    m_bIsAttached = FALSE;
+                    m_AttachedObjectGuid = 0;
+                    m_AttachedBoneIndex = -1;
+                    return;
+                }
+
+                const matrix4& L2W = pLoco->m_Player.GetBoneL2W( m_AttachedBoneIndex );
                 Position = L2W * m_AttachedLocalPos;
             }
             else
@@ -838,187 +839,109 @@ void net_proj::net_Logic( f32 /*DeltaTime*/ )
         DIRTY_ATTACH   = 0x00000008,
 */
 
-void net_proj::net_AcceptUpdate( const bitstream& BS )
+void net_proj::net_AcceptUpdate( const net_projectile_update& Update )
 {
-    // LOG_MESSAGE( "net_proj::net_AcceptUpdate", "" );
-
-//  u32 Bits = 0x00000000;
-
-    if( BS.ReadFlag() )
+    //
+    // netobj::ACTIVATE_BIT
+    //
+    if( Update.Activate )
     {
-        BS.ReadRangedS32( m_OriginNetSlot, -1, 31 );
-        net_AcceptActivate( BS );
-
+        m_OriginNetSlot = Update.OriginNetSlot;
+        net_AcceptActivate( Update );
         m_OriginGuid = 0;
         if( IN_RANGE( 0, m_OriginNetSlot, 31 ) )
         {
-            actor* pActor = (actor*)NetObjMgr.GetObjFromSlot( m_OriginNetSlot );
-            
-            if( pActor )
-            { 
+            netobj* pObject = NetObjMgr.GetObjFromSlot( m_OriginNetSlot );
+            if( pObject && pObject->IsKindOf( actor::GetRTTI() ) )
+            {
+                actor* pActor = (actor*)pObject;
                 m_OriginGuid = pActor->GetGuid();
-
                 new_weapon* pWeapon = pActor->GetCurrentWeaponPtr();
-                if( pWeapon )
-                {
-                    if( pWeapon->GetFiringStartPosition( m_BlendVector ) )
-                    {
-                        m_BlendTimer = m_BlendTotalTime;
-                    }
-                }
+                if( pWeapon && pWeapon->GetFiringStartPosition(m_BlendVector) )
+                    m_BlendTimer = m_BlendTotalTime;
             }
         }
-//      Bits |= netobj::ACTIVATE_BIT;
     }
 
-    if( BS.ReadFlag( m_AtRest ) )
+    //
+    // DIRTY_POSITION
+    //
+    m_AtRest = Update.AtRest;
+    if( Update.HasPosition )
     {
-        if( BS.ReadFlag() )
-        {
-            vector3 Position;
-            radian3 Orientation;
-            s32     Zone1;
-            s32     Zone2;
-
-            BS.ReadVector( Position );
-            BS.ReadF32   ( Orientation.Pitch );
-            BS.ReadF32   ( Orientation.Yaw   );
-            BS.ReadF32   ( Orientation.Roll  );
-            BS.ReadRangedS32( Zone1, 0, 255 );
-            BS.ReadRangedS32( Zone2, 0, 255 );
-
-            SetOrientation( Orientation );
-            SetPosition   ( Position, Zone1, Zone2 );
-
-            CLOG_MESSAGE( ENABLE_LOGGING, 
-                          "net_proj::net_AcceptUpdate", 
-                          "[At Rest] Position:(%4.2f,%4.2f,%4.2f)", 
-                          m_NewPos.GetX(), m_NewPos.GetY(), m_NewPos.GetZ() );
-
-//          Bits |= DIRTY_POSITION;
-        }
+        SetOrientation( Update.Orientation );
+        SetPosition( Update.Position, Update.PositionZone1, Update.PositionZone2 );
     }
-    else
+
+    //
+    // DIRTY_START
+    //
+    if( Update.HasStart )
     {
-        if( BS.ReadFlag() )
+        m_StartPos = Update.StartPosition;
+        m_StartVel = Update.StartVelocity;
+        net_AcceptStart( Update );
+        if( Update.ClearBlend )
         {
-            s32     Zone1;
-            s32     Zone2;
-
-            BS.ReadVector( m_StartPos );
-            BS.ReadVector( m_StartVel );
-            BS.ReadRangedS32( Zone1, 0, 255 );
-            BS.ReadRangedS32( Zone2, 0, 255 );
-            net_AcceptStart( BS );
-
-            if( BS.ReadFlag() )
-            {
-                m_BlendVector.Zero();
-                m_BlendTimer = 0.0f;
-            }
-            else
-            {
-                m_BlendVector = m_BlendVector - m_StartPos;
-            }
-
-            SetStart( m_StartPos, radian3(0,0,0), m_StartVel, Zone1, Zone2, m_Gravity );
-
-            CLOG_MESSAGE( ENABLE_LOGGING, 
-                          "net_proj::net_AcceptUpdate", 
-                          "[Start] Position:(%4.2f,%4.2f,%4.2f) - Velocity:(%4.2f,%4.2f,%4.2f)", 
-                          m_StartPos.GetX(), m_StartPos.GetY(), m_StartPos.GetZ(),
-                          m_StartVel.GetX(), m_StartVel.GetY(), m_StartVel.GetZ() );
-
-//          Bits |= DIRTY_START;
+            m_BlendVector.Zero();
+            m_BlendTimer = 0.0f;
         }
-
-        if( BS.ReadFlag() )
+        else
         {
-            BS.ReadF32( m_TimeT );
-
-            CLOG_MESSAGE( ENABLE_LOGGING, 
-                          "net_proj::net_AcceptUpdate", 
-                          "[TimeT] TimeT:%4.2f", m_TimeT );
-
-//          Bits |= DIRTY_TIME_T;
+            m_BlendVector -= m_StartPos;
         }
+        SetStart( m_StartPos, radian3(0,0,0), m_StartVel,
+                  Update.StartZone1, Update.StartZone2, m_Gravity );
+    }
 
-        if( BS.ReadFlag() )
+    //
+    // DIRTY_TIME_T
+    //
+    if( Update.HasTime )
+        m_TimeT = Update.Time;
+
+    //
+    // DIRTY_ATTACH
+    //
+    if( Update.HasAttach )
+    {
+        m_AttachedObjectGuid = 0;
+        m_AttachedBoneIndex  = -1;
+        m_AttachedLocalPos.Zero();
+        m_bIsAttached = Update.Attached;
+        if( Update.Attached )
         {
-            // Set to "not attached"
-            m_AttachedObjectGuid = 0;
-            m_AttachedBoneIndex  = -1;
-            m_AttachedLocalPos.Zero();
-        
-            // Try attach?
-            if( BS.ReadFlag( m_bIsAttached ) )
+            netobj* pObject = NetObjMgr.GetObjFromSlot( Update.AttachedNetSlot );
+            if( pObject )
             {
-                // Read into locals in case of fail
-                s32     AttachedNetSlot   = -1;
-                s32     AttachedBoneIndex = -1;
-                vector3 AttachedLocalPos( 0.0f, 0.0f, 0.0f );
-
-                // Read info
-                BS.ReadS32   ( AttachedNetSlot   );
-                BS.ReadS32   ( AttachedBoneIndex );
-                if( AttachedBoneIndex != -1 )
-                    BS.ReadVector( AttachedLocalPos  );
-                
-                // Does object exist?
-                ASSERT( AttachedNetSlot != -1 );
-                netobj* pNetObj = NetObjMgr.GetObjFromSlot( AttachedNetSlot );
-                if( pNetObj )
+                m_AttachedObjectGuid = pObject->GetGuid();
+                if( pObject->IsKindOf( player::GetRTTI() ) )
                 {
-                    // Attach
-                    m_AttachedObjectGuid = pNetObj->GetGuid();
-                    if( pNetObj->IsKindOf( player::GetRTTI() ) )
-                    {
-                        m_AttachedBoneIndex = -1;
-                        m_AttachedLocalPos.Set( 0.0f, 100.0f, 0.0f );
-                    }
-                    else
-                    {
-                        m_AttachedBoneIndex = AttachedBoneIndex;
-                        m_AttachedLocalPos  = AttachedLocalPos;
-                    }
+                    m_AttachedLocalPos.Set( 0.0f, 100.0f, 0.0f );
                 }
                 else
                 {
-                    // Failed, so set to "not attached"
-                    m_bIsAttached = FALSE;
-                }                
+                    m_AttachedBoneIndex = Update.AttachedBoneIndex;
+                    m_AttachedLocalPos  = Update.AttachedLocalPosition;
+                }
             }
-            
-            // Send to other clients
-            m_NetDirtyBits |= DIRTY_ATTACH;
-            
-//          Bits |= DIRTY_ATTACH;
+            else
+            {
+                m_bIsAttached = FALSE;
+            }
         }
+        m_NetDirtyBits |= DIRTY_ATTACH;
     }
 
-    xbool Exploded;
-    if( BS.ReadFlag( Exploded ) )
+    //
+    // DIRTY_EXPLODED
+    //
+    if( Update.Exploded )
     {
-        vector3 Pos;
-        BS.ReadVector( Pos );
-
-        // Put the projectile where it exploded
-        //if( !m_bIsAttached )
-        {
-            OnMove( Pos );
-            m_ImpactPoint = Pos;
-        }
-
-        //LOG_MESSAGE( "_net_proj::net_AcceptUpdate", "Explode %.3f, %.3f, %.3f", Pos.GetX(), Pos.GetY(), Pos.GetZ() );
-        //LOG_FLUSH();
-
+        OnMove( Update.ExplosionPosition );
+        m_ImpactPoint = Update.ExplosionPosition;
         OnExplode();
     }
-
-//  LOG_MESSAGE( "net_proj::net_AcceptUpdate", "DirtyBits:%08X", Bits );
-//  LOG_FLUSH();
-
-    BS.ReadMarker();
 }
 
 //==============================================================================
@@ -1160,9 +1083,9 @@ void net_proj::net_Deactivate( void )
 
 //==============================================================================
 
-void net_proj::net_AcceptActivate( const bitstream& BS )
+void net_proj::net_AcceptActivate( const net_projectile_update& Update )
 {
-    (void)BS;
+    (void)Update;
 }
 
 //==============================================================================
@@ -1174,9 +1097,9 @@ void net_proj::net_ProvideActivate( bitstream& BS )
 
 //==============================================================================
 
-void net_proj::net_AcceptStart( const bitstream& BS )
+void net_proj::net_AcceptStart( const net_projectile_update& Update )
 {
-    (void)BS;
+    (void)Update;
 }
 
 //==============================================================================

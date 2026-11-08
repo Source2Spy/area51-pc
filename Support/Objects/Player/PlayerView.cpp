@@ -10,7 +10,7 @@
 #include "Objects/Camera.hpp"
 #include "Objects/LevelSettings.hpp"
 #include "StateMgr/StateMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "GameLib/DebugCheats.hpp"
 
 //=========================================================================
@@ -19,7 +19,6 @@ static const f32 DeathCamStartBackDist = 800.0f;
 static const f32 DeathCamEndDist       = 500.0f;
 static const f32 DeathCamSphereRadius  = 20.0f;
 static const f32 s_ArmViewPct          = 0.3f;
-static const f32 s_MaxCameraDelta      = 28.0f;
 
 extern view g_View;
 
@@ -44,21 +43,8 @@ void player::InitZoneTracking( void )
                                   m_ZoneTracker,
                                   GetPosition(),
                                   GetZone1(),
-                                  GetZone2(),
-                                  zone_mgr::SeedSource::Player );
-
-    if( !m_RenderViewZoneUsesCameraSeed &&
-        !m_ViewController.IsBlending() )
-    {
-        g_ZoneMgr.RebaseZoneTracking( m_RenderViewZoneTracker,
-                                      GetDefaultViewPos(),
-                                      m_ZoneTracker.GetMainZone(),
-                                      m_ZoneTracker.GetZone2(),
-                                      zone_mgr::SeedSource::Player );
-        m_RenderViewZoneInitialized = TRUE;
-        m_RenderViewZoneSourceGuid = NULL_GUID;
-        m_RebaseRenderViewZone = FALSE;
-    }
+                                  GetZone2() );
+    g_ZoneMgr.AdvanceZoneTracking( *this, m_ZoneTracker, GetZoneTrackingPosition() );
 }
 
 void player::UpdateZoneTrack ( void )
@@ -66,7 +52,14 @@ void player::UpdateZoneTrack ( void )
     if( m_bApplyingTeleport )
         return;
 
-    g_ZoneMgr.AdvanceZoneTracking( *this, m_ZoneTracker, GetPosition() );
+    g_ZoneMgr.AdvanceZoneTracking( *this, m_ZoneTracker, GetZoneTrackingPosition() );
+}
+
+vector3 player::GetZoneTrackingPosition( void )
+{
+    vector3 Offset = m_EyesOffset;
+    Offset.RotateY( m_Yaw );
+    return vector3( GetPosition().GetX(), GetBBox().Max.GetY(), GetPosition().GetZ() ) + Offset;
 }
 
 zone_mgr::zone_id player::GetPlayerObjectZone ( void ) const
@@ -198,19 +191,6 @@ vector3 player::GetDefaultViewPos( void )
         vector3 const AnimBonePos = m_AnimPlayer.GetBonePosition( m_iCameraBone );
         vector3 const Offset = m_vRigOffset - (m_ArmsOffset * s_ArmViewPct);
         FinalPos = AnimBonePos + Offset;
-
-        // Preserve the original first-person camera contract: authored
-        // camera-bone translation is the view position. Only prevent the
-        // camera from moving too far behind the player.
-        vector3 const Forward( radian3( 0.0f, m_Yaw, 0.0f ) );
-        vector3 const LimitPosition = GetPosition() - (s_MaxCameraDelta * Forward);
-        plane LimitPlane;
-        LimitPlane.Setup( LimitPosition, Forward );
-
-        if( LimitPlane.InBack( FinalPos ) )
-        {
-            FinalPos -= LimitPlane.Normal * LimitPlane.Distance( FinalPos );
-        }
     }
     else
     {
@@ -220,6 +200,7 @@ vector3 player::GetDefaultViewPos( void )
 
         FinalPos.Set( Position.GetX(), GetBBox().Max.GetY(), Position.GetZ() );
         FinalPos += EyesOffset;
+        FinalPos.GetY() += m_StepView.GetOffset();
     }
 
     return FinalPos;
@@ -265,6 +246,8 @@ PlayerViewSample player::BuildFirstPersonViewSample( void )
                     ? PlayerViewMode::LockedFirstPerson
                     : PlayerViewMode::FirstPerson;
     Sample.XFOV = m_ViewInfo.XFOV;
+    Sample.HasZoneSnapshot = TRUE;
+    Sample.ZoneSnapshot = m_ZoneTracker;
 
     radian3 Rot( 0.0f, 0.0f, 0.0f );
     vector3 const Pos = GetDefaultViewPos();
@@ -301,6 +284,8 @@ PlayerViewSample player::BuildFirstPersonViewSample( void )
             m_ViewInfo.XFOV = m_OriginalViewInfo.XFOV;
         }
         Sample.XFOV = m_ViewInfo.XFOV;
+    Sample.HasZoneSnapshot = TRUE;
+    Sample.ZoneSnapshot = m_ZoneTracker;
     }
 
     if( (m_CurrentAnimState != ANIM_STATE_DEATH) &&
@@ -359,6 +344,8 @@ PlayerViewSample player::BuildDeathViewSample( void ) const
     PlayerViewSample Sample;
     Sample.Mode = PlayerViewMode::Death;
     Sample.XFOV = m_ViewInfo.XFOV;
+    Sample.HasZoneSnapshot = TRUE;
+    Sample.ZoneSnapshot = m_ZoneTracker;
 
     PlayerDeathCameraPose const Pose = m_DeathCamera.GetPose();
     view DeathView;
@@ -386,73 +373,24 @@ void player::ApplyViewSample( view& View, const PlayerViewSample& Sample )
     m_EyesPosition = View.GetPosition();
     View.GetPitchYaw( m_EyesPitch, m_EyesYaw );
 
-    xbool const UsesCameraSeed =
-        (Sample.Mode == PlayerViewMode::Cinema) &&
-        (m_CinemaSettings.CameraGuid != 0);
-    xbool const CameraChanged =
-        UsesCameraSeed &&
-        !m_ViewController.IsBlending() &&
-        (m_RenderViewZoneSourceGuid != m_CinemaSettings.CameraGuid);
-    xbool const CameraViewEnded =
-        m_RenderViewZoneUsesCameraSeed &&
-        !UsesCameraSeed &&
-        !m_ViewController.IsBlending();
-    xbool const RebaseViewZone =
-        !m_RenderViewZoneInitialized ||
-        m_RebaseRenderViewZone ||
-        CameraChanged ||
-        CameraViewEnded;
+    xbool const SourceChanged = Sample.HasZoneSnapshot &&
+        ((Sample.ZoneSourceGuid != m_RenderViewZoneSourceGuid) ||
+         ((Sample.Mode == PlayerViewMode::Death) !=
+          (m_RenderViewZoneMode == PlayerViewMode::Death)));
+    xbool const SeedChanged = Sample.HasZoneSnapshot &&
+        (Sample.ZoneSnapshot.GetSeedRevision() != m_RenderViewZoneSeedRevision);
 
-    zone_mgr::zone_id SeedZone1 = m_ZoneTracker.GetMainZone();
-    zone_mgr::zone_id SeedZone2 = m_ZoneTracker.GetZone2();
-    zone_mgr::SeedSource SeedSource = zone_mgr::SeedSource::Player;
-    object_ptr<camera> pCamera( m_CinemaSettings.CameraGuid );
-    xbool const UsesCameraSampleZone = UsesCameraSeed && Sample.HasZoneSnapshot;
-
-    if( UsesCameraSampleZone )
+    if( !m_RenderViewZoneInitialized || SourceChanged || SeedChanged )
     {
-        // Keep the zone state paired with the exact camera transform sample.
-        // The live camera object may already have advanced to the next path
-        // sample by the time this view is presented.
-        SeedZone1 = Sample.Zone1;
-        SeedZone2 = Sample.Zone2;
-        SeedSource = zone_mgr::SeedSource::Camera;
-
-        g_ZoneMgr.RebaseZoneTracking( m_RenderViewZoneTracker,
-                                      View.GetPosition(),
-                                      SeedZone1,
-                                      SeedZone2,
-                                      SeedSource );
-
+        g_ZoneMgr.RebaseZoneTracking( m_RenderViewZoneTracker, Sample.ZoneSnapshot );
+        g_ZoneMgr.AdvanceZoneTracking( m_RenderViewZoneTracker, View.GetPosition() );
         m_RenderViewZoneInitialized = TRUE;
-        m_RenderViewZoneUsesCameraSeed = TRUE;
-        m_RenderViewZoneSourceGuid = m_CinemaSettings.CameraGuid;
-        m_RebaseRenderViewZone = FALSE;
-    }
-    else if( RebaseViewZone )
-    {
-        if( UsesCameraSeed )
+        if( Sample.HasZoneSnapshot )
         {
-            if( pCamera )
-            {
-                SeedZone1 = static_cast<zone_mgr::zone_id>( pCamera->GetZone1() );
-                SeedZone2 = static_cast<zone_mgr::zone_id>( pCamera->GetZone2() );
-                SeedSource = zone_mgr::SeedSource::Camera;
-            }
+            m_RenderViewZoneSourceGuid = Sample.ZoneSourceGuid;
+            m_RenderViewZoneMode = Sample.Mode;
+            m_RenderViewZoneSeedRevision = Sample.ZoneSnapshot.GetSeedRevision();
         }
-
-        g_ZoneMgr.RebaseZoneTracking( m_RenderViewZoneTracker,
-                                      View.GetPosition(),
-                                      SeedZone1,
-                                      SeedZone2,
-                                      SeedSource );
-
-        m_RenderViewZoneInitialized = TRUE;
-        m_RenderViewZoneUsesCameraSeed = UsesCameraSeed;
-        m_RenderViewZoneSourceGuid = UsesCameraSeed
-                                   ? m_CinemaSettings.CameraGuid
-                                   : NULL_GUID;
-        m_RebaseRenderViewZone = FALSE;
     }
     else
     {
@@ -495,12 +433,7 @@ void player::UpdatePlayerView( f32 DeltaTime )
         break;
     }
 
-    xbool const WasBlending = m_ViewController.IsBlending();
     m_SimulationViewSample = m_ViewController.Evaluate( Target, DeltaTime );
-    if( WasBlending && !m_ViewController.IsBlending() )
-    {
-        m_RebaseRenderViewZone = TRUE;
-    }
     m_SimulationViewInitialized = TRUE;
     ComputeView( GetSimulationView(), player::VIEW_NULL );
 }

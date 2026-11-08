@@ -8,7 +8,7 @@
 #include "Render/PrimitiveDebug.hpp"
 #include "ProjectileHoming.hpp"
 #include "AudioMgr/AudioMgr.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "Objects/Actor/Actor.hpp"
 #include "Decals/DecalMgr.hpp"
 #include "Characters/GenericNPC/GenericNPC.hpp"

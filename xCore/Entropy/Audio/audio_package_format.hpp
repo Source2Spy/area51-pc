@@ -102,7 +102,7 @@
 #define GET_INDEX_HAS_PARAMS( n )               (xbool)(( n & (1<<13) ) != 0)
 
 // Pass the size of the parameters in bytes (including the flags).
-#define SET_INDEX_HAS_PARAMS( n, value )        { n &= ~(1<<13); if( value ) n |= (1<<13); }
+#define SET_INDEX_HAS_PARAMS( n, value )        { n &= ~(1<<13); if( value ) { n |= (1<<13); } }
 
 // Index is stored in bits 0-12.
 #define GET_INDEX( n )                          (s32)(n & ((1<<13)-1))
@@ -123,7 +123,7 @@
 #define GET_DESCRIPTOR_HAS_PARAMS( n )          (xbool)(( n & (1<<13) ) != 0)
  
 // Pass the size of the parameters in bytes (including the flags).
-#define SET_DESCRIPTOR_HAS_PARAMS( n, value )   { n &= ~(1<<13); if( value ) n |= (1<<13); }
+#define SET_DESCRIPTOR_HAS_PARAMS( n, value )   { n &= ~(1<<13); if( value ) { n |= (1<<13); } }
 
 //==============================================================================
 // "GET" PARAMETER BIT MACROSES
@@ -154,25 +154,25 @@
 // "SET" PARAMETER BIT MACROSES
 //==============================================================================
 
-#define SET_PITCH_BIT( bits, flag )             {bits &= ~(1<<PITCH);           if (flag) bits |= (1<<PITCH);}     
-#define SET_PITCH_VARIANCE_BIT( bits, flag )    {bits &= ~(1<<PITCH_VARIANCE);  if (flag) bits |= (1<<PITCH_VARIANCE);}       
-#define SET_VOLUME_BIT( bits, flag )            {bits &= ~(1<<VOLUME);          if (flag) bits |= (1<<VOLUME);}       
-#define SET_VOLUME_VARIANCE_BIT( bits, flag )   {bits &= ~(1<<VOLUME_VARIANCE); if (flag) bits |= (1<<VOLUME_VARIANCE);}       
-#define SET_VOLUME_CENTER_BIT( bits, flag )     {bits &= ~(1<<VOLUME_CENTER);   if (flag) bits |= (1<<VOLUME_CENTER);}
-#define SET_VOLUME_LFE_BIT( bits, flag )        {bits &= ~(1<<VOLUME_LFE);      if (flag) bits |= (1<<VOLUME_LFE);}
-#define SET_VOLUME_DUCK_BIT( bits, flag )       {bits &= ~(1<<VOLUME_DUCK);     if (flag) bits |= (1<<VOLUME_DUCK);}
-#define SET_USER_DATA_BIT( bits, flag )         {bits &= ~(1<<USER_DATA);       if (flag) bits |= (1<<USER_DATA);}
-#define SET_REPLAY_DELAY_BIT( bits, flag )      {bits &= ~(1<<REPLAY_DELAY);    if (flag) bits |= (1<<REPLAY_DELAY);}       
-#define SET_LAST_PLAY_BIT( bits, flag )         {bits &= ~(1<<LAST_PLAY);       if (flag) bits |= (1<<LAST_PLAY);}       
-#define SET_PAN_2D_BIT( bits, flag )            {bits &= ~(1<<PAN_2D);          if (flag) bits |= (1<<PAN_2D);}       
-#define SET_PRIORITY_BIT( bits, flag )          {bits &= ~(1<<PRIORITY);        if (flag) bits |= (1<<PRIORITY);}       
-#define SET_EFFECT_SEND_BIT( bits, flag )       {bits &= ~(1<<EFFECT_SEND);     if (flag) bits |= (1<<EFFECT_SEND);}       
-#define SET_NEAR_FALLOFF_BIT( bits, flag )      {bits &= ~(1<<NEAR_FALLOFF);    if (flag) bits |= (1<<NEAR_FALLOFF);}       
-#define SET_FAR_FALLOFF_BIT( bits, flag )       {bits &= ~(1<<FAR_FALLOFF);     if (flag) bits |= (1<<FAR_FALLOFF);}       
-#define SET_ROLLOFF_METHOD_BIT( bits, flag )    {bits &= ~(1<<ROLLOFF_METHOD);  if (flag) bits |= (1<<ROLLOFF_METHOD);}       
-#define SET_NEAR_DIFFUSE_BIT( bits, flag )      {bits &= ~(1<<NEAR_DIFFUSE);    if (flag) bits |= (1<<NEAR_DIFFUSE);}       
-#define SET_FAR_DIFFUSE_BIT( bits, flag )       {bits &= ~(1<<FAR_DIFFUSE);     if (flag) bits |= (1<<FAR_DIFFUSE);}       
-#define SET_PLAY_PERCENT_BIT( bits, flag )      {bits &= ~(1<<PLAY_PERCENT);    if (flag) bits |= (1<<PLAY_PERCENT);}       
+#define SET_PITCH_BIT( bits, flag )             {bits &= ~(1<<PITCH);           if (flag) { bits |= (1<<PITCH); } }
+#define SET_PITCH_VARIANCE_BIT( bits, flag )    {bits &= ~(1<<PITCH_VARIANCE);  if (flag) { bits |= (1<<PITCH_VARIANCE); } }
+#define SET_VOLUME_BIT( bits, flag )            {bits &= ~(1<<VOLUME);          if (flag) { bits |= (1<<VOLUME); } }
+#define SET_VOLUME_VARIANCE_BIT( bits, flag )   {bits &= ~(1<<VOLUME_VARIANCE); if (flag) { bits |= (1<<VOLUME_VARIANCE); } }
+#define SET_VOLUME_CENTER_BIT( bits, flag )     {bits &= ~(1<<VOLUME_CENTER);   if (flag) { bits |= (1<<VOLUME_CENTER); } }
+#define SET_VOLUME_LFE_BIT( bits, flag )        {bits &= ~(1<<VOLUME_LFE);      if (flag) { bits |= (1<<VOLUME_LFE); } }
+#define SET_VOLUME_DUCK_BIT( bits, flag )       {bits &= ~(1<<VOLUME_DUCK);     if (flag) { bits |= (1<<VOLUME_DUCK); } }
+#define SET_USER_DATA_BIT( bits, flag )         {bits &= ~(1<<USER_DATA);       if (flag) { bits |= (1<<USER_DATA); } }
+#define SET_REPLAY_DELAY_BIT( bits, flag )      {bits &= ~(1<<REPLAY_DELAY);    if (flag) { bits |= (1<<REPLAY_DELAY); } }
+#define SET_LAST_PLAY_BIT( bits, flag )         {bits &= ~(1<<LAST_PLAY);       if (flag) { bits |= (1<<LAST_PLAY); } }
+#define SET_PAN_2D_BIT( bits, flag )            {bits &= ~(1<<PAN_2D);          if (flag) { bits |= (1<<PAN_2D); } }
+#define SET_PRIORITY_BIT( bits, flag )          {bits &= ~(1<<PRIORITY);        if (flag) { bits |= (1<<PRIORITY); } }
+#define SET_EFFECT_SEND_BIT( bits, flag )       {bits &= ~(1<<EFFECT_SEND);     if (flag) { bits |= (1<<EFFECT_SEND); } }
+#define SET_NEAR_FALLOFF_BIT( bits, flag )      {bits &= ~(1<<NEAR_FALLOFF);    if (flag) { bits |= (1<<NEAR_FALLOFF); } }
+#define SET_FAR_FALLOFF_BIT( bits, flag )       {bits &= ~(1<<FAR_FALLOFF);     if (flag) { bits |= (1<<FAR_FALLOFF); } }
+#define SET_ROLLOFF_METHOD_BIT( bits, flag )    {bits &= ~(1<<ROLLOFF_METHOD);  if (flag) { bits |= (1<<ROLLOFF_METHOD); } }
+#define SET_NEAR_DIFFUSE_BIT( bits, flag )      {bits &= ~(1<<NEAR_DIFFUSE);    if (flag) { bits |= (1<<NEAR_DIFFUSE); } }
+#define SET_FAR_DIFFUSE_BIT( bits, flag )       {bits &= ~(1<<FAR_DIFFUSE);     if (flag) { bits |= (1<<FAR_DIFFUSE); } }
+#define SET_PLAY_PERCENT_BIT( bits, flag )      {bits &= ~(1<<PLAY_PERCENT);    if (flag) { bits |= (1<<PLAY_PERCENT); } }
 
 //==============================================================================
 // PARAMETER COMPRESSION MACROSES
@@ -208,7 +208,7 @@
 // "SET" FLAG BIT MACROS
 //==============================================================================
 
-#define SET_SURROUND_ENABLED( bits, flag )      {bits &= ~(1<<SURROUND_ENABLED); if (flag) bits |= (1<<SURROUND_ENABLED);}     
+#define SET_SURROUND_ENABLED( bits, flag )      {bits &= ~(1<<SURROUND_ENABLED); if (flag) { bits |= (1<<SURROUND_ENABLED); } }
 
 //==============================================================================
 //  ENUMS

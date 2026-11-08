@@ -1,175 +1,86 @@
 settings:
     config release
-    targets all
+    targets vulkan
     binding_model sdl
     source_root shaders
-    out_root /mnt/Mount2/Dream/SHADERS/Build
+    out_root ../../../build/shaders/GameApp
+
+    contract GameApp.shadercontract
 
 shaders:
-    shader composite_vs vertex a51_composite.hlsl VSMain vs_6_0
+    shader xegtao_prepare compute a51_xegtao.hlsl CSPrepare cs_6_0
+    {
+        common_args "-DA51_AO_PREPARE=1 -DA51_AO_MSAA=0 -DA51_AO_HALF=0"
+    }
+    shader xegtao_prepare_msaa compute a51_xegtao.hlsl CSPrepare cs_6_0
+    {
+        common_args "-DA51_AO_PREPARE=1 -DA51_AO_MSAA=1 -DA51_AO_HALF=0"
+    }
+    shader xegtao_prepare_half compute a51_xegtao.hlsl CSPrepare cs_6_0
+    {
+        common_args "-DA51_AO_PREPARE=1 -DA51_AO_MSAA=0 -DA51_AO_HALF=1"
+    }
+    shader xegtao_prepare_half_msaa compute a51_xegtao.hlsl CSPrepare cs_6_0
+    {
+        common_args "-DA51_AO_PREPARE=1 -DA51_AO_MSAA=1 -DA51_AO_HALF=1"
+    }
+    shader xegtao_medium compute a51_xegtao.hlsl CSMain cs_6_0
+    {
+        common_args "-DA51_AO_MAIN=1 -DA51_AO_SLICES=2 -DA51_AO_STEPS=2 -DA51_AO_MSAA=0"
+    }
+    shader xegtao_high compute a51_xegtao.hlsl CSMain cs_6_0
+    {
+        common_args "-DA51_AO_MAIN=1 -DA51_AO_SLICES=3 -DA51_AO_STEPS=3 -DA51_AO_MSAA=0"
+    }
+    shader xegtao_ultra compute a51_xegtao.hlsl CSMain cs_6_0
+    {
+        common_args "-DA51_AO_MAIN=1 -DA51_AO_SLICES=9 -DA51_AO_STEPS=3 -DA51_AO_MSAA=0"
+    }
+    shader xegtao_medium_msaa compute a51_xegtao.hlsl CSMain cs_6_0
+    {
+        common_args "-DA51_AO_MAIN=1 -DA51_AO_SLICES=2 -DA51_AO_STEPS=2 -DA51_AO_MSAA=1"
+    }
+    shader xegtao_high_msaa compute a51_xegtao.hlsl CSMain cs_6_0
+    {
+        common_args "-DA51_AO_MAIN=1 -DA51_AO_SLICES=3 -DA51_AO_STEPS=3 -DA51_AO_MSAA=1"
+    }
+    shader xegtao_ultra_msaa compute a51_xegtao.hlsl CSMain cs_6_0
+    {
+        common_args "-DA51_AO_MAIN=1 -DA51_AO_SLICES=9 -DA51_AO_STEPS=3 -DA51_AO_MSAA=1"
+    }
+    shader xegtao_denoise compute a51_xegtao.hlsl CSDenoise cs_6_0
+    {
+        common_args "-DA51_AO_DENOISE=1 -DA51_AO_FINAL_DENOISE=0"
+    }
+    shader xegtao_denoise_final compute a51_xegtao.hlsl CSDenoise cs_6_0
+    {
+        common_args "-DA51_AO_DENOISE=1 -DA51_AO_FINAL_DENOISE=1"
+    }
+    shader xegtao_resolve compute a51_xegtao.hlsl CSResolve cs_6_0
+    {
+        common_args "-DA51_AO_RESOLVE=1"
+    }
+
+    shader cloth_tessellate compute a51_cloth_tessellate.hlsl CSMain cs_6_0
     {
     }
 
-    shader composite_ps pixel a51_composite.hlsl PSMain ps_6_0
+    shader cmaa2_init compute a51_cmaa2_init.hlsl InitializeCS cs_6_0
     {
     }
 
-    shader rigid_simple_vs vertex a51_rigid_simple.hlsl VSMain vs_6_0
+    shader cmaa2_edges compute a51_cmaa2_edges.hlsl EdgesColor2x2CS cs_6_0
     {
     }
 
-    shader rigid_simple_ps pixel a51_rigid_simple.hlsl PSMain ps_6_0
+    shader cmaa2_args compute a51_cmaa2_args.hlsl ComputeDispatchArgsCS cs_6_0
     {
     }
 
-    shader rigid_scene_ps pixel a51_rigid_simple.hlsl PSScene ps_6_0
+    shader cmaa2_candidates compute a51_cmaa2_candidates.hlsl ProcessCandidatesCS cs_6_0
     {
     }
 
-    shader skin_simple_vs vertex a51_skin_simple.hlsl VSMain vs_6_0
-    {
-    }
-
-    shader skin_simple_ps pixel a51_skin_simple.hlsl PSMain ps_6_0
-    {
-    }
-
-    shader skin_scene_ps pixel a51_skin_simple.hlsl PSScene ps_6_0
-    {
-    }
-
-    shader dynamic_geometry_vs vertex a51_dynamic_geometry.hlsl VSMain vs_6_0
-    {
-    }
-
-    shader dynamic_geometry_ps pixel a51_dynamic_geometry.hlsl PSMain ps_6_0
-    {
-    }
-
-    shader primitive_basic_vs vertex a51_primitive.hlsl VSMain vs_6_0
-    {
-    }
-
-    shader primitive_basic_ps pixel a51_primitive.hlsl PSMain ps_6_0
-    {
-    }
-
-    shader decal_vs vertex a51_decal.hlsl VSMain vs_6_0
-    {
-    }
-
-    shader decal_ps pixel a51_decal.hlsl PSMain ps_6_0
-    {
-    }
-
-    shader ui_vs vertex a51_ui.hlsl VSMain vs_6_0
-    {
-    }
-
-    shader ui_ps pixel a51_ui.hlsl PSMain ps_6_0
-    {
-    }
-
-    shader shadow_cast_rigid_vs vertex a51_shadow_cast_rigid.hlsl VSMain vs_6_0
-    {
-    }
-
-    shader shadow_cast_skin_vs vertex a51_shadow_cast_skin.hlsl VSMain vs_6_0
-    {
-    }
-
-    shader shadow_cast_dynamic_vs vertex a51_shadow_cast_dynamic.hlsl VSMain vs_6_0
-    {
-    }
-
-    shader shadow_cast_dynamic_ps pixel a51_shadow_cast_dynamic.hlsl PSMain ps_6_0
-    {
-    }
-
-    shader shadow_depth_cast_opaque_ps pixel a51_shadow_depth.hlsl PSCastOpaqueDepth ps_6_0
-    {
-    }
-
-    shader shadow_depth_cast_alpha_ps pixel a51_shadow_depth.hlsl PSCastAlphaDepth ps_6_0
-    {
-    }
-
-    shader shadow_evsm_vs vertex a51_shadow_evsm.hlsl VSMain vs_6_0
-    {
-    }
-
-    shader shadow_evsm_convert_ps pixel a51_shadow_evsm.hlsl PSConvert ps_6_0
-    {
-    }
-
-    shader shadow_evsm_blur_horizontal_ps pixel a51_shadow_evsm_blur.hlsl PSBlurHorizontal ps_6_0
-    {
-    }
-
-    shader shadow_evsm_blur_vertical_ps pixel a51_shadow_evsm_blur.hlsl PSBlurVertical ps_6_0
-    {
-    }
-
-    shader post_fog_ps pixel a51_post_fog.hlsl PSMain ps_6_0
-    {
-    }
-
-    shader post_fog_polynomial_ps pixel a51_post_fog.hlsl PSPolynomial ps_6_0
-    {
-    }
-
-    shader post_glow_blur_horizontal_ps pixel a51_post_glow.hlsl PS_BlurHorizontal ps_6_0
-    {
-    }
-
-    shader post_glow_blur_vertical_ps pixel a51_post_glow.hlsl PS_BlurVertical ps_6_0
-    {
-    }
-
-    shader post_glow_combine_ps pixel a51_post_glow.hlsl PS_Combine ps_6_0
-    {
-    }
-
-    shader post_glow_composite_ps pixel a51_post_glow.hlsl PS_Composite ps_6_0
-    {
-    }
-
-    shader post_glow_downsample_ps pixel a51_post_glow.hlsl PS_Downsample ps_6_0
-    {
-    }
-
-    shader post_filters_mip_composite_ps pixel a51_post_filters.hlsl PS_MipComposite ps_6_0
-    {
-    }
-
-    shader post_filters_mip_composite_custom_ps pixel a51_post_filters.hlsl PS_MipCompositeCustom ps_6_0
-    {
-    }
-
-    shader post_filters_mip_downsample_ps pixel a51_post_filters.hlsl PS_MipDownsample ps_6_0
-    {
-    }
-
-    shader post_filters_pain_blur_ps pixel a51_post_filters.hlsl PS_PainBlur ps_6_0
-    {
-    }
-
-    shader post_filters_motion_blur_ps pixel a51_post_filters.hlsl PS_MotionBlur ps_6_0
-    {
-    }
-
-    shader post_filters_noise_ps pixel a51_post_filters.hlsl PS_Noise ps_6_0
-    {
-    }
-
-    shader post_filters_screen_fade_ps pixel a51_post_filters.hlsl PS_ScreenFade ps_6_0
-    {
-    }
-
-    shader post_filters_radial_blur_ps pixel a51_post_filters.hlsl PS_RadialBlur ps_6_0
-    {
-    }
-
-    shader post_filters_screen_warp_ps pixel a51_post_filters.hlsl PS_ScreenWarp ps_6_0
+    shader cmaa2_apply compute a51_cmaa2_apply.hlsl DeferredColorApply2x2CS cs_6_0
     {
     }

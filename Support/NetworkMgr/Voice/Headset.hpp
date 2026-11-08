@@ -35,7 +35,8 @@ public:
         s32             GetDecodedBlockSize         ( void ) const                          { return m_DecodeBlockSize;   }
         void            PeriodicUpdate              ( f32 DeltaTime );
         void            ProvideUpdate               ( netstream& BitStream, s32 MaxLength = VOICE_MAX_UPDATE_BYTES );
-        void            AcceptUpdate                ( netstream& BitStream );
+        xbool           ReadUpdate                  ( netstream& BitStream, fifo::update& Update ) const;
+        void            AcceptUpdate                ( const fifo::update& Update );
         xbool           IsTalking                   ( void ) const                          { return m_IsTalking;                   }
         void            SetTalking                  ( xbool IsTalking );
         xbool           IsHardwarePresent           ( void )                                { return m_HeadsetCount>0;              }
@@ -68,11 +69,11 @@ private:
         s32             m_DecodeBlockSize;
         f32             m_HeadsetVolume;
         f32             m_MicrophoneSensitivity;
-        xbool           m_VolumeChanged;
         s32             m_HeadsetCount;
         xbool           m_HardwareEnabled;
         s32             m_ActiveHeadset;
         xbool           m_IsTalking;
+        u32             m_TalkingGeneration;
         xbool           m_TalkingRequested;
         xbool           m_LoopbackEnabled;
         byte*           m_pEncodeBuffer;
@@ -92,6 +93,6 @@ private:
 #endif
 };
 
-//=============================================================================
+//==============================================================================
 #endif // HEADSET_HPP
-//=============================================================================
+//==============================================================================

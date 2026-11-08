@@ -127,9 +127,11 @@
 //  1109    JP      Added bit for voice chat enabled in an online game.
 //  1110    JP      Removed bit from 1109 and added it only when server config is sent.
 //  1111    SB      Added fire sequence # to stop smp audio looping if begin/end packets get re-orderd
+//  ####    GS      Server logging has been suspended here. Please check GitHub for updates.
+//
 //==============================================================================
 
-#define BASE_SERVER_VERSION     1111
+#define BASE_SERVER_VERSION     1116
 
 //==============================================================================
 

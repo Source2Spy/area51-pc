@@ -14,6 +14,7 @@
 //==============================================================================
 
 #include "shader_bindings.hlsl"
+#include "a51_shader_contract.hlsl"
 
 //==============================================================================
 //  RESOURCES
@@ -21,15 +22,7 @@
 
 A51_CBUFFER_ATTR(4, 1) cbuffer cbProjTextures A51_CBUFFER_BIND(4, 1)
 {
-    float4x4 ProjLightMatrix [MAX_PROJ_LIGHTS];
-    float4x4 ProjShadowMatrix[MAX_PROJ_SHADOWS];
-    float4   ProjLightAtlas  [MAX_PROJ_LIGHTS];
-    float4   ProjShadowAtlas [MAX_PROJ_SHADOWS];
-    float4   ProjLightInfo   [MAX_PROJ_LIGHTS];
-    float4   ProjShadowInfo  [MAX_PROJ_SHADOWS];
-    uint     ProjLightCount;
-    uint     ProjShadowCount;
-    uint2    ProjPadding;
+    A51_ABI_FIELDS_ProjectionTextureData
 };
 
 //==============================================================================

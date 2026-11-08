@@ -38,9 +38,13 @@ void net_socket::Clear( void )
 void net_socket::SetBlocking(xbool Block)
 {
     if (Block)
+    {
         m_flags |= NET_FLAGS_BLOCKING;
+    }
     else
+    {
         m_flags &= ~NET_FLAGS_BLOCKING;
+    }
 }
 
 //=============================================================================

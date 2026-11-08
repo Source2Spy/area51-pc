@@ -22,10 +22,8 @@ public:
     virtual void                OnChangeItem        ( debug_menu_item* pItem );
 
 protected:
-    debug_menu_item*            m_pItemInvulnerability;
     debug_menu_item*            m_pItemResetPlayerToStart;
     debug_menu_item*            m_pItemResetPlayerToSafeSpot;
-    debug_menu_item*            m_pItemDifficulty;
     debug_menu_item*            m_pAcquireLevelLoreItems;
     debug_menu_item*            m_pUnlockAll;
 };

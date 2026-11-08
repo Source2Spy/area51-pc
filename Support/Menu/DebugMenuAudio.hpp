@@ -19,11 +19,9 @@ public:
     virtual                    ~debug_menu_audio     ( ) { };
 
     virtual void                OnChangeItem        ( debug_menu_item* pItem );
-    virtual void                OnPreRenderActive   ( void );
 
 protected:
     debug_menu_item*            m_pDumpLoadedPackages;
-    debug_menu_item*            m_pEnableVUMeter;    
 };
 
 //==============================================================================

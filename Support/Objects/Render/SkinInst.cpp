@@ -6,6 +6,7 @@
 
 #include "Entropy.hpp"
 #include "Objects/Render/SkinInst.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 
 //=============================================================================
 // FUNCTIONS
@@ -42,7 +43,8 @@ void skin_inst::Render( const matrix4* pL2W,
                         s32            nBone,
                         u32            Flags,
                         u64            LODMask,
-                        const xcolor&  Ambient )
+                        const xcolor&  Ambient,
+                        render::RenderContributionPolicy ContributionPolicy )
 {
     (void)nBone;
     (void)pL2W;
@@ -57,12 +59,13 @@ void skin_inst::Render( const matrix4* pL2W,
     s32 Alpha = (s32)(Ambient.A * m_Alpha) / 255;
 
     // Add a Skin Instance
-    render::AddSkinInstance( m_hInst,
+    render::GetRenderPipeline().GetSubmission().AddSkinInstance( m_hInst,
                              pBone,
                              LODMask,
                              m_VTextureMask,
                              Flags,
-                             xcolor( (u8)AmbientVec.GetX(), (u8)AmbientVec.GetY(), (u8)AmbientVec.GetZ(), (u8)Alpha ) );
+                             xcolor( (u8)AmbientVec.GetX(), (u8)AmbientVec.GetY(), (u8)AmbientVec.GetZ(), (u8)Alpha ),
+                             ContributionPolicy );
 }
 
 //=============================================================================
@@ -79,7 +82,7 @@ void skin_inst::RenderDistortion( const matrix4* pL2W,
     (void)pL2W;
 
     // Add a Skin Instance
-    render::AddSkinInstanceDistorted( m_hInst, pBone, LODMask, Flags, NormalRot, Ambient );
+    render::GetRenderPipeline().GetSubmission().AddSkinInstanceDistorted( m_hInst, pBone, LODMask, Flags, NormalRot, Ambient );
 }
 
 //=============================================================================
@@ -95,7 +98,7 @@ void skin_inst::RenderShadowCast( const matrix4* pL2W,
     (void)Flags;
 
     // add the shadow
-    render::AddSkinCaster( m_hInst,
+    render::GetRenderPipeline().GetShadowSubmission().AddSkinCaster( m_hInst,
                            pBone,
                            nBone,
                            LODMask,
@@ -108,7 +111,7 @@ void skin_inst::OnEnumProp( prop_enum& List )
 {
     // Important: The Header and External MUST be enumerated first!
     List.PropEnumHeader  ( "RenderInst", "Render Instance", 0 );
-    List.PropEnumExternal( "RenderInst\\File", "Resource\0skingeom", "Resource File", PROP_TYPE_MUST_ENUM );
+    List.PropEnumExternal( "RenderInst\\File", "Resource\0skingeom\0", "Resource File", PROP_TYPE_MUST_ENUM );
     List.PropEnumColor   ( "RenderInst\\MinAmbient",   "Minimum amount of ambient this instance will receive.", 0 );
     List.PropEnumFloat   ( "RenderInst\\OtherAmbient", "Percentage of floor color that will influence ambient (between 0 and 1).", 0 );
 
@@ -188,7 +191,7 @@ xbool skin_inst::OnProperty( prop_query& I )
 
 //=============================================================================
 
-void skin_inst::SetUpSkinGeom( const char* fileName)
+void skin_inst::SetUpSkinGeom( const char* FileName)
 {
     if ( m_hInst.IsNonNull() )
     {
@@ -196,7 +199,7 @@ void skin_inst::SetUpSkinGeom( const char* fileName)
         m_hInst = HNULL;
     }
 
-    m_hSkinGeom.SetName( fileName );
+    m_hSkinGeom.SetName( FileName );
     skin_geom* pSkinGeom = m_hSkinGeom.GetPointer();
     if( pSkinGeom )
     {

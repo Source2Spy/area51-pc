@@ -45,18 +45,6 @@ ui_manager::dialog_tem ChangeMapDialog =
 };
 
 //=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
-
-//=========================================================================
 //  Registration function
 //=========================================================================
 
@@ -147,16 +135,13 @@ xbool dlg_change_map::Create( s32                        UserID,
                     // Don't add campaign maps
                     break;
 
-#ifdef LAN_PARTY_BUILD
-                case GAME_DM:
-                case GAME_CNH:
-#else
                 default:
-#endif
                     // build the full map name (includes the game type)
-                    xwstring FullMapName( xfs( "%s %s", Entry.GetShortGameTypeName(), Entry.GetDisplayName() ) );                    
-                    // add an entry to the list
-                    m_pMapList->AddItem( FullMapName, (uaddr)&Entry );
+                    xwstring FullMapName;
+                    if( DecodeFontText( xfs( "%s %s", Entry.GetShortGameTypeName(), Entry.GetDisplayName() ), FullMapName ) )
+                    {
+                        m_pMapList->AddItem( FullMapName, (uaddr)&Entry );
+                    }
                     break;
             }
         }

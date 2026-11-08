@@ -15,6 +15,8 @@
 #include "e_ScratchMem.hpp"
 #include "StatsMgr.hpp"
 #include "UI/ui_renderer.hpp"
+#include "UI/ui_manager.hpp"
+#include "UI/ui_font.hpp"
 
 #ifndef TARGET_WINDOWS
 #include "e_Engine.hpp"
@@ -28,21 +30,13 @@
 // Externs
 //=============================================================================
 
-#if ENABLE_RENDER_STATS
-extern   render::stats s_RenderStats;
-#endif
-
 //=============================================================================
 // Statics
 //=============================================================================
 
-stats_mgr*   stats_mgr::s_This = NULL;
-xbool        stats_mgr::m_bShowNumbers = FALSE;
-#if defined(CONFIG_QA) || defined(CONFIG_RETAIL) || defined(aharp)
-xbool        stats_mgr::m_bShowHorizontalBars = FALSE;
-#else
-xbool        stats_mgr::m_bShowHorizontalBars = TRUE;
-#endif
+stats_mgr* stats_mgr::s_This                = NULL;
+xbool      stats_mgr::m_bShowNumbers        = FALSE;
+xbool      stats_mgr::m_bShowHorizontalBars = FALSE;
 
 xbool stats_mgr::m_bShowCPUTimeLegend  = FALSE;
 xbool stats_mgr::m_bShowGPUTimeLegend  = FALSE;
@@ -54,92 +48,82 @@ xbool stats_mgr::m_bShowVerticalLegend = FALSE;
 
 struct stat_render_info
 {
-    stat_render_info( const char* pName_, xcolor BarColor_ ) { pName = pName_; BarColor = BarColor_; }
+    stat_render_info( const char* pName_, xcolor BarColor_ )
+    {
+        pName    = pName_;
+        BarColor = BarColor_;
+    }
+
     const char* pName;
     xcolor      BarColor;
 };
 
 stat_render_info StatRenderInfo[k_stats_Last] =
-{
-    stat_render_info( "OnAdvance",      xcolor(128, 128, 0,   255) ),   // k_stats_OnAdvance
-    stat_render_info( "DebrisLogic",    xcolor(255, 128, 0,   255) ),   // k_stats_Debris
-    stat_render_info( "AIThink",        xcolor(0,   255, 0,   255) ),   // k_stats_AI_Think
-    stat_render_info( "AIAdvance",      xcolor(128, 64,  0,   255) ),   // k_stats_AI_Advance
-    stat_render_info( "Animation",      xcolor(0,   0,   100, 255) ),   // k_stats_Animation
-    stat_render_info( "Collision",      xcolor(128, 128, 255, 255) ),   // k_stats_Collision
-    stat_render_info( "Sound",          xcolor(100, 100, 255, 255) ),   // k_stats_Sound
-    stat_render_info( "ParticleLogic",  xcolor(255, 255,  0,  255) ),   // k_stats_ParticleSystem
-    stat_render_info( "Decals",         xcolor(0,   255, 255, 255) ),   // k_stats_DecalSystem
-    stat_render_info( "TriggerLogic",   xcolor(255, 0,   255, 255) ),   // k_stats_TriggerSystem
-    stat_render_info( "HiLevelRender",  xcolor(64,  64,  64,  255) ),   // k_stats_HighLevelRender
-    stat_render_info( "ObjectRender",   xcolor(255, 255, 255, 255) ),   // k_stats_ObjectRender
-    stat_render_info( "OtherRender",    xcolor(128, 128, 128, 255) ),   // k_stats_OtherRender
-    stat_render_info( "ProjectileLogic",xcolor(255, 128, 0,   255) ),   // k_stats_Projectiles
-    stat_render_info( "PortalLogic",    xcolor(255, 0,   0,   255) ),   // k_stats_Portal
-    stat_render_info( "TurretLogic",    xcolor(0,   128, 0,   255) ),   // k_stats_Turret
-    stat_render_info( "Physics",        xcolor(128, 0,   0,   255) ),   // k_stats_Physics
-    stat_render_info( "Player",         xcolor(128, 0,   128, 255) ),   // k_stats_Player
-    stat_render_info( "Other",          xcolor(128, 255, 128, 255) ),   // k_stats_CPU_Time
-    stat_render_info( "NumTimers",      xcolor(0,   0,   0,   255) ),   // k_stats_NumTimerStats
+    {
+        stat_render_info( "OnAdvance", xcolor( 128, 128, 0, 255 ) ),       // k_stats_OnAdvance
+        stat_render_info( "DebrisLogic", xcolor( 255, 128, 0, 255 ) ),     // k_stats_Debris
+        stat_render_info( "AIThink", xcolor( 0, 255, 0, 255 ) ),           // k_stats_AI_Think
+        stat_render_info( "AIAdvance", xcolor( 128, 64, 0, 255 ) ),        // k_stats_AI_Advance
+        stat_render_info( "Animation", xcolor( 0, 0, 100, 255 ) ),         // k_stats_Animation
+        stat_render_info( "Collision", xcolor( 128, 128, 255, 255 ) ),     // k_stats_Collision
+        stat_render_info( "Sound", xcolor( 100, 100, 255, 255 ) ),         // k_stats_Sound
+        stat_render_info( "ParticleLogic", xcolor( 255, 255, 0, 255 ) ),   // k_stats_ParticleSystem
+        stat_render_info( "Decals", xcolor( 0, 255, 255, 255 ) ),          // k_stats_DecalSystem
+        stat_render_info( "TriggerLogic", xcolor( 255, 0, 255, 255 ) ),    // k_stats_TriggerSystem
+        stat_render_info( "HiLevelRender", xcolor( 64, 64, 64, 255 ) ),    // k_stats_HighLevelRender
+        stat_render_info( "ObjectRender", xcolor( 255, 255, 255, 255 ) ),  // k_stats_ObjectRender
+        stat_render_info( "OtherRender", xcolor( 128, 128, 128, 255 ) ),   // k_stats_OtherRender
+        stat_render_info( "ProjectileLogic", xcolor( 255, 128, 0, 255 ) ), // k_stats_Projectiles
+        stat_render_info( "PortalLogic", xcolor( 255, 0, 0, 255 ) ),       // k_stats_Portal
+        stat_render_info( "TurretLogic", xcolor( 0, 128, 0, 255 ) ),       // k_stats_Turret
+        stat_render_info( "Physics", xcolor( 128, 0, 0, 255 ) ),           // k_stats_Physics
+        stat_render_info( "Player", xcolor( 128, 0, 128, 255 ) ),          // k_stats_Player
+        stat_render_info( "Other", xcolor( 128, 255, 128, 255 ) ),         // k_stats_CPU_Time
+        stat_render_info( "NumTimers", xcolor( 0, 0, 0, 255 ) ),           // k_stats_NumTimerStats
 
-    stat_render_info( "GS Reset",       xcolor(128, 128, 0,   255) ),   // k_stats_GSReset
-    stat_render_info( "GS Settings 0",  xcolor(255, 128, 0,   255) ),   // k_stats_GSSettings0
-    stat_render_info( "Shadow Create",  xcolor(0,   255, 0,   255) ),   // k_stats_ShadowMap
-    stat_render_info( "3d Objects",     xcolor(128, 64,  0,   255) ),   // k_stats_3dObjects
-    stat_render_info( "Special Objs",   xcolor(0,   0,   100, 255) ),   // k_stats_SpecialObjects
-    stat_render_info( "Poly Cache",     xcolor(128, 128, 128, 255) ),   // k_stats_PolyCache
-    stat_render_info( "2d Objects",     xcolor(100, 100, 255, 255) ),   // k_stats_2dObjects
-    stat_render_info( "CollisionMgr",   xcolor(255, 255, 0,   255) ),   // k_stats_CollisionMgr
-    stat_render_info( "GS Settings 1",  xcolor(0,   255, 255, 255) ),   // k_stats_GSSettings1
-    stat_render_info( "Stats Mgr",      xcolor(255, 0,   255, 255) ),   // k_stats_StatsMgr
-    stat_render_info( "UI",             xcolor(255, 128, 0,   255) ),   // k_stats_UI
-    stat_render_info( "Debug Text",     xcolor(64,  64,  64,  255) ),   // k_stats_DebugText
-    stat_render_info( "Unknown",        xcolor(255, 255, 255, 255) ),   // k_stats_unknown
-
-    stat_render_info( "GS",             xcolor(0,   0,   0,   255) ),   // k_stats_GS
-    stat_render_info( "VSync",          xcolor(255, 0,   128, 255) ),   // k_stats_VSync
-    stat_render_info( "DList",          xcolor(0,   0,   0,   255) ),   // k_stats_DList
-    stat_render_info( "SMem",           xcolor(0,   0,   0,   255) ),   // k_stats_SMem
-    stat_render_info( "Memory",         xcolor(0,   0,   0,   255) ),   // k_stats_Memory
-    stat_render_info( "VisibleObjects", xcolor(0,   0,   0,   255) ),   // k_stats_VisibleObjectCount
-    stat_render_info( "TotalObjects",   xcolor(0,   0,   0,   255) ),   // k_stats_TotalObjectCount
-    stat_render_info( "Vertices",       xcolor(0,   0,   0,   255) ),   // k_stats_Vertices
-    stat_render_info( "Polys",          xcolor(0,   0,   0,   255) ),   // k_stats_Polygons
-    stat_render_info( "TextureMemory",  xcolor(0,   0,   0,   255) ),   // k_stats_TextureMemory
-    stat_render_info( "AudioChannels",  xcolor(0,   0,   0,   255) ),   // k_stats_AudioChannel
+        stat_render_info( "Frame", xcolor( 255, 255, 255, 255 ) ),
+        stat_render_info( "Scratch memory", xcolor( 128, 192, 255, 255 ) ),
+        stat_render_info( "Memory", xcolor( 255, 192, 128, 255 ) ),
+        stat_render_info( "Objects", xcolor( 128, 255, 192, 255 ) ),
+        stat_render_info( "Texture memory", xcolor( 192, 128, 255, 255 ) ),
 };
 
-const char* Stat_Measurement_Name[k_stats_Measurement_Last] = 
-{
-    "Instant",
-    "Average",
-    "MaxRecent",
-    "MinRecent",
-    "MaxEver",
-    "MinEver"
-};
+//=============================================================================
+//  HELPER FUNCTIONS
+//=============================================================================
 
+static
+void DrawStatsText( s32 Font, s32 X, s32 Y, const char* pText, xcolor Color )
+{
+    const xwstring Text( pText );
+    irect          Bounds;
+    g_UiMgr->TextSize( Font, Bounds, Text, Text.GetLength() );
+    Bounds.Translate( X, Y );
+    g_UiMgr->RenderText( Font, Bounds, ui_font::h_left | ui_font::v_top, Color, Text, TRUE, FALSE );
+}
+
+//=============================================================================
 
 //=============================================================================
 // Implentation of the stat_logger class
 //=============================================================================
 
-s32 stat_logger::s_StatLevel = 0;
+s32          stat_logger::s_StatLevel = 0;
 stat_logger* stat_logger::s_StatStack[stat_logger::MAX_STAT_LEVELS];
 
 //=============================================================================
 
-stat_logger::stat_logger( stat_fields fieldToTrack ) :
-    m_FieldToTrack(fieldToTrack)
+stat_logger::stat_logger( stat_fields fieldToTrack ) : m_FieldToTrack( fieldToTrack )
 {
     // pause the current hierarchy timer and start up the next one
     ASSERT( s_StatLevel < stat_logger::MAX_STAT_LEVELS );
-    if ( s_StatLevel > 0 )
+
+    if( s_StatLevel > 0 )
     {
-        stats_mgr::GetStatsMgr()->RegisterStat( s_StatStack[s_StatLevel-1]->m_FieldToTrack,
-                                                s_StatStack[s_StatLevel-1]->m_Timer.StopMs() );
+        stats_mgr::GetStatsMgr()->RegisterStat( s_StatStack[s_StatLevel - 1]->m_FieldToTrack,
+                                                s_StatStack[s_StatLevel - 1]->m_Timer.StopMs() );
     }
-    
+
     s_StatStack[s_StatLevel] = this;
     s_StatLevel++;
 
@@ -152,13 +136,14 @@ stat_logger::stat_logger( stat_fields fieldToTrack ) :
 stat_logger::~stat_logger()
 {
     // read out the timer, and restart the next one up in the hierarchy
-    stats_mgr::GetStatsMgr()->RegisterStat(m_FieldToTrack, m_Timer.StopMs() );
+    stats_mgr::GetStatsMgr()->RegisterStat( m_FieldToTrack, m_Timer.StopMs() );
     ASSERT( s_StatLevel > 0 );
     s_StatLevel--;
-    if ( s_StatLevel > 0 )
+
+    if( s_StatLevel > 0 )
     {
-        s_StatStack[s_StatLevel-1]->m_Timer.Reset();
-        s_StatStack[s_StatLevel-1]->m_Timer.Start();
+        s_StatStack[s_StatLevel - 1]->m_Timer.Reset();
+        s_StatStack[s_StatLevel - 1]->m_Timer.Start();
     }
 }
 
@@ -166,12 +151,11 @@ stat_logger::~stat_logger()
 // implementation of the stats manager
 //=============================================================================
 
-stats_mgr::stats_mgr(void) :
-    m_FrameCount(0)
+stats_mgr::stats_mgr( void )
 {
-    // should only ever be created once!
-    ASSERT(!s_This);
+    ASSERT( !s_This );
     s_This = this;
+    Reset();
 }
 
 //=============================================================================
@@ -183,522 +167,282 @@ stats_mgr::~stats_mgr()
 
 //=============================================================================
 
-void stats_mgr::Reset (void)
+void stats_mgr::Reset( void )
 {
-    m_FrameCount = 0;
-    s32 outerCount, innerCount;
-    for(outerCount = 0; outerCount < k_stats_Last; outerCount++)
+    m_FrameCount  = 0;
+    m_SampleCount = 0;
+
+    x_memset( m_Stats, 0, sizeof( m_Stats ) );
+    x_memset( m_FrameDurations, 0, sizeof( m_FrameDurations ) );
+
+    for( s32 i = 0; i < k_stats_Last; i++ )
     {
-        for( innerCount = 0; innerCount < k_SAMPLE_HISTORY; innerCount++ )
-        {
-            m_Stats[outerCount][innerCount] = 0.0f;
-        }
-    
-        m_StatsMin[outerCount]     = 0.0f;
-        m_StatsMax[outerCount]     = 0.0f;
-        m_StatsAverage[outerCount] = 0.0f;
+        m_StatsMin[i] = F32_MAX;
+        m_StatsMax[i] = 0.0f;
     }
 }
 
 //=============================================================================
 
-void stats_mgr::OnGameUpdate(f32 deltaTime)
+void stats_mgr::OnGameUpdate( f32 DeltaTime )
 {
-    X_PROFILE_SCOPE_CATEGORY( "Context", "stats_mgr::OnGameUpdate" );
-
-    (void)deltaTime;
-
-    // update sats shared across all platforms
-    s32 nTexture, TextureMemory;
-    texture::GetStats( &nTexture, &TextureMemory );
-    
-    #if ENABLE_RENDER_STATS
-    RegisterStat( k_stats_VisibleObjectCount, (f32)render::GetStats().m_nInstancesRendered );
-    RegisterStat( k_stats_Vertices,           (f32)render::GetStats().m_nVerticesRendered  );
-    RegisterStat( k_stats_Polygons,           (f32)render::GetStats().m_nTrisRendered      );
-    #endif
-
-    RegisterStat( k_stats_TextureMemory,      (f32)TextureMemory );
-    RegisterStat( k_stats_Memory,             (f32)x_MemGetUsed() );
-    RegisterStat( k_stats_SMem,               (f32)smem_GetBufferSize()-smem_GetMaxUsed() );
-
-    s32 nCount = 0;
-    for (u32 i = object::TYPE_NULL + 1; i < object::TYPE_END_OF_LIST; i++)
-    {
-        nCount += g_ObjMgr.GetNumInstances( (object::type)i );
-    }
-    RegisterStat( k_stats_TotalObjectCount,   (f32)nCount );
-
-    // get set for the next frame of stats
-    m_FrameCount++;
-    m_FrameCount %= k_SAMPLE_HISTORY;
-
-    s32 count;
-    for(count = 0; count < k_stats_Last; count++ )
-    {
-        m_Stats[count][m_FrameCount] = 0.0f;
-    }
-}
-
-//=============================================================================
-void stats_mgr::DrawBar(    stat_fields thisStat, 
-                            f32 X1, f32 Y1, f32 X2, f32 Y2,
-                            xcolor BarColor )
-
-{
-#if !defined( TARGET_DESKTOP ) && !defined( TARGET_MOBILE )
-
-    X_PROFILE_SCOPE_CATEGORY( "Context", "stats_mgr::Render" );
-    
-    //
-    //  First we draw the base bar that other bars will be built on.
-    //  This bar is drawn to the length above and is assumed to be the base bar
-    //  that all others are measured by
-    //
-    xcolor baseBar(128,128,128, 128 );
-    xcolor midBar = xcolor( BarColor.R, MIN(BarColor.G + 84, 255), BarColor.B, 128);
-    xcolor highBar = xcolor( MIN(BarColor.R + 84, 255), BarColor.G, BarColor.B, 128);
-
-    vector2 corner1( X1, Y1 );
-    vector2 corner2( X2, Y2 );
-
-    f32 maxScale;
-    switch(thisStat) 
-    {
-    default:
-    case k_stats_VSync:
-        maxScale = 1000.0f/60.0f;
-        break;
-
-    case k_stats_DList:
-    #ifndef TARGET_XBOX
-        maxScale = (f32)DLIST.GetMFIFOSize();
-        break;
-    #else
+    if( !x_isvalid( DeltaTime ) || DeltaTime <= 0.0f )
         return;
-    #endif
 
-    case k_stats_SMem:
-    #ifndef TARGET_XBOX
-        maxScale = (f32)s_SMem;
-        break;
-    #else
+    s32 TextureCount, TextureMemory;
+    texture::GetStats( &TextureCount, &TextureMemory );
+
+    // Capture frame-wide counters before advancing the history slot.
+    RegisterStat( k_stats_FrameTime, DeltaTime * 1000.0f );
+    RegisterStat( k_stats_TextureMemory, (f32)TextureMemory );
+    RegisterStat( k_stats_Memory, (f32)x_MemGetUsed() );
+    RegisterStat( k_stats_SMem, (f32)smem_GetMaxUsed() );
+
+    s32 ObjectCount = 0;
+
+    for( s32 i = object::TYPE_NULL + 1; i < object::TYPE_END_OF_LIST; i++ )
+        ObjectCount += g_ObjMgr.GetNumInstances( (object::type)i );
+
+    RegisterStat( k_stats_TotalObjectCount, (f32)ObjectCount );
+
+    CompleteFrame( DeltaTime );
+}
+
+//=============================================================================
+
+void stats_mgr::CompleteFrame( f32 DeltaTime )
+{
+    // Finish the current sample before moving to the next circular-buffer slot.
+    m_FrameDurations[m_FrameCount] = DeltaTime;
+
+    for( s32 i = 0; i < k_stats_Last; i++ )
+    {
+        m_StatsMin[i] = x_min( m_StatsMin[i], m_Stats[i][m_FrameCount] );
+        m_StatsMax[i] = x_max( m_StatsMax[i], m_Stats[i][m_FrameCount] );
+    }
+
+    m_SampleCount = x_min( m_SampleCount + 1, k_SAMPLE_HISTORY - 1 );
+    m_FrameCount  = ( m_FrameCount + 1 ) % k_SAMPLE_HISTORY;
+
+    // The new slot accumulates statistics for the next frame.
+    for( s32 i = 0; i < k_stats_Last; i++ )
+        m_Stats[i][m_FrameCount] = 0.0f;
+
+    m_FrameDurations[m_FrameCount] = 0.0f;
+}
+
+//=============================================================================
+
+void stats_mgr::RegisterStat( stat_fields Field, f32 Value )
+{
+    ASSERT( Field >= 0 && Field < k_stats_Last );
+    ASSERT( x_isvalid( Value ) );
+
+    m_Stats[Field][m_FrameCount] += Value;
+}
+
+//=============================================================================
+
+f32 stats_mgr::GetStat( stat_fields Field, stat_measurement Measurement, f32 AverageTime )
+{
+    ASSERT( Field >= 0 && Field < k_stats_Last );
+
+    if( m_SampleCount == 0 )
+        return 0.0f;
+
+    if( Measurement == k_stats_MaxEver )
+        return m_StatsMax[Field];
+
+    if( Measurement == k_stats_MinEver )
+        return m_StatsMin[Field];
+
+    f32 Value    = Measurement == k_stats_MinRecent ? F32_MAX : 0.0f;
+    f32 Duration = 0.0f;
+    s32 Count    = 0;
+
+    // Walk completed frames backwards; the current slot is still being filled.
+    for( s32 i = 1; i <= m_SampleCount; i++ )
+    {
+        const s32 Index  = ( m_FrameCount + k_SAMPLE_HISTORY - i ) % k_SAMPLE_HISTORY;
+        const f32 Sample = m_Stats[Field][Index];
+
+        if( Measurement == k_stats_Instant )
+            return Sample;
+
+        if( Measurement == k_stats_MaxRecent )
+            Value = x_max( Value, Sample );
+        else if( Measurement == k_stats_MinRecent )
+            Value = x_min( Value, Sample );
+        else
+        {
+            ASSERT( Measurement == k_stats_Average );
+            Value += Sample;
+            Duration += m_FrameDurations[Index];
+            Count++;
+
+            if( Duration >= AverageTime )
+                break;
+        }
+    }
+
+    return Measurement == k_stats_Average ? Value / Count : Value;
+}
+
+//=============================================================================
+
+const char* stats_mgr::GetStatName( stat_fields Field )
+{
+    return Field >= 0 && Field < k_stats_Last ? StatRenderInfo[Field].pName : "?";
+}
+
+//=============================================================================
+
+void stats_mgr::DrawFPS( void )
+{
+    if( !g_UiMgr || ( !m_bShowHorizontalBars && !m_bShowNumbers ) )
         return;
-    #endif
 
-    case k_stats_VisibleObjectCount:
-        maxScale = 500.0f;
-        break;
-    case k_stats_Vertices:
-        maxScale = 100000.0f;
-        break;
-    case k_stats_Polygons:
-        maxScale = 65000.0f;
-        break;
-    case k_stats_TextureMemory:
-        maxScale = 6000000.0f;
-        break;
-    case k_stats_Memory:
-        maxScale = 26.0f*1024.0f*1024.0f;
-        break;
-    case k_stats_TotalObjectCount:
-        maxScale = obj_mgr::MAX_OBJECTS;
-        break;
-    case k_stats_AudioChannel:
-        maxScale = 48.0f;
-        break;
-    }
+    const s32 Font = g_UiMgr->FindFont( "small" );
 
-    // Draw.
-    rect DrawRect;
-    DrawRect.Set( corner1, corner2 );
-    g_UIRenderer.DrawRect( DrawRect, baseBar );
-    
-    if(thisStat == k_stats_Vertices ||
-       thisStat == k_stats_Polygons   ||
-       thisStat == k_stats_TextureMemory   ||
-       thisStat == k_stats_SMem   ||
-       thisStat == k_stats_DList   ||
-       thisStat == k_stats_VisibleObjectCount   ||
-       thisStat == k_stats_TotalObjectCount   ||
-       thisStat == k_stats_Memory ||
-       thisStat == k_stats_AudioChannel)
-    {
-        vector2 tempCorner1, tempCorner2;
-
-        f32 calculatedScale;
-        //////////////////////////////////////////////////////////////////////////
-        //  Draw the average first
-        //////////////////////////////////////////////////////////////////////////
-        
-        tempCorner1 = corner1;
-        tempCorner2 = corner2;
-    
-        calculatedScale = ( (maxScale - GetStat(thisStat,k_stats_Average))/maxScale );
-        
-        tempCorner1.Y += (tempCorner2.Y -tempCorner1.Y) * calculatedScale;
-            
-        DrawRect.Set( tempCorner1, tempCorner2 );
-        g_UIRenderer.DrawRect( DrawRect, midBar );
-        
-        //////////////////////////////////////////////////////////////////////////
-        //  Draw the Instant value
-        //////////////////////////////////////////////////////////////////////////
-        
-
-        tempCorner1 = corner1;
-        tempCorner2 = corner2;
-        
-        calculatedScale = ( (maxScale - GetStat(thisStat,k_stats_Instant))/maxScale );
-
-        tempCorner1.Y += (tempCorner2.Y -tempCorner1.Y) * calculatedScale;
-
-        DrawRect.Set( tempCorner1, tempCorner2 );
-        g_UIRenderer.DrawRect( DrawRect, highBar );        
-
-        //////////////////////////////////////////////////////////////////////////
-        //  Max Recent
-        //////////////////////////////////////////////////////////////////////////
-
-        tempCorner1 = corner1;
-        tempCorner2 = corner2;
-
-        calculatedScale =  ( (maxScale - GetStat(thisStat,k_stats_MaxRecent))/maxScale );
-
-        tempCorner1.Y += (tempCorner2.Y -tempCorner1.Y) *calculatedScale;
-        tempCorner2.Y = tempCorner1.Y + 3;
-  
-        DrawRect.Set( tempCorner1, tempCorner2 );
-        g_UIRenderer.DrawRect( DrawRect, XCOLOR_BLACK );      
-
-        //////////////////////////////////////////////////////////////////////////
-        //  Min Recent
-        //////////////////////////////////////////////////////////////////////////
-
-
-        tempCorner1 = corner1;
-        tempCorner2 = corner2;
-
-        calculatedScale =  ( (maxScale - GetStat(thisStat,k_stats_MinRecent))/maxScale );
-
-        tempCorner1.Y += (tempCorner2.Y -tempCorner1.Y) *calculatedScale;
-        tempCorner2.Y = tempCorner1.Y + 3;
-  
-        DrawRect.Set( tempCorner1, tempCorner2 );
-        g_UIRenderer.DrawRect( DrawRect, XCOLOR_PURPLE );      
-    }
-    
-#endif
-}
-
-//=============================================================================
-
-void stats_mgr::PrintStats(     stat_fields thisStat, 
-                                stat_measurement thisMeasurement, 
-                                u32 X1, u32 Y1, 
-                                f32 lengthOfTimeToAverage  )
-{
- 
-    f32 value = GetStat( thisStat, thisMeasurement, lengthOfTimeToAverage);
-    x_printfxy( X1, Y1, "%s-%s: %4.1f", StatRenderInfo[thisStat].pName,
-                                        Stat_Measurement_Name[thisMeasurement],
-                                        value );
-}
-
-//=============================================================================
-
-void stats_mgr::RegisterStat(   stat_fields thisField,
-                                f32 thisValue )
-{
-
-    //  update the value at the proper frame slot
-    m_Stats[thisField][m_FrameCount%k_SAMPLE_HISTORY] += thisValue;
-
-    //  update min and max values if needed
-    if( thisValue > m_StatsMax[thisField] )
-        m_StatsMax[thisField] = thisValue;
-    if( thisValue < m_StatsMin[thisField] )
-        m_StatsMin[thisField] = thisValue;
-}
-
-//=============================================================================
-
-f32 stats_mgr::GetStat(    stat_fields thisStat, stat_measurement thisMeasurement, f32 lengthOfTimeToAverage )
-{
-    f32 value = 0.0f;
-
-    switch( thisMeasurement )
-    {   
-    case k_stats_Instant:
-        {
-            value = m_Stats[thisStat][(m_FrameCount+ k_SAMPLE_HISTORY -1)%k_SAMPLE_HISTORY];
-        }
-        break;
-
-    case k_stats_Average:
-        {
-            s32 count  ;
-            for(count = (s32)(30.0f*lengthOfTimeToAverage); count > 0; count-- )
-            {
-                s32 index = m_FrameCount - count;
-                if(index < 0 )
-                {
-                    index += k_SAMPLE_HISTORY;
-                }
-                value += m_Stats[thisStat][index];
-            }
-            value /= (f32)((s32)(30.0f*lengthOfTimeToAverage));
-        }
-        break;
-        
-    case k_stats_MaxRecent:
-        {
-            s32 count;
-            for(count = 0; count < k_SAMPLE_HISTORY; count++ )
-            {
-                if( m_Stats[thisStat][count] > value )
-                {
-                    value = m_Stats[thisStat][count];
-                }
-            }
-        }
-        break;
-        
-    case k_stats_MinRecent:
-        {
-            value   = 999999999.0f;
-            s32 count;
-            for(count = 0; count < k_SAMPLE_HISTORY; count++ )
-            {
-                if( m_Stats[thisStat][count] < value && m_Stats[thisStat][count] != 0.0f )
-                {
-                    value = m_Stats[thisStat][count];
-                }
-            }
-        }
-        break;
-        
-    case k_stats_MaxEver:
-        {
-            value = m_StatsMax[thisStat];
-
-        }
-        break;
-        
-    case k_stats_MinEver:
-        {
-            value = m_StatsMin[thisStat];
-        }
-        break;
-    default:
-        ASSERT(false);
-        
-    }
-
-    return value;
-
-}
-
-//=============================================================================
-
-const char* stats_mgr::GetStatName( stat_fields thisStat )
-{
-    if( thisStat < 0 || thisStat >= k_stats_Last )
-        return "?";
-    return StatRenderInfo[thisStat].pName;
-}
-
-//=============================================================================
-
-void stats_mgr::DrawFPS(void)
-{
-    if (!m_bShowHorizontalBars)
+    if( Font < 0 )
         return;
-    
-#if !defined( TARGET_DESKTOP ) && !defined( TARGET_MOBILE )
-    // Draw.
-    vector2 CPUUpperLeft  ( 20.0f,  10.0f );
-    vector2 CPULowerRight ( 480.0f, 16.0f );
-    vector2 GSUpperLeft   ( 20.0f,  16.0f );
-    vector2 GSLowerRight  ( 480.0f, 22.0f );
-    vector2 temp1, temp2;
 
-#ifdef X_DEBUG
-    s32 notches = 10;
-#else
-    s32 notches = 4;
-#endif
-    f32 totalTime = ((f32)notches )* (1000.0f/60.0f);
+    const irect Bounds     = g_UIRenderer.GetViewport().GetLogicalClipBounds();
+    const s32   LineHeight = g_UiMgr->GetLineHeight( Font );
 
-    // Denominator
-    f32 fSampleTime             = .25f;
-
-    // get the stat timings
-    f32 percents[k_stats_NumTimerStats];
-    f32 fCPUStatTime = 0.0f;
-    s32 i;
-    for ( i = 0; i < k_stats_NumTimerStats; i++ )
+    if( m_bShowHorizontalBars )
     {
-        percents[i] = GetStat( (stat_fields)i, k_stats_Average, fSampleTime );
-        fCPUStatTime += percents[i];
+        f32 Total = 0.0f;
+
+        for( s32 i = 0; i < k_stats_NumTimerStats; i++ )
+            Total += GetStat( (stat_fields)i, k_stats_Average, 0.25f );
+
+        const f32 Scale = x_max( 1000.0f / 60.0f, x_max( Total, GetStat( k_stats_FrameTime, k_stats_Average, 0.25f ) ) );
+        const s32 Left  = Bounds.l + 10;
+        const s32 Right = Bounds.r - 10;
+        const s32 Top   = Bounds.b - LineHeight - 20;
+
+        g_UIRenderer.DrawRect( irect( Left, Top, Right, Top + 8 ), xcolor( 40, 40, 40, 192 ) );
+
+        f32 X = (f32)Left;
+
+        for( s32 i = 0; i < k_stats_NumTimerStats; i++ )
+        {
+            const f32 Width = ( Right - Left ) * GetStat( (stat_fields)i, k_stats_Average, 0.25f ) / Scale;
+            g_UIRenderer.DrawRect( rect( X, (f32)Top, X + Width, (f32)Top + 8 ), StatRenderInfo[i].BarColor );
+            X += Width;
+        }
+
+        DrawStatsText( Font, Left, Top + 10, xfs( "CPU %.2f ms / Frame %.2f ms", Total, GetStat( k_stats_FrameTime, k_stats_Average, 0.25f ) ), XCOLOR_WHITE );
     }
 
-    // remove the vsync time from the render "other" time
-    f32 fVSyncTime = GetStat( (stat_fields)k_stats_VSync, k_stats_Average, fSampleTime );
-    percents[k_stats_CPU_Time] -= fVSyncTime;
-
-    // convert the timings into percentages
-    if ( fCPUStatTime <= 0.0f ) fCPUStatTime = 1.0f;    // this if should never get hit...just here for safety
-    for ( i = 0; i < k_stats_NumTimerStats; i++ )
+    if( m_bShowNumbers )
     {
-        percents[i] /= fCPUStatTime;
+        s32 Y = Bounds.t + 40;
+
+        for( s32 i = 0; i < k_stats_NumTimerStats; i++ )
+        {
+            DrawStatsText( Font, Bounds.l + 10, Y, xfs( "%-16s %6.2f ms", StatRenderInfo[i].pName, GetStat( (stat_fields)i, k_stats_Average, 0.5f ) ), StatRenderInfo[i].BarColor );
+            Y += LineHeight;
+        }
     }
-
-    // what is the total cpu percent of the bar?
-    f32 percentTotalCPU = fCPUStatTime / totalTime;
-
-    // get the gpu stat timings
-    f32 GPUPercents[k_stats_GPUUnknown-k_stats_GSReset+1];
-    f32 fGPUStatTime = 0.0f;
-    for ( i = k_stats_GSReset; i <= k_stats_GPUUnknown; i++ )
-    {
-        GPUPercents[i-k_stats_GSReset]  = GetStat( (stat_fields)i, k_stats_Average, fSampleTime );
-        fGPUStatTime                   += GPUPercents[i-k_stats_GSReset];
-    }
-
-    // convert the timings into percentages
-    if ( fGPUStatTime <= 0.0f ) fGPUStatTime = 1.0f;    // this if should never get hit...just here for safety
-    for ( i = k_stats_GSReset; i <= k_stats_GPUUnknown; i++ )
-    {
-        GPUPercents[i-k_stats_GSReset] /= fGPUStatTime;
-    }
-
-    // what is the total gpu percent of the bar?
-    f32 percentTotalGS = fGPUStatTime / totalTime;
-
-    //draw base gray bars
-    rect DrawRect;
-    DrawRect.Set( CPUUpperLeft.X, CPUUpperLeft.Y, GSLowerRight.X, GSLowerRight.Y );
-    g_UIRenderer.DrawRect( DrawRect, xcolor(64,64,64,255) );
-
-    // draw each of the timer stats
-    temp1   = CPUUpperLeft;
-    temp2   = CPULowerRight;
-    temp2.X = temp1.X;
-    for ( i = 0; i < k_stats_NumTimerStats; i++ )
-    {
-        temp1.X = temp2.X;
-        temp2.X = temp2.X + (CPULowerRight.X - CPUUpperLeft.X) * (percentTotalCPU*percents[i]);
-        DrawRect.Set( temp1, temp2 );
-        g_UIRenderer.DrawRect( DrawRect, StatRenderInfo[i].BarColor );
-    }
-
-    // draw the vsync time
-    temp1.X = temp2.X;
-    temp2.X = temp2.X + (CPULowerRight.X - CPUUpperLeft.X) * (percentTotalCPU*fVSyncTime/fCPUStatTime);
-    DrawRect.Set( temp1, temp2 );
-    g_UIRenderer.DrawRect( DrawRect, StatRenderInfo[k_stats_VSync].BarColor );
-
-    // draw each of the GPU time stats
-    temp1   = GSUpperLeft;
-    temp2   = GSLowerRight;
-    temp2.X = temp1.X;
-    for ( i = k_stats_GSReset; i <= k_stats_GPUUnknown; i++ )
-    {
-        temp1.X = temp2.X;
-        temp2.X = temp2.X + (GSLowerRight.X - GSUpperLeft.X) * (percentTotalGS*GPUPercents[i-k_stats_GSReset]);
-        DrawRect.Set( temp1, temp2 );
-        g_UIRenderer.DrawRect( DrawRect, StatRenderInfo[i].BarColor );
-    }
-
-/*
-    //  draw the GS bar on it
-    temp1   = GSUpperLeft;
-    temp2   = GSLowerRight;
-    temp2.X = GSUpperLeft.X + (GSLowerRight.X - GSUpperLeft.X) * percentTotalGS;
-    DrawRect.Set( temp1, temp2 );
-    g_UIRenderer.DrawRect( DrawRect, xcolor(180,180,180,255) );
-    */
-
-    // draw the notches across
-    s32 count;
-    for( count =0; count < notches; count++ )
-    {
-        temp1 = CPUUpperLeft;
-        temp2 = GSLowerRight;
-        temp1.X = CPUUpperLeft.X + ((CPULowerRight.X - CPUUpperLeft.X)*count)/(notches);
-        temp1.X -=1;
-        temp2.X = temp1.X +2;
-        DrawRect.Set( temp1, temp2 );
-        g_UIRenderer.DrawRect( DrawRect, xcolor(0,0,0,255) );
-    }
-
-    if(  m_bShowNumbers )
-    {
-        PrintStats( k_stats_Portal,k_stats_Average,         1,  1  );
-        PrintStats( k_stats_CPU_Time,k_stats_Average,       1,  2  );
-        PrintStats( k_stats_Animation,k_stats_Average,      1,  3  );
-        PrintStats( k_stats_TriggerSystem,k_stats_Average,  1,  4  );
-        PrintStats( k_stats_OtherRender,k_stats_Average,    1,  5  );
-        PrintStats( k_stats_ObjectRender,k_stats_Average,   1,  6  );
-        PrintStats( k_stats_Projectiles,k_stats_Average,    1,  7  );
-        PrintStats( k_stats_DecalSystem,k_stats_Average,    1,  8  );
-        PrintStats( k_stats_Portal,k_stats_Average,         1,  9  );
-        PrintStats( k_stats_Turret,k_stats_Average,         1,  10 );
-    }
-#endif
 }
 
 //=============================================================================
 
 void stats_mgr::DrawCPULegend( void )
 {
-    if ( !m_bShowCPUTimeLegend )
+    if( !m_bShowCPUTimeLegend || !g_UiMgr )
         return;
+
+    const s32 Font = g_UiMgr->FindFont( "small" );
+
+    if( Font < 0 )
+        return;
+
+    const irect Bounds     = g_UIRenderer.GetViewport().GetLogicalClipBounds();
+    const s32   LineHeight = g_UiMgr->GetLineHeight( Font );
+    const s32   Left       = Bounds.r - 240;
+    s32         Y          = Bounds.t + 100;
+
+    g_UIRenderer.DrawRect( irect( Left - 4, Y - 4, Bounds.r - 6,
+                                  Y + ( k_stats_NumTimerStats + 1 ) * LineHeight + 4 ),
+                           xcolor( 0, 0, 0, 192 ) );
+    DrawStatsText( Font, Left, Y, "CPU time (ms)", XCOLOR_WHITE );
+    Y += LineHeight;
+
+    for( s32 i = 0; i < k_stats_NumTimerStats; i++ )
+    {
+        g_UIRenderer.DrawRect( irect( Left, Y + 2, Left + 6, Y + 8 ), StatRenderInfo[i].BarColor );
+        DrawStatsText( Font, Left + 10, Y, xfs( "%-16s %6.2f", StatRenderInfo[i].pName, GetStat( (stat_fields)i, k_stats_Average, 0.5f ) ), XCOLOR_WHITE );
+        Y += LineHeight;
+    }
 }
 
 //=============================================================================
 
 void stats_mgr::DrawGPULegend( void )
 {
-    if ( !m_bShowGPUTimeLegend )
+    if( !m_bShowGPUTimeLegend || !g_UiMgr )
         return;
+
+    const s32 Font = g_UiMgr->FindFont( "small" );
+
+    if( Font < 0 )
+        return;
+
+    const irect Bounds = g_UIRenderer.GetViewport().GetLogicalClipBounds();
+
+    DrawStatsText( Font, Bounds.l + 10, Bounds.t + 40, "GPU timing: unavailable", XCOLOR_WHITE );
 }
 
 //=============================================================================
 
 void stats_mgr::DrawSmallBars( void )
 {
+    if( !m_bShowVerticalLegend || !g_UiMgr )
+        return;
+
+    const s32 Font = g_UiMgr->FindFont( "small" );
+
+    if( Font < 0 )
+        return;
+
+    const irect Bounds     = g_UIRenderer.GetViewport().GetLogicalClipBounds();
+    const s32   LineHeight = g_UiMgr->GetLineHeight( Font );
+    s32         Y          = Bounds.t + 40;
+
+    for( s32 i = k_stats_SMem; i < k_stats_Last; i++ )
+    {
+        const f32   Value   = GetStat( (stat_fields)i, k_stats_Instant );
+        const f32   Maximum = x_max( 1.0f, GetStat( (stat_fields)i, k_stats_MaxRecent ) );
+        const f32   Width   = 180.0f * x_clamp( Value / Maximum, 0.0f, 1.0f );
+        const s32   Left    = Bounds.l + 10;
+        const s32   Top     = Y + LineHeight;
+        const xbool Memory  = i != k_stats_TotalObjectCount;
+
+        DrawStatsText( Font, Left, Y, xfs( "%s: %.1f %s", StatRenderInfo[i].pName, Memory ? Value / 1048576.0f : Value, Memory ? "MiB" : "" ), XCOLOR_WHITE );
+        g_UIRenderer.DrawRect( rect( (f32)Left, (f32)Top, (f32)Left + 180.0f, (f32)Top + 6 ), xcolor( 40, 40, 40, 192 ) );
+        g_UIRenderer.DrawRect( rect( (f32)Left, (f32)Top, (f32)Left + Width, (f32)Top + 6 ), StatRenderInfo[i].BarColor );
+        Y += LineHeight + 12;
+    }
 }
 
 //=============================================================================
 
 void stats_mgr::DrawSmallBarLegend( void )
 {
-    if ( !m_bShowVerticalLegend )
+    if( !m_bShowVerticalLegend || !g_UiMgr )
         return;
 
-    x_printfxy( 1, 20, "1" );
-    x_printfxy( 2, 20, "2" );
-    x_printfxy( 3, 20, "3" );
-    x_printfxy( 4, 20, "4" );
-    x_printfxy( 5, 20, "5" );
-    x_printfxy( 6, 20, "6" );
-    x_printfxy( 7, 20, "7" );
-    x_printfxy( 8, 20, "8" );
-    x_printfxy( 9, 20, "9" );
+    const s32 Font = g_UiMgr->FindFont( "small" );
 
-    x_printfxy( 10, 4,  "1. Vertices" );
-    x_printfxy( 10, 5,  "2. Polygons" );
-    x_printfxy( 10, 6,  "3. Memory" );
-    x_printfxy( 10, 7,  "4. DList" );
-    x_printfxy( 10, 8,  "5. SMem" );
-    x_printfxy( 10, 9,  "6. Texture Memory" );
-    x_printfxy( 10, 10, "7. Visible Objects" );
-    x_printfxy( 10, 11, "8. Total Objects" );
-    x_printfxy( 10, 12, "9. Active Sound Channels" );
+    if( Font < 0 )
+        return;
+
+    const irect Bounds = g_UIRenderer.GetViewport().GetLogicalClipBounds();
+    DrawStatsText( Font, Bounds.l + 10, Bounds.t + 40 + 4 * ( g_UiMgr->GetLineHeight( Font ) + 12 ),
+                   "Bars relative to recent peak", XCOLOR_WHITE );
 }
 
-//=============================================================================
-
-#endif //ENABLE_STATS_MGR
+#endif // ENABLE_STATS_MGR

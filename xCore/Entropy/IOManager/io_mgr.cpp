@@ -44,7 +44,9 @@ void io_dispatch_job( void* pData )
     ASSERT( pMgr );
 
     if( pMgr )
+    {
         pMgr->DispatchRequests();
+    }
 }
 
 //==============================================================================
@@ -97,7 +99,9 @@ void io_mgr::DispatchRequest( io_request* pRequest )
             // Find the insertion point.
             pCurr = pDevice->m_RequestQueue.m_pNext;
             while( pRequest->m_Priority >= pCurr->m_Priority )
+            {
                 pCurr = pCurr->m_pNext;
+            }
 
             // Insert it into the list.
             pRequest->m_pNext       = pCurr;
@@ -117,12 +121,16 @@ void io_mgr::DispatchRequest( io_request* pRequest )
 
         // Service the devices current io_request.
         if( bServiceRequest )
+        {
             pDevice->ServiceDeviceCurrentRequest();
+        }
 
         // Service the devices io_request queue.
         if( bServiceQueue )
+        {
             pDevice->ServiceDeviceQueue();
-    
+        }
+
         // Release device semaphore.
         pDevice->m_Semaphore.Send( NULL, MQ_BLOCK );
     }
@@ -190,7 +198,9 @@ xbool io_mgr::PopDispatcherRequest( io_request*& pRequest )
         pRequest = m_DispatcherRequests[m_DispatcherRead];
         m_DispatcherRead++;
         if( m_DispatcherRead >= DISPATCHER_QUEUE_SIZE )
+        {
             m_DispatcherRead = 0;
+        }
         m_DispatcherCount--;
         HasRequest = TRUE;
     }
@@ -205,7 +215,9 @@ xbool io_mgr::PopDispatcherRequest( io_request*& pRequest )
 xbool io_mgr::StartDispatcher( void )
 {
     if( x_WorkerJobSubmitDetached( io_dispatch_job, this, "IOManager" ) )
+    {
         return TRUE;
+    }
 
     x_BeginAtomic();
     m_DispatcherJobActive = FALSE;
@@ -235,7 +247,9 @@ xbool io_mgr::QueueDispatcherRequest( io_request* pRequest, xbool IsCompletion )
             m_DispatcherRequests[m_DispatcherWrite] = pRequest;
             m_DispatcherWrite++;
             if( m_DispatcherWrite >= DISPATCHER_QUEUE_SIZE )
+            {
                 m_DispatcherWrite = 0;
+            }
             m_DispatcherCount++;
             MessageStatus = TRUE;
 
@@ -307,7 +321,9 @@ s32 io_mgr::Kill( void )
         x_EndAtomic();
 
         if( DispatcherActive )
+        {
             x_DelayThread( 1 );
+        }
     }
     while( DispatcherActive );
 
@@ -428,7 +444,9 @@ s32 io_mgr::GetDeviceQueueStatus( s32 Device ) const
     io_device* pDevice;
 
     if( !s_Initialized )
+    {
         return 0;
+    }
 
     // Error check.
     ASSERT( s_Initialized );

@@ -14,33 +14,22 @@
 //==============================================================================
 
 #include "shader_bindings.hlsl"
+#include "a51_shader_contract.hlsl"
 
 //==============================================================================
 //  TYPES
 //==============================================================================
 
-struct SkinInstanceData
-{
-    uint   ShaderFlags;
-    uint   BoneOffset;
-    uint   LightingIndex;
-    uint   Padding0;
-    float4 FadeAlphaPadding;
-};
-
-//------------------------------------------------------------------------------
-
-struct SkinBoneMatrix
-{
-    float4x4 L2W;
-};
-
-//------------------------------------------------------------------------------
-
 #if defined(A51_SHADER_BINDING_SDL) && defined(A51_SHADER_STAGE_PIXEL)
-    #define A51_SKIN_INSTANCES_BINDING      8
-    #define A51_SKIN_BONE_MATRICES_BINDING  9
-    #define A51_SKIN_BONE_REMAPS_BINDING    10
+    #ifndef A51_SKIN_INSTANCES_BINDING
+        #define A51_SKIN_INSTANCES_BINDING 9
+    #endif
+    #ifndef A51_SKIN_BONE_MATRICES_BINDING
+        #define A51_SKIN_BONE_MATRICES_BINDING 13
+    #endif
+    #ifndef A51_SKIN_BONE_REMAPS_BINDING
+        #define A51_SKIN_BONE_REMAPS_BINDING 14
+    #endif
 #else
     #define A51_SKIN_INSTANCES_BINDING      0
     #define A51_SKIN_BONE_MATRICES_BINDING  1
@@ -65,11 +54,11 @@ StructuredBuffer<uint> SkinBoneRemaps
 //  FUNCTIONS
 //==============================================================================
 
-float4x4 SkinGetBoneL2W( uint instanceID, uint boneRemapOffset, uint cacheIndex )
+float4x4 SkinGetBoneL2W( uint InstanceID, uint BoneRemapOffset, uint CacheIndex )
 {
-    const uint clampedCache = min( cacheIndex, (uint)( MAX_SKIN_BONES - 1 ) );
-    const uint boneIndex = SkinBoneRemaps[boneRemapOffset + clampedCache];
-    return SkinBoneMatrices[SkinInstances[instanceID].BoneOffset + boneIndex].L2W;
+    const uint ClampedCache = min( CacheIndex, (uint)( MAX_SKIN_BONES - 1 ) );
+    const uint BoneIndex = SkinBoneRemaps[BoneRemapOffset + ClampedCache];
+    return SkinBoneMatrices[SkinInstances[InstanceID].BoneOffset + BoneIndex].L2W;
 }
 
 //==============================================================================

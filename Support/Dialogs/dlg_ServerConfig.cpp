@@ -15,7 +15,7 @@
 #include "dlg_ServerConfig.hpp"
 #include "StateMgr/StateMgr.hpp"
 #include "StringMgr/StringMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 
 //=========================================================================
 //  Main Menu Dialog
@@ -43,18 +43,6 @@ ui_manager::dialog_tem ServerConfigDialog =
     &ServerConfigControls[0],
     0
 };
-
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
 
 //=========================================================================
 //  Registration function
@@ -153,13 +141,6 @@ xbool dlg_server_config::Create( s32                        UserID,
         m_pButtonChangeTeam->SetFlag(ui_win::WF_DISABLED, TRUE);
     }
 
-#ifdef LAN_PARTY_BUILD
-    m_pButtonKickPlayer ->SetFlag(ui_win::WF_DISABLED, TRUE);
-    m_pButtonChangeTeam ->SetFlag(ui_win::WF_DISABLED, TRUE);
-    m_pButtonRestartMap ->SetFlag(ui_win::WF_DISABLED, TRUE);
-    m_pButtonReconfigure->SetFlag(ui_win::WF_DISABLED, TRUE);
-    m_pButtonShutdown   ->SetFlag(ui_win::WF_DISABLED, TRUE);
-#endif
 
     // initialize screen scaling
     InitScreenScaling( Position );
@@ -397,7 +378,6 @@ void dlg_server_config::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         }
     }
 
-#ifndef LAN_PARTY_BUILD
     // ensure that there are still players to kick
     {
         const game_score& ScoreData = GameMgr.GetScore();
@@ -430,7 +410,6 @@ void dlg_server_config::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             m_pButtonKickPlayer->SetFlag( WF_DISABLED, FALSE );
         }
     }
-#endif
 
     // check for pop up result
     if ( m_PopUp )

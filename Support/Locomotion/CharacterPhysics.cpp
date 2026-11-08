@@ -1,171 +1,123 @@
+//=========================================================================
+//
+//  CharacterPhysics.cpp
+//
+//=========================================================================
+
+//=========================================================================
+//  INCLUDES
+//=========================================================================
 
 #include "Render/PrimitiveDebug.hpp"
 #include "CharacterPhysics.hpp"
 #include "CollisionMgr/CollisionMgr.hpp"
+#include "CollisionMgr/CollisionPrimatives.hpp"
 #include "Entropy.hpp"
+#include "x_math.hpp"
 #include "Objects/AnimSurface.hpp"
 #include "Objects/Player/Player.hpp"
 #include "PainMgr/Pain.hpp"
 #include "CollisionMgr/PolyCache.hpp"
 #include "Characters/Character.hpp"
 #include "Objects/Door.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "Objects/CokeCan.hpp"
 
 #ifndef X_EDITOR
 #include "NetworkMgr/NetworkMgr.hpp"
 #endif
 
-static const f32 REALLY_SMALL                =  0.00001f;
-static const f32 MAX_VELOCITY_TO_CLIMB_STEEPS   = 600.0f;
-static const f32 MAX_VELOCITY_TO_CLIMB_STEEPS_2 = x_sqr( MAX_VELOCITY_TO_CLIMB_STEEPS );
-static const f32 SLIDE_PLANE_BACKOFF         = 0.01f;
-
-
-#ifdef mreed
-struct breadcrumb
-{
-    vector3 Pos;
-    xcolor  Color;
-};
-    static const s32    N_BREADCRUMBS       = 100;
-    static const xbool  g_UseBreadcrumbs    = FALSE;
-    s32                 g_FirstBreadcrumb   = -1;
-    s32                 g_LastBreadcrumb    = -1;
-    breadcrumb          g_Breadcrumbs[N_BREADCRUMBS];
-
-void AddBreadcrumb( const vector3& Pos, xcolor Color )
-{
-    if ( g_UseBreadcrumbs )
-    {
-        g_LastBreadcrumb++;
-    
-        if ( g_LastBreadcrumb == N_BREADCRUMBS )
-        {
-            g_LastBreadcrumb = 0;
-        }
-
-        if ( g_LastBreadcrumb == g_FirstBreadcrumb )
-        {
-            g_FirstBreadcrumb++;
-
-            if ( g_FirstBreadcrumb == N_BREADCRUMBS )
-            {
-                g_FirstBreadcrumb = 0;
-            }
-        }
-
-        if ( g_FirstBreadcrumb < 0 )
-        {
-            // First time only
-            g_FirstBreadcrumb = 0;
-        }
-
-        g_Breadcrumbs[g_LastBreadcrumb].Pos     = Pos;
-        g_Breadcrumbs[g_LastBreadcrumb].Color   = Color;
-    }
-}
-#endif
-
-xbool  g_UpdateRidingPlatform = TRUE;
-xbool  g_ApplyPlatformCollision = TRUE;
-
-
-// TODO: Debug Code
-#if 0
-//#ifdef cgalley
-#define LOG_CHARACTER_PHYSICS
-xbool  g_LogCharacterPhysics = FALSE;
-#endif
-
 //=========================================================================
-// FUNCTIONS
+//  CONSTANTS
 //=========================================================================
 
-#ifdef X_ASSERT
+static const f32 IMPULSE_SETTLE_SPEED  = 1.0f;
+static const f32 REALLY_SMALL          = 0.00001f;
+static const f32 MAX_MOVEMENT_INTERVAL = 1.0f / 60.0f;
 
-xbool IsValidPosition( const vector3& P )
+//=========================================================================
+//  GLOBAL STATE
+//=========================================================================
+
+xbool g_UpdateRidingPlatform   = TRUE;
+xbool g_ApplyPlatformCollision = TRUE;
+
+//=========================================================================
+//  HELPER FUNCTIONS
+//=========================================================================
+
+static
+void ComputePlatformMotion( const matrix4& OldPlatformM, const matrix4& NewPlatformM, const vector3& CurrentPos,
+                                   vector3& DeltaPos, radian& DeltaYaw )
 {
-    // Get world bbox
-    const bbox& BBox = g_ObjMgr.GetSafeBBox();
+    // Compute motion matrix
+    matrix4 DeltaM = OldPlatformM;
+    DeltaM.InvertSRT();
+    DeltaM = NewPlatformM * DeltaM;
 
-    // Check min
-    if( P.GetX() < BBox.Min.GetX() )
-        return FALSE;
-    if( P.GetY() < BBox.Min.GetY() )
-        return FALSE;
-    if( P.GetZ() < BBox.Min.GetZ() )
-        return FALSE;
+    // Compute DeltaPos
+    vector3 NewPos = DeltaM * CurrentPos;
+    DeltaPos       = NewPos - CurrentPos;
 
-    // Check max
-    if( P.GetX() > BBox.Max.GetX() )
-        return FALSE;
-    if( P.GetY() > BBox.Max.GetY() )
-        return FALSE;
-    if( P.GetZ() > BBox.Max.GetZ() )
-        return FALSE;
-
-    return TRUE;        
+    // Compute DeltaYaw
+    radian3 OldPlatformYaw = OldPlatformM.GetRotation();
+    radian3 NewPlatformYaw = NewPlatformM.GetRotation();
+    DeltaYaw               = NewPlatformYaw.Yaw - OldPlatformYaw.Yaw;
 }
 
-#endif
-
+//=========================================================================
+//  IMPLEMENTATION
 //=========================================================================
 
 character_physics::character_physics( void )
 {
-    m_Guid                      =        0;
-    m_NavCollisionHeight        =   180.0f;
-    m_NavCollisionCurentHeight  =  m_NavCollisionHeight;
-    m_NavCollisionRadius        =    30.0f;
-    m_NavCollisionCrouchOffset  =    40.0f;
-    m_AirControl                =     0.04f; 
-    m_FlingAC                   =     0.0f;
-    m_MaxCollisions             =     8;
-    m_bHandlePermeable          =     FALSE;
-    m_bNavCollided              =     FALSE;
-    m_bFallMode                 =     FALSE;
-    m_bJumpMode                 =     FALSE;
-    m_bFlingMode                =     FALSE;
-    m_bTrackingGround           =     TRUE;
-    m_bUseGravity               =     TRUE;
-    m_bLocoGravityOn            =     TRUE;
-    m_bLocoCollisionOn          =     TRUE;
-    m_CollisionSnuggleDistance  =     1.0f;
-    m_GroundTolerance           =     5.0f;
-    m_FallTolerance             =    50.0f;
-    m_VelocityForFallMode       =   980.0f;
+    m_Guid                      = 0;
+    m_NavCollisionHeight        = 180.0f;
+    m_NavCollisionCurrentHeight = m_NavCollisionHeight;
+    m_NavCollisionRadius        = 30.0f;
+    m_NavCollisionCrouchOffset  = 40.0f;
+    m_AirControl                = 0.04f;
+    m_ExternalAirControl        = 0.0f;
+    m_bHandlePermeable          = FALSE;
+    m_bNavCollided              = FALSE;
+    m_bRecoveryFailed           = FALSE;
+    m_MotionResponse            = CharacterMotionResponse::None;
+    m_bUseGravity               = TRUE;
+    m_bLocoGravityOn            = TRUE;
+    m_bLocoCollisionOn          = TRUE;
+    m_ContactOffset             = 1.0f;
+    m_GroundTolerance           = 5.0f;
+    m_GroundSnapDistance        = 45.0f;
+    m_StepHeight                = 60.0f;
     m_GravityAcceleration       = -1000.0f;
-    m_MaxDistanceToGround       =    20.0f;
-    m_SteepestSlide             =     0.5f;
-    m_CrouchPercent             =     0.0f;
-    m_GroundPlane.Setup(1,0,0,0);
-    m_GroundGuid                =        0;
-    m_GroundPos.Zero();
-    m_GroundBoneIndex           =        0;
-    m_MovingPlatformGuid        =        0;
-    m_MovingPlatformBone        =       -1;
-    m_DeltaPosIndex             =        0;
-    m_ActorCollisionRadius      =       50.0f;
-    m_SolveActorCollisions      =    FALSE;
-    m_IgnoreGuid                =        0;
-    m_LastFling                 =        0;
-    m_StuckFallTime             =     0.0f;
+    m_SlopeAngle                = R_60;
+    m_MovingPlatformGuid        = 0;
+    m_MovingPlatformBone        = -1;
+    m_ActorCollisionRadius      = 50.0f;
+    m_SolveActorCollisions      = FALSE;
+    m_IgnoreGuid                = 0;
+    m_LastImpulseSource         = 0;
+    m_FlingAccelerationTime     = 0.0f;
     m_OldMovingPlatformVelocity.Zero();
     m_OldMovingPlatformL2W.Identity();
 
     m_nPlatformsToIgnore = 0;
 
-    m_Velocity.Set(0,0,0);
-    m_Position.Set(0,0,0);
+    m_MotionVelocity.Set( 0, 0, 0 );
+    m_Position.Set( 0, 0, 0 );
 
-    m_LastMoveVelocity.Set( 0.0f, 0.0f, 0.0f );
-    m_LastSteepSurface = NULL_GUID;
-    m_bIsAirborn       = FALSE;
-    
-    ResetDeltaPos() ;
+    m_WorldVelocity.Set( 0.0f, 0.0f, 0.0f );
+    m_PlatformDisplacement.Zero();
+    m_StepOffset     = 0.0f;
+    m_GroundFriction = 8.0f;
+    m_Support        = {};
+    m_Support.Normal.Set( 0.0f, 1.0f, 0.0f );
+    m_Landed       = FALSE;
+    m_LandingSpeed = 0.0f;
 
-    x_memset(m_TriggerGuid,0,sizeof(m_TriggerGuid));
+    ResetMovementProgress();
+
+    x_memset( m_TriggerGuid, 0, sizeof( m_TriggerGuid ) );
     m_nTriggerGuids = 0;
 }
 
@@ -177,293 +129,407 @@ void character_physics::Init( guid Guid )
 }
 
 //=========================================================================
-static const f32 k_KeepAwayDistance = 150.0f;
 
 void character_physics::SolveActorAndPlatformCollisions( void )
 {
-#ifdef LOG_CHARACTER_PHYSICS
-    CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::SolveActorAndPlatformCollisions", "" );
-#endif
-
-    if (m_bLocoCollisionOn == FALSE)
+    if( m_bLocoCollisionOn == FALSE )
     {
-        return ;
+        return;
     }
 
-    //
-    // Build bbox around character
-    //
-    bbox WorldBBox;
-    WorldBBox.Max.GetZ() = WorldBBox.Max.GetX() = m_ActorCollisionRadius;
-    WorldBBox.Min.GetZ() = WorldBBox.Min.GetX() = -WorldBBox.Max.GetX();
-    WorldBBox.Max.GetY() = GetColHeight();
-    WorldBBox.Min.GetY() = 0;
-    WorldBBox.Translate(m_Position);
-
-    if ( m_SolveActorCollisions )
+    if( m_SolveActorCollisions )
     {
-        //
-        // Loop through list and process characters
-        //
-        SolveActorCollisions( WorldBBox );
+        SolveActorCollisions();
     }
 
-    //
     // Loop through list and process animated surfaces
-    //
-    SolvePlatformCollisions( );
+    SolvePlatformCollisions();
 }
 
 //=========================================================================
 
-void character_physics::SolveActorCollisions ( const bbox& ActorBBox )
+void character_physics::SolveActorCollisions( void )
 {
-#ifdef LOG_CHARACTER_PHYSICS
-    CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::SolveActorCollisions", "" );
-#endif
-
-    object* pOurCharacter = g_ObjMgr.GetObjectByGuid( m_Guid );
-    if( !pOurCharacter ) return;
-    ASSERT( pOurCharacter->IsKindOf(actor::GetRTTI()) );
-
-    // Build actor's bbox
-    s32 nActorsChecked=0;
-    vector3 FinalMoveDelta(0.0f, 0.0f, 0.0f);
-
-    actor* pActor = actor::m_pFirstActive;
-    while( pActor )
+    actor* pOwner = (actor*)g_ObjMgr.GetObjectByGuid( m_Guid );
+    if( !pOwner )
     {
-        if( (pActor != pOurCharacter) && 
-            (pActor->GetGuid() != m_IgnoreGuid) &&
-            (!pActor->IsDead()) )  // We don't want to collide with dead players!
+        return;
+    }
+    ASSERT( pOwner->IsKindOf( actor::GetRTTI() ) );
+
+    const f32 Radius = x_min( m_ActorCollisionRadius, m_NavCollisionCurrentHeight * 0.5f );
+    for( actor* pActor = actor::m_pFirstActive; pActor; pActor = pActor->m_pNextActive )
+    {
+        if( ( pActor == pOwner ) || ( pActor->GetGuid() == m_IgnoreGuid ) || pActor->IsDead() )
         {
-            f32 ActorCollisonRadius = pActor->GetActorCollisionRadius();
-
-            // calc cylindrical distance
-            vector3 CToUs = m_Position - pActor->GetPosition();
-            CToUs.GetY() = 0;
-            f32 DistBetweenSq = CToUs.LengthSquared();
-            f32 RadiusSum = m_ActorCollisionRadius + ActorCollisonRadius;
-
-            if( DistBetweenSq < RadiusSum*RadiusSum )
+            continue;
+        }
+        const f32     OtherHeight   = pActor->GetCollisionHeight();
+        const f32     OtherRadius   = x_min( pActor->GetActorCollisionRadius(), OtherHeight * 0.5f );
+        const vector3 OtherPosition = pActor->GetPosition();
+        const vector3 CoincidentNormal( m_Guid > pActor->GetGuid() ? 1.0f : -1.0f, 0.0f, 0.0f );
+        vector3       Correction;
+        if( !ComputeCapsuleCapsulePenetration( m_Position + vector3( 0.0f, Radius, 0.0f ),
+                                               m_Position + vector3( 0.0f, m_NavCollisionCurrentHeight - Radius, 0.0f ),
+                                               Radius, OtherPosition + vector3( 0.0f, OtherRadius, 0.0f ),
+                                               OtherPosition + vector3( 0.0f, OtherHeight - OtherRadius, 0.0f ),
+                                               OtherRadius, CoincidentNormal, Correction ) )
+        {
+            continue;
+        }
+        pOwner->SetCollidedActor( pActor->GetGuid() );
+        if( pOwner->CanBePushedBy( *pActor ) )
+        {
+            Push( Correction );
+            if( m_bRecoveryFailed )
             {
-                // Do vertical overlap test
-                bbox BBox = pActor->GetBBox();
-                if( (BBox.Max.GetY() >= ActorBBox.Min.GetY()) && (ActorBBox.Max.GetY() >= BBox.Min.GetY()) )
-                {
-                    f32 PenetrationDist = RadiusSum - x_sqrt(DistBetweenSq);
-                    ASSERT( PenetrationDist >= 0 );
-
-                    vector3 MoveDelta = CToUs;
-                    MoveDelta.NormalizeAndScale(PenetrationDist);
-
-                    // adding a player check so that NPCs can push the player but the player can't push NPCs. 
-                    // Otherwise the player can squeeze between things and push NPCs away from consoles and the like 
-                    // creating nasty bugs.
-                    if( !pActor->IsPlayer() || pOurCharacter->IsKindOf( player::GetRTTI() ) )
-                    {
-                        FinalMoveDelta += MoveDelta;
-                    }
-
-                    nActorsChecked++;
-
-                    ((actor*)pOurCharacter)->SetCollidedActor(pActor->GetGuid());
-                }
+                return;
             }
         }
-
-        // move to next actor
-        pActor = pActor->m_pNextActive;
     }
-
-    if( nActorsChecked )
-        Push( FinalMoveDelta );
-}
-
-//=========================================================================
-
-void character_physics::AdvanceWithoutCollision( const vector3& MoveTo, f32 DeltaTime, xbool bIsDead )
-{
-    (void)bIsDead;
-    if( !x_isvalid( DeltaTime ) || (DeltaTime < 0.0f) )
-    {
-        ASSERT( FALSE );
-        return;
-    }
-
-    if( DeltaTime <= F32_MIN )
-        return;
-
-    vector3 const Delta = MoveTo - m_Position;
-
-    m_Velocity = Delta/DeltaTime;
-    m_LastMoveVelocity = Delta / DeltaTime;
-    m_Position = MoveTo;
-
-    m_bFallMode  = FALSE;
-    m_bFlingMode = FALSE;
-
-    m_GroundGuid = 0;
-    m_GroundPlane.Setup(m_Position,vector3(0,1,0));
-    m_GroundPos = m_Position;
-    m_GroundBoneIndex = 0;
 }
 
 //=========================================================================
 
 void character_physics::Advance( const vector3& MoveTo, f32 DeltaTime, xbool bIsDead )
 {
-    if( !x_isvalid( DeltaTime ) || (DeltaTime < 0.0f) )
+    if( !x_isvalid( DeltaTime ) || ( DeltaTime < 0.0f ) || !MoveTo.IsValid() )
     {
         ASSERT( FALSE );
         return;
     }
-
     if( DeltaTime <= F32_MIN )
+    {
+        m_Landed       = FALSE;
+        m_LandingSpeed = 0.0f;
+        m_StepOffset   = 0.0f;
+        m_WorldVelocity.Zero();
         return;
-
-    vector3 const StartPosition     = m_Position;
-    vector3 const RequestedVelocity = (MoveTo - StartPosition) / DeltaTime;
-    vector3 PositionOnEntry = m_Position;
-    vector3 VelocityOnEntry = m_Velocity;
-
-#ifdef LOG_CHARACTER_PHYSICS
-    CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::Advance", "" );
-    xstring s;
-    if( m_bFallMode ) s += "Fall ";
-    if( m_bFlingMode ) s += "Fling ";
-    if( m_bTrackingGround ) s += "Tracking ";
-    CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::Advance", s );
-#endif
-
-    vector3 OldPos   = m_Position;
-    vector3 NewPos   = m_Position;
-    vector3 Momentum = m_Velocity;
-
-    m_Velocity = RequestedVelocity;
-
-    if (m_bLocoGravityOn == FALSE)
-    {
-        m_bFallMode         = FALSE;
-        m_bFlingMode        = FALSE;
-        m_bTrackingGround   = FALSE;
     }
 
-    //
-    // Update information about ground!
-    //
-    f32 GroundCheckDist = 50.0f;//-fMin( DeltaTime * m_Velocity.Y - m_GroundTolerance*2.0f, -m_GroundTolerance*2.0f);
-//    UpdateGround( GroundCheckDist );
+    xarray<CharacterMovementHit> ContactObjects;
+    const vector3 StartPosition     = m_Position;
+    const vector3 RequestedVelocity = ( MoveTo - StartPosition ) / DeltaTime;
+    const s32     Steps             = MAX( 1, (s32)x_ceil( DeltaTime / MAX_MOVEMENT_INTERVAL ) );
+    const f32     Interval          = DeltaTime / Steps;
+    object*       pOwner            = g_ObjMgr.GetObjectByGuid( m_Guid );
+    const xbool   IsPlayer          = pOwner && pOwner->IsKindOf( player::GetRTTI() );
+    m_bNavCollided                  = FALSE;
+    m_bRecoveryFailed               = FALSE;
+    m_StepOffset                    = 0.0f;
+    m_Landed                        = FALSE;
+    m_LandingSpeed                  = 0.0f;
 
-    //
-    // Update physics and apply gravity etc.
-    //
-    UpdatePhysics( DeltaTime, Momentum.GetY() );
-
-    if( m_bFallMode == TRUE )
+    for( s32 Step = 0; Step < Steps; Step++ )
     {
-        f32 AirControl = m_AirControl;
-
-        if( g_MPTweaks.Active )
+        if( UsesGravity() && ( m_MotionVelocity.GetY() <= 0.0f ) )
         {
-            if( m_bFlingMode )   AirControl = m_FlingAC;
-            else                 AirControl = g_MPTweaks.AirControl;
-        }
-
-        // AirControl is authored as the amount applied by one 60 Hz frame.
-        // Convert that response to the actual simulation interval
-        AirControl = x_clamp( AirControl, 0.0f, 1.0f );
-        AirControl = 1.0f - x_pow( 1.0f - AirControl,
-                                   DeltaTime * 60.0f );
-
-        m_Velocity.GetX()  = Momentum.GetX() + AirControl * ( m_Velocity.GetX() - Momentum.GetX() );
-        m_Velocity.GetZ()  = Momentum.GetZ() + AirControl * ( m_Velocity.GetZ() - Momentum.GetZ() );
-        m_Velocity.GetY() += Momentum.GetY();
-    }
-
-    HandleMove( NewPos, 
-                m_Velocity,
-                DeltaTime, 
-                0.0f,
-                m_SteepestSlide );
-
-    // Resolve any penetrations
-    m_Position = NewPos;
-    ResolvePenetrations();
-    NewPos = m_Position;
-
-    // Track ground following the move
-    if( UpdateGround( GroundCheckDist ) )
-    {
-        if( m_bTrackingGround )
-        {
-            if( NewPos.GetY() > m_GroundPos.GetY() )
-                NewPos.GetY() = m_GroundPos.GetY();
-        }
-    }
-    else
-    {
-        m_bTrackingGround = FALSE;
-    }
-
-    m_LastMoveVelocity = (NewPos - OldPos) / DeltaTime;
-    m_Position = NewPos;
-
-// TODO - Revisit this logic.
-// The player being dead in an online game is the only case we want to keep from doing this
-// logic.  If this is not here, other players will push the ghost around.
-#ifndef X_EDITOR
-    if( !g_NetworkMgr.IsOnline() || !bIsDead )
-#endif
-        SolveActorAndPlatformCollisions();  
-
-
-    // TODO: E3: CJ: Hack to get the player out of stuck situations
-    if( m_bFallMode && ( VelocityOnEntry.GetY() < -50.0f ) )
-    {
-        if( x_abs( PositionOnEntry.GetY() - m_Position.GetY() ) < 0.1f )
-        {
-            m_StuckFallTime += DeltaTime;
-            if( m_StuckFallTime >= (3.0f / 60.0f) )
+            const xbool WasGrounded = IsGrounded();
+            const f32   Distance    = WasGrounded ? m_GroundSnapDistance : m_ContactOffset;
+            if( UpdateSupport( Distance ) )
             {
-                LOG_WARNING( "character_physics::Advance", "Stuck!" );
-                m_Velocity.GetY() = 0.0f;
-                m_bFallMode  = FALSE;
-                m_bFlingMode = FALSE;
-                m_StuckFallTime = 0.0f;
+                if( !WasGrounded )
+                {
+                    HandleLanding( -m_MotionVelocity.GetY() );
+                }
+                m_MotionVelocity.GetY() = 0.0f;
+            }
+            else if( WasGrounded )
+            {
+                LeavePlatform( TRUE );
             }
         }
         else
         {
-            m_StuckFallTime = 0.0f;
+            m_Support.State = CharacterSupportState::None;
+        }
+
+        f32 RemainingTime = Interval;
+        for( s32 Phase = 0; ( Phase < 3 ) && ( RemainingTime > F32_MIN ); Phase++ )
+        {
+            const f32     PhaseTime       = m_FlingAccelerationTime > 0.0f ?
+                                               x_min( RemainingTime, m_FlingAccelerationTime ) : RemainingTime;
+            const xbool   Grounded        = IsGrounded();
+            const vector3 OldPosition     = m_Position;
+            const vector3 InitialVelocity = m_MotionVelocity;
+            f32           Gravity         = 0.0f;
+            f32           ResponseBase    = 1.0f;
+            f32           ResponseRate    = 0.0f;
+
+            if( UsesGravity() )
+            {
+                if( Grounded && !HasExternalResponse() )
+                {
+                    m_MotionVelocity.GetX() = RequestedVelocity.GetX();
+                    m_MotionVelocity.GetZ() = RequestedVelocity.GetZ();
+                }
+                else
+                {
+                    f32 Response;
+                    if( Grounded )
+                    {
+                        ResponseBase = x_exp( -m_GroundFriction );
+                        ResponseRate = 1.0f;
+                        Response     = 1.0f - x_pow( ResponseBase, PhaseTime );
+                    }
+                    else
+                    {
+                        f32 AirControl = HasExternalResponse() ? m_ExternalAirControl : m_AirControl;
+                        if( g_MPTweaks.Active && !HasExternalResponse() )
+                        {
+                            AirControl = g_MPTweaks.AirControl;
+                        }
+                        ResponseBase = 1.0f - x_clamp( AirControl, 0.0f, 1.0f );
+                        ResponseRate = 60.0f;
+                        Response     = 1.0f - x_pow( ResponseBase, PhaseTime * ResponseRate );
+                    }
+
+                    m_MotionVelocity.GetX() += Response * ( RequestedVelocity.GetX() - m_MotionVelocity.GetX() );
+                    m_MotionVelocity.GetZ() += Response * ( RequestedVelocity.GetZ() - m_MotionVelocity.GetZ() );
+                }
+
+                if( !Grounded && ( m_FlingAccelerationTime <= 0.0f ) )
+                {
+                    Gravity = m_GravityAcceleration * ( g_MPTweaks.Active ? g_MPTweaks.Gravity : 1.0f );
+                }
+            }
+            else
+            {
+                m_MotionVelocity = RequestedVelocity;
+            }
+
+            vector3 PathVelocity = m_MotionVelocity;
+            if( UsesGravity() )
+            {
+                PathVelocity.GetY() += RequestedVelocity.GetY() + Gravity * PhaseTime * 0.5f;
+                if( Grounded )
+                {
+                    PathVelocity.GetY() =
+                        RequestedVelocity.GetY() - ( m_Support.Normal.GetX() * m_MotionVelocity.GetX() +
+                                                     m_Support.Normal.GetZ() * m_MotionVelocity.GetZ() ) /
+                                                       m_Support.Normal.GetY();
+                }
+            }
+
+            if( IsPlayer && Grounded && UsesGravity() && m_bLocoCollisionOn && !HasExternalResponse() &&
+                ( RequestedVelocity.GetY() == 0.0f ) )
+            {
+                // Preserve input speed along the support plane.
+                const f32 SpeedSquared     = SQR( m_MotionVelocity.GetX() ) + SQR( m_MotionVelocity.GetZ() );
+                const f32 PathSpeedSquared = PathVelocity.LengthSquared();
+                if( PathSpeedSquared > SpeedSquared )
+                {
+                    PathVelocity *= x_sqrt( SpeedSquared / PathSpeedSquared );
+                    m_MotionVelocity.GetX() = PathVelocity.GetX();
+                    m_MotionVelocity.GetZ() = PathVelocity.GetZ();
+                }
+            }
+
+            const CharacterMovementResult Result =
+                CharacterMovement::Move( *this, GetMovementSettings(), m_Position, PathVelocity, PhaseTime,
+                                         Grounded, UsesGravity() && ( Grounded || m_MotionVelocity.GetY() <= 0.0f ) );
+            if( Result.RecoveryFailed )
+            {
+                HandleRecoveryFailure();
+                break;
+            }
+
+            const f32 ConsumedTime = PhaseTime - Result.TimeRemaining;
+            const f32 ImpactSpeed  = x_max( 0.0f, -( m_MotionVelocity.GetY() + Gravity * ConsumedTime ) );
+            if( UsesGravity() && ( ResponseRate > 0.0f ) && ( ConsumedTime < PhaseTime ) )
+            {
+                const f32 Response =
+                    ConsumedTime > F32_MIN ? 1.0f - x_pow( ResponseBase, ConsumedTime * ResponseRate ) : 0.0f;
+                m_MotionVelocity.GetX() =
+                    InitialVelocity.GetX() + Response * ( RequestedVelocity.GetX() - InitialVelocity.GetX() );
+                m_MotionVelocity.GetZ() =
+                    InitialVelocity.GetZ() + Response * ( RequestedVelocity.GetZ() - InitialVelocity.GetZ() );
+            }
+            m_MotionVelocity.GetY() += Gravity * ConsumedTime;
+            m_FlingAccelerationTime = x_max( 0.0f, m_FlingAccelerationTime - ConsumedTime );
+            m_MotionVelocity = CharacterMovement::ResolveVelocity( m_MotionVelocity, Result );
+            CommitMovement( Result );
+
+            if( Result.Landed )
+            {
+                HandleLanding( ImpactSpeed );
+            }
+            if( Grounded && !IsGrounded() )
+            {
+                LeavePlatform( TRUE );
+            }
+
+            if( IsGrounded() && HasExternalResponse() )
+            {
+                vector3 Difference = m_MotionVelocity - RequestedVelocity;
+                Difference.GetY()  = 0.0f;
+                if( Difference.LengthSquared() <= x_sqr( IMPULSE_SETTLE_SPEED ) )
+                {
+                    m_MotionResponse    = CharacterMotionResponse::None;
+                    m_LastImpulseSource = NULL_GUID;
+                }
+            }
+
+            for( s32 Contact = 0; Contact < Result.Hits.GetCount(); Contact++ )
+            {
+                const CharacterMovementHit& Hit = Result.Hits[Contact];
+                xbool Found = FALSE;
+                for( s32 i = 0; i < ContactObjects.GetCount(); i++ )
+                {
+                    Found |= ContactObjects[i].Object == Hit.Object;
+                }
+                if( !Found )
+                {
+                    ContactObjects.Append( Hit );
+                }
+            }
+            if( m_bHandlePermeable && g_ObjMgr.GetObjectByGuid( m_Guid ) )
+            {
+                CollectPermeable( g_ObjMgr.GetObjectByGuid( m_Guid ), OldPosition, m_Position );
+            }
+            RemainingTime = x_max( 0.0f, RemainingTime - ConsumedTime );
+        }
+
+        if( m_bRecoveryFailed )
+        {
+            break;
         }
     }
-    else
+
+    if( !m_bRecoveryFailed )
     {
-        m_StuckFallTime = 0.0f;
+        const vector3 BeforeExternal = m_Position;
+        xbool         PropsChanged   = FALSE;
+#ifndef X_EDITOR
+        if( !g_NetworkMgr.IsOnline() || !bIsDead )
+#endif
+        {
+            SolveActorAndPlatformCollisions();
+            if( !m_bRecoveryFailed )
+            {
+                PropsChanged = SolvePropCollisions( ContactObjects );
+            }
+        }
+
+        if( !m_bRecoveryFailed && ( ( m_Position != BeforeExternal ) || PropsChanged ) )
+        {
+            const xbool WasGrounded = IsGrounded();
+            if( UsesGravity() && ( m_MotionVelocity.GetY() <= 0.0f ) &&
+                UpdateSupport( WasGrounded ? m_GroundSnapDistance : m_ContactOffset ) )
+            {
+                m_StepOffset += WasGrounded ? m_Support.Position.GetY() - m_Position.GetY() : 0.0f;
+                m_Position              = m_Support.Position;
+                if( !WasGrounded )
+                {
+                    HandleLanding( -m_MotionVelocity.GetY() );
+                }
+                m_MotionVelocity.GetY() = 0.0f;
+            }
+            else if( WasGrounded && !IsGrounded() )
+            {
+                LeavePlatform( TRUE );
+            }
+        }
+    }
+
+    const vector3 ActualDelta    = m_Position - StartPosition;
+    vector3       RequestedDelta = MoveTo - StartPosition;
+    vector3       ProgressDelta  = ActualDelta;
+    if( UsesGravity() )
+    {
+        RequestedDelta.GetY() = 0.0f;
+        ProgressDelta.GetY()  = 0.0f;
+    }
+    m_MovementProgress.Advance( RequestedDelta, ProgressDelta, DeltaTime );
+    m_WorldVelocity = ( ActualDelta + m_PlatformDisplacement ) / DeltaTime;
+    m_PlatformDisplacement.Zero();
+    NotifyContacts( ContactObjects );
+}
+
+//=========================================================================
+
+void character_physics::HandleLanding( f32 ImpactSpeed )
+{
+    m_Landed       = TRUE;
+    m_LandingSpeed = x_max( m_LandingSpeed, ImpactSpeed );
+    if( HasLaunchResponse() )
+    {
+        m_MotionResponse    = CharacterMotionResponse::None;
+        m_LastImpulseSource = NULL_GUID;
     }
 }
 
 //=========================================================================
 
-#define HACK_MAX_PERMEABLE_CP (MAX_COLLISION_MGR_COLLISIONS)
+void character_physics::CommitMovement( const CharacterMovementResult& Result )
+{
+    m_Position = Result.Position;
+    m_Support  = Result.Ground;
+    m_bNavCollided |= Result.Collided;
+    m_StepOffset += Result.StepOffset;
+}
+
+//=========================================================================
+
+xbool character_physics::SolvePropCollisions( const xarray<CharacterMovementHit>& Contacts )
+{
+    object* pOwner = g_ObjMgr.GetObjectByGuid( m_Guid );
+    if( !pOwner || !pOwner->IsKindOf( actor::GetRTTI() ) ||
+        ( g_ObjMgr.GetFirst( object::TYPE_COKE_CAN ) == SLOT_NULL ) )
+    {
+        return FALSE;
+    }
+
+    bbox Bounds = GetBBox();
+    Bounds.Translate( m_Position );
+    Bounds.Inflate( m_ContactOffset, m_ContactOffset, m_ContactOffset );
+    xarray<guid> Props;
+    g_ObjMgr.SelectBBox( object::ATTR_COLLIDABLE, Bounds, object::TYPE_COKE_CAN );
+    for( slot_id Slot = g_ObjMgr.StartLoop(); Slot != SLOT_NULL; Slot = g_ObjMgr.GetNextResult( Slot ) )
+    {
+        Props.Append( g_ObjMgr.GetObjectBySlot( Slot )->GetGuid() );
+    }
+    g_ObjMgr.EndLoop();
+
+    const vector3 Velocity = GetContactVelocity();
+    xbool         Changed  = FALSE;
+    for( s32 i = 0; i < Props.GetCount(); i++ )
+    {
+        object* pObject = g_ObjMgr.GetObjectByGuid( Props[i] );
+        if( pObject )
+        {
+            coke_can& Can             = coke_can::GetSafeType( *pObject );
+            vector3   ContactVelocity = Velocity;
+            for( s32 j = 0; j < Contacts.GetCount(); j++ )
+            {
+                if( Contacts[j].Object == Props[i] )
+                {
+                    ContactVelocity = Contacts[j].Velocity;
+                    break;
+                }
+            }
+            Changed |= Can.ApplyActorConstraints( m_Position, m_NavCollisionRadius, m_NavCollisionCurrentHeight,
+                                                   m_ContactOffset, ContactVelocity );
+        }
+    }
+    return Changed;
+}
+
+//=========================================================================
+
 void character_physics::CollectPermeable( object* pActor, const vector3& StartPos, const vector3& EndPos )
 {
-#ifdef LOG_CHARACTER_PHYSICS
-    CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::CollectPermeable", "" );
-#endif
-
     ASSERT( pActor );
-    ASSERT( pActor->IsKindOf(actor::GetRTTI()));
+    ASSERT( pActor->IsKindOf( actor::GetRTTI() ) );
 
-    if( pActor->IsKindOf(character::GetRTTI()) )
+    if( pActor->IsKindOf( character::GetRTTI() ) )
     {
         // We are assuming this actor is a character!
 
-        s32 i,j;
+        s32 i, j;
 
-        guid NewGuid[CHARACTER_PHYSICS_MAX_TRIGGERS]={0};
-        s32 nNewGuids=0;
+        guid NewGuid[CHARACTER_PHYSICS_MAX_TRIGGERS] = { 0 };
+        s32  nNewGuids                               = 0;
 
         // Do select bbox around actor using an inflated bbox (necessary for doors)
         bbox BBox = GetBBox();
@@ -473,14 +539,14 @@ void character_physics::CollectPermeable( object* pActor, const vector3& StartPo
         InflatedBBox.Inflate( 350.0f, 0.0f, 350.0f );
 
         // Handle special-case permeable object interaction
-        g_ObjMgr.SelectBBox( object::ATTR_COLLIDABLE|object::ATTR_COLLISION_PERMEABLE, InflatedBBox, object::TYPE_ALL_TYPES );
+        g_ObjMgr.SelectBBox( object::ATTR_COLLIDABLE | object::ATTR_COLLISION_PERMEABLE, InflatedBBox,
+                             object::TYPE_ALL_TYPES );
         s32 ObjectSlot;
-        for( ObjectSlot = g_ObjMgr.StartLoop(); 
-             ObjectSlot != SLOT_NULL; 
+        for( ObjectSlot = g_ObjMgr.StartLoop(); ObjectSlot != SLOT_NULL;
              ObjectSlot = g_ObjMgr.GetNextResult( ObjectSlot ) )
         {
             object* pObject = g_ObjMgr.GetObjectBySlot( ObjectSlot );
-            ASSERT(pObject);
+            ASSERT( pObject );
 
             switch( pObject->GetType() )
             {
@@ -490,26 +556,21 @@ void character_physics::CollectPermeable( object* pActor, const vector3& StartPo
                 if( BBox.Intersect( pObject->GetBBox() ) )
                 {
                     if( nNewGuids < CHARACTER_PHYSICS_MAX_TRIGGERS )
+                    {
                         NewGuid[nNewGuids++] = pObject->GetGuid();
+                    }
                 }
                 break;
             case object::TYPE_DOOR:
-                {
-                    // wake up the door so it knows to start looking for us
-                    door& DoorObj = door::GetSafeType( *pObject );
-                    DoorObj.WakeUp();
-                }
-                break;
+            {
+                // wake up the door so it knows to start looking for us
+                door& DoorObj = door::GetSafeType( *pObject );
+                DoorObj.WakeUp();
+            }
+            break;
             case object::TYPE_DAMAGE_FIELD:
                 // handle the damage field collision
                 pObject->OnColNotify( *pActor );
-                break;
-            case object::TYPE_COKE_CAN:
-                {
-                    actor& Actor = actor::GetSafeType( *pActor );
-                    coke_can& Can = coke_can::GetSafeType( *pObject );
-                    Can.ApplyActorConstraints( Actor );
-                }
                 break;
             default:
                 // nothing to do
@@ -519,1050 +580,504 @@ void character_physics::CollectPermeable( object* pActor, const vector3& StartPo
         g_ObjMgr.EndLoop();
 
         // Look for any NEW triggers
-        for( i=0; i<nNewGuids; i++ )
+        for( i = 0; i < nNewGuids; i++ )
         {
-            for( j=0; j<m_nTriggerGuids; j++ )
-            if( m_TriggerGuid[j] == NewGuid[i] )
-                break;
+            for( j = 0; j < m_nTriggerGuids; j++ )
+            {
+                if( m_TriggerGuid[j] == NewGuid[i] )
+                {
+                    break;
+                }
+            }
 
             // if we did not find the new guid in the triggerguid list
             // then we have just entered it and should notify the object
-            if( j==m_nTriggerGuids )
+            if( j == m_nTriggerGuids )
             {
                 object* pObject = g_ObjMgr.GetObjectByGuid( NewGuid[i] );
                 if( pObject )
+                {
                     pObject->OnColNotify( *pActor );
+                }
             }
         }
 
         // Copy new triggers into old triggers
-        for( i=0; i<nNewGuids; i++ )
+        for( i = 0; i < nNewGuids; i++ )
+        {
             m_TriggerGuid[i] = NewGuid[i];
+        }
         m_nTriggerGuids = nNewGuids;
     }
     else
     {
         // We are assuming this actor is a player!
 
-        //
         // Walk from where we were to where we are.
-        //
-        vector3 Start = StartPos; 
+        vector3 Start = StartPos;
         vector3 Stop  = EndPos;
 
         SetupPlayerCollisionCheck( Start, Stop );
-        g_CollisionMgr.SetMaxCollisions( HACK_MAX_PERMEABLE_CP);
-    
+        g_CollisionMgr.SetMaxCollisions( MAX_COLLISION_MGR_COLLISIONS );
 
-        //
         // Check the pickups here.
-        //
-        g_CollisionMgr.CheckCollisions( object::TYPE_ALL_TYPES, object::ATTR_COLLISION_PERMEABLE) ;
+        g_CollisionMgr.CheckCollisions( object::TYPE_ALL_TYPES, object::ATTR_COLLISION_PERMEABLE );
 
         for( s32 i = 0; i < g_CollisionMgr.m_nCollisions; i++ )
         {
             object* pObj = g_ObjMgr.GetObjectByGuid( g_CollisionMgr.m_Collisions[i].ObjectHitGuid );
             pObj->OnColNotify( *pActor );
         }
-
-        // We need the player to check for can objects.
-        // To speed it up a minute amount, let's check to see if there even are
-        // cans present before asking for a bbox check
-        if (g_ObjMgr.GetFirst( object::TYPE_COKE_CAN ) != SLOT_NULL)
-        {
-            actor& Player = actor::GetSafeType( *pActor );
-            bbox BBox = GetBBox();
-            BBox.Translate( EndPos );
-            bbox InflatedBBox = BBox;
-            InflatedBBox.Inflate( 100.0f, 0.0f, 100.0f );
-
-            g_ObjMgr.SelectBBox( object::ATTR_COLLIDABLE, InflatedBBox, object::TYPE_COKE_CAN );
-            s32 ObjectSlot;
-            for( ObjectSlot = g_ObjMgr.StartLoop(); 
-                ObjectSlot != SLOT_NULL; 
-                ObjectSlot = g_ObjMgr.GetNextResult( ObjectSlot ) )
-            {
-                object* pObject = g_ObjMgr.GetObjectBySlot( ObjectSlot );
-                ASSERT(pObject);
-                coke_can& Can = coke_can::GetSafeType( *pObject );
-                Can.ApplyActorConstraints( Player );
-            }
-            g_ObjMgr.EndLoop();
-        }
     }
-
-
 }
-#ifdef X_ASSERT
-struct handle_move_data
-{
-    vector3 Start;
-    vector3 Stop;
-    f32     MoveLen;
-    f32     CollT;
-    vector3 OldDelta;
-    xbool   MovingBetweenAcutePlanes;
-    vector3 SlideDeltaAfterSlip;
-    xbool   TooSteep;
-    vector3 Flat;
-    xbool   SlidingAlong;
-    vector3 Into1;
-    vector3 Into2;
-    f32     Dot;
-    xbool   MoveAlongPlane;
-    vector3 SlideDeltaAfterMoveAlongPlane;
-    vector3 PerpAfterMoveAlongPlane;
-    vector3 SlideDeltaFinal;
-    vector3 DeltaFinal;
-} ;
-
-#define MOVE_DATA_HISTORY 32
-
-handle_move_data MoveData[MOVE_DATA_HISTORY];
-s32 nMoveData = 0;
-#endif
-
 //=========================================================================
 
-void character_physics::HandleMove( 
-    vector3&        NewPos, 
-    vector3&        OriginalVelocity,
-    f32             DeltaTime,
-    f32             SlideFriction,
-    f32             SteepestSlide )
+CharacterMovementSettings character_physics::GetMovementSettings( void ) const
 {
-#if defined(X_ASSERT) && !defined(X_EDITOR)
-
-    // Store info    
-    vector3 InNewPos = NewPos;
-    vector3 InVel    = OriginalVelocity;
-    
-    // Rewind to here
-    NewPos           = InNewPos;
-    OriginalVelocity = InVel;
-
-    ASSERT( IsValidPosition( NewPos ) );
-
-#endif
-
-
-#ifdef LOG_CHARACTER_PHYSICS
-    CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::HandleMove", "" );
-    CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::HandleMove", "NewPos   = %.3f, %.3f, %.3f", NewPos.GetX(), NewPos.GetY(), NewPos.GetZ() );
-    CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::HandleMove", "Velocity = %.3f, %.3f, %.3f", OriginalVelocity.GetX(), OriginalVelocity.GetY(), OriginalVelocity.GetZ() );
-#endif
-
-    vector3 OldPos   = NewPos;
-    vector3 Velocity = OriginalVelocity * DeltaTime;
-
-#ifdef X_ASSERT
-    nMoveData = 0; // Start at 0
-#endif
-
-    (void)SteepestSlide;
-    ASSERT(SlideFriction >= 0.0f);
-    ASSERT(SlideFriction <= 1.0f);
-//  ASSERT( Velocity.LengthSquared() < (300.0f * 300.0f) ); // We're trying to move too far in a single frame
-                                                            // See mreed...
-
-    vector3     StartPosForPermeables = NewPos;
-    vector3     Delta       = Velocity;
-    s32         MaxLoops    = 3;
-    object*     pObject     = NULL;
-    plane       LastPlane;
-    m_bNavCollided          = FALSE;
-
-    // Skip if collision turned off
-    if (m_bLocoCollisionOn == FALSE)
-    {
-        NewPos += Velocity ;
-        return ;
-    }
-
-    // Quick check to see if we should even bother
-    if( Delta.LengthSquared() < REALLY_SMALL )
-        return;
-
-    pObject = g_ObjMgr.GetObjectByGuid( m_Guid );
-
-    while( 1 )
-    {
-#ifdef X_ASSERT
-        handle_move_data& CurMoveData = MoveData[nMoveData];
-        nMoveData = (nMoveData + 1) % MOVE_DATA_HISTORY;
-#endif
-        //
-        // Check if we have iterated too many times
-        //
-        if( (MaxLoops--) == 0 )
-        {
-            Delta.Zero();
-            break;
-        }
-        
-        //
-        // Check if the current delta is too small to bother with
-        //
-        if( Delta.LengthSquared() < REALLY_SMALL )
-        {
-            Delta.Zero();
-            break;
-        }
-
-        //
-        // Decide on Start and Stop positions
-        //
-        vector3 Start = NewPos; 
-        vector3 Stop  = NewPos + Delta;
-        f32     MoveLen = Delta.Length();
-
-#ifdef X_ASSERT
-        CurMoveData.Start = Start;
-        CurMoveData.Stop = Stop;
-        CurMoveData.MoveLen = MoveLen;
-#endif
-
-        //
-        // Fire up cylinder collision 
-        //
-        SetupPlayerCollisionCheck( Start, Stop );
-
-        g_CollisionMgr.SetMaxCollisions( m_MaxCollisions );        
-        g_CollisionMgr.AddToIgnoreList( m_PlatformCollisionIgnoreList, m_nPlatformsToIgnore );
-        if( m_IgnoreGuid )
-        {        
-            g_CollisionMgr.AddToIgnoreList( &m_IgnoreGuid, 1 );
-        }
-
-        //
-        // Collect all possible collisions
-        //
-        //g_CollisionMgr.CheckCollisions( object::TYPE_ALL_TYPES, object::ATTR_COLLIDABLE, object::ATTR_COLLISION_PERMEABLE | object::ATTR_LIVING );
-        object *ourObject = g_ObjMgr.GetObjectByGuid(m_Guid);
-        if( ourObject && ourObject->IsKindOf(player::GetRTTI()) )
-        {
-            g_CollisionMgr.CheckCollisions( object::TYPE_ALL_TYPES, 
-                object::ATTR_BLOCKS_PLAYER,
-                object::ATTR_COLLISION_PERMEABLE|
-                object::ATTR_LIVING );
-        }
-        else 
-        {
-            g_CollisionMgr.CheckCollisions( object::TYPE_ALL_TYPES, 
-                object::ATTR_BLOCKS_CHARACTER,
-                object::ATTR_COLLISION_PERMEABLE|
-                object::ATTR_LIVING );
-        }
-        //
-        // Process any permeables we might have hit
-        //
-        //g_CollisionMgr.NotifyPermeables();
-
-        //
-        // If we didn't hit anything then move and return
-        //
-        if( g_CollisionMgr.m_nCollisions == 0 )
-        {
-            // The move and return occurs following this loop
-            break;
-        }
-
-        //
-        // We have a collision, deal with it
-        //
-        m_bNavCollided = TRUE;
-
-        const collision_mgr::collision& Coll = g_CollisionMgr.m_Collisions[0];
-
-        #ifdef athyssen
-        if( m_nPlatformsToIgnore )
-        {
-            x_DebugMsg("collision!!! %08X:%08X\n",((u32)(Coll.ObjectHitGuid>>32)),(u32)Coll.ObjectHitGuid);
-        }
-        #endif
-
-
-        //
-        // let's notify the object that we just hit
-        //
-        if( pObject )
-        {
-            object* pObj = g_ObjMgr.GetObjectByGuid( Coll.ObjectHitGuid );
-            if( pObj )
-                pObj->OnColNotify( *pObject );
-        }
-
-        //
-        // We must have hit something so compute the collision T
-        // but pull back a snuggle distance for numerical safety.
-        // Keep from backing up into something else
-        //
-        f32     SnuggleT        = m_CollisionSnuggleDistance / MoveLen;
-        f32     CollT           = Coll.T - SnuggleT;
-        ASSERT( (CollT<=1.0f) );
-        if( CollT < 0 ) CollT = 0;
-        if( CollT > 1 ) CollT = 1;
-
-        //
-        // Update NewPos with part of Delta
-        //
-        NewPos += Delta * CollT;
-#ifdef X_ASSERT
-        CurMoveData.CollT = CollT;
-#endif
-
-        //
-        // Compute the slide delta and normal
-        //
-        f32 RemainingT = 1-CollT;
-        ASSERT( RemainingT >= 0 );
-        ASSERT( RemainingT <= 1 );
-        Delta *= RemainingT;
-        vector3 SlideDelta;
-        vector3 SlidePlaneNormal = Coll.Plane.Normal;
-        vector3 Perp;
-        vector3 OldDelta = Delta;
-
-#ifdef X_ASSERT
-        CurMoveData.OldDelta = OldDelta;
-#endif
-
-        //
-        // Is this our 2nd collision on this move between acute planes?
-        //
-        if ( (MaxLoops == 1)
-            && (LastPlane.Normal.Dot( Coll.SlipPlane.Normal )
-                <= 0) )
-        {
-#ifdef X_ASSERT
-            CurMoveData.MovingBetweenAcutePlanes = TRUE;
-#endif
-            // we should move parallel to the crease between the planes
-            SlideDelta = LastPlane.Normal.Cross( Coll.SlipPlane.Normal );
-            SlideDelta.Normalize();
-            const f32 Dist = Delta.Dot( SlideDelta );
-            SlideDelta *= Dist;
-
-            // Use average of normals for slide plane normal
-            SlidePlaneNormal = LastPlane.Normal + Coll.SlipPlane.Normal;
-            SlidePlaneNormal.Normalize();
-
-            if( !( SlideDelta.LengthSquared() <= Delta.LengthSquared() + 0.01f ) )
-            {
-                SlideDelta = Delta;
-                SlidePlaneNormal = Coll.Plane.Normal;
-            }
-
-            if( !( SlideDelta.LengthSquared() <= OldDelta.LengthSquared() + 0.01f ) )
-            {
-                SlideDelta       = OldDelta;
-                SlidePlaneNormal = Coll.Plane.Normal;
-            }
-
-            #ifdef X_ASSERT
-            {
-                f32 SDLen = SlideDelta.LengthSquared();
-                f32 ODLen = OldDelta.LengthSquared();
-                ASSERT( SDLen <= (ODLen + 1.0f) );
-            }
-            #endif
-        }
-        else
-        {
-#ifdef X_ASSERT
-            CurMoveData.MovingBetweenAcutePlanes = FALSE;
-#endif
-            LastPlane = Coll.SlipPlane;
-            Coll.SlipPlane.GetComponents( Delta, SlideDelta, Perp );
-
-            #ifdef X_ASSERT
-            {
-                f32 SDLen = SlideDelta.LengthSquared();
-                f32 ODLen = OldDelta.LengthSquared();
-                f32 DLen  = Delta.LengthSquared();
-                ASSERT( SDLen <= ( DLen + 1.0f) );
-                ASSERT( SDLen <= (ODLen + 1.0f) );
-            }
-            #endif
-        }
-        
-#ifdef X_ASSERT
-        CurMoveData.SlideDeltaAfterSlip = SlideDelta;
-#endif
-
-        //
-        // See if this is too steep for us.
-        //
-        if ( (Coll.SlipPlane.Normal.GetY() >= 0.0f) &&
-             (SlideDelta           .GetY() >  0.0f) && 
-             (Coll.SlipPlane.Normal.GetY() < SteepestSlide) )
-        {
-#ifdef X_ASSERT
-            CurMoveData.TooSteep = TRUE;
-#endif
-            // Vertical version of our plane
-            plane Plane( Coll.SlipPlane );
-            Plane.Normal.GetY() = MIN( 0.0f, Plane.Normal.GetY() );
-            Plane.Normal.Normalize();
-
-            // Flattened Delta
-            vector3 Flat( SlideDelta );
-            Flat.GetY() = MAX( 0.0f, SlideDelta.GetY());
-
-#ifdef X_ASSERT
-            CurMoveData.Flat = Flat;
-#endif
-
-            // If we're not moving significantly into the plane, then we
-            // just slide horizontally along it.
-            if ( Plane.Normal.Dot( Delta ) < 0.0f )
-            {
-#ifdef X_ASSERT
-                CurMoveData.SlidingAlong = TRUE;
-#endif
-                // We're moving into it, see if our last move was into it
-                // slow enough to prevent coasting up.
-                vector3 Into( m_LastMoveVelocity );
-                Into.GetY() = 0.0f;
-#ifdef X_ASSERT
-                CurMoveData.Into1 = Into;
-#endif
-
-                f32 Dot = Plane.Normal.Dot( Into );
-                Into = Plane.Normal * Dot;
-
-#ifdef X_ASSERT
-                CurMoveData.Into2 = Into;
-                CurMoveData.Dot = Dot;
-                
-#endif
-                if (   ((Dot < 0) && (Into.LengthSquared() < MAX_VELOCITY_TO_CLIMB_STEEPS_2 )
-                    || (Coll.ObjectHitGuid == m_LastSteepSurface)) )
-                {
-                    // Ok, let's move along the plane
-                    vector3 Perp;// dummy
-                    Plane.GetComponents( Flat, SlideDelta, Perp );
-#ifdef X_ASSERT
-                    CurMoveData.MoveAlongPlane = TRUE;
-                    CurMoveData.SlideDeltaAfterMoveAlongPlane = SlideDelta;
-                    CurMoveData.PerpAfterMoveAlongPlane = Perp;
-#endif
-                }
-
-                #ifdef X_ASSERT
-                {
-                    f32 SDLen = SlideDelta.LengthSquared();
-                    f32 ODLen = OldDelta.LengthSquared();
-                    ASSERT( SDLen <= (ODLen + 1.0f) );
-                }
-                #endif
-            }
-#ifdef X_ASSERT
-            else
-            {
-                CurMoveData.SlidingAlong = FALSE;
-            }
-#endif
-        }
-#ifdef X_ASSERT
-        else
-        {
-            CurMoveData.TooSteep = FALSE;
-        }
-#endif
-
-        //
-        // Use the slide delta
-        //
-        Delta = SlideDelta*(1-SlideFriction);
-#ifdef X_ASSERT
-        CurMoveData.SlideDeltaFinal = SlideDelta;
-        CurMoveData.DeltaFinal = Delta;
-#endif
-
-        #ifdef X_ASSERT
-        {
-            f32 SDLen = SlideDelta.LengthSquared();
-            f32 ODLen = OldDelta.LengthSquared();
-            ASSERT( SDLen <= (ODLen + 1.0f) );
-        }
-        #endif
-
-        // SB: 3/5/05
-        // Make next delta be slightly away from the collision plane to 
-        // avoid further collisions with the same plane (due to float precision)
-        Delta += SlidePlaneNormal * SLIDE_PLANE_BACKOFF;
-
-        //
-        // Repeat process
-        //
-    }
-
-    #ifdef X_ASSERT
-    ASSERT( IsValidPosition( NewPos ) );
-    #endif
-    //
-    // Move whatever delta is left after the collisions
-    //
-    if( Delta.LengthSquared() > REALLY_SMALL )
-    {
-        NewPos += Delta;
-        #ifdef X_ASSERT
-        ASSERT( IsValidPosition( NewPos ) );
-        #endif
-    }
-    OriginalVelocity = (NewPos - OldPos) * (1.0f / DeltaTime);
-
-    //
-    // Collect all the pickups and such
-    //
-    if( m_bHandlePermeable && pObject )
-        CollectPermeable( pObject, StartPosForPermeables, NewPos );
-
-    #ifdef X_ASSERT
-    ASSERT( IsValidPosition( NewPos ) );
-    #endif
+    CharacterMovementSettings Settings;
+    Settings.Radius             = m_NavCollisionRadius;
+    Settings.Height             = m_NavCollisionCurrentHeight;
+    Settings.StepHeight         = m_StepHeight;
+    Settings.GroundSnapDistance = m_GroundSnapDistance;
+    Settings.GroundTolerance    = m_GroundTolerance;
+    Settings.ContactOffset      = m_ContactOffset;
+    Settings.SlopeAngle         = m_SlopeAngle;
+    Settings.WorldCollision     = m_bLocoCollisionOn;
+    return Settings;
 }
 
 //=========================================================================
 
-xbool character_physics::UpdateGround( f32 BelowDist )
+s32 character_physics::Sweep( const vector3& Start, const vector3& End, f32 Radius, f32 Height,
+                              CharacterMovementContact* Contacts, s32 MaxContacts )
 {
-#ifdef LOG_CHARACTER_PHYSICS
-    CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::UpdateGround", "" );
-#endif
-
-    xbool   FoundGround = FALSE;
-    vector3 FromPos     = m_Position;
-    vector3 ToPos       = m_Position - vector3(0,BelowDist,0);
-
-    FromPos.GetY() += 2.0f;
-
-    SetupPlayerCollisionCheck( FromPos, ToPos );
-
-    object *ourObject = g_ObjMgr.GetObjectByGuid(m_Guid);
-    if( ourObject && ourObject->IsKindOf(player::GetRTTI()) )
+    g_CollisionMgr.CapsuleSetup( m_Guid, Start, End, Radius, Height );
+    g_CollisionMgr.SetMaxCollisions( MaxContacts );
+    g_CollisionMgr.DoNotRemoveDuplicateGuids();
+    g_CollisionMgr.AddToIgnoreList( m_PlatformCollisionIgnoreList, m_nPlatformsToIgnore );
+    if( m_IgnoreGuid )
     {
-        g_CollisionMgr.CheckCollisions( object::TYPE_ALL_TYPES, 
-            object::ATTR_BLOCKS_PLAYER,
-            object::ATTR_COLLISION_PERMEABLE|
-            object::ATTR_LIVING );
-    }
-    else 
-    {
-        g_CollisionMgr.CheckCollisions( object::TYPE_ALL_TYPES, 
-            object::ATTR_BLOCKS_CHARACTER,
-            object::ATTR_COLLISION_PERMEABLE|
-            object::ATTR_LIVING );
+        g_CollisionMgr.AddToIgnoreList( &m_IgnoreGuid, 1 );
     }
 
-    if( g_CollisionMgr.m_nCollisions > 0 )
+    object*   pObject = g_ObjMgr.GetObjectByGuid( m_Guid );
+    const u32 Attributes =
+        pObject && pObject->IsKindOf( player::GetRTTI() ) ? object::ATTR_BLOCKS_PLAYER : object::ATTR_BLOCKS_CHARACTER;
+    g_CollisionMgr.CheckCollisions( object::TYPE_ALL_TYPES, Attributes,
+                                    object::ATTR_COLLISION_PERMEABLE | object::ATTR_LIVING );
+    for( s32 i = 0; i < g_CollisionMgr.m_nCollisions; i++ )
     {
-        m_GroundGuid = g_CollisionMgr.m_Collisions[0].ObjectHitGuid;
-        m_GroundPos  = g_CollisionMgr.m_Collisions[0].Point;
-        m_GroundPos.GetY() += 1.0f;
-        m_GroundPlane = g_CollisionMgr.m_Collisions[0].SlipPlane;
-        m_GroundBoneIndex = GetBoneIndexFromPolyCachePrimKey( g_CollisionMgr.m_Collisions[0].PrimitiveKey ); 
-        FoundGround = TRUE;
-
-#ifdef LOG_CHARACTER_PHYSICS
-        CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::UpdateGround", "Ground - From (%.3f,%.3f,%.3f) To (%.3f,%.3f,%.3f) Guid (%08X:%08X) Pos (%.3f,%.3f,%.3f) Bone (%d)",
-                      FromPos.GetX(), FromPos.GetY(), FromPos.GetZ(),
-                      ToPos.GetX(), ToPos.GetY(), ToPos.GetZ(),
-                      m_GroundGuid.GetHigh(), m_GroundGuid.GetLow(),
-                      m_GroundPos.GetX(), m_GroundPos.GetY(), m_GroundPos.GetZ(),
-                      m_GroundBoneIndex );
-#endif
+        const collision_mgr::collision& Hit = g_CollisionMgr.m_Collisions[i];
+        Contacts[i].T                       = Hit.T;
+        Contacts[i].Point                   = Hit.Point;
+        Contacts[i].Normal                  = Hit.SlipPlane.Normal;
+        Contacts[i].SurfaceNormal           = Hit.Plane.Normal;
+        Contacts[i].Object                  = Hit.ObjectHitGuid;
+        Contacts[i].PrimitiveKey            = Hit.PrimitiveKey;
+        Contacts[i].HitTriangleEdge         = Hit.HitTriangleEdge;
     }
-    else
-    {
-#ifdef LOG_CHARACTER_PHYSICS
-        CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::UpdateGround", "No Ground - From (%.3f,%.3f,%.3f) To (%.3f,%.3f,%.3f)",
-                      FromPos.GetX(), FromPos.GetY(), FromPos.GetZ(),
-                      ToPos.GetX(), ToPos.GetY(), ToPos.GetZ() );
-#endif
-
-        m_GroundGuid = 0;
-        m_GroundPlane.Setup(ToPos,vector3(0,1,0));
-        m_GroundPos = ToPos;
-        // TODO: Maybe force ground position lower down here
-        m_GroundBoneIndex = 0;
-    }
-
-    return FoundGround;
+    return g_CollisionMgr.m_nCollisions;
 }
 
 //=========================================================================
 
-void character_physics::UpdatePhysics( f32 DeltaTime, f32 IncomingVerticalVelocity )
+xbool character_physics::UpdateSupport( f32 Distance )
 {
-#ifdef LOG_CHARACTER_PHYSICS
-    CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::UpdatePhysics", "" );
-#endif
-
-    if( m_bJumpMode )
+    if( !UsesGravity() || ( m_MotionVelocity.GetY() > 0.0f ) )
     {
-        m_bJumpMode = FALSE;
-        m_bFallMode = TRUE;
-#ifdef LOG_CHARACTER_PHYSICS
-        CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::UpdatePhysics", "Was Jump, set to Fall" );
-#endif
-
-        // A jump starts during this simulation interval. Apply gravity to
-        // that same interval instead of dropping the whole first frame.
-        if( m_bUseGravity && m_bLocoGravityOn )
-        {
-            f32 const GravityScale = g_MPTweaks.Active ? g_MPTweaks.Gravity : 1.0f;
-            m_Velocity.GetY() += DeltaTime * m_GravityAcceleration * GravityScale;
-        }
-        return;
+        m_Support.State = CharacterSupportState::None;
+        return FALSE;
     }
 
-    //FindGround( GroundVector, m_Position, DeltaTime );
-    //plane       GroundPlane( g_CollisionMgr.m_Collisions[0].Plane );
-
-    if( m_bUseGravity && m_bLocoGravityOn )
-    {
-        //  if this object should use gravity and the ground is greater than
-        //  ground tolerance away from us then we modify the downward velocity
-        //  Or, if the ground is too steep...
-        f32 Tolerance = m_GroundTolerance;
-        if( m_bTrackingGround )
-        {
-            f32 dx = m_Velocity.GetX();
-            f32 dz = m_Velocity.GetZ();
-            f32 d2 = dx*dx + dz*dz;
-            if( d2 > 0.01f )
-            {
-                Tolerance = x_sqrt( d2 ) * 1.5f * DeltaTime;
-            }
-            Tolerance = MAX( m_GroundTolerance, Tolerance );
-        }
-
-        if( (m_Position.GetY() - m_GroundPos.GetY()) > Tolerance )
-        {   
-#ifdef LOG_CHARACTER_PHYSICS
-            CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::UpdatePhysics", "Ground too far or steep - Dist (%.3f) Normal (%.3f), set to Fall, Normal",
-                          m_Position.GetY() - m_GroundPos.GetY(),
-                          m_GroundPlane.Normal.GetY() );
-#endif
-            m_bFallMode = TRUE;                   
-            m_bTrackingGround = FALSE;
-
-            //  Simple physics.
-            if( g_MPTweaks.Active )
-            {
-                m_Velocity.GetY() += DeltaTime * m_GravityAcceleration * g_MPTweaks.Gravity;
-            }
-            else
-            {
-                m_Velocity.GetY() += DeltaTime * m_GravityAcceleration;
-            }
-        }
-        // On a really steep surface?
-        else if( m_GroundPlane.Normal.GetY() < m_SteepestSlide )
-        {
-            m_bFallMode = TRUE;
-            m_bTrackingGround = FALSE;
-
-            //  Simple physics, 
-            m_Velocity.GetY() += DeltaTime * m_GravityAcceleration;
-
-            // too steep, record the surface
-            m_LastSteepSurface = m_GroundGuid;
-        }
-        // Ok, we're on the ground, make sure we don't think we're falling.
-        // An upward-moving character can still be within GroundTolerance of
-        // the takeoff surface at high frame rates. The incoming velocity is
-        // the physical velocity from the previous interval; use it to keep
-        // the jump airborne until the character starts descending.
-        else if( IncomingVerticalVelocity <= 0.0f )
-        {
-            if ( m_bFallMode ) // mreed: this if () makes it possible to set a breakpoint on landing
-            {
-#ifdef LOG_CHARACTER_PHYSICS
-                CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::UpdatePhysics", "Landed" );
-#endif
-                m_bFallMode         = FALSE;
-                m_bFlingMode        = FALSE;
-                m_bTrackingGround   = TRUE;
-            }
-        }
-    }
-    else
-    {
-        m_bFallMode  = FALSE;
-        m_bFlingMode = FALSE;
-    }
-
-    // Here we modify the velocity vector to make it follow downslopes <= 50 degrees
-    if ( !m_bFallMode && m_bUseGravity && m_bLocoGravityOn )
-    {
-        vector3 Velocity = m_Velocity;
-        Velocity.Normalize();
-        f32 Dot = m_GroundPlane.Dot( Velocity );
-        if(    (Dot >= 0)       // Angle < 90 degrees
-            && (Dot <  0.68f) ) // Angle > 48 degrees
-        {
-            // Stick to the ground without reducing the requested horizontal
-            // movement speed while moving uphill.
-            f32 HorizontalSpeed = x_sqrt( x_sqr( m_Velocity.GetX() ) +
-                                          x_sqr( m_Velocity.GetZ() ) );
-            vector3 Perpendicular; // dummy placeholder
-            m_GroundPlane.GetComponents( m_Velocity, m_Velocity, Perpendicular );
-
-            f32 ProjectedHorizontalSpeed = x_sqrt( x_sqr( m_Velocity.GetX() ) +
-                                                   x_sqr( m_Velocity.GetZ() ) );
-            if( ProjectedHorizontalSpeed > REALLY_SMALL )
-                m_Velocity *= HorizontalSpeed / ProjectedHorizontalSpeed;
-        }
-    }
+    return CharacterMovement::FindSupport( *this, GetMovementSettings(), m_Position, Distance, m_Support );
 }
 
 //=========================================================================
 
 xbool character_physics::SetCrouchParametric( f32 NormalizePercent )
 {
-    // TO DO: Traub - can you put the appropriate test here please - thanks!
-    
-    // Playing a multi-player/split screen game?
-    if( 0 )
+    ASSERT( ( NormalizePercent >= 0.0f ) && ( NormalizePercent <= 1.0f ) );
+    const f32 Height = m_NavCollisionHeight - NormalizePercent * m_NavCollisionCrouchOffset;
+    ASSERT( Height >= m_NavCollisionRadius * 2.0f );
+    vector3 Position = m_Position;
+    if( IsAirborne() )
     {
-        //-----------------------------------------------------------------
-        // Multi-player/split screen crouch
-        //-----------------------------------------------------------------
-    
-        // Must be valid range
-        ASSERT( NormalizePercent >= 0 );
-        ASSERT( NormalizePercent <= 1 );
+        Position.GetY() += m_NavCollisionCurrentHeight - Height;
+    }
 
-        // Compute new height
-        f32 NewHeight = m_NavCollisionHeight - ( NormalizePercent * m_NavCollisionCrouchOffset );
+    vector3 Correction;
+    if( GetPenetration( Position, m_NavCollisionRadius, Height, Correction ) )
+    {
+        return FALSE;
+    }
 
-        // If crouching down or not moving, just set since there can be no collision
-        if( NewHeight <= m_NavCollisionCurentHeight )
-        {
-            m_NavCollisionCurentHeight = NewHeight;
-            return TRUE;
-        }
-
-        // Standing back up, so check collision above head to make sure there is room
-        g_CollisionMgr.SphereSetup( m_Guid, 
-                                    m_Position, 
-                                    m_Position + 
-                                    vector3( 0, ( NewHeight - m_NavCollisionRadius ) + 1.0f, 0 ),
-                                    m_NavCollisionRadius );
+    if( Height > m_NavCollisionCurrentHeight )
+    {
+        const vector3 Start = m_Position + vector3( 0.0f, m_NavCollisionCurrentHeight - m_NavCollisionRadius, 0.0f );
+        const vector3 End   = Position + vector3( 0.0f, Height - m_NavCollisionRadius, 0.0f );
+        g_CollisionMgr.CapsuleSetup( m_Guid, Start - vector3( 0.0f, m_NavCollisionRadius, 0.0f ),
+                                     End - vector3( 0.0f, m_NavCollisionRadius, 0.0f ), m_NavCollisionRadius,
+                                     m_NavCollisionRadius * 2.0f );
         g_CollisionMgr.UseLowPoly();
-
-        // Check collision
-        object* pActor = g_ObjMgr.GetObjectByGuid( m_Guid );
-        if( pActor && pActor->GetType() == object::TYPE_PLAYER )
-        {
-            // Player
-            g_CollisionMgr.CheckCollisions( object::TYPE_ALL_TYPES, 
-                                            object::ATTR_BLOCKS_PLAYER,
-                                            object::ATTR_COLLISION_PERMEABLE|
-                                            object::ATTR_LIVING );
-        }
-        else 
-        {
-            // NPC
-            g_CollisionMgr.CheckCollisions( object::TYPE_ALL_TYPES, 
-                                            object::ATTR_BLOCKS_CHARACTER,
-                                            object::ATTR_COLLISION_PERMEABLE|
-                                            object::ATTR_LIVING );
-        }
-
-        // If there was a collision, then we cannot stand up yet
+        object*   pObject    = g_ObjMgr.GetObjectByGuid( m_Guid );
+        const u32 Attributes = pObject && pObject->IsKindOf( player::GetRTTI() ) ? object::ATTR_BLOCKS_PLAYER
+                                                                                 : object::ATTR_BLOCKS_CHARACTER;
+        g_CollisionMgr.CheckCollisions( object::TYPE_ALL_TYPES, Attributes,
+                                        object::ATTR_COLLISION_PERMEABLE | object::ATTR_LIVING );
         if( g_CollisionMgr.m_nCollisions )
+        {
             return FALSE;
-
-        // There's room above the head, so record new height
-        m_NavCollisionCurentHeight = NewHeight;
-
-        return TRUE;
+        }
     }
-    else
-    {
-        //-----------------------------------------------------------------
-        // Single player campaign crouch
-        //-----------------------------------------------------------------
-    
-        ASSERT( NormalizePercent >= 0 );
-        ASSERT( NormalizePercent <= 1 );
 
-        vector3 NewPosition;
-        f32     NewHeight;
-
-        if( m_bFallMode == TRUE )
-        {
-            f32 HeadPosition = m_Position.GetY() + m_NavCollisionCurentHeight;
-            NewHeight        = m_NavCollisionHeight - NormalizePercent*m_NavCollisionCrouchOffset;
-
-            NewPosition        = m_Position;
-            NewPosition.GetY() = HeadPosition - NewHeight;
-
-            // The head doesn't move so check from the head to the floor
-            g_CollisionMgr.SphereSetup( m_Guid, NewPosition+vector3(0,(NewHeight-m_NavCollisionRadius),0), NewPosition, m_NavCollisionRadius );
-            g_CollisionMgr.UseLowPoly();
-        }
-        else
-        {
-            NewPosition   = m_Position;
-            NewHeight     = m_NavCollisionHeight - NormalizePercent*m_NavCollisionCrouchOffset;
-
-            // The head moves down so must check from the floor the the head
-            g_CollisionMgr.SphereSetup( m_Guid, NewPosition, NewPosition+vector3(0,(NewHeight-m_NavCollisionRadius),0), m_NavCollisionRadius );
-            g_CollisionMgr.UseLowPoly();
-        }
-
-        object *ourObject = g_ObjMgr.GetObjectByGuid(m_Guid);
-        if( ourObject && ourObject->IsKindOf(player::GetRTTI()) )
-        {
-            g_CollisionMgr.CheckCollisions( object::TYPE_ALL_TYPES, 
-                object::ATTR_BLOCKS_PLAYER,
-                object::ATTR_COLLISION_PERMEABLE|
-                object::ATTR_LIVING );
-        }
-        else 
-        {
-            g_CollisionMgr.CheckCollisions( object::TYPE_ALL_TYPES, 
-                object::ATTR_BLOCKS_CHARACTER,
-                object::ATTR_COLLISION_PERMEABLE|
-                object::ATTR_LIVING );
-        }
-
-        if( g_CollisionMgr.m_nCollisions != 0 )
-            return FALSE;
-
-        m_NavCollisionCurentHeight = NewHeight;
-        m_Position                 = NewPosition;
-
-        return TRUE;
-    }
+    m_NavCollisionCurrentHeight = Height;
+    m_Position                  = Position;
+    return TRUE;
 }
-
 //=========================================================================
+
 xbool character_physics::Jump( f32 Vel )
 {
-#ifdef LOG_CHARACTER_PHYSICS
-    CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::Jump", "" );
-#endif
-
-    // Must be standing on the ground
-    if( IsAirborn() )
+    if( !UsesGravity() || !IsGrounded() || !x_isvalid( Vel ) || ( Vel <= 0.0f ) )
+    {
         return FALSE;
+    }
 
-    // Ground tracking can add vertical velocity on slopes. Do not carry it
-    // into the jump.
-    m_Velocity.GetY() = Vel;
-    m_bJumpMode = TRUE;
-    m_bTrackingGround = FALSE;
-
-#ifdef LOG_CHARACTER_PHYSICS
-    CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::Jump", "Set Jump" );
-#endif
-
+    m_MotionVelocity.GetY() = Vel;
+    DetachFromGround();
     return TRUE;
 }
 
 //=========================================================================
 
-void character_physics::FlingWithVelocity( const vector3& Velocity,
-                                           f32            AirControl,
-                                           xbool          FlingOnly,
-                                           xbool          ReflingOnly,
-                                           guid           FlingGuid )
+void character_physics::SetPosition( const vector3& Position )
+{
+    ASSERT( Position.IsValid() );
+    if( Position != m_Position )
+    {
+        m_Position      = Position;
+        m_Support.State = CharacterSupportState::None;
+        LeavePlatform( FALSE );
+    }
+}
+
+//=========================================================================
+
+void character_physics::SetUseGravity( xbool Enable )
+{
+    if( m_bUseGravity != Enable )
+    {
+        m_bUseGravity           = Enable;
+        m_Support.State         = CharacterSupportState::None;
+        m_MotionVelocity.GetY() = 0.0f;
+        LeavePlatform( FALSE );
+    }
+}
+
+//=========================================================================
+
+void character_physics::SetLocoGravityOn( xbool Enable )
+{
+    if( m_bLocoGravityOn != Enable )
+    {
+        m_bLocoGravityOn        = Enable;
+        m_Support.State         = CharacterSupportState::None;
+        m_MotionVelocity.GetY() = 0.0f;
+        LeavePlatform( FALSE );
+    }
+}
+
+//=========================================================================
+
+void character_physics::ApplyImpulse( const vector3& Delta )
+{
+    ASSERT( Delta.IsValid() );
+    m_MotionVelocity += Delta;
+    if( Delta.LengthSquared() > F32_MIN )
+    {
+        if( !HasLaunchResponse() )
+        {
+            m_MotionResponse     = CharacterMotionResponse::Impulse;
+            m_ExternalAirControl = m_AirControl;
+            m_LastImpulseSource  = NULL_GUID;
+        }
+    }
+    if( Delta.GetY() > 0.0f )
+    {
+        DetachFromGround();
+    }
+}
+
+//=========================================================================
+
+void character_physics::SetMotionVelocity( const vector3& Velocity )
+{
+    ASSERT( Velocity.IsValid() );
+    m_MotionVelocity = Velocity;
+    if( Velocity.LengthSquared() <= F32_MIN )
+    {
+        ClearMotionVelocity();
+    }
+    else if( !HasLaunchResponse() )
+    {
+        m_MotionResponse     = CharacterMotionResponse::Impulse;
+        m_ExternalAirControl = m_AirControl;
+        m_LastImpulseSource  = NULL_GUID;
+    }
+    if( Velocity.GetY() > 0.0f )
+    {
+        DetachFromGround();
+    }
+}
+
+//=========================================================================
+
+void character_physics::FlingWithVelocity( const vector3& Velocity, f32 AirControl, xbool FlingOnly, xbool ReflingOnly,
+                                           guid FlingGuid )
 {
     ApplyFling( Velocity, AirControl, FlingOnly, ReflingOnly, TRUE, FlingGuid );
 }
 
 //=========================================================================
 
-void character_physics::FlingWithAcceleration( const vector3& Acceleration,
-                                               f32            DeltaTime,
-                                               f32            AirControl,
-                                               xbool          FlingOnly,
-                                               xbool          ReflingOnly )
+void character_physics::FlingWithAcceleration( const vector3& Acceleration, f32 DeltaTime, f32 AirControl,
+                                               xbool FlingOnly, xbool ReflingOnly )
 {
-    if( !x_isvalid( DeltaTime ) || (DeltaTime < 0.0f) )
+    if( !x_isvalid( DeltaTime ) || ( DeltaTime < 0.0f ) )
     {
         ASSERT( FALSE );
         return;
     }
 
     if( DeltaTime <= F32_MIN )
+    {
         return;
+    }
 
-    ApplyFling( Acceleration * DeltaTime,
-                AirControl,
-                FlingOnly,
-                ReflingOnly,
-                FALSE,
-                NULL_GUID );
+    if( ApplyFling( Acceleration * DeltaTime, AirControl, FlingOnly, ReflingOnly, FALSE, NULL_GUID ) )
+    {
+        // Field acceleration replaces world gravity for this interval.
+        m_FlingAccelerationTime = x_max( m_FlingAccelerationTime, DeltaTime );
+    }
 }
 
 //=========================================================================
 
-void character_physics::ApplyFling( const vector3& Velocity,
-                                    f32            AirControl,
-                                    xbool          FlingOnly,
-                                    xbool          ReflingOnly,
-                                    xbool          ReplaceVelocity,
-                                    guid           FlingGuid )
+xbool character_physics::ApplyFling( const vector3& Velocity, f32 AirControl, xbool FlingOnly, xbool ReflingOnly,
+                                    xbool ReplaceVelocity, guid FlingGuid )
 {
-    if( FlingOnly && m_bFlingMode )
-        return;
+    if( FlingOnly && HasLaunchResponse() )
+    {
+        return FALSE;
+    }
 
-    if( ReflingOnly && !m_bFlingMode )
-        return;
+    if( ReflingOnly && !HasLaunchResponse() )
+    {
+        return FALSE;
+    }
 
-    if( m_bFlingMode && (m_LastFling == FlingGuid) )
-        return;
+    if( ReplaceVelocity && ( FlingGuid != NULL_GUID ) && HasLaunchResponse() && ( m_LastImpulseSource == FlingGuid ) )
+    {
+        return FALSE;
+    }
 
     if( ReplaceVelocity )
     {
-        m_Velocity  = Velocity;
-        m_LastFling = FlingGuid;
+        m_MotionVelocity        = Velocity;
+        m_LastImpulseSource     = FlingGuid;
+        m_FlingAccelerationTime = 0.0f;
     }
     else
     {
-        m_Velocity  += Velocity;
-        m_LastFling  = 0;
+        m_MotionVelocity += Velocity;
     }
 
-    m_FlingAC           = AirControl;
-    m_bJumpMode         = TRUE;
-    m_bFlingMode        = TRUE;
-    m_bTrackingGround   = FALSE;
+    m_ExternalAirControl = x_clamp( AirControl, 0.0f, 1.0f );
+    m_MotionResponse     = CharacterMotionResponse::Launch;
+    if( m_MotionVelocity.GetY() > 0.0f )
+    {
+        DetachFromGround();
+    }
+    return TRUE;
 }
 
 //=========================================================================
 
 void character_physics::OnEnumProp( prop_enum& List )
 {
-    List.PropEnumHeader ( "CharacterPhysics",                    "This is were the physics of the character get descrive", 0 );
-    List.PropEnumBool   ( "CharacterPhysics\\IsCollided",        "Tells the system that the object encounter a collision", PROP_TYPE_READ_ONLY );
-    List.PropEnumBool   ( "CharacterPhysics\\IsFalling",         "Tells the system that the object is in a falling mode", PROP_TYPE_READ_ONLY );
-    List.PropEnumVector3( "CharacterPhysics\\Position",          "The position of the object", PROP_TYPE_READ_ONLY );
-    List.PropEnumVector3( "CharacterPhysics\\Velocity",          "The Velocity of the object", PROP_TYPE_READ_ONLY );
-    List.PropEnumFloat  ( "CharacterPhysics\\ColHeight",         "This is the physical height of the object in cm. It descrives a cylinder.", 0 );
-    List.PropEnumFloat  ( "CharacterPhysics\\ColRadius",         "This is the physical width of the object in cm. It descrives a cylinder.", 0 );
-    List.PropEnumFloat  ( "CharacterPhysics\\ColCrouchOffset",   "This is when in couch how much the Y off the bbox nneds to be subtracted", 0 );
-    List.PropEnumInt    ( "CharacterPhysics\\MaxCollisions",     "This descrives how many collisions can the object handle at ones", 0 );
-    List.PropEnumBool   ( "CharacterPhysics\\DoPermeable",       "When true objects that are Permeable will be notify of collisions", 0 );
-    List.PropEnumBool   ( "CharacterPhysics\\UseGravity",        "Tells the system whether it should use gravery or not", 0 );
-    List.PropEnumFloat  ( "CharacterPhysics\\GravityAcc",        "This is the gravety acceleration for the physics", 0 );
-    List.PropEnumFloat  ( "CharacterPhysics\\ColSnuggleDis",     "This is the minimun distance that the object maintains with its colliders", 0 );
-    List.PropEnumFloat  ( "CharacterPhysics\\GroundTolerance",   "This variable tells the system which height the system will start chking for the ground", 0 );
-    List.PropEnumFloat  ( "CharacterPhysics\\FallTolerance",     "Tells the system what height the player needs to be to the ground before he consider itself to be falling", 0 );
-    List.PropEnumFloat  ( "CharacterPhysics\\AirControl",        "While in the jump or fall how much control does the character has in the air. From 0 to 1.", 0 );
-    List.PropEnumFloat  ( "CharacterPhysics\\VelForFall",        "Tells the system at what Y velocity the object needs to be traveling before it consider itseld to be falling", 0 );
-    List.PropEnumFloat  ( "CharacterPhysics\\MaxGroundDistance", "Tells the system what is the maximun distance that it will search for the ground", 0 );
-    List.PropEnumFloat  ( "CharacterPhysics\\SlideFriction",     "Indicates the slide friction of the object", 0 );
-    List.PropEnumFloat  ( "CharacterPhysics\\ActorCollisionRadius", "Our collision radius vs other actors", 0 );
+    List.PropEnumHeader ( "CharacterPhysics",                        "This is were the physics of the character get descrive", 0 );
+    List.PropEnumBool   ( "CharacterPhysics\\IsCollided",            "Tells the system that the object encounter a collision", PROP_TYPE_READ_ONLY );
+    List.PropEnumBool   ( "CharacterPhysics\\IsFalling",             "Tells the system that the object is in a falling mode", PROP_TYPE_READ_ONLY );
+    List.PropEnumVector3( "CharacterPhysics\\Position",              "The position of the object", PROP_TYPE_READ_ONLY );
+    List.PropEnumVector3( "CharacterPhysics\\Velocity",              "The Velocity of the object", PROP_TYPE_READ_ONLY );
+    List.PropEnumFloat  ( "CharacterPhysics\\ColHeight",             "This is the physical height of the object in cm. It descrives a cylinder.", 0 );
+    List.PropEnumFloat  ( "CharacterPhysics\\ColRadius",             "This is the physical width of the object in cm. It descrives a cylinder.", 0 );
+    List.PropEnumFloat  ( "CharacterPhysics\\ColCrouchOffset",       "This is when in couch how much the Y off the bbox nneds to be subtracted", 0 );
+    List.PropEnumBool   ( "CharacterPhysics\\DoPermeable",           "When true objects that are Permeable will be notify of collisions", 0 );
+    List.PropEnumBool   ( "CharacterPhysics\\UseGravity",            "Tells the system whether it should use gravery or not", 0 );
+    List.PropEnumFloat  ( "CharacterPhysics\\GravityAcc",            "This is the gravety acceleration for the physics", 0 );
+    List.PropEnumFloat  ( "CharacterPhysics\\ContactOffset",         "This is the minimum distance in cm that the character maintains from collision surfaces.", 0 );
+    List.PropEnumFloat  ( "CharacterPhysics\\GroundTolerance",       "This variable tells the system which height the system will start chking for the ground", 0 );
+    List.PropEnumFloat  ( "CharacterPhysics\\StepHeight",            "This is the maximum height in cm that the character can step up without jumping.", 0 );
+    List.PropEnumFloat  ( "CharacterPhysics\\GroundSnapDistance",    "This is the maximum distance in cm that the character can move down to maintain contact with the ground.", 0 );
+    List.PropEnumAngle  ( "CharacterPhysics\\SlopeAngle",            "This is the maximum slope angle that the character can stand and walk on. From 0 to 89 degrees.", 0 );
+    List.PropEnumFloat  ( "CharacterPhysics\\GroundFriction",        "This controls how quickly the character returns to the requested movement after an external impulse while on the ground. In inverse seconds.", 0 );
+    List.PropEnumFloat  ( "CharacterPhysics\\AirControl",            "While in the jump or fall how much control does the character has in the air. From 0 to 1.", 0 );
+    List.PropEnumFloat  ( "CharacterPhysics\\ActorCollisionRadius",  "Our collision radius vs other actors", 0 );
+    List.PropEnumBool   ( "CharacterPhysics\\RecoveryFailed",        "Tells the system that the character could not be moved out of an overlap with collision geometry.", PROP_TYPE_READ_ONLY );
 }
 
 //=========================================================================
 
 xbool character_physics::OnProperty( prop_query& I )
 {
-    if( I.VarBool( "CharacterPhysics\\IsCollided", m_bNavCollided ) )
+    if( I.IsVar( "CharacterPhysics\\RecoveryFailed" ) )
     {
+        if( I.IsRead() )
+        {
+            I.SetVarBool( m_bRecoveryFailed );
+        }
+        return TRUE;
     }
-    else if( I.VarBool( "CharacterPhysics\\IsFalling", m_bFallMode ) )
+    if( I.IsVar( "CharacterPhysics\\IsFalling" ) )
     {
-    }    
-    else if( I.VarVector3( "CharacterPhysics\\Position", m_Position ) )
-    {
+        if( I.IsRead() )
+        {
+            I.SetVarBool( IsFalling() );
+        }
+        return TRUE;
     }
-    else if( I.VarVector3( "CharacterPhysics\\Velocity", m_Velocity ) )
+
+    vector3 Position = m_Position;
+    if( I.VarVector3( "CharacterPhysics\\Position", Position ) )
     {
+        if( !I.IsRead() )
+        {
+            InitialGroundCheck( Position );
+        }
+        return TRUE;
     }
-    else if( I.VarFloat( "CharacterPhysics\\ColHeight", m_NavCollisionHeight ) )
+
+    vector3 Velocity = m_MotionVelocity;
+    if( I.VarVector3( "CharacterPhysics\\Velocity", Velocity ) )
     {
-        if( I.IsRead() == FALSE )
-            m_NavCollisionCurentHeight = m_NavCollisionHeight;
+        if( !I.IsRead() )
+        {
+            SetMotionVelocity( Velocity );
+        }
+        return TRUE;
+    }
+
+    xbool UseGravity = m_bUseGravity;
+    if( I.VarBool( "CharacterPhysics\\UseGravity", UseGravity ) )
+    {
+        if( !I.IsRead() )
+        {
+            SetUseGravity( UseGravity );
+        }
+        return TRUE;
+    }
+
+    if( I.VarBool( "CharacterPhysics\\IsCollided", m_bNavCollided ) ||
+        I.VarBool( "CharacterPhysics\\DoPermeable", m_bHandlePermeable ) ||
+        I.VarFloat( "CharacterPhysics\\GravityAcc", m_GravityAcceleration ) )
+    {
+        return TRUE;
+    }
+
+    if( I.VarFloat( "CharacterPhysics\\ColHeight", m_NavCollisionHeight ) )
+    {
+        if( !I.IsRead() )
+        {
+            SetColHeight( m_NavCollisionHeight );
+        }
     }
     else if( I.VarFloat( "CharacterPhysics\\ColRadius", m_NavCollisionRadius ) )
     {
+        if( !I.IsRead() )
+        {
+            SetColRadius( m_NavCollisionRadius );
+        }
     }
     else if( I.VarFloat( "CharacterPhysics\\ColCrouchOffset", m_NavCollisionCrouchOffset ) )
     {
+        if( !I.IsRead() )
+        {
+            SetColCrouchOffset( m_NavCollisionCrouchOffset );
+        }
     }
-    else if( I.VarInt( "CharacterPhysics\\MaxCollisions", m_MaxCollisions ) )
+    else if( I.VarFloat( "CharacterPhysics\\ContactOffset", m_ContactOffset ) )
     {
+        if( !I.IsRead() )
+        {
+            m_ContactOffset = x_clamp( m_ContactOffset, 0.1f, m_NavCollisionRadius * 0.25f );
+        }
     }
-    else if( I.VarBool( "CharacterPhysics\\DoPermeable", m_bHandlePermeable ) )
+    else if( I.VarFloat( "CharacterPhysics\\GroundFriction", m_GroundFriction ) )
     {
-    }
-    else if( I.VarBool( "CharacterPhysics\\DoPermeable", m_bHandlePermeable ) )
-    {
-    }
-    else if( I.VarBool( "CharacterPhysics\\UseGravity", m_bUseGravity ) )
-    {
-    }
-    else if( I.VarFloat( "CharacterPhysics\\GravityAcc", m_GravityAcceleration ) )
-    {
-    }
-    else if( I.VarFloat( "CharacterPhysics\\ColSnuggleDis", m_CollisionSnuggleDistance ) )
-    {
+        if( !I.IsRead() )
+        {
+            m_GroundFriction = x_max( 0.0f, m_GroundFriction );
+        }
     }
     else if( I.VarFloat( "CharacterPhysics\\GroundTolerance", m_GroundTolerance ) )
     {
+        if( !I.IsRead() )
+        {
+            m_GroundTolerance = x_max( m_GroundTolerance, m_ContactOffset );
+        }
     }
-    else if( I.VarFloat( "CharacterPhysics\\FallTolerance", m_FallTolerance ) )
+    else if( I.VarFloat( "CharacterPhysics\\StepHeight", m_StepHeight ) )
     {
+        if( !I.IsRead() )
+        {
+            m_StepHeight = x_max( m_StepHeight, 0.0f );
+        }
+    }
+    else if( I.VarFloat( "CharacterPhysics\\GroundSnapDistance", m_GroundSnapDistance ) )
+    {
+        if( !I.IsRead() )
+        {
+            m_GroundSnapDistance = x_max( m_GroundSnapDistance, 0.0f );
+        }
+    }
+    else if( I.IsVar( "CharacterPhysics\\SlopeAngle" ) )
+    {
+        radian Angle = m_SlopeAngle;
+        I.VarAngle( "CharacterPhysics\\SlopeAngle", Angle );
+        if( !I.IsRead() )
+        {
+            m_SlopeAngle = CharacterMovementSettings::ClampSlopeAngle( Angle );
+        }
     }
     else if( I.VarFloat( "CharacterPhysics\\AirControl", m_AirControl ) )
     {
-    }
-    else if( I.VarFloat( "CharacterPhysics\\VelForFall", m_VelocityForFallMode ) )
-    {
-    }
-    else if( I.VarFloat( "CharacterPhysics\\MaxGroundDistance", m_MaxDistanceToGround ) )
-    {
-    }
-    else if( I.VarFloat( "CharacterPhysics\\SlideFriction", m_SteepestSlide ) )
-    {
-        I.VarFloat( "CharacterPhysics\\SlideFriction", m_SteepestSlide );
+        if( !I.IsRead() )
+        {
+            m_AirControl = x_clamp( m_AirControl, 0.0f, 1.0f );
+        }
     }
     else if( I.VarFloat( "CharacterPhysics\\ActorCollisionRadius", m_ActorCollisionRadius ) )
     {
+        if( !I.IsRead() )
+        {
+            m_ActorCollisionRadius = x_max( m_ActorCollisionRadius, 0.0f );
+        }
     }
     else
     {
         return FALSE;
     }
-
     return TRUE;
 }
-
 //=========================================================================
 
 void character_physics::ApplyCollision( void )
 {
-#ifdef LOG_CHARACTER_PHYSICS
-    CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::ApplyCollision", "" );
-#endif
-
-    vector3 SpherePos[16];
-    s32     nSpheres;
-    s32     i;
-
     g_CollisionMgr.StartApply( m_Guid );
-
-    nSpheres = g_CollisionMgr.GetCylinderSpherePositions(  
-                                            m_Position,
-                                            m_Position + vector3(0,m_NavCollisionCurentHeight,0),
-                                            m_NavCollisionRadius,
-                                            SpherePos,
-                                            object::MAT_TYPE_FLESH );
-    for( i=0; i<nSpheres; i++ )
-    {
-        g_CollisionMgr.ApplySphere( SpherePos[i], m_NavCollisionRadius, object::MAT_TYPE_FLESH );
-    }
-
+    g_CollisionMgr.ApplyCapsule( m_Position + vector3( 0.0f, m_NavCollisionRadius, 0.0f ),
+                                 m_Position + vector3( 0.0f, m_NavCollisionCurrentHeight - m_NavCollisionRadius, 0.0f ),
+                                 m_NavCollisionRadius, object::MAT_TYPE_FLESH );
     g_CollisionMgr.EndApply();
 }
 
@@ -1571,113 +1086,62 @@ void character_physics::ApplyCollision( void )
 #ifndef X_RETAIL
 void character_physics::RenderCollision( void )
 {
-#ifdef LOG_CHARACTER_PHYSICS
-    CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::RenderCollision", "" );
-#endif
-
-    vector3 SpherePos[16];
-    s32     nSpheres;
-    s32     i;
-
-    nSpheres = g_CollisionMgr.GetCylinderSpherePositions(  
-                                            m_Position,
-                                            m_Position + vector3(0,m_NavCollisionCurentHeight,0),
-                                            m_NavCollisionRadius,
-                                            SpherePos,
-                                            object::MAT_TYPE_FLESH );
-    for( i=0; i<nSpheres; i++ )
+    const f32 Radius = m_NavCollisionRadius;
+    const f32 Length = m_NavCollisionCurrentHeight - Radius * 2.0f;
+    render::debug::Sphere( m_Position + vector3( 0.0f, Radius, 0.0f ), Radius );
+    if( Length > 0.0f )
     {
-        render::debug::Sphere( SpherePos[i], m_NavCollisionRadius );
+        render::debug::Sphere( m_Position + vector3( 0.0f, Radius + Length, 0.0f ), Radius );
+        render::debug::Cylinder( m_Position + vector3( 0.0f, Radius + Length * 0.5f, 0.0f ), Radius, Length, 16,
+                                 XCOLOR_WHITE, FALSE );
     }
 }
 #endif
 
-//===========================================================================
-
-void character_physics::CopyValues( character_physics& rPhysics )
-{
-    m_bFallMode = rPhysics.GetFallMode();
-    m_bJumpMode = rPhysics.GetJumpMode();
-    m_Velocity = rPhysics.GetVelocity();
-    m_Position = rPhysics.GetPosition();
-    m_StuckFallTime = rPhysics.m_StuckFallTime;
-}
-
 //=========================================================================
-
-void ComputePlatformMotion( const matrix4&  OldPlatformM, 
-                            const matrix4&  NewPlatformM,
-                            const vector3&  CurrentPos,
-                                  vector3&  DeltaPos,
-                                  radian&   DeltaYaw )
-{
-    //
-    // Compute motion matrix
-    //
-    matrix4 DeltaM = OldPlatformM;
-    DeltaM.InvertSRT();
-    DeltaM = NewPlatformM * DeltaM;
-
-    //
-    // Compute DeltaPos
-    //
-    vector3 NewPos = DeltaM * CurrentPos;
-            DeltaPos = NewPos - CurrentPos;
-
-    //
-    // Compute DeltaYaw
-    //
-    radian3 OldPlatformYaw = OldPlatformM.GetRotation();
-    radian3 NewPlatformYaw = NewPlatformM.GetRotation();
-            DeltaYaw       = NewPlatformYaw.Yaw - OldPlatformYaw.Yaw;
-}
-
-//===========================================================================
 
 void character_physics::CatchUpWithRidingPlatform( f32 DeltaTime )
 {
-#ifdef LOG_CHARACTER_PHYSICS
-    CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::CatchUpWithRidingPlatform", "" );
-#endif
-
     if( !g_UpdateRidingPlatform )
+    {
         return;
+    }
 
     // Check that we are standing on a platform
     if( m_MovingPlatformGuid == 0 )
+    {
         return;
+    }
 
     // Get access to the previous surface.  Does it still exist?
     anim_surface* pPlatform = (anim_surface*)g_ObjMgr.GetObjectByGuid( m_MovingPlatformGuid );
     if( !pPlatform )
+    {
+        LeavePlatform( FALSE );
+        m_Support.State = CharacterSupportState::None;
         return;
+    }
 
     // Get access to the actor
     actor* pActor = (actor*)g_ObjMgr.GetObjectByGuid( m_Guid );
     if( !pActor )
+    {
         return;
+    }
 
-    //
     // We need to move the amount that the current platform did.
-    //
     {
         // Get new matrix
         matrix4 NewMovingPlatformL2W;
-        pPlatform->GetBoneL2W(m_MovingPlatformBone,NewMovingPlatformL2W);
+        pPlatform->GetBoneL2W( m_MovingPlatformBone, NewMovingPlatformL2W );
 
         vector3 DeltaPos;
         radian  DeltaYaw;
-        ComputePlatformMotion(  m_OldMovingPlatformL2W, 
-                                NewMovingPlatformL2W, 
-                                pActor->GetPosition(),
-                                DeltaPos,
-                                DeltaYaw );
+        ComputePlatformMotion( m_OldMovingPlatformL2W, NewMovingPlatformL2W, pActor->GetPosition(), DeltaPos,
+                               DeltaYaw );
 
-
-        //
         // Remember velocity
-        //
-        if( x_isvalid( DeltaTime ) && (DeltaTime > F32_MIN) )
+        if( x_isvalid( DeltaTime ) && ( DeltaTime > F32_MIN ) )
         {
             m_OldMovingPlatformVelocity = DeltaPos / DeltaTime;
         }
@@ -1686,32 +1150,32 @@ void character_physics::CatchUpWithRidingPlatform( f32 DeltaTime )
             m_OldMovingPlatformVelocity.Zero();
         }
 
-        //
         // Remember new platform L2W
-        //
         m_OldMovingPlatformL2W = NewMovingPlatformL2W;
 
-        //
         // Get current position
-        //
-        const matrix4& L2W = pActor->GetL2W();
-        vector3 CurrPos = L2W.GetTranslation();
+        const matrix4& L2W     = pActor->GetL2W();
+        vector3        CurrPos = L2W.GetTranslation();
 
-        //
         // Update position
-        //
         m_PlatformCollisionIgnoreList[0] = m_MovingPlatformGuid;
-        m_nPlatformsToIgnore=1;
+        m_nPlatformsToIgnore             = 1;
 
-        vector3 NewVector = DeltaPos;
-        HandleMove( CurrPos, NewVector, 1.0f, m_SteepestSlide, FALSE );
-        m_nPlatformsToIgnore=0;
+        const xbool Moved    = MoveDisplacement( CurrPos, DeltaPos );
+        m_nPlatformsToIgnore = 0;
+        if( !Moved )
+        {
+            return;
+        }
 
+        m_PlatformDisplacement += CurrPos - m_Position;
+        m_Support.Position += CurrPos - m_Position;
+        m_Position = CurrPos;
         pActor->OnRidingPlatformMove( CurrPos, DeltaYaw );
     }
 }
 
-//===========================================================================
+//=========================================================================
 
 void character_physics::ResetRidingPlatforms( void )
 {
@@ -1721,57 +1185,38 @@ void character_physics::ResetRidingPlatforms( void )
     m_OldMovingPlatformL2W.Identity();
 }
 
-//===========================================================================
+//=========================================================================
 
 void character_physics::WatchForRidingPlatform( void )
 {
-#ifdef LOG_CHARACTER_PHYSICS
-    CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::WatchForRidingPlatform", "" );
-#endif
-
     if( !g_UpdateRidingPlatform )
-        return;
-
-    anim_surface* pPlatform = NULL;
-    s32           iPlatformBone = -1;
-    guid          PlatformGuid = 0;
-
-    //
-    // Now check and see if we are still standing on any platform
-    //
-    if( m_GroundGuid )
     {
-        object* pObject = g_ObjMgr.GetObjectByGuid( m_GroundGuid );
-        if( pObject && (pObject->GetAttrBits() & object::ATTR_ACTOR_RIDEABLE) )
+        return;
+    }
+
+    anim_surface* pPlatform     = NULL;
+    s32           iPlatformBone = -1;
+    guid          PlatformGuid  = 0;
+
+    // Now check and see if we are still standing on any platform
+    if( IsGrounded() && m_Support.Contact.Object )
+    {
+        object* pObject = g_ObjMgr.GetObjectByGuid( m_Support.Contact.Object );
+        if( pObject && ( pObject->GetAttrBits() & object::ATTR_ACTOR_RIDEABLE ) )
         {
-            PlatformGuid    = m_GroundGuid;
-            pPlatform       = (anim_surface*)pObject;
-            iPlatformBone   = m_GroundBoneIndex;
+            PlatformGuid  = m_Support.Contact.Object;
+            pPlatform     = (anim_surface*)pObject;
+            iPlatformBone = GetBoneIndexFromPolyCachePrimKey( m_Support.Contact.PrimitiveKey );
         }
     }
 
-    //
     // Handle transition if there is one
-    //
-    if( (PlatformGuid == 0) || 
-        (PlatformGuid != m_MovingPlatformGuid) || 
-        (iPlatformBone != m_MovingPlatformBone))
+    if( ( PlatformGuid == 0 ) || ( PlatformGuid != m_MovingPlatformGuid ) || ( iPlatformBone != m_MovingPlatformBone ) )
     {
         // Detach from old platform
-        if( (PlatformGuid != m_MovingPlatformGuid) ||
-            (iPlatformBone != m_MovingPlatformBone) )
+        if( ( PlatformGuid != m_MovingPlatformGuid ) || ( iPlatformBone != m_MovingPlatformBone ) )
         {
-            // If previous platform is present inherit velocity
-            if( m_MovingPlatformGuid != 0 )
-            {
-                m_Velocity += m_OldMovingPlatformVelocity;
-            }
-
-            m_MovingPlatformGuid = 0;
-            m_MovingPlatformBone = -1;
-            m_OldMovingPlatformVelocity.Zero();
-            m_OldMovingPlatformL2W.Identity();
-            //x_DebugMsg("DETTACHED FROM MOVING PLATFORM\n");
+            LeavePlatform( !IsGrounded() );
         }
 
         // Is new ground a moving platform?
@@ -1780,592 +1225,218 @@ void character_physics::WatchForRidingPlatform( void )
             // Attach to platform
             m_MovingPlatformGuid = PlatformGuid;
             m_MovingPlatformBone = iPlatformBone;
-            pPlatform->GetBoneL2W(iPlatformBone,m_OldMovingPlatformL2W);
-            //x_DebugMsg("ATTACHED TO MOVING PLATFORM\n");
+            pPlatform->GetBoneL2W( iPlatformBone, m_OldMovingPlatformL2W );
         }
     }
 }
 
 //=========================================================================
 
-xbool ComputeTriSphereMovement( const vector3& aP0,
-                                const vector3& aP1,
-                                const vector3& aP2,
-                                const vector3& SphereCenter,
-                                      f32      SphereRadius,
-                                      f32      SphereHalfHeight,
-                                      vector3& FinalMovement )
+void character_physics::SolvePlatformCollisions( void )
 {
-#ifdef X_ASSERT
-    static xbool bCheckResults = TRUE;
-#endif
-
-    f32 SphereRadiusSquared = SphereRadius * SphereRadius;
-    f32 WorldToSphereScale = SphereRadius / SphereHalfHeight;
-
-    // Compute points in sphere space
-    vector3 SphereSpacePt[4];
-    SphereSpacePt[0] = aP0 - SphereCenter;
-    SphereSpacePt[1] = aP1 - SphereCenter;
-    SphereSpacePt[2] = aP2 - SphereCenter;
-    SphereSpacePt[0].GetY() *= WorldToSphereScale;
-    SphereSpacePt[1].GetY() *= WorldToSphereScale;
-    SphereSpacePt[2].GetY() *= WorldToSphereScale;
-    SphereSpacePt[3] = SphereSpacePt[0];
-    plane SphereSpacePlane(SphereSpacePt[0],SphereSpacePt[1],SphereSpacePt[2]) ;
-
-    //
-    // Sphere center is now at (0,0,0) and the sphere has radius SphereRadius
-    //
-
-    // Skip if completely in front of the plane
-    f32 SphereCenterDistFromPlane = SphereSpacePlane.D;
-    if( SphereCenterDistFromPlane >= SphereRadius )
-        return FALSE;
-
-    // Skip if center is behind plane
-    if( SphereCenterDistFromPlane < 0 )
-        return FALSE;
-    
-    // Clear results
-    vector3 BestPushDir;
-    f32     BestPushDist = 0.0f;
-
-    // Compute if sphere is inside edges
-    xbool   bInsideEdge[3];
-    vector3 ClosestPtOnPlaneToSphereCenter = - SphereSpacePlane.Normal * SphereCenterDistFromPlane;
-    {
-        for( s32 i = 0; i < 3; i++ )
-        {
-            vector3& PA         = SphereSpacePt[i];
-            vector3& PB         = SphereSpacePt[i+1];
-            vector3  EdgeDir    = PB - PA;
-            vector3  EdgeNormal = SphereSpacePlane.Normal.Cross( EdgeDir );
-            vector3  DeltaPoint = ClosestPtOnPlaneToSphereCenter - PA;
-            f32      Dot        = EdgeNormal.Dot( DeltaPoint );
-            bInsideEdge[i] = ( Dot >= 0.0f );
-        }
-    }
-    
-    // Push out of plane?
-    if( bInsideEdge[0] && bInsideEdge[1] && bInsideEdge[2] )
-    {
-        BestPushDist = SphereRadius - SphereCenterDistFromPlane;
-        BestPushDir = -ClosestPtOnPlaneToSphereCenter;
-    }
-
-    // Push out of edges/vertices?
-    if( BestPushDist == 0.0f )
-    {
-        vector3 Zero(0,0,0);
-        
-        for( s32 i=0; i<3; i++ )
-        {
-            // Skip if on inside of the edge (only allow pushing outwards)
-            if( bInsideEdge[i] )
-                continue;
-                
-            // Get edge points
-            vector3& PA = SphereSpacePt[i];
-            vector3& PB = SphereSpacePt[i+1];
-
-            // Get closest pt between edge and sphere center
-            vector3 CP = Zero.GetClosestVToLSeg(PA,PB);
-            f32 LenSquared = CP.LengthSquared();
-            if( LenSquared < SphereRadiusSquared )
-            {
-                f32 PushDist = SphereRadius - x_sqrt(LenSquared);
-                
-                // Pt may intersect more than one valid edge - make sure to keep
-                // the biggest push so that the sphere gets out of all the edges
-                if( PushDist > BestPushDist )
-                {
-                    BestPushDist = PushDist;
-                    BestPushDir = -CP;
-                }
-            }
-        }
-    }
-    
-    // If there were no close calls then bail
-    if( BestPushDist == 0.0f )
-        return FALSE;
-
-    // Normalize the push direction, move it into world space and extend it 1mm
-    ASSERT( BestPushDist > 0.0f );
-    ASSERT( BestPushDist <= SphereRadius );
-    BestPushDir.Normalize();
-    BestPushDir *= BestPushDist;
-    BestPushDir.GetY() /= WorldToSphereScale;
-    f32 BPDLen = BestPushDir.Length();
-    BestPushDir /= BPDLen;
-    BestPushDir *= (BPDLen + 0.1f);
-
-    FinalMovement = BestPushDir;
-
-#ifdef X_ASSERT
-    // Check to see if we no longer intersect the triangle!
-    if( bCheckResults )
-    {
-        // Stop recursion in case of fail!
-        bCheckResults = FALSE;
-    
-        // Check to make sure new position no longer intersects triangle
-        vector3 CheckSphereCenter = SphereCenter + FinalMovement;
-        vector3 CheckFinalMovement( 0.0f, 0.0f, 0.0f );
-        ASSERT( ComputeTriSphereMovement( aP0, aP1, aP2, CheckSphereCenter, SphereRadius, SphereHalfHeight, CheckFinalMovement ) == FALSE );
-    
-        // Can now check again
-        bCheckResults = TRUE;
-    }
-#endif
-
-    return TRUE;
-}
-
-//=========================================================================
-
-void character_physics::SolvePlatformCollisions ( void )
-{
-#ifdef LOG_CHARACTER_PHYSICS
-    CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::SolvePlatformCollisions", "" );
-#endif
-
     if( !g_ApplyPlatformCollision )
+    {
         return;
+    }
 
-    s32 MaxLoops = 8;
-    s32 nLoops;
-    bbox MoveBounds;
-    MoveBounds.Min.Zero();
-    MoveBounds.Max.Zero();
-
-    for( nLoops=0; nLoops < MaxLoops; nLoops++ )
+    vector3 Correction;
+    for( s32 i = 0; i < 8; i++ )
     {
-        s32 nPlatformsHit = 0;
-
-        m_nPlatformsToIgnore = 0;
-        vector3 AccumMoveDelta;
-        AccumMoveDelta.Zero();
-
-        //
-        // Build sphere info
-        //
-        f32 SphereRadius = m_NavCollisionRadius;
-        f32 SphereHalfHeight = m_NavCollisionCurentHeight * 0.5f;       // CJ: CROUCH - m_NavCollisionHeight
-        vector3 SphereCenter = m_Position;
-        SphereCenter.GetY() += SphereHalfHeight;
-
-        //
-        // Build bbox around character
-        //
-        bbox ActorBBox;
-        ActorBBox.Max.GetZ() = ActorBBox.Max.GetX() = +SphereRadius;
-        ActorBBox.Min.GetZ() = ActorBBox.Min.GetX() = -SphereRadius;
-        ActorBBox.Max.GetY() = m_NavCollisionCurentHeight;              // CJ: CROUCH - m_NavCollisionHeight
-        ActorBBox.Min.GetY() = 0;
-        ActorBBox.Min += m_Position;
-        ActorBBox.Max += m_Position;
-        ActorBBox.Inflate(1,1,1);
-
-        //
-        // Gather factored out list of clusters in dynamic area
-        //
-        g_PolyCache.BuildClusterList( ActorBBox, object::TYPE_ALL_TYPES, object::ATTR_ACTOR_RIDEABLE, 0 );
-
-        //
-        // Process clusters
-        //
-        if( g_PolyCache.m_nClusters )
+        guid Platform;
+        if( !FindPenetration( m_Position, m_NavCollisionRadius, m_NavCollisionCurrentHeight,
+                              object::ATTR_ACTOR_RIDEABLE, Correction, &Platform ) )
         {
-            //
-            // Loop through the clusters and process the triangles
-            //
-            for( s32 iCL=0; iCL<g_PolyCache.m_nClusters; iCL++ )
+            return;
+        }
+
+        const vector3 OldPosition        = m_Position;
+        m_PlatformCollisionIgnoreList[0] = Platform;
+        m_nPlatformsToIgnore             = 1;
+        const xbool Moved                = MoveDisplacement( m_Position, Correction );
+        m_nPlatformsToIgnore             = 0;
+        if( !Moved )
+        {
+            return;
+        }
+
+        if( ( m_Position - OldPosition ).LengthSquared() <= 0.01f )
+        {
+            object* pObject = g_ObjMgr.GetObjectByGuid( m_Guid );
+            if( pObject )
             {
-                xbool bHitThisCluster=FALSE;
-                poly_cache::cluster& CL = *g_PolyCache.m_ClusterList[iCL];
-
-                s32 iQ = -1;
-                while( 1 )
-                {
-                    // Do tight loop on bbox checks
-                    {
-                        iQ++;
-                        while( iQ < (s32)CL.nQuads )
-                        {
-                            //#### This could be moved outside the loop
-                            // and do a pointer incremenet after we
-                            // optimized the vector3/bbox stuff
-                            bbox* pBBox = (bbox*)(&CL.pBounds[iQ]);
-                            if( ActorBBox.Intersect( *pBBox ) ) 
-                            {
-                                break;
-                            }
-                            iQ++;
-                        }
-                        if( iQ==(s32)CL.nQuads )
-                            break;
-                    }
-
-                    // Process this quad
-                    poly_cache::cluster::quad& QD = CL.pQuad[iQ];
-
-                    {
-                        vector3  MoveDelta;
-                        vector3* PT[4];
-                        PT[0] = (vector3*)(&CL.pPoint[ QD.iP[0] ]);
-                        PT[1] = (vector3*)(&CL.pPoint[ QD.iP[1] ]);
-                        PT[2] = (vector3*)(&CL.pPoint[ QD.iP[2] ]);
-                        PT[3] = (vector3*)(&CL.pPoint[ QD.iP[3] ]);
-
-                        if( ComputeTriSphereMovement( *PT[0], *PT[1], *PT[2], SphereCenter, SphereRadius, SphereHalfHeight, MoveDelta ) )
-                        {
-                            nPlatformsHit++;
-                            MoveBounds += MoveDelta;
-                            AccumMoveDelta += MoveDelta;
-                            bHitThisCluster = TRUE;
-                        }
-
-                        if( CL.pBounds[iQ].Flags & BOUNDS_IS_QUAD )
-                        {
-                            if( ComputeTriSphereMovement( *PT[0], *PT[2], *PT[3], SphereCenter, SphereRadius, SphereHalfHeight, MoveDelta ) )
-                            {
-                                nPlatformsHit++;
-                                MoveBounds += MoveDelta;
-                                AccumMoveDelta += MoveDelta;
-                                bHitThisCluster = TRUE;
-                            }
-                        }
-                    }
-                }
-
-                if( bHitThisCluster )
-                {
-                    s32 i;
-
-                    for( i=0; i<m_nPlatformsToIgnore; i++ )
-                    if( m_PlatformCollisionIgnoreList[i] == CL.Guid )
-                        break;
-
-                    if( i==m_nPlatformsToIgnore )
-                    {
-                        if( m_nPlatformsToIgnore < 8 )
-                        {
-                            m_PlatformCollisionIgnoreList[m_nPlatformsToIgnore] = CL.Guid;
-                            m_nPlatformsToIgnore++;
-                        }
-                    }
-                }
+                pain PainEvent;
+                PainEvent.Setup( "GENERIC_LETHAL", 0, pObject->GetBBox().GetCenter() );
+                PainEvent.SetDirectHitGuid( m_Guid );
+                PainEvent.ApplyToObject( pObject );
             }
-        
+            return;
         }
+    }
+}
 
-        // No collisions found so bail
-        if( nPlatformsHit == 0 )
-            break;
+//=========================================================================
 
-        vector3 FinalMoveDelta( MoveBounds.Min + MoveBounds.Max );
-
-        #ifdef athyssen
-        if( FinalMoveDelta.LengthSquared() > 0.001f )
+void character_physics::NotifyContacts( const xarray<CharacterMovementHit>& Objects )
+{
+    object* pActor = g_ObjMgr.GetObjectByGuid( m_Guid );
+    if( !pActor )
+    {
+        return;
+    }
+    for( s32 i = 0; i < Objects.GetCount(); i++ )
+    {
+        object* pHit = g_ObjMgr.GetObjectByGuid( Objects[i].Object );
+        if( pHit )
         {
-            x_DebugMsg("PLATFORM IS PUSHING!!!\n");
-        }
-        #endif
-
-        // Move by FinalMoveDelta
-        vector3 NewVector = FinalMoveDelta;
-        HandleMove( m_Position, NewVector, 1.0f, 0, FALSE );
-        m_nPlatformsToIgnore = 0;
-    }
-
-    //
-    // Check if actor is trapped and crushed!!
-    //
-
-    if( nLoops == MaxLoops )
-    {
-        object* pObj = g_ObjMgr.GetObjectByGuid( m_Guid );
-        if( pObj )
-        {
-            // Kill the character
-            pain PainEvent;
-            PainEvent.Setup("GENERIC_LETHAL",0,pObj->GetBBox().GetCenter());
-            PainEvent.SetDirectHitGuid( pObj->GetGuid() );
-            PainEvent.ApplyToObject( pObj );
+            pHit->OnColNotify( *pActor );
         }
     }
-
 }
 
-//==============================================================================
+//=========================================================================
 
-void character_physics::SetDeltaPos( vector3 &DeltaPos )
+xbool character_physics::MoveDisplacement( vector3& Position, const vector3& Delta )
 {
-    m_LstDeltaPos[ m_DeltaPosIndex ]  = DeltaPos;
-    m_DeltaPosIndex                  += 1;
-
-    if ( m_DeltaPosIndex == NUM_STILL_FRAMES )
+    const CharacterMovementResult Result =
+        CharacterMovement::Move( *this, GetMovementSettings(), Position, Delta, 1.0f, FALSE, FALSE );
+    Position = Result.Position;
+    if( Result.RecoveryFailed )
     {
-        m_DeltaPosIndex = 0 ;
+        HandleRecoveryFailure();
+        return FALSE;
     }
-}
-//==============================================================================
-
-vector3 character_physics::GetRecentDeltaPos( void )
-{
-    vector3 vSum(0.f, 0.f, 0.f);
-    for (s32 i =0 ; i < NUM_STILL_FRAMES; i++)
-    {
-        vSum += m_LstDeltaPos[i];
-    }
-
-    return vSum;
-}
-
-//===========================================================================
-
-void character_physics::ResetDeltaPos( void )
-{
-    // Reset all of the positions in the delta pos storage.
-    for (s32 i =0 ; i < NUM_STILL_FRAMES ; i++)
-    {
-        m_LstDeltaPos[i] = vector3( 100.f, 100.f, 100.f );
-    }
-    
-    m_DeltaPosIndex = 0 ;
+    m_bNavCollided |= Result.Collided;
+    NotifyContacts( Result.Hits );
+    return TRUE;
 }
 
 //=========================================================================
 
 void character_physics::Push( const vector3& PushVector )
 {
-    xbool bPerm = m_bHandlePermeable;
-    m_bHandlePermeable = FALSE;
-    vector3 NewVector = PushVector;
-
-    HandleMove( m_Position, NewVector, 1.0f, 0, FALSE );
-    ResolvePenetrations();
-    m_bHandlePermeable = bPerm;
+    if( !MoveDisplacement( m_Position, PushVector ) )
+    {
+        return;
+    }
+    if( m_bLocoCollisionOn && !CharacterMovement::Recover( *this, GetMovementSettings(), m_Position ) )
+    {
+        HandleRecoveryFailure();
+    }
 }
-
 //=========================================================================
 
 void character_physics::SetCollisionIgnoreGuid( guid ignoreGuid )
 {
-#ifdef LOG_CHARACTER_PHYSICS
-    CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::SetCollisionIgnoreGuid", "%08X:%08X",
-                  ignoreGuid.GetHigh(), ignoreGuid.GetLow() );
-#endif
-
     m_IgnoreGuid = ignoreGuid;
 }
 
 //=========================================================================
 
-#define PENETRATION_TOLERANCE2  ( 0.1f * 0.1f )
-
-void character_physics::ResolvePenetrations( void )
+xbool character_physics::GetPenetration( const vector3& Position, f32 Radius, f32 Height, vector3& Correction )
 {
-#ifdef LOG_CHARACTER_PHYSICS
-    CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::ResolvePenetrations - Enter", "Pos (%.3f,%.3f,%.3f)", m_Position.GetX(), m_Position.GetY(), m_Position.GetZ() );
-#endif
-
-    // Skip if collision is turned off
-    if( m_bLocoCollisionOn == FALSE )
-    {
-        return;
-    }
-
-    s32     MaxLoops = 8;
-    s32     nLoops;
-    vector3 DeepestMove;
-#ifdef LOG_CHARACTER_PHYSICS
-    vector3 OldPosition = m_Position;
-#endif
-
-    bbox MoveBounds;
-    MoveBounds.Min.Zero();
-    MoveBounds.Max.Zero();
-
-    for( nLoops=0; nLoops < MaxLoops; nLoops++ )
-    {
-        #ifdef X_ASSERT
-        ASSERT( IsValidPosition( m_Position ) );
-        #endif
-    
-        vector3 AccumMoveDelta;
-        AccumMoveDelta.Zero();
-
-        //
-        // Build sphere info
-        //
-        f32 SphereRadius = m_NavCollisionRadius;
-        f32 SphereHalfHeight = m_NavCollisionCurentHeight * 0.5f;           // CJ: CROUCH - m_NavCollisionHeight
-        vector3 SphereCenter = m_Position;
-        SphereCenter.GetY() += SphereHalfHeight;
-
-        //
-        // Build bbox around character
-        //
-        bbox ActorBBox;
-        ActorBBox.Max.GetZ() = ActorBBox.Max.GetX() = +SphereRadius;
-        ActorBBox.Min.GetZ() = ActorBBox.Min.GetX() = -SphereRadius;
-        ActorBBox.Max.GetY() = m_NavCollisionCurentHeight;                  // CJ: CROUCH - m_NavCollisionHeight
-        ActorBBox.Min.GetY() = 0;
-        ActorBBox.Min += m_Position;
-        ActorBBox.Max += m_Position;
-        ActorBBox.Inflate(1,1,1);
-
-        //
-        // Gather factored out list of clusters in dynamic area
-        //
-        u32 Attr = object::ATTR_COLLIDABLE;
-        object* pOurCharacter = g_ObjMgr.GetObjectByGuid( m_Guid );
-        if( pOurCharacter && pOurCharacter->IsKindOf( player::GetRTTI() ) )
-        {
-            Attr = object::ATTR_BLOCKS_PLAYER;
-        }
-        else
-        {
-            Attr = object::ATTR_BLOCKS_CHARACTER;
-        }
-
-        g_PolyCache.BuildClusterList( ActorBBox, object::TYPE_ALL_TYPES, Attr, object::ATTR_COLLISION_PERMEABLE | object::ATTR_LIVING );
-
-        //
-        // Process clusters
-        //
-        if( g_PolyCache.m_nClusters )
-        {
-            // Clear deepest penetration found
-            f32 DeepestPenetration2 = 0.0f;
-
-            //
-            // Loop through the clusters and process the triangles
-            //
-            for( s32 iCL=0; iCL<g_PolyCache.m_nClusters; iCL++ )
-            {
-                xbool bHitThisCluster=FALSE;
-                poly_cache::cluster& CL = *g_PolyCache.m_ClusterList[iCL];
-
-                s32 iQ = -1;
-                while( 1 )
-                {
-                    // Do tight loop on bbox checks
-                    {
-                        iQ++;
-                        while( iQ < (s32)CL.nQuads )
-                        {
-                            //#### This could be moved outside the loop
-                            // and do a pointer incremenet after we
-                            // optimized the vector3/bbox stuff
-                            bbox* pBBox = (bbox*)(&CL.pBounds[iQ]);
-                            if( ActorBBox.Intersect( *pBBox ) ) 
-                            {
-                                break;
-                            }
-                            iQ++;
-                        }
-                        if( iQ==(s32)CL.nQuads )
-                            break;
-                    }
-
-                    // Process this quad
-                    poly_cache::cluster::quad& QD = CL.pQuad[iQ];
-
-                    {
-                        vector3  MoveDelta;
-                        vector3* PT[4];
-                        PT[0] = (vector3*)(&CL.pPoint[ QD.iP[0] ]);
-                        PT[1] = (vector3*)(&CL.pPoint[ QD.iP[1] ]);
-                        PT[2] = (vector3*)(&CL.pPoint[ QD.iP[2] ]);
-                        PT[3] = (vector3*)(&CL.pPoint[ QD.iP[3] ]);
-
-                        if( ComputeTriSphereMovement( *PT[0], *PT[1], *PT[2], SphereCenter, SphereRadius, SphereHalfHeight, MoveDelta ) )
-                        {
-                            if( MoveDelta.LengthSquared() > DeepestPenetration2 )
-                            {
-                                DeepestPenetration2 = MoveDelta.LengthSquared();
-                                DeepestMove = MoveDelta;
-                                bHitThisCluster = TRUE;
-                            }
-                        }
-
-                        if( CL.pBounds[iQ].Flags & BOUNDS_IS_QUAD )
-                        {
-                            if( ComputeTriSphereMovement( *PT[0], *PT[2], *PT[3], SphereCenter, SphereRadius, SphereHalfHeight, MoveDelta ) )
-                            {
-                                if( MoveDelta.LengthSquared() > DeepestPenetration2 )
-                                {
-                                    DeepestPenetration2 = MoveDelta.LengthSquared();
-                                    DeepestMove = MoveDelta;
-                                    bHitThisCluster = TRUE;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Apply the move if it's above our tolerance
-            if( DeepestPenetration2 > PENETRATION_TOLERANCE2 )
-            {
-                m_Position += DeepestMove;
-                m_Velocity.Zero();
-                
-                #ifdef X_ASSERT
-                ASSERT( IsValidPosition( m_Position ) );
-                #endif
-                
-#ifdef LOG_CHARACTER_PHYSICS
-                LOG_WARNING( "character_physics::ResolvePenetrations", "Iteration %d Move (%.3f,%.3f,%.3f)", nLoops, DeepestMove.GetX(), DeepestMove.GetY(), DeepestMove.GetZ() );
-#endif
-/*
-                if( x_sqrt(DeepestPenetration2) > 50.0f )
-                {
-                    LOG_ERROR( "physics", "Help" );
-                }
-*/
-            }
-            else
-            {
-                // Exit the iteration limiting for loop
-                break;
-            }
-        }
-    }
-
-#ifdef LOG_CHARACTER_PHYSICS
-    CLOG_MESSAGE( g_LogCharacterPhysics, "character_physics::ResolvePenetrations - Exit", "Pos (%.3f,%.3f,%.3f)", m_Position.GetX(), m_Position.GetY(), m_Position.GetZ() );
-
-    if( m_Position != OldPosition )
-    {
-        LOG_WARNING( "character_physics::ResolvePenetrations - WEnter", "Pos (%.3f,%.3f,%.3f)", OldPosition.GetX(), OldPosition.GetY(), OldPosition.GetZ() );
-        LOG_WARNING( "character_physics::ResolvePenetrations - WExit",  "Pos (%.3f,%.3f,%.3f)", m_Position.GetX(), m_Position.GetY(), m_Position.GetZ() );
-    }
-#endif
-}
-
-//=========================================================================
-xbool character_physics::SetupPlayerCollisionCheck( const vector3& Start, const vector3&End )
-{
-    g_CollisionMgr.CylinderSetup( m_Guid, 
-        Start,
-        End,
-        m_NavCollisionRadius,
-        m_NavCollisionCurentHeight );      // CJ: CROUCH - m_NavCollisionHeight
-
-    return TRUE; // placeholder return value in case we need to do 
-                 // some error checking on Start and End
+    object*   pObject = g_ObjMgr.GetObjectByGuid( m_Guid );
+    const u32 Attributes =
+        pObject && pObject->IsKindOf( player::GetRTTI() ) ? object::ATTR_BLOCKS_PLAYER : object::ATTR_BLOCKS_CHARACTER;
+    return FindPenetration( Position, Radius, Height, Attributes, Correction );
 }
 
 //=========================================================================
 
-void character_physics::SetGroundTracking( xbool Track )
+xbool character_physics::FindPenetration( const vector3& Position, f32 Radius, f32 Height, u32 Attributes,
+                                          vector3& Correction, guid* pObject )
 {
-    m_bTrackingGround = Track;
+    const vector3 A = Position + vector3( 0.0f, Radius, 0.0f );
+    const vector3 B = Position + vector3( 0.0f, Height - Radius, 0.0f );
+    bbox          Bounds( vector3( -Radius, 0.0f, -Radius ), vector3( Radius, Height, Radius ) );
+    Bounds.Translate( Position );
+    g_PolyCache.BuildClusterList( Bounds, object::TYPE_ALL_TYPES, Attributes,
+                                  object::ATTR_COLLISION_PERMEABLE | object::ATTR_LIVING );
+    f32 Deepest = 0.0f;
+    for( s32 i = 0; i < g_PolyCache.m_nClusters; i++ )
+    {
+        const poly_cache::cluster& Cluster = *g_PolyCache.m_ClusterList[i];
+        if( ( Cluster.Guid == m_Guid ) || ( Cluster.Guid == m_IgnoreGuid ) )
+        {
+            continue;
+        }
+        xbool Ignore = FALSE;
+        for( s32 j = 0; j < m_nPlatformsToIgnore; j++ )
+        {
+            Ignore |= ( Cluster.Guid == m_PlatformCollisionIgnoreList[j] );
+        }
+        if( Ignore )
+        {
+            continue;
+        }
+
+        for( s32 j = 0; j < (s32)Cluster.nQuads; j++ )
+        {
+            const bbox& QuadBounds = *(const bbox*)&Cluster.pBounds[j];
+            if( !Bounds.Intersect( QuadBounds ) )
+            {
+                continue;
+            }
+            const poly_cache::cluster::quad& Quad      = Cluster.pQuad[j];
+            const s32                        Triangles = ( Cluster.pBounds[j].Flags & BOUNDS_IS_QUAD ) ? 2 : 1;
+            vector3                          Points[4];
+            for( s32 k = 0; k < Triangles + 2; k++ )
+            {
+                ASSERT( Quad.iP[k] < Cluster.nPoints );
+                Points[k] = Cluster.pPoint[Quad.iP[k]];
+            }
+            for( s32 k = 0; k < Triangles; k++ )
+            {
+                const vector3 Triangle[3] = { Points[0], Points[k + 1], Points[k + 2] };
+                vector3       Move;
+                if( ComputeCapsuleTriPenetration( Triangle, A, B, Radius, Move ) && ( Move.LengthSquared() > Deepest ) )
+                {
+                    Deepest    = Move.LengthSquared();
+                    Correction = Move;
+                    if( pObject )
+                    {
+                        *pObject = Cluster.Guid;
+                    }
+                }
+            }
+        }
+    }
+    return Deepest > 0.0f;
+}
+
+//=========================================================================
+
+xbool character_physics::CanMoveTo( const vector3& Position )
+{
+    const xbool RequireGround = IsGrounded();
+    return CharacterMovement::CanMoveTo( *this, GetMovementSettings(), m_Position, Position, RequireGround );
+}
+
+//=========================================================================
+
+void character_physics::SetupPlayerCollisionCheck( const vector3& Start, const vector3& End )
+{
+    g_CollisionMgr.CapsuleSetup( m_Guid, Start, End, m_NavCollisionRadius, m_NavCollisionCurrentHeight );
+}
+
+//=========================================================================
+
+void character_physics::LeavePlatform( xbool InheritVelocity )
+{
+    if( InheritVelocity && ( m_MovingPlatformGuid != NULL_GUID ) )
+    {
+        vector3 Inherited = m_OldMovingPlatformVelocity;
+        Inherited.GetY()  = x_max( 0.0f, Inherited.GetY() );
+        m_MotionVelocity += Inherited;
+    }
+    ResetRidingPlatforms();
+}
+
+//=========================================================================
+
+void character_physics::DetachFromGround( void )
+{
+    m_Support.State = CharacterSupportState::None;
+    LeavePlatform( TRUE );
 }
 
 //=========================================================================
@@ -2373,18 +1444,27 @@ void character_physics::SetGroundTracking( xbool Track )
 void character_physics::InitialGroundCheck( const vector3& Position )
 {
     m_Position = Position;
-    m_bJumpMode = FALSE;
-    m_bFallMode = FALSE;
-    m_bFlingMode = FALSE;
-    m_LastFling = NULL_GUID;
-    m_StuckFallTime = 0.0f;
-    ResetDeltaPos();
+    m_Support  = {};
+    ClearMotionVelocity();
+    ResetMovementProgress();
     ResetRidingPlatforms();
-    m_bTrackingGround = UpdateGround( 50.0f );
-    if( !m_bTrackingGround && m_bUseGravity && m_bLocoGravityOn )
-    {
-        m_bFallMode = TRUE;
-    }
+    m_WorldVelocity.Zero();
+    m_PlatformDisplacement.Zero();
+    m_bRecoveryFailed = FALSE;
+    m_StepOffset      = 0.0f;
+    m_Landed          = FALSE;
+    m_LandingSpeed    = 0.0f;
+    UpdateSupport( m_ContactOffset );
 }
 
 //=========================================================================
+
+void character_physics::HandleRecoveryFailure( void )
+{
+    m_bRecoveryFailed = TRUE;
+    m_bNavCollided    = TRUE;
+    ClearMotionVelocity();
+    m_Support    = {};
+    m_StepOffset = 0.0f;
+    LeavePlatform( FALSE );
+}

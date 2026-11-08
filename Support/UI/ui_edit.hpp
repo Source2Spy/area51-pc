@@ -43,12 +43,14 @@ public:
     void                    SetLabelWidth           ( s32 Width );
     void                    SetBufferSize           ( s32 BufferSize );
     void                    SetVirtualKeyboardTitle ( const xwstring& Title );
+    void                    SetPlaceholder          ( const xwstring& Text ) { m_Placeholder = Text; }
 
 protected:
     s32             m_iElement1;
     s32             m_LabelWidth;
     s32             m_BufferSize;
     xwstring        m_VirtualKeyboardTitle;
+    xwstring        m_Placeholder;
     xbool           m_bName;  // Whether this dialogue exists to enter in a name (as opposed to a password).
 
 };

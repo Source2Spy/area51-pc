@@ -113,7 +113,9 @@ static
 void SetKeyMapping( SDL_Scancode ScanCode, s32 DIKCode )
 {
     if( (ScanCode >= 0) && (ScanCode < SDL_SCANCODE_COUNT) )
+    {
         s_SDLToDIK[ScanCode] = DIKCode;
+    }
 }
 
 //==============================================================================
@@ -123,10 +125,14 @@ static
 void InitializeKeyMap( void )
 {
     if( s_KeyMapInitialized )
+    {
         return;
+    }
 
     for( s32 i = 0; i < SDL_SCANCODE_COUNT; i++ )
+    {
         s_SDLToDIK[i] = -1;
+    }
 
     SetKeyMapping( SDL_SCANCODE_ESCAPE, 0x01 );
 
@@ -137,7 +143,9 @@ void InitializeKeyMap( void )
         SDL_SCANCODE_9, SDL_SCANCODE_0
     };
     for( s32 i = 0; i < (s32)(sizeof(NumberKeys) / sizeof(NumberKeys[0])); i++ )
+    {
         SetKeyMapping( NumberKeys[i], 0x02 + i );
+    }
 
     SetKeyMapping( SDL_SCANCODE_MINUS,       0x0C );
     SetKeyMapping( SDL_SCANCODE_EQUALS,      0x0D );
@@ -201,7 +209,9 @@ void InitializeKeyMap( void )
         SDL_SCANCODE_F9, SDL_SCANCODE_F10
     };
     for( s32 i = 0; i < (s32)(sizeof(FunctionKeys) / sizeof(FunctionKeys[0])); i++ )
+    {
         SetKeyMapping( FunctionKeys[i], 0x3B + i );
+    }
 
     SetKeyMapping( SDL_SCANCODE_NUMLOCKCLEAR, 0x45 );
     SetKeyMapping( SDL_SCANCODE_SCROLLLOCK,   0x46 );
@@ -219,7 +229,9 @@ void InitializeKeyMap( void )
         0x4F, 0x50, 0x51, 0x52, 0x53
     };
     for( s32 i = 0; i < (s32)(sizeof(KeypadKeys) / sizeof(KeypadKeys[0])); i++ )
+    {
         SetKeyMapping( KeypadKeys[i], KeypadDIK[i] );
+    }
 
     SetKeyMapping( SDL_SCANCODE_KP_MINUS,  0x4A );
     SetKeyMapping( SDL_SCANCODE_KP_PLUS,   0x4E );
@@ -281,23 +293,33 @@ static
 xbool IsEventForWindow( SDL_Event const& Event, SDL_WindowID WindowID )
 {
     if( !WindowID )
+    {
         return TRUE;
+    }
 
     switch( Event.type )
     {
         case SDL_EVENT_KEY_DOWN:
         case SDL_EVENT_KEY_UP:
+        {
             return (Event.key.windowID == 0) || (Event.key.windowID == WindowID);
+        }
 
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
         case SDL_EVENT_MOUSE_BUTTON_UP:
+        {
             return (Event.button.windowID == 0) || (Event.button.windowID == WindowID);
+        }
 
         case SDL_EVENT_MOUSE_WHEEL:
+        {
             return (Event.wheel.windowID == 0) || (Event.wheel.windowID == WindowID);
+        }
 
         default:
+        {
             return TRUE;
+        }
     }
 }
 
@@ -307,7 +329,9 @@ static
 void ClearRelativeState( void )
 {
     for( s32 i = 0; i < RELATIVE_COUNT_MOUSE; i++ )
+    {
         s_Input.Mouse.Relative[i] = 0.0f;
+    }
 }
 
 //==============================================================================
@@ -323,17 +347,23 @@ void AppendDigitalEvent( input_event_buffer& Events,
 {
     xbool const WasDown = (State & DIGITAL_ON) != 0;
     if( WasDown == IsDown )
+    {
         return;
+    }
 
     if( IsDown )
     {
         if( Events.Append( GadgetID, DeviceID, INPUT_EVENT_PRESSED, Value, TimeStamp ) )
+        {
             State = DIGITAL_ON;
+        }
     }
     else
     {
         if( Events.Append( GadgetID, DeviceID, INPUT_EVENT_RELEASED, 0.0f, TimeStamp ) )
+        {
             State = 0;
+        }
     }
 }
 
@@ -368,7 +398,9 @@ s32 GetMouseButtonIndex( input_gadget GadgetID )
     for( s32 i = 0; i < DIGITAL_COUNT_MOUSE; i++ )
     {
         if( GadgetID == GetMouseButtonGadget( i ) )
+        {
             return i;
+        }
     }
 
     return -1;
@@ -405,7 +437,9 @@ s32 GetMouseButtonIndexFromSDL( Uint8 ButtonID )
     for( s32 i = 0; i < DIGITAL_COUNT_MOUSE; i++ )
     {
         if( ButtonID == GetSDLMouseButtonID( i ) )
+        {
             return i;
+        }
     }
 
     return -1;
@@ -471,7 +505,9 @@ s32 FindFreeGamepadSlot( void )
     for( s32 i = 0; i < MAX_GAMEPADS; i++ )
     {
         if( !s_Input.Gamepad[i].pGamepad && !s_Input.Gamepad[i].PendingDisconnect )
+        {
             return i;
+        }
     }
 
     return -1;
@@ -483,7 +519,9 @@ static
 void StopGamepadRumble( s32 Slot )
 {
     if( (Slot >= 0) && (Slot < MAX_GAMEPADS) && s_Input.Gamepad[Slot].pGamepad )
+    {
         SDL_RumbleGamepad( s_Input.Gamepad[Slot].pGamepad, 0, 0, 0 );
+    }
 }
 
 //==============================================================================
@@ -492,13 +530,17 @@ static
 void CloseGamepad( s32 Slot, xbool PreserveState )
 {
     if( (Slot < 0) || (Slot >= MAX_GAMEPADS) )
+    {
         return;
+    }
 
     gamepad_slot& Pad = s_Input.Gamepad[Slot];
 
     StopGamepadRumble( Slot );
     if( Pad.pGamepad )
+    {
         SDL_CloseGamepad( Pad.pGamepad );
+    }
 
     Pad.pGamepad   = NULL;
     Pad.InstanceID = 0;
@@ -520,11 +562,15 @@ static
 void OpenGamepad( SDL_JoystickID InstanceID )
 {
     if( FindGamepadSlot( InstanceID ) >= 0 )
+    {
         return;
+    }
 
     s32 const Slot = FindFreeGamepadSlot();
     if( Slot < 0 )
+    {
         return;
+    }
 
     SDL_Gamepad* const pGamepad = SDL_OpenGamepad( InstanceID );
     if( !pGamepad )
@@ -551,13 +597,17 @@ void OpenGamepad( SDL_JoystickID InstanceID )
 static
 void OpenExistingGamepads( void )
 {
-    int Count = 0;
+    s32 Count = 0;
     SDL_JoystickID* const pIDs = SDL_GetGamepads( &Count );
     if( !pIDs )
+    {
         return;
+    }
 
-    for( int i = 0; i < Count; i++ )
+    for( s32 i = 0; i < Count; i++ )
+    {
         OpenGamepad( pIDs[i] );
+    }
 
     SDL_free( pIDs );
 }
@@ -567,21 +617,23 @@ void OpenExistingGamepads( void )
 static
 void CaptureKeyboard( input_event_buffer& Events, u32 TimeStamp )
 {
-    int Count = 0;
+    s32 Count = 0;
     bool const* const pState = SDL_GetKeyboardState( &Count );
     bool NextState[DIGITAL_COUNT_KBD];
     x_memset( NextState, 0, sizeof(NextState) );
 
     if( sdleng_WindowIsActive() )
     {
-        for( int i = 0; pState && (i < Count); i++ )
+        for( s32 i = 0; pState && (i < Count); i++ )
         {
             SDL_Scancode const ScanCode = (SDL_Scancode)i;
             if( (ScanCode >= 0) && (ScanCode < SDL_SCANCODE_COUNT) )
             {
                 s32 const DIKCode = s_SDLToDIK[ScanCode];
                 if( (DIKCode >= 0) && (DIKCode < DIGITAL_COUNT_KBD) )
+                {
                     NextState[DIKCode] = pState[i];
+                }
             }
         }
     }
@@ -618,9 +670,13 @@ void CaptureMouse( input_event_buffer& Events, u32 TimeStamp )
     s_Input.Mouse.Relative[1] = Y;
 
     if( X != 0.0f )
+    {
         Events.Append( INPUT_MOUSE_X_REL, 0, INPUT_EVENT_RELATIVE, X, TimeStamp );
+    }
     if( Y != 0.0f )
+    {
         Events.Append( INPUT_MOUSE_Y_REL, 0, INPUT_EVENT_RELATIVE, Y, TimeStamp );
+    }
 
     for( s32 i = 0; i < DIGITAL_COUNT_MOUSE; i++ )
     {
@@ -646,7 +702,9 @@ void CaptureMouseWheel( input_event_buffer& Events, u32 TimeStamp )
     s_Input.PendingMouseWheel = 0.0f;
 
     if( Value == 0.0f )
+    {
         return;
+    }
 
     s_Input.Mouse.Relative[2] += Value;
     Events.Append( INPUT_MOUSE_WHEEL_REL,
@@ -814,9 +872,13 @@ void CaptureGamepad( s32 Slot, input_event_buffer& Events, u32 TimeStamp )
     }
 
     if( !Connected && Pad.pGamepad )
+    {
         CloseGamepad( Slot, FALSE );
+    }
     else if( Pad.PendingDisconnect )
+    {
         Pad.PendingDisconnect = FALSE;
+    }
 }
 
 //==============================================================================
@@ -854,11 +916,15 @@ xbool SetRelativeMouseMode( xbool Enabled )
 {
     SDL_Window* const pWindow = sdleng_WindowGetSDLWindow();
     if( !pWindow )
+    {
         return FALSE;
+    }
 
     xbool const IsEnabled = SDL_GetWindowRelativeMouseMode( pWindow ) ? TRUE : FALSE;
     if( IsEnabled == Enabled )
+    {
         return TRUE;
+    }
 
     if( !SDL_SetWindowRelativeMouseMode( pWindow, Enabled != FALSE ) )
     {
@@ -877,15 +943,21 @@ static
 void HandleKeyboardEvent( SDL_Event const& Event )
 {
     if( !s_pCaptureEvents || !sdleng_WindowIsActive() )
+    {
         return;
+    }
 
     SDL_Scancode const ScanCode = Event.key.scancode;
     if( (ScanCode < 0) || (ScanCode >= SDL_SCANCODE_COUNT) )
+    {
         return;
+    }
 
     s32 const DIKCode = s_SDLToDIK[ScanCode];
     if( (DIKCode < 0) || (DIKCode >= DIGITAL_COUNT_KBD) )
+    {
         return;
+    }
 
     AppendDigitalEvent( *s_pCaptureEvents,
                         static_cast<input_gadget>( INPUT_KBD__BEGIN + DIKCode ),
@@ -902,11 +974,15 @@ static
 void HandleMouseButtonEvent( SDL_Event const& Event )
 {
     if( !s_pCaptureEvents || !sdleng_WindowIsActive() )
+    {
         return;
+    }
 
     s32 const ButtonIndex = GetMouseButtonIndexFromSDL( Event.button.button );
     if( ButtonIndex < 0 )
+    {
         return;
+    }
 
     AppendDigitalEvent( *s_pCaptureEvents,
                         GetMouseButtonGadget( ButtonIndex ),
@@ -925,19 +1001,25 @@ void HandleWindowEvent( void* pContext, SDL_Event const& Event, SDL_WindowID Win
     (void)pContext;
 
     if( !IsEventForWindow( Event, WindowID ) )
+    {
         return;
+    }
 
     switch( Event.type )
     {
         case SDL_EVENT_KEY_DOWN:
         case SDL_EVENT_KEY_UP:
+        {
             HandleKeyboardEvent( Event );
             break;
+        }
 
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
         case SDL_EVENT_MOUSE_BUTTON_UP:
+        {
             HandleMouseButtonEvent( Event );
             break;
+        }
 
         case SDL_EVENT_MOUSE_WHEEL:
         {
@@ -945,28 +1027,38 @@ void HandleWindowEvent( void* pContext, SDL_Event const& Event, SDL_WindowID Win
             {
                 f32 Value = Event.wheel.y;
                 if( Value == 0.0f )
+                {
                     Value = (f32)Event.wheel.integer_y;
+                }
                 if( Event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED )
+                {
                     Value = -Value;
-                s_Input.PendingMouseWheel += Value;
+                }
+                s_Input.PendingMouseWheel += Value * 120.0f;
             }
         }
         break;
 
         case SDL_EVENT_GAMEPAD_ADDED:
+        {
             OpenGamepad( Event.gdevice.which );
             break;
+        }
 
         case SDL_EVENT_GAMEPAD_REMOVED:
         {
             s32 const Slot = FindGamepadSlot( Event.gdevice.which );
             if( Slot >= 0 )
+            {
                 CloseGamepad( Slot, TRUE );
+            }
         }
         break;
 
         default:
+        {
             break;
+        }
     }
 }
 
@@ -982,7 +1074,9 @@ public:
         (void)Desc;
 
         if( s_Input.Initialized )
+        {
             return TRUE;
+        }
 
         if( !sdleng_WindowGetSDLWindow() )
         {
@@ -994,7 +1088,9 @@ public:
         x_memset( &s_Input, 0, sizeof(s_Input) );
 
         for( s32 i = 0; i < MAX_GAMEPADS; i++ )
+        {
             s_Input.RumbleEnabled[i] = TRUE;
+        }
 
         if( !(SDL_WasInit( SDL_INIT_GAMEPAD ) & SDL_INIT_GAMEPAD) )
         {
@@ -1027,10 +1123,14 @@ public:
         ClearFeedback();
 
         for( s32 i = 0; i < MAX_GAMEPADS; i++ )
+        {
             CloseGamepad( i, FALSE );
+        }
 
         if( s_Input.GamepadSubsystemOwned )
+        {
             SDL_QuitSubSystem( SDL_INIT_GAMEPAD );
+        }
 
         s_Input.GamepadSubsystemOwned = FALSE;
         s_Input.ExitApp               = FALSE;
@@ -1045,11 +1145,15 @@ public:
 
         s_pCaptureEvents = &Events;
         if( !sdleng_WindowPumpMessages() )
+        {
             s_Input.ExitApp = TRUE;
+        }
         s_pCaptureEvents = NULL;
 
         if( sdleng_WindowIsCloseRequested() )
+        {
             s_Input.ExitApp = TRUE;
+        }
 
         u32 const TimeStamp = (u32)SDL_GetTicks();
 
@@ -1058,10 +1162,14 @@ public:
         CaptureKeyboard( Events, TimeStamp );
 
         for( s32 i = 0; i < MAX_GAMEPADS; i++ )
+        {
             CaptureGamepad( i, Events, TimeStamp );
+        }
 
         if( s_Input.ExitApp )
+        {
             Events.Append( INPUT_MSG_EXIT, 0, INPUT_EVENT_EXIT, 1.0f, TimeStamp );
+        }
 
         Events.EndCapture( (u32)SDL_GetTicks() );
         return s_Input.ExitApp;
@@ -1080,16 +1188,24 @@ public:
     xbool IsGadgetPresent( input_gadget GadgetID, s32 DeviceID ) const override
     {
         if( (DeviceID < 0) || (DeviceID >= INPUT_MAX_DEVICES) )
+        {
             return FALSE;
+        }
 
         if( GadgetID == INPUT_MSG_EXIT )
+        {
             return TRUE;
+        }
 
         if( GadgetID > INPUT_KBD__BEGIN && GadgetID < INPUT_KBD__END )
+        {
             return (DeviceID == 0);
+        }
 
         if( GadgetID > INPUT_MOUSE__BEGIN && GadgetID < INPUT_MOUSE__END )
+        {
             return (DeviceID == 0);
+        }
 
         if( GadgetID > INPUT_XBOX__BEGIN && GadgetID < INPUT_XBOX__END )
         {
@@ -1104,20 +1220,28 @@ public:
     xbool IsDevicePresent( input_device Device, s32 DeviceID ) const override
     {
         if( (DeviceID < 0) || (DeviceID >= INPUT_MAX_DEVICES) )
+        {
             return FALSE;
+        }
 
         switch( Device )
         {
         case INPUT_DEVICE_KEYBOARD:
         case INPUT_DEVICE_MOUSE:
+        {
             return DeviceID == 0;
+        }
 
         case INPUT_DEVICE_GAMEPAD:
+        {
             return s_Input.Gamepad[DeviceID].pGamepad &&
                    SDL_GamepadConnected( s_Input.Gamepad[DeviceID].pGamepad );
+        }
 
         default:
+        {
             return FALSE;
+        }
         }
     }
 
@@ -1138,48 +1262,64 @@ public:
     void Feedback( f32 Duration, f32 Intensity, s32 DeviceID ) override
     {
         if( g_Input.GetCurrentInputDevice() == INPUT_DEVICE_GAMEPAD )
+        {
             Rumble( DeviceID, Intensity, Duration );
+        }
     }
 
     void Feedback( s32 Count, feedback_envelope* pEnvelope, s32 DeviceID ) override
     {
         if( Count > 0 && pEnvelope )
+        {
             Feedback( pEnvelope[0].Duration, pEnvelope[0].Intensity, DeviceID );
+        }
     }
 
     void EnableFeedback( xbool State, s32 DeviceID ) override
     {
         if( (DeviceID < 0) || (DeviceID >= MAX_GAMEPADS) )
+        {
             return;
+        }
 
         s_Input.RumbleEnabled[DeviceID] = State;
         if( !State )
+        {
             StopGamepadRumble( DeviceID );
+        }
     }
 
     void SuppressFeedback( xbool Suppress ) override
     {
         s_Input.SuppressRumble = Suppress;
         if( Suppress )
+        {
             ClearFeedback();
+        }
     }
 
     void ClearFeedback( void ) override
     {
         for( s32 i = 0; i < MAX_GAMEPADS; i++ )
+        {
             StopGamepadRumble( i );
+        }
     }
 
 private:
     static f32 GetRawValue( input_gadget GadgetID, s32 DeviceID, xbool ReadAnalogTrigger )
     {
         if( (DeviceID < 0) || (DeviceID >= INPUT_MAX_DEVICES) )
+        {
             return 0.0f;
+        }
 
         if( GadgetID > INPUT_KBD__BEGIN && GadgetID < INPUT_KBD__END )
         {
             if( DeviceID != 0 )
+            {
                 return 0.0f;
+            }
 
             s32 const Index = GadgetID - INPUT_KBD__BEGIN;
             return (Index >= 0) && (Index < DIGITAL_COUNT_KBD) &&
@@ -1190,17 +1330,21 @@ private:
         if( GadgetID > INPUT_MOUSE__BEGIN && GadgetID < INPUT_MOUSE__END )
         {
             if( DeviceID != 0 )
+            {
                 return 0.0f;
+            }
 
             s32 const ButtonIndex = GetMouseButtonIndex( GadgetID );
             if( ButtonIndex >= 0 )
+            {
                 return (s_Input.Mouse.Digital[ButtonIndex] & DIGITAL_ON) ? 1.0f : 0.0f;
+            }
 
             switch( GadgetID )
             {
-                case INPUT_MOUSE_X_REL:     return s_Input.Mouse.Relative[0];
-                case INPUT_MOUSE_Y_REL:     return s_Input.Mouse.Relative[1];
-                case INPUT_MOUSE_WHEEL_REL: return s_Input.Mouse.Relative[2];
+                case INPUT_MOUSE_X_REL:     return s_Input.Mouse.Relative[0]; break;
+                case INPUT_MOUSE_Y_REL:     return s_Input.Mouse.Relative[1]; break;
+                case INPUT_MOUSE_WHEEL_REL: return s_Input.Mouse.Relative[2]; break;
                 default:                    break;
             }
         }
@@ -1208,11 +1352,15 @@ private:
         if( GadgetID > INPUT_XBOX__BEGIN && GadgetID < INPUT_XBOX__END )
         {
             if( DeviceID >= MAX_GAMEPADS )
+            {
                 return 0.0f;
+            }
 
             gamepad_slot const& Pad = s_Input.Gamepad[DeviceID];
             if( !Pad.pGamepad || !SDL_GamepadConnected( Pad.pGamepad ) )
+            {
                 return 0.0f;
+            }
 
             if( GadgetID > INPUT_XBOX__DIGITAL_BUTTONS_BEGIN &&
                 GadgetID < INPUT_XBOX__DIGITAL_BUTTONS_END )
@@ -1226,7 +1374,9 @@ private:
             {
                 s32 const Index = GadgetID - INPUT_XBOX__ANALOG_BUTTONS_BEGIN - 1;
                 if( ReadAnalogTrigger && (Index >= (XBOX_ANALOG_BTN_COUNT - 2)) )
+                {
                     return Pad.State.Trigger[Index - (XBOX_ANALOG_BTN_COUNT - 2)];
+                }
                 return (Pad.State.AnalogBtn[Index] & DIGITAL_ON) ? 1.0f : 0.0f;
             }
 
@@ -1239,7 +1389,9 @@ private:
         }
 
         if( GadgetID == INPUT_MSG_EXIT )
+        {
             return s_Input.ExitApp ? 1.0f : 0.0f;
+        }
 
         return 0.0f;
     }

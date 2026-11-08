@@ -57,7 +57,7 @@ xbool action_play_2d_sound::Execute ( f32 DeltaTime )
     else
     {
         //already playing a voice, if its done set its voice id to 0
-        if( !g_AudioMgr.IsValidVoiceId( m_VoiceID ) )
+        if( !g_AudioMgr.IsValidVoiceIdCached( m_VoiceID ) )
         {
             // sound done playing.
             m_VoiceID = 0;

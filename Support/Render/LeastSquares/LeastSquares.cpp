@@ -1,59 +1,63 @@
-//==============================================================================
+//=========================================================================
 //
 //  LeastSquares.cpp
 //
 //  Copyright (c) 2004 Inevitable Entertainment Inc. All rights reserved.
 //
-//==============================================================================
+//=========================================================================
+
+//=========================================================================
+//  INCLUDES
+//=========================================================================
 
 #include "x_plus.hpp"
 
 #include "LeastSquares.hpp"
 
-//==============================================================================
-// CONSTANTS
-//==============================================================================
+//=========================================================================
+//  CONSTANTS
+//=========================================================================
 
 static f64 const kEpsilon = 0.001;
 
-//==============================================================================
-// IMPLEMENTATION
-//==============================================================================
+//=========================================================================
+//  IMPLEMENTATION
+//=========================================================================
 
-LeastSquares::LeastSquares( void ) : m_nSamples( 0 ), m_degree( 0 ), m_isSolved( FALSE )
+LeastSquares::LeastSquares( void ) : m_nSamples( 0 ), m_Degree( 0 ), m_isSolved( FALSE )
 {
-    x_memset( m_matrix, 0, sizeof( m_matrix ) );
-    x_memset( m_vector, 0, sizeof( m_vector ) );
-    x_memset( m_coeffs, 0, sizeof( m_coeffs ) );
+    x_memset( m_Matrix, 0, sizeof( m_Matrix ) );
+    x_memset( m_Vector, 0, sizeof( m_Vector ) );
+    x_memset( m_Coeffs, 0, sizeof( m_Coeffs ) );
 }
 
-//==============================================================================
+//=========================================================================
 
 LeastSquares::~LeastSquares( void )
 {
 }
 
-//==============================================================================
+//=========================================================================
 
-void LeastSquares::Setup( s32 polynomialDegree )
+void LeastSquares::Setup( s32 PolynomialDegree )
 {
-    ASSERT( ( polynomialDegree > 0 ) && ( polynomialDegree <= MAX_POLYNOMIAL_DEGREE ) );
+    ASSERT( ( PolynomialDegree > 0 ) && ( PolynomialDegree <= MAX_POLYNOMIAL_DEGREE ) );
     m_nSamples = 0;
-    m_degree = polynomialDegree;
+    m_Degree = PolynomialDegree;
     m_isSolved = FALSE;
 
     // clear out the matrix and vector in preparation for solving the approximation
-    x_memset( m_matrix, 0, sizeof( m_matrix ) );
-    x_memset( m_vector, 0, sizeof( m_vector ) );
-    x_memset( m_coeffs, 0, sizeof( m_coeffs ) );
+    x_memset( m_Matrix, 0, sizeof( m_Matrix ) );
+    x_memset( m_Vector, 0, sizeof( m_Vector ) );
+    x_memset( m_Coeffs, 0, sizeof( m_Coeffs ) );
 }
 
-//==============================================================================
+//=========================================================================
 
 void LeastSquares::AddSample( f32 x, f32 y )
 {
     ASSERT( m_isSolved == FALSE );
-    ASSERT( m_degree );
+    ASSERT( m_Degree );
 
     f64 xPowers[( MAX_POLYNOMIAL_DEGREE * 2 ) + 1];
 
@@ -61,38 +65,38 @@ void LeastSquares::AddSample( f32 x, f32 y )
     s32 i;
     xPowers[0] = 1.0;
     xPowers[1] = static_cast<f64>( x );
-    for ( i = 2; i <= m_degree * 2; i++ )
+    for ( i = 2; i <= m_Degree * 2; i++ )
     {
         xPowers[i] = x * xPowers[i - 1];
     }
 
     // now update the matrix sums
     s32 row, col;
-    for ( row = 0; row <= m_degree; row++ )
+    for ( row = 0; row <= m_Degree; row++ )
     {
-        for ( col = 0; col <= m_degree; col++ )
+        for ( col = 0; col <= m_Degree; col++ )
         {
-            m_matrix[row][col] += xPowers[row + col];
+            m_Matrix[row][col] += xPowers[row + col];
         }
     }
 
     // now update the vector sums
-    for ( i = 0; i <= m_degree; i++ )
+    for ( i = 0; i <= m_Degree; i++ )
     {
-        m_vector[i] += xPowers[i] * static_cast<f64>( y );
+        m_Vector[i] += xPowers[i] * static_cast<f64>( y );
     }
 
     // and mark that we've added one more sample
     m_nSamples++;
 }
 
-//==============================================================================
+//=========================================================================
 
 xbool LeastSquares::Solve( void )
 {
     // we can only solve if we have one more sample than the degree of our
     // polynomial
-    if ( m_nSamples < ( m_degree + 1 ) )
+    if ( m_nSamples < ( m_Degree + 1 ) )
     {
         ASSERTS( FALSE, "More samples needed to get a decent result!" );
         return FALSE;
@@ -100,26 +104,26 @@ xbool LeastSquares::Solve( void )
 
     // perform gaussian elimination until we get an upper triangular matrix
     s32 i, j, k;
-    for ( i = 0; i < m_degree; i++ )
+    for ( i = 0; i < m_Degree; i++ )
     {
         // find the biggest element and pivot using that (it turns out that
         // in most cases the biggest element is the best for dealing with
         // accumulated rounding errors)
         s32 biggest = i;
-        f64 absBiggest = x_abs( m_matrix[biggest][i] );
-        for ( j = i + 1; j <= m_degree; j++ )
+        f64 AbsBiggest = x_abs( m_Matrix[biggest][i] );
+        for ( j = i + 1; j <= m_Degree; j++ )
         {
-            f64 absJ = x_abs( m_matrix[j][i] );
-            if ( absJ > absBiggest )
+            f64 AbsJ = x_abs( m_Matrix[j][i] );
+            if ( AbsJ > AbsBiggest )
             {
                 biggest = j;
-                absBiggest = absJ;
+                AbsBiggest = AbsJ;
             }
         }
 
         // if the pivot element is zero, then we have a singular matrix,
         // which won't have a solution
-        if ( absBiggest < kEpsilon )
+        if ( AbsBiggest < kEpsilon )
         {
             // ASSERTS( FALSE, "Singular matrix" );
             m_isSolved = TRUE;
@@ -130,28 +134,28 @@ xbool LeastSquares::Solve( void )
         if ( biggest != i )
         {
             f64 temp;
-            for ( j = i; j <= m_degree; j++ )
+            for ( j = i; j <= m_Degree; j++ )
             {
-                temp = m_matrix[i][j];
-                m_matrix[i][j] = m_matrix[biggest][j];
-                m_matrix[biggest][j] = temp;
+                temp = m_Matrix[i][j];
+                m_Matrix[i][j] = m_Matrix[biggest][j];
+                m_Matrix[biggest][j] = temp;
             }
 
-            temp = m_vector[i];
-            m_vector[i] = m_vector[biggest];
-            m_vector[biggest] = temp;
+            temp = m_Vector[i];
+            m_Vector[i] = m_Vector[biggest];
+            m_Vector[biggest] = temp;
         }
 
         // now do the elimination step for this pivot on each of the rows
-        for ( j = i + 1; j <= m_degree; j++ )
+        for ( j = i + 1; j <= m_Degree; j++ )
         {
-            f64 scale = m_matrix[j][i] / m_matrix[i][i];
-            for ( k = i; k <= m_degree; k++ )
+            f64 scale = m_Matrix[j][i] / m_Matrix[i][i];
+            for ( k = i; k <= m_Degree; k++ )
             {
-                m_matrix[j][k] -= scale * m_matrix[i][k];
+                m_Matrix[j][k] -= scale * m_Matrix[i][k];
             }
 
-            m_vector[j] -= scale * m_vector[i];
+            m_Vector[j] -= scale * m_Vector[i];
 
             // Sanity check...make sure we maintain zeros to the left...if
             // we've implemented the gaussian elimination correctly, and if
@@ -160,7 +164,7 @@ xbool LeastSquares::Solve( void )
             /*#ifdef X_DEBUG
             for( k = 0; k <= i; k++ )
             {
-                ASSERT( x_abs(m_matrix[j][k]) < kEpsilon );
+                ASSERT( x_abs(m_Matrix[j][k]) < kEpsilon );
             }
             #endif*/
         }
@@ -168,40 +172,40 @@ xbool LeastSquares::Solve( void )
 
     // now we should have an upper triangular matrix, we can use back
     // substitution to figure out the coefficients
-    for ( i = m_degree; i >= 0; i-- )
+    for ( i = m_Degree; i >= 0; i-- )
     {
         f64 total = 0.0f;
-        for ( j = i + 1; j <= m_degree; j++ )
+        for ( j = i + 1; j <= m_Degree; j++ )
         {
-            total += m_matrix[i][j] * m_coeffs[j];
+            total += m_Matrix[i][j] * m_Coeffs[j];
         }
-        m_coeffs[i] = ( m_vector[i] - total ) / m_matrix[i][i];
+        m_Coeffs[i] = ( m_Vector[i] - total ) / m_Matrix[i][i];
     }
 
     m_isSolved = TRUE;
     return TRUE;
 }
 
-//==============================================================================
+//=========================================================================
 
 f32 LeastSquares::GetCoeff( s32 index )
 {
     ASSERT( m_isSolved );
-    ASSERT( ( index >= 0 ) && ( index <= m_degree ) );
-    return static_cast<f32>( m_coeffs[index] );
+    ASSERT( ( index >= 0 ) && ( index <= m_Degree ) );
+    return static_cast<f32>( m_Coeffs[index] );
 }
 
-//==============================================================================
+//=========================================================================
 
 void LeastSquares::SetCoeff( s32 index, f32 value )
 {
     ASSERT( m_isSolved );
-    ASSERT( ( index >= 0 ) && ( index <= m_degree ) );
+    ASSERT( ( index >= 0 ) && ( index <= m_Degree ) );
 
-    m_coeffs[index] = value;
+    m_Coeffs[index] = value;
 }
 
-//==============================================================================
+//=========================================================================
 
 f32 LeastSquares::Evaluate( f32 x )
 {
@@ -211,19 +215,17 @@ f32 LeastSquares::Evaluate( f32 x )
     f64 xPowers[MAX_POLYNOMIAL_DEGREE + 1];
     xPowers[0] = 1.0;
     xPowers[1] = static_cast<f64>( x );
-    for ( i = 2; i <= m_degree; i++ )
+    for ( i = 2; i <= m_Degree; i++ )
     {
         xPowers[i] = static_cast<f64>( x ) * xPowers[i - 1];
     }
 
     // evaluate the polynomial
     f64 total = 0.0;
-    for ( i = 0; i <= m_degree; i++ )
+    for ( i = 0; i <= m_Degree; i++ )
     {
-        total += xPowers[i] * m_coeffs[i];
+        total += xPowers[i] * m_Coeffs[i];
     }
 
     return static_cast<f32>( total );
 }
-
-//==============================================================================

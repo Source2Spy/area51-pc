@@ -62,13 +62,7 @@ void debug_menu_page_aiscript::OnChangeItem( debug_menu_item* pItem )
     if( pItem == m_pItemTriggerDump )
     {
 #if !defined(X_RETAIL) || defined(X_QA)
-        char Dir[128];
-        char LevelName[32];
-        x_splitpath( (const char*)xstring(g_ActiveConfig.GetLevelPath()),NULL,Dir,NULL,NULL);
-        Dir[ x_strlen(Dir)-1 ] = 0;
-        x_splitpath(Dir,NULL,NULL,LevelName,NULL);
-
-        g_TriggerExMgr.DumpData( xfs("c:\\TriggerDump_%s.txt",LevelName) );
+        g_TriggerExMgr.DumpData( xfs( "TriggerDump_%d.txt", g_ActiveConfig.GetLevelID() ) );
 #endif
     }
 }
@@ -79,10 +73,11 @@ void debug_menu_page_aiscript::OnPreRender( void )
 {
     if( m_bShowActiveAIs )
     {
-        static const s32 kTextTop  = 40;
-        static const s32 kNameLeft = 10;
-        static const s32 kGuidLeft = 150;
-        static const s32 kPosLeft  = 330;
+        const irect Bounds = g_UIRenderer.GetViewport().GetLogicalClipBounds();
+        const s32 kTextTop  = Bounds.t + 40;
+        const s32 kNameLeft = Bounds.l + 10;
+        const s32 kGuidLeft = Bounds.l + 150;
+        const s32 kPosLeft  = Bounds.l + 330;
 
         // Figure out the small font ID and line height
         s32 FontID     = g_UiMgr->FindFont( "small" );
@@ -109,13 +104,11 @@ void debug_menu_page_aiscript::OnPreRender( void )
         }
 
         // figure out the dimensions we can render to
-        s32 XRes, YRes;
-        eng_GetRes( XRes, YRes );
         s32 TextBottom = kTextTop + LineHeight * NumLines;
 
         // render a black background for the text
         irect Rect;
-        Rect.Set( kNameLeft, kTextTop, XRes-kNameLeft, kTextTop + LineHeight * NumLines );
+        Rect.Set( kNameLeft, kTextTop, Bounds.r - 10, kTextTop + LineHeight * NumLines );
         g_UIRenderer.DrawRect( Rect, xcolor(0,0,0,128) );
 
         // render informative text for each of the actors...

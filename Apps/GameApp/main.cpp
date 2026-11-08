@@ -18,7 +18,6 @@
 
 #if defined( TARGET_ANDROID )
 #include <SDL3/SDL_main.h>
-#include <SDL3/SDL_timer.h>
 #endif
 
 //==============================================================================
@@ -28,11 +27,12 @@
 #include "ResourceMgr/ResourceMgr.hpp"
 #include "Obj_mgr/obj_mgr.hpp"
 #include "Render/Render.hpp"
+#include "e_Engine.hpp"
 #include "AudioMgr/AudioMgr.hpp"
 #include "IOManager/io_mgr.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
-#include "NetworkMgr/MsgMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
+#include "NetworkMgr/Messages/MsgMgr.hpp"
 #include "StateMgr/StateMgr.hpp"
 #include "SaveData/SaveDataMgr.hpp"
 #include "SaveData/Backend/SaveDataBackend.hpp"
@@ -87,7 +87,7 @@
 //  SCRIPTING
 //==============================================================================
 
-#include "../Support/ScriptMgr/script_mgr.hpp"
+#include "../Support/ScriptMgr/ScriptMgr.hpp"
 
 //==============================================================================
 //  SUPPORT SYSTEM INCLUDES
@@ -95,7 +95,7 @@
 
 #include "../Support/TriggerEx/TriggerEx_Manager.hpp"
 #include "../Support/Tracers/TracerMgr.hpp"
-#include "../Support/Render/LightMgr.hpp"
+#include "../Support/Render/Pipeline/RenderPipeline.hpp"
 #include "Navigation/Nav_Map.hpp"
 #include "Navigation/ng_connection2.hpp"
 #include "Navigation/ng_node2.hpp"
@@ -200,8 +200,6 @@ xbool       g_bControllerCheck      = TRUE;
 #if defined( ENABLE_DEBUG_MENU )
 stats       g_Stats;
 xbool       g_GameLogicDebug        = FALSE;
-xbool       g_DevWantsToSave        = FALSE;
-xbool       g_DevWantsToLoad        = FALSE;
 #endif // defined( ENABLE_DEBUG_MENU )
 
 #if !defined( CONFIG_RETAIL )
@@ -212,6 +210,7 @@ xbool       g_AimAssist_Render_Bullet_Angle = FALSE;
 xbool       g_AimAssist_Render_Player_Pills = FALSE;
 xbool       g_CmdLineAutoServer             = FALSE;
 xbool       g_CmdLineAutoClient             = FALSE;
+char        g_CmdLineConnectAddress[22]     = "";
 xbool       g_CmdLineRTFHandler             = FALSE;
 s32         g_CmdLineLanguage               = -1;
 f32         g_WorldTimeDilation             = 1.0f;
@@ -220,8 +219,6 @@ f32         g_WorldTimeDilation             = 1.0f;
 #if !defined( X_RETAIL ) || defined( X_QA )
 extern f32  g_TimeDilationFactor;
 extern xbool g_RenderFrameRateInfo;
-extern s32  g_ScreenShotSize;
-extern xbool g_ScreenShotModeEnabled;
 #endif
 
 //==============================================================================
@@ -229,28 +226,6 @@ extern xbool g_ScreenShotModeEnabled;
 //==============================================================================
 
 xbool       SHOW_STREAM_INFO        = FALSE;
-xbool       SHOW_AUDIO_LEVELS       = FALSE;
-xbool       SHOW_AUDIO_CHANNELS     = FALSE;
-
-#if !defined(X_RETAIL) || defined(X_QA)
-f32         g_PeakTime              = 0.0f;
-f32         PEAK_HOLD_TIME          = 1.0f;
-f32         g_ClipTime              = 0.0f;
-f32         CLIP_HOLD_TIME          = 3.0f;
-xbool       g_Clipped               = FALSE;
-s32         g_Peak                  = 0;
-s32         g_ChannelPeak           = 0;
-f32         g_ChannelTime           = 0.0f;
-f32         CHANNEL_PEAK_HOLD_TIME  = 5.0f;
-f32         CHANNEL_PEAK_CLIP_TIME  = 8.0f;
-s32         g_bChannelFlash         = 0;
-char*       g_ChannelText[48];
-f32         g_ChannelVolume[48];
-s32         g_x                     = 5;
-s32         g_y                     = 100;
-s32         g_limit                 = 30;
-#endif // X_RETAIL
-
 #if !defined(X_RETAIL)
 static xbool s_ForceGameComplete    = FALSE;
 #endif
@@ -324,29 +299,31 @@ xbool HandleInput( f32 DeltaTime )
 
     {
     #if defined( TARGET_DESKTOP )
-        //if( g_Input.GetFrameSnapshot().WasPressed( INPUT_KBD_GRAVE ) )
-        //{
-        //    FreeCamDebounce++;
-        //    if( FreeCamDebounce == 1 )
-        //    {
-        //        g_FreeCam ^= 1;
-        //        if( !g_FreeCam )
-        //        {
-        //            // Move the player.
-        //            player* pPlayer = SMP_UTIL_GetActivePlayer();
-        //            if( pPlayer )
-        //            {
-        //                vector3 vPos = g_View.GetPosition();
-        //                pPlayer->OnExitFreeCam( vPos );
-        //            }
-        //        }
-        //    }
-        //}
-        //else
+        #if defined( X_DEBUG )
+            if( g_Input.GetFrameSnapshot().WasPressed( INPUT_KBD_GRAVE ) )
+            {
+                FreeCamDebounce++;
+                if( FreeCamDebounce == 1 )
+                {
+                    g_FreeCam ^= 1;
+                    if( !g_FreeCam )
+                    {
+                        // Move the player.
+                        player* pPlayer = SMP_UTIL_GetActivePlayer();
+                        if( pPlayer )
+                        {
+                            vector3 vPos = g_View.GetPosition();
+                            pPlayer->OnExitFreeCam( vPos );
+                        }
+                    }
+                }
+            }
+            else
+        #endif
     #endif // defined(TARGET_DESKTOP)
-        {
-            FreeCamDebounce = 0;
-        }
+            {
+                FreeCamDebounce = 0;
+            }
         
 #if defined( ENABLE_DEBUG_MENU )
         if( g_DebugMenu.WasTogglePressed() &&
@@ -411,9 +388,16 @@ void UpdateAudio( f32 DeltaTime )
 
 #if !defined(X_RETAIL) || defined(X_QA)
 
-void AudioStats( f32 DeltaTime )
+void AudioStats( void )
 {
-    (void)DeltaTime;
+    if( !SHOW_STREAM_INFO )
+        return;
+    audio_debug_stats Stats;
+    if( !g_AudioMgr.GetDebugStats( Stats ) )
+        return;
+    x_printfxy( 1, 2, "Audio channels: %d", Stats.ActiveChannels );
+    x_printfxy( 1, 3, "Streams: %d / Running: %d", Stats.ActiveStreams, Stats.RunningStreams );
+    x_printfxy( 1, 4, "Opening: %d / Reserved: %d", Stats.OpeningStreams, Stats.ReservedStreams );
 }
 
 #endif // X_RETAIL
@@ -543,38 +527,16 @@ void UpdateRenderServices( f32 FrameDeltaTime )
 
     render::Update( FrameDeltaTime );
     g_TracerMgr.OnUpdate( FrameDeltaTime );
-    g_LightMgr.OnUpdate( FrameDeltaTime );
+    render::GetRenderPipeline().GetLightSystem().OnUpdate( FrameDeltaTime );
     g_PostEffectMgr.OnUpdate( FrameDeltaTime );
     g_DecalMgr.OnUpdate( FrameDeltaTime );
 }
 
 //==============================================================================
 
-static xbool ClearBackBuffer( void )
-{
-    rtarget_backbuffer_pass_desc PassDesc;
-    PassDesc.bUseDepth = FALSE;
-    if( !rtarget_BeginBackBufferPass( PassDesc ) )
-    {
-        x_DebugMsg( "GameApp: failed to begin clear-only backbuffer pass\n" );
-        eng_ResetAfterException();
-        return FALSE;
-    }
-
-    rtarget_EndPass();
-    return TRUE;
-}
-
-//==============================================================================
-
 static xbool FinishClearOnlyFrame( void )
 {
-    if( !ClearBackBuffer() )
-    {
-        return FALSE;
-    }
-
-    return eng_EndFrame();
+    return render::EndFrame() && eng_EndFrame();
 }
 
 //==============================================================================
@@ -622,6 +584,7 @@ static xbool BeginTimedFrame( FramePacer& Pacer,
         {
             return FALSE;
         }
+        render::BeginFrame();
 
         xbool bFrameAccepted = FALSE;
         if( !SampleFrameTiming( FrameClock, FrameDeltaSeconds, "frame", bFrameAccepted ) )
@@ -647,6 +610,7 @@ static xbool BeginLoadingFrame( FrameTiming& FrameClock,
         {
             return FALSE;
         }
+        render::BeginFrame();
 
         xbool bFrameAccepted = FALSE;
         if( !SampleFrameTiming( FrameClock, FrameDeltaSeconds, "loading frame", bFrameAccepted ) )
@@ -692,12 +656,7 @@ xbool UpdateFrontEnd( FramePacer& Pacer, FrameTiming& FrontEndClock )
         UpdateAudio( DeltaTime );
     }
 
-    if( !ClearBackBuffer() )
-    {
-        return FALSE;
-    }
-
-    return eng_EndFrame();
+    return render::EndFrame() && eng_EndFrame();
 }
 
 //==============================================================================
@@ -719,16 +678,11 @@ xbool UpdateLevelLoadingFrame( FrameTiming& FrontEndClock )
         g_FrontendInput.Update( DeltaTime );
         g_NetworkMgr.UpdateFrame( DeltaTime );
         g_StateMgr.UpdateLevelLoading( DeltaTime );
-        g_StateMgr.Render();
+        g_StateMgr.RenderLoading();
         UpdateAudio( DeltaTime );
     }
 
-    if( !ClearBackBuffer() )
-    {
-        return FALSE;
-    }
-
-    return eng_EndFrame();
+    return render::EndFrame() && eng_EndFrame();
 }
 
 //==============================================================================
@@ -1006,11 +960,14 @@ void RenderGame( void )
 
     for( i = 0; i < nPlayers; i++ )
     {
+        render::RenderScopeDesc Scope;
+        Scope.ScopeId = i;
+        render::ScopedRenderView RenderViewScope( Scope );
+
         g_RenderContext.Set( i,                                 // Local slot.
                              pPlayers[i]->net_GetSlot(),        // Net slot.
                              pPlayers[i]->net_GetTeamBits(), 
-                             pPlayers[i]->IsMutantVisionOn(),
-                             FALSE );
+                             pPlayers[i]->IsMutantVisionOn() );
 
         // set this player as the active one
         pPlayers[i]->SetAsActivePlayer( TRUE );
@@ -1026,14 +983,12 @@ void RenderGame( void )
             pPlayers[i]->GetPlayerViewZone();
         SetupViewAndFog( PlayerViewZone );
 
-        // Perform any platform specific render initialization
-        InitRenderPlatform();
-
         // render all objects
         xbool DoPortalWalk = TRUE;
-        g_ObjMgr.Render( DoPortalWalk, g_View, PlayerViewZone );
+        g_ObjMgr.Render( DoPortalWalk, g_View, pPlayers[i]->GetPlayerViewZoneTracker() );
 
-        EndRenderPlatform();
+        if( !render::EndRenderScope() )
+            return;
         pPlayers[i]->SetAsActivePlayer( FALSE );
     }
 
@@ -1043,6 +998,7 @@ void RenderGame( void )
 
     #if defined( ENABLE_DEBUG_MENU )
     // Debug menu rendering
+    AudioStats();
     g_DebugMenu.Render();
     #endif // defined( ENABLE_DEBUG_MENU )
 }
@@ -1054,44 +1010,12 @@ void RenderGame( void )
 #if defined( ENABLE_DEBUG_MENU )
 void Stats( f32 DeltaTime )
 {
-    static f32 s_StatTimer = 0.0f;
-    static s32 s_AmountFree = 0;
-    static s32 s_LargestFree = 0;
-    static s32 s_NFragments = 0;
-    static s32 s_ObjectCount = 0;
-    s_StatTimer += DeltaTime;
-
-    xbool bPrint = FALSE;
-    if( s_StatTimer > g_Stats.Interval )
+    static f32 StatTimer = 0.0f;
+    StatTimer += DeltaTime;
+    if( g_Stats.EngineStats && StatTimer >= g_Stats.Interval )
     {
-        s_StatTimer = 0.0f;
-
-        #ifndef X_RETAIL
-        if( g_Stats.EngineStats == TRUE )
-        {
-            eng_PrintStats();       
-            bPrint = TRUE;
-        }
-        #endif
-    }
-
-    if( g_Stats.RenderStats == TRUE )
-    {
-        #if ENABLE_RENDER_STATS
-        s32 Mode = render::stats::OUTPUT_TO_SCREEN;
-        s32 Flags = 0;
-        
-        //if( g_Stats.RenderVerbose == TRUE )
-        //    Flags = render::stats::FLAG_VERBOSE;
-
-        render::GetStats().Print( Mode, Flags );
-        bPrint = TRUE;
-        #endif
-    }
-
-    if (bPrint)
-    {
-        PrintStatsPlatform();
+        eng_PrintStats();
+        StatTimer = 0.0f;
     }
 
     #if ENABLE_STATS_MGR
@@ -1104,11 +1028,8 @@ void Stats( f32 DeltaTime )
             stats_mgr::GetStatsMgr()->DrawFPS();
             stats_mgr::GetStatsMgr()->DrawCPULegend();
             stats_mgr::GetStatsMgr()->DrawGPULegend();
-            if( g_Stats.MemVertBars )
-            {
-                stats_mgr::GetStatsMgr()->DrawSmallBars();
-                stats_mgr::GetStatsMgr()->DrawSmallBarLegend();
-            }
+            stats_mgr::GetStatsMgr()->DrawSmallBars();
+            stats_mgr::GetStatsMgr()->DrawSmallBarLegend();
             eng_End();
         }
     }
@@ -1214,12 +1135,26 @@ x_language CheckLanguageSupport( x_language lang )
     case XL_LANG_SPANISH:
     case XL_LANG_GERMAN:
     case XL_LANG_RUSSIAN:
+    case XL_LANG_JAPANESE:
+    case XL_LANG_CZECH:
         return lang;
     default:
         return XL_LANG_ENGLISH;
     }
 
     #endif   // !defined (X_EDITOR)
+}
+
+//==============================================================================
+
+x_language CheckAudioVideoLanguageSupport( x_language lang )
+{
+    if( (lang == XL_LANG_JAPANESE) || (lang == XL_LANG_CZECH) )
+    {
+        return XL_LANG_ENGLISH;
+    }
+
+    return CheckLanguageSupport( lang );
 }
 
 //==============================================================================
@@ -1253,6 +1188,7 @@ void DoStartup( void )
 
     x_DebugMsg( "Save directory: %s\n", SavePath );
     SaveDataBackend_SetRootDirectory( SavePath );
+    eng_SetPipelineCacheDirectory( xfs( "%s/Cache/Vulkan", SavePath ) );
 
     // get language setting and check for default language.
     x_language DefaultLanguage = CheckLanguageSupport( x_GetConsoleLanguage() );
@@ -1264,7 +1200,10 @@ void DoStartup( void )
     }
     #endif
 
-    global_settings::SetDefaultLocalizationLanguage( DefaultLanguage );
+    x_language const DefaultAudioVideoLanguage = CheckAudioVideoLanguageSupport( DefaultLanguage );
+    global_settings::SetDefaultLocalizationLanguages( DefaultLanguage,
+                                                      DefaultAudioVideoLanguage,
+                                                      DefaultAudioVideoLanguage );
     x_SetLocale( DefaultLanguage );
 
     g_StateMgr.GetActiveSettings().Reset( RESET_LOCALIZATION );
@@ -1295,6 +1234,8 @@ void DoStartup( void )
     g_Config.Load( xfs( "%s/Config.ini", g_DataPath ) );
     if( g_CmdLineAutoClient )
         g_Config.AutoClient = TRUE;
+    if( g_CmdLineConnectAddress[0] )
+        x_strcpy( g_Config.AutoClientAddress, g_CmdLineConnectAddress );
     if( g_CmdLineAutoServer )
         g_Config.AutoServer = TRUE;
     #endif
@@ -1338,8 +1279,8 @@ void DoStartup( void )
     g_RscMgr.SetOnDemandLoading( FALSE );
     x_DebugMsg( "Finished initializing resource manager\n" );
 
-    g_LevelLoader.LoadDFS( "BOOT" );
     g_LevelLoader.LoadDFS( "PRELOAD" );
+    g_LevelLoader.LoadResourceList( "PRELOAD_RESOURCES.TXT" );
 
     // Initialize the render system
     render::Init();
@@ -1360,8 +1301,7 @@ void DoStartup( void )
     g_UiMgr->Init();
 
     // load strings for inventory items.
-    //g_StringTableMgr.LoadTable( "Inventory", xfs("%s\\%s", g_RscMgr.GetRootDirectory(), "ENG_Inventory_strings.stringbin" ) );
-    g_StringTableMgr.LoadTable( "Inventory", "ENG_Inventory_strings.stringbin" );
+    VERIFY( g_StringTableMgr.LoadTable( "Inventory", "ENG_INVENTORY_STRINGS.string" ) );
 
     if( !StartupSettingsLoaded )
     {
@@ -1398,6 +1338,8 @@ void DoStartup( void )
 
 void DoShutdown( void )
 {
+    eng_ResetAfterException();
+    eng_Sync();
     g_ScriptMgr.Kill();    
     g_SaveDataMgr.Kill();
     g_NetworkMgr.Kill();
@@ -1434,8 +1376,7 @@ void RunFrontEnd( void )
     FramePacer Pacer;
 
     // load lore strings
-    //g_StringTableMgr.LoadTable( "lore", xfs("%s\\%s", g_RscMgr.GetRootDirectory(), "ENG_lore_strings.stringbin") );
-    g_StringTableMgr.LoadTable( "lore", "ENG_lore_strings.stringbin" );
+    VERIFY( g_StringTableMgr.LoadTable( "lore", "ENG_LORE_STRINGS.string" ) );
 
     FrameTiming FrontEndTiming;
     FrontEndTiming.Start();
@@ -1466,8 +1407,6 @@ void RunFrontEnd( void )
     // unload string tables
     g_StringTableMgr.UnloadTable( "lore" );
 }
-
-//==============================================================================
 
 //==============================================================================
 
@@ -1516,6 +1455,7 @@ void RunGame( void )
 
     FrameTiming GameTiming;
     GameTiming.Start();
+    f32 StartupSimulationTime = 0.0f;
 
     // Run!  At least until we stop, that is.
     while( TRUE )
@@ -1584,6 +1524,7 @@ void RunGame( void )
                 if( SimulationDeltaSeconds > 0.0f )
                 {
                     AdvanceSimulation( SimulationDeltaSeconds );
+                    StartupSimulationTime += SimulationDeltaSeconds;
                 }
 
                 g_NetworkMgr.EndFrame( FrameDeltaSeconds );
@@ -1624,15 +1565,16 @@ void RunGame( void )
         // started before trying to render anything
         if( GameMgr.GameInProgress() )
         {
-            if( g_nLogicFramesAfterLoad > 10 )
+            if( g_LevelLoader.NeedsPipelinePrewarm() && !g_LevelLoader.BeginPipelinePrewarm() )
+                g_ActiveConfig.SetExitReason( GAME_EXIT_INVALID_MISSION );
+            if( !g_LevelLoader.UpdatePipelinePrewarm() )
+                g_ActiveConfig.SetExitReason( GAME_EXIT_INVALID_MISSION );
+            if( g_nLogicFramesAfterLoad > 10 && StartupSimulationTime >= (10.0f / 30.0f) &&
+                g_LevelLoader.IsPipelinePrewarmComplete() &&
+                g_ActiveConfig.GetExitReason() == GAME_EXIT_CONTINUE )
             {
                 RenderGame();
             }
-            else if( !ClearBackBuffer() )
-            {
-                break;
-            }
-
             // render the pause
             g_StateMgr.Render();
 
@@ -1640,10 +1582,9 @@ void RunGame( void )
             {
                 #if defined( ENABLE_DEBUG_MENU )
                 Stats( FrameDeltaSeconds );
-                //AudioStats( FrameDeltaTime );
                 #endif // X_RETAIL
             }
-            if( !eng_EndFrame() )
+            if( !render::EndFrame() || !eng_EndFrame() )
             {
                 break;
             }
@@ -1704,6 +1645,19 @@ void AppMain( s32 argc, char* argv[] )
             if( x_stricmp( argv[i], "autoclient" ) == 0 )
                 g_CmdLineAutoClient = TRUE;
 
+            if( x_stricmp( argv[i], "connect" ) == 0 )
+            {
+                net_address Address;
+                if( (i + 1 >= argc) || !Address.Parse( argv[i+1], NET_GAME_PORT ) )
+                {
+                    x_DebugMsg( "Usage: connect IPv4[:port]\n" );
+                    return;
+                }
+                x_strcpy( g_CmdLineConnectAddress, Address.GetStrAddress() );
+                g_CmdLineAutoClient = TRUE;
+                i++;
+            }
+
             if( x_stricmp( argv[i], "audiotweak" ) == 0 )
                 AUDIO_TWEAK = TRUE;
 
@@ -1754,6 +1708,10 @@ void AppMain( s32 argc, char* argv[] )
                     if( x_stricmp( argv[i], "chi" ) == 0 )
                     {
                         g_CmdLineLanguage = XL_LANG_TCHINESE;
+                    }
+                    if( x_stricmp( argv[i], "cze" ) == 0 )
+                    {
+                        g_CmdLineLanguage = XL_LANG_CZECH;
                     }
                 }
             }
@@ -1836,7 +1794,8 @@ void AppMain( s32 argc, char* argv[] )
         FrameTiming LevelLoadFrontEndTiming;
         LevelLoadFrontEndTiming.Start();
 
-        while( !g_LevelLoader.IsLevelLoadComplete() )
+        while( !g_LevelLoader.IsLevelLoadComplete() &&
+               g_ActiveConfig.GetExitReason() == GAME_EXIT_CONTINUE )
         {
             if( !UpdateLevelLoadingFrame( LevelLoadFrontEndTiming ) )
             {
@@ -1845,15 +1804,11 @@ void AppMain( s32 argc, char* argv[] )
             }
         }
 
-        if( (g_ActiveConfig.GetExitReason() == GAME_EXIT_INVALID_MISSION) ||
-            (g_ActiveConfig.GetExitReason() == GAME_EXIT_INVALID_CAMPAIGN_MISSION) )
+        if( g_ActiveConfig.GetExitReason() == GAME_EXIT_CONTINUE )
         {
-            g_StateMgr.SetState( CooldownState );
-            continue;
+            // Tell network manager load is complete!
+            g_NetworkMgr.LoadMissionComplete();
         }
-
-        // Tell network manager load is complete!
-        g_NetworkMgr.LoadMissionComplete();
 
 
         FrameTiming SyncFrontEndTiming;
@@ -1872,7 +1827,10 @@ void AppMain( s32 argc, char* argv[] )
         }
 
         // Finish the level initialization that depends on front-end sync.
-        g_LevelLoader.LoadLevelFinish();
+        if( g_ActiveConfig.GetExitReason() == GAME_EXIT_CONTINUE )
+        {
+            g_LevelLoader.LoadLevelFinish();
+        }
 
         // During the level load process it is possible for an error such as duplicate logon to occur.
         // When this happens the exit reason will be set to something other than GAME_EXIT_CONTINUE.
@@ -1890,6 +1848,22 @@ void AppMain( s32 argc, char* argv[] )
             {
                 // Suck in the check point info.
                 g_CheckPointMgr.Restore( FALSE );
+            }
+        }
+
+        if( g_ActiveConfig.GetExitReason() == GAME_EXIT_CONTINUE )
+        {
+            const exit_reason LoadFailure = GameMgr.GetGameType() == GAME_CAMPAIGN
+                                                ? GAME_EXIT_INVALID_CAMPAIGN_MISSION
+                                                : GAME_EXIT_INVALID_MISSION;
+            if( !g_LevelLoader.BeginPipelinePrewarm() )
+                g_ActiveConfig.SetExitReason( LoadFailure );
+            while( !g_LevelLoader.IsPipelinePrewarmComplete() &&
+                   g_ActiveConfig.GetExitReason() == GAME_EXIT_CONTINUE )
+            {
+                if( !g_LevelLoader.UpdatePipelinePrewarm() ||
+                    !UpdateLevelLoadingFrame( LevelLoadFrontEndTiming ) )
+                    g_ActiveConfig.SetExitReason( LoadFailure );
             }
         }
 

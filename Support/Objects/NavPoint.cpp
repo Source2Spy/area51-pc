@@ -10,7 +10,6 @@
 #include "Entropy.hpp"
 #include "x_math.hpp"
 #include "Objects/Player/Player.hpp"
-#include "Font/font.hpp"
 
 #include "Objects/HudObject.hpp"
 

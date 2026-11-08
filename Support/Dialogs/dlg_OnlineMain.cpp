@@ -22,13 +22,11 @@
 ui_manager::control_tem OnlineMenuControls[] = 
 {
     // Frames.
-    { IDC_ONLINE_JOIN,          "IDS_ONLINE_JOIN",          "button",   90,  40, 120, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_ONLINE_HOST,          "IDS_ONLINE_HOST",          "button",   90,  80, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_ONLINE_FRIENDS,       "IDS_ONLINE_FRIENDS",       "button",   90, 120, 120, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_ONLINE_PLAYERS,       "IDS_ONLINE_PLAYERS",       "button",   90, 160, 120, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_ONLINE_EDIT_PROFILE,  "IDS_ONLINE_EDIT_PROFILE",  "button",   90, 200, 120, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_ONLINE_VIEW_STATS,    "IDS_ONLINE_VIEW_STATS",    "button",   90, 240, 120, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_ONLINE_SIGN_OUT,      "IDS_SIGN_OUT",             "button",   90, 280, 120, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_ONLINE_JOIN,          "IDS_ONLINE_JOIN",          "button",   90,  80, 120, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_ONLINE_HOST,          "IDS_ONLINE_HOST",          "button",   90, 120, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_ONLINE_EDIT_PROFILE,  "IDS_ONLINE_EDIT_PROFILE",  "button",   90, 160, 120, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_ONLINE_VIEW_STATS,    "IDS_ONLINE_VIEW_STATS",    "button",   90, 200, 120, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_ONLINE_SIGN_OUT,      "IDS_SIGN_OUT",             "button",   90, 240, 120, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
 };
 
 
@@ -40,18 +38,6 @@ ui_manager::dialog_tem OnlineMenuDialog =
     &OnlineMenuControls[0],
     0
 };
-
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
 
 //=========================================================================
 //  Registration function
@@ -110,8 +96,6 @@ xbool dlg_online_main::Create( s32                        UserID,
 
     m_pButtonJoin               = (ui_button*)  FindChildByID( IDC_ONLINE_JOIN         );
     m_pButtonHost               = (ui_button*)  FindChildByID( IDC_ONLINE_HOST         );
-    m_pButtonFriends            = (ui_button*)  FindChildByID( IDC_ONLINE_FRIENDS      );
-    m_pButtonPlayers            = (ui_button*)  FindChildByID( IDC_ONLINE_PLAYERS      );
     m_pButtonEditProfile        = (ui_button*)  FindChildByID( IDC_ONLINE_EDIT_PROFILE );
     m_pButtonViewStats          = (ui_button*)  FindChildByID( IDC_ONLINE_VIEW_STATS   );
     m_pButtonSignOut            = (ui_button*)  FindChildByID( IDC_ONLINE_SIGN_OUT     );
@@ -133,16 +117,11 @@ xbool dlg_online_main::Create( s32                        UserID,
     // switch off the buttons to start
     m_pButtonJoin        ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pButtonHost        ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-    m_pButtonFriends     ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-    m_pButtonPlayers     ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pButtonEditProfile ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pButtonViewStats   ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pButtonSignOut     ->SetFlag(ui_win::WF_VISIBLE, FALSE);
 
-#ifdef LAN_PARTY_BUILD
-    m_pButtonFriends ->SetFlag(ui_win::WF_DISABLED, TRUE);
-    m_pButtonPlayers ->SetFlag(ui_win::WF_DISABLED, TRUE);
-#endif
+
 
     // initialize nav text
     xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_SELECT" ));
@@ -242,16 +221,6 @@ void dlg_online_main::OnAccept( ui_win* pWin )
             m_CurrentControl = IDC_ONLINE_HOST;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin == (ui_win*)m_pButtonFriends )
-        {
-            m_CurrentControl = IDC_ONLINE_FRIENDS;
-            m_State = DIALOG_STATE_SELECT;
-        }
-        else if( pWin == (ui_win*)m_pButtonPlayers )
-        {
-            m_CurrentControl = IDC_ONLINE_PLAYERS;
-            m_State = DIALOG_STATE_SELECT;
-        }
         else if( pWin == (ui_win*)m_pButtonEditProfile )
         {
             g_StateMgr.InitPendingProfile( 0 );
@@ -330,10 +299,8 @@ void dlg_online_main::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             // turn on the controls
             m_pButtonJoin        ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pButtonHost        ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pButtonFriends     ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pButtonPlayers     ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pButtonEditProfile ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pButtonViewStats   ->SetFlag(ui_win::WF_VISIBLE, TRUE);
+            m_pButtonEditProfile ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pButtonSignOut     ->SetFlag(ui_win::WF_VISIBLE, TRUE);
 
             s32 iControl = g_StateMgr.GetCurrentControl();
@@ -365,16 +332,6 @@ void dlg_online_main::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     {
         highLight = 1;
         g_UiMgr->SetScreenHighlight( m_pButtonHost->GetPosition() );
-    }
-    else if( m_pButtonFriends->IsFocused() )
-    {
-        highLight = 2;
-        g_UiMgr->SetScreenHighlight( m_pButtonFriends->GetPosition() );
-    }
-    else if( m_pButtonPlayers->IsFocused() )
-    {
-        highLight = 3;
-        g_UiMgr->SetScreenHighlight( m_pButtonPlayers->GetPosition() );
     }
     else if( m_pButtonEditProfile->IsFocused() )
     {

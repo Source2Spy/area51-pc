@@ -13,74 +13,62 @@
 //  FUNCTIONS
 //==============================================================================
 
-float SampleFaceShadowSource( uint sourceIndex,
-                              float3 worldPos,
-                              float3 worldNormal,
-                              float3 geometricNormal )
+float SampleFaceShadowSource( uint SourceIndex,
+                              float3 WorldPos,
+                              float3 GeometricNormal,
+                              float3 PointToLightDir,
+                              float LightDistance )
 {
-    if( sourceIndex >= GetFaceShadowCount() )
+    if( SourceIndex >= GetFaceShadowCount() )
     {
         return 1.0f;
     }
 
-    const float4 lightPosRadius  = GetFaceShadowLightPosRadius( sourceIndex );
-    const float4 lightDirFalloff = GetFaceShadowLightDirFalloff( sourceIndex );
-    const float4 lightData       = GetFaceShadowLightData( sourceIndex );
-    const float3 lightPos        = lightPosRadius.xyz;
-    const float  lightRadius     = lightPosRadius.w;
-    const float3 lightDir        = normalize( lightDirFalloff.xyz );
-    const float  lightFalloff    = lightDirFalloff.w;
-    const float  cosOuter        = lightData.x;
-    const float  nearZ           = lightData.y;
-    const bool   isPointFace     = FaceShadowIsPointFace( sourceIndex );
-    const float3 toLight         = lightPos - worldPos;
-    const float  lightDistanceSq = dot( toLight, toLight );
+    const float4 LightPosRadius  = GetFaceShadowLightPosRadius( SourceIndex );
+    const float4 LightDirRadial = GetFaceShadowLightDirRadial( SourceIndex );
+    const float4 LightData       = GetFaceShadowLightData( SourceIndex );
+    const float3 LightDir        = LightDirRadial.xyz;
+    const float  CosOuter        = LightData.x;
+    const float  NearZ           = LightData.y;
+    const bool   IsPointFace     = FaceShadowIsPointFace( SourceIndex );
 
-    if( isPointFace )
+    if( IsPointFace )
     {
         return 1.0f;
     }
 
-    if( lightDistanceSq <= 1e-8f )
+    if( LightDistance <= 1e-4f )
     {
         return 1.0f;
     }
 
-    const float lightDistance   = sqrt( lightDistanceSq );
-    const float shadowInfluence = GeomComputeRadialAttenuation( lightDistance, lightRadius, lightFalloff );
-    if( shadowInfluence <= 0.0f )
+    const float ShadowInfluence = GeomComputeRadialAttenuation( LightDistance, float2( LightData.z, LightDirRadial.w ) );
+    if( ShadowInfluence <= 0.0f )
     {
         return 1.0f;
     }
 
-    const float3 pointToLightDir = toLight / lightDistance;
-    const float  coneCos         = dot( lightDir, -pointToLightDir );
-    const float  coneRange       = max( 1.0f - cosOuter, 1e-4f );
-    const float  coneInfluence   = saturate( ( coneCos - cosOuter ) / coneRange );
-    if( coneInfluence <= 0.0f )
+    const float  ConeCos         = dot( LightDir, -PointToLightDir );
+    const float  ConeRange       = max( 1.0f - CosOuter, 1e-4f );
+    const float  ConeInfluence   = saturate( ( ConeCos - CosOuter ) / ConeRange );
+    if( ConeInfluence <= 0.0f )
     {
         return 1.0f;
     }
 
-    const float nearInfluence = ComputeShadowNearInfluence( lightDistance, nearZ, lightRadius );
-    if( nearInfluence <= 0.0f )
+    const float NearInfluence = ComputeShadowNearInfluence( LightDistance, NearZ );
+    if( NearInfluence <= 0.0f )
     {
         return 1.0f;
     }
 
-    const float3 normal = normalize( worldNormal );
-    if( dot( normal, pointToLightDir ) <= 0.0f )
+    float Visibility;
+    if( !TrySampleFaceShadow( SourceIndex, WorldPos, GeometricNormal, PointToLightDir, Visibility ) )
     {
         return 1.0f;
     }
 
-    float visibility;
-    if( !TrySampleFaceShadow( sourceIndex, worldPos, geometricNormal, visibility ) )
-    {
-        return 1.0f;
-    }
-
-    return lerp( 1.0f, visibility, nearInfluence );
+    return lerp( 1.0f, Visibility, NearInfluence );
 }
 
 //==============================================================================

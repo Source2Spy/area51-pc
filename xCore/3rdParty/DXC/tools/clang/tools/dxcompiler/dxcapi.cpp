@@ -19,7 +19,6 @@
 
 #include "dxc/Support/Global.h"
 #include "dxc/config.h"
-#include "dxc/dxcisense.h"
 #include "dxc/dxctools.h"
 #ifdef _WIN32
 #include "dxcetw.h"
@@ -29,10 +28,8 @@
 
 HRESULT CreateDxcCompiler(REFIID riid, _Out_ LPVOID *ppv);
 HRESULT CreateDxcDiaDataSource(REFIID riid, _Out_ LPVOID *ppv);
-HRESULT CreateDxcIntelliSense(REFIID riid, _Out_ LPVOID *ppv);
 HRESULT CreateDxcCompilerArgs(REFIID riid, _Out_ LPVOID *ppv);
 HRESULT CreateDxcUtils(REFIID riid, _Out_ LPVOID *ppv);
-HRESULT CreateDxcRewriter(REFIID riid, _Out_ LPVOID *ppv);
 HRESULT CreateDxcValidator(REFIID riid, _Out_ LPVOID *ppv);
 HRESULT CreateDxcAssembler(REFIID riid, _Out_ LPVOID *ppv);
 HRESULT CreateDxcOptimizer(REFIID riid, _Out_ LPVOID *ppv);
@@ -82,16 +79,12 @@ static HRESULT ThreadMallocDxcCreateInstance(REFCLSID rclsid, REFIID riid,
     hr = CreateDxcAssembler(riid, ppv);
   } else if (IsEqualCLSID(rclsid, CLSID_DxcOptimizer)) {
     hr = CreateDxcOptimizer(riid, ppv);
-  } else if (IsEqualCLSID(rclsid, CLSID_DxcIntelliSense)) {
-    hr = CreateDxcIntelliSense(riid, ppv);
   } else if (IsEqualCLSID(rclsid, CLSID_DxcContainerBuilder)) {
     hr = CreateDxcContainerBuilder(riid, ppv);
   } else if (IsEqualCLSID(rclsid, CLSID_DxcContainerReflection)) {
     hr = CreateDxcContainerReflection(riid, ppv);
   } else if (IsEqualCLSID(rclsid, CLSID_DxcPdbUtils)) {
     hr = CreateDxcPdbUtils(riid, ppv);
-  } else if (IsEqualCLSID(rclsid, CLSID_DxcRewriter)) {
-    hr = CreateDxcRewriter(riid, ppv);
   } else if (IsEqualCLSID(rclsid, CLSID_DxcLinker)) {
     hr = CreateDxcLinker(riid, ppv);
   }

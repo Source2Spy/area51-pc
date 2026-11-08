@@ -122,8 +122,7 @@ void CManipScale::RenderPlane( const vector3& Origin, const vector3& Axis1, cons
                                                     render::PRIMITIVE_BLEND_ALPHA,
                                                     render::PRIMITIVE_DEPTH_DISABLED,
                                                     render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                    render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                    render::PRIMITIVE_LAYER_TRANSPARENT );
+                                                    render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
     render::PrimitiveBatch fillBatch( fillMaterial );
     const vector2 uv( 0.0f, 0.0f );
     fillBatch.AddTriangle( render::primitive_vertex( Origin,      uv, cFill1 ),
@@ -144,8 +143,7 @@ void CManipScale::RenderPlane( const vector3& Origin, const vector3& Axis1, cons
                                                     render::PRIMITIVE_BLEND_OPAQUE,
                                                     render::PRIMITIVE_DEPTH_DISABLED,
                                                     render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                    render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                    render::PRIMITIVE_LAYER_SURFACE );
+                                                    render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
     render::PrimitiveBatch lineBatch( lineMaterial );
     lineBatch.AddLine( Origin + v1, Origin + v2, cOutline1, cOutline1 );
     lineBatch.AddLine( Origin + v3, Origin + v4, cOutline2, cOutline2 );

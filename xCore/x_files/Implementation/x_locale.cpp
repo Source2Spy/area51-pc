@@ -52,8 +52,9 @@ x_language x_MapWindowsLanguage( LANGID const LangId )
         case LANG_GERMAN:      return XL_LANG_GERMAN;
         case LANG_ITALIAN:     return XL_LANG_ITALIAN;
         case LANG_SPANISH:     return XL_LANG_SPANISH;    
+        case LANG_JAPANESE:    return XL_LANG_JAPANESE;
+        case LANG_CZECH:       return XL_LANG_CZECH;
         //case LANG_DUTCH:       return XL_LANG_DUTCH;    
-        //case LANG_JAPANESE:    return XL_LANG_JAPANESE;   
         //case LANG_KOREAN:      return XL_LANG_KOREAN;   
         //case LANG_PORTUGUESE:  return XL_LANG_PORTUGUESE; 
         //case LANG_RUSSIAN:      return XL_LANG_RUSSIAN;
@@ -105,7 +106,8 @@ const char* const s_pLanguageStrISO639_2[] =
     "KOR",      // XL_LANG_KOREAN
     "POR",      // XL_LANG_PORTUGUESE
     "CHI",      // XL_LANG_TCHINESE
-    "RUS"       // XL_LANG_RUSSIAN
+    "RUS",      // XL_LANG_RUSSIAN
+    "CZE"       // XL_LANG_CZECH
 };
 
 //==============================================================================
@@ -123,7 +125,8 @@ const char* const s_pLanguageStrISO639_1[] =
     "ko",       // XL_LANG_KOREAN
     "pt",       // XL_LANG_PORTUGUESE
     "zh",       // XL_LANG_TCHINESE
-    "ru"        // XL_LANG_RUSSIAN
+    "ru",       // XL_LANG_RUSSIAN
+    "cs"        // XL_LANG_CZECH
 };
 
 //==============================================================================

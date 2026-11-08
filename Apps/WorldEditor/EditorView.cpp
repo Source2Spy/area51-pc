@@ -2,6 +2,7 @@
 //
 
 #include "Render/PrimitiveDebug.hpp"
+#include "Render/Render.hpp"
 #include "StdAfx.h"
 
 #include "../Editor/MainFrm.h"
@@ -24,7 +25,7 @@
 #include "../Editor/Project.hpp"
 #include "../Support/GameTextMgr/GameTextMgr.hpp"
 #include "../WinControls/StringEntryDlg.h"
-#include "../Support/Render/LightMgr.hpp"
+#include "../Support/Render/Pipeline/RenderPipeline.hpp"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -494,6 +495,8 @@ void CEditorView::RenderFPV()
         g_WorldEditor.RenderObjects( bDoPortalWalk,
                                      PortalView,
                                      bDoPortalWalk ? pPlayers[iPlayer]->GetPlayerViewZone() : 0 );
+        if( !render::EndRenderScope() )
+            return;
     }
 }
 
@@ -523,8 +526,11 @@ void CEditorView::RenderNormal()
                                  bDoPortalWalk ? pPlayer->GetPlayerViewZone() : 0 );
 
     if( !eng_Begin( "WorldEditor" ) )
+    {
+        if( !render::EndRenderScope() )
+            return;
         return;
-    VERIFY( render::BeginPrimitiveRender() );
+    }
 
     //
     // Render the icons world 
@@ -704,8 +710,7 @@ void CEditorView::RenderNormal()
                                                         render::PRIMITIVE_BLEND_ALPHA,
                                                         render::PRIMITIVE_DEPTH_READ_ONLY,
                                                         render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                        render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                        render::PRIMITIVE_LAYER_TRANSPARENT );
+                                                        render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
             render::PrimitiveBatch Batch( Material );
             Batch.AddQuad( Positions, UVs, Colors );
             matrix4 Identity;
@@ -713,10 +718,11 @@ void CEditorView::RenderNormal()
             Batch.Submit( Identity );
         }
 
-        render::EndPrimitiveRender();
         eng_End();
-        render::ExecuteForwardRender();
     }
+
+    if( !render::EndRenderScope() )
+        return;
 }
 
 //=========================================================================
@@ -729,17 +735,9 @@ void CEditorView::Render( )
     {
         return;
     }
+    render::BeginFrame();
 
     eng_SetBackColor( GetDocument()->GetBackgroundColor());
-
-    rtarget_backbuffer_pass_desc PassDesc;
-    PassDesc.bUseDepth = FALSE;
-    if( !rtarget_BeginBackBufferPass( PassDesc ) )
-    {
-        eng_ResetAfterException();
-        return;
-    }
-    rtarget_EndPass();
 
     // force the player's view to update
     player* pPlayer = SMP_UTIL_GetActivePlayer();
@@ -772,6 +770,9 @@ void CEditorView::Render( )
     render::GetStats().Print( render::stats::OUTPUT_TO_SCREEN );
     #endif
 
+    if( !render::EndFrame( FALSE ) )
+        return;
+
     if( !eng_EndFrame() )
     {
         return;
@@ -782,7 +783,7 @@ void CEditorView::Render( )
     // Reset render operations
     eng_ResetAfterException();
     render::ResetAfterException();
-    g_LightMgr.ResetAfterException();
+    render::GetRenderPipeline().GetLightSystem().ResetAfterException();
 
     x_display_exception_msg( "CEditorView::Render exception caught, attempting to cleanup!" );
 
@@ -2732,7 +2733,7 @@ xbool CEditorView::CheckForCameraDrop( void )
             vector3 Start = m_View.GetPosition();
             vector3 End = Start + vector3(0,-200,0);
 
-            g_CollisionMgr.CylinderSetup( pPlayer->GetGuid(), 
+            g_CollisionMgr.CapsuleSetup( pPlayer->GetGuid(), 
                                             Start, 
                                             End,
                                             40.0f,

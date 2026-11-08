@@ -13,6 +13,15 @@
 #include "UI/ui_font.hpp"
 #include "UI/ui_renderer.hpp"
 
+static void SetUTF8Label( ui_win* pControl, const char* pText )
+{
+    xwstring Text;
+    if( DecodeFontText( pText, Text ) )
+    {
+        pControl->SetLabel( Text );
+    }
+}
+
 xcolor g_TextRectLoadScreen( 0, 0, 0, 128);
 
 //=========================================================================
@@ -51,18 +60,6 @@ ui_manager::dialog_tem LevelDescDialog =
     &LevelDescControls[0],
     0
 };
-
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
 
 //=========================================================================
 //  Registration function
@@ -156,10 +153,10 @@ xbool dlg_level_desc::Create( s32                        UserID,
     const map_entry* pEntry = g_MapList.Find( g_ActiveConfig.GetLevelID(), g_ActiveConfig.GetGameTypeID() );
     if( pEntry )
     {
-        m_MapTitleText  ->SetLabel( pEntry->GetDisplayName()  );
-        m_MapDescText   ->SetLabel( pEntry->GetDescription()  );
-        m_GameTypeText  ->SetLabel( pEntry->GetGameTypeName() );
-        m_GameDescText  ->SetLabel( pEntry->GetGameRules()    );
+        SetUTF8Label( m_MapTitleText, pEntry->GetDisplayName() );
+        SetUTF8Label( m_MapDescText, pEntry->GetDescription() );
+        SetUTF8Label( m_GameTypeText, pEntry->GetGameTypeName() );
+        SetUTF8Label( m_GameDescText, pEntry->GetGameRules() );
     }
 
     // initialize loading text
@@ -190,7 +187,7 @@ xbool dlg_level_desc::Create( s32                        UserID,
     m_pNavText->UseSmallText(TRUE);
 
     // load the appropriate background
-    xwstring LoadName( "UI_LoadScreen_MP_" );
+    xwstring LoadName( "LOADING/UI_LoadScreen_MP_" );
 
     if( IN_RANGE( 2000, g_ActiveConfig.GetLevelID(), 2999 ) )
     {
@@ -296,10 +293,10 @@ void dlg_level_desc::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     const map_entry* pEntry = g_MapList.Find( g_ActiveConfig.GetLevelID(), g_ActiveConfig.GetGameTypeID() );
     if( pEntry )
     {
-        m_MapTitleText  ->SetLabel( pEntry->GetDisplayName()  );
-        m_MapDescText   ->SetLabel( pEntry->GetDescription()  );
-        m_GameTypeText  ->SetLabel( pEntry->GetGameTypeName() );
-        m_GameDescText  ->SetLabel( pEntry->GetGameRules()    );
+        SetUTF8Label( m_MapTitleText, pEntry->GetDisplayName() );
+        SetUTF8Label( m_MapDescText, pEntry->GetDescription() );
+        SetUTF8Label( m_GameTypeText, pEntry->GetGameTypeName() );
+        SetUTF8Label( m_GameDescText, pEntry->GetGameRules() );
     }
 
     if( m_LoadingComplete )

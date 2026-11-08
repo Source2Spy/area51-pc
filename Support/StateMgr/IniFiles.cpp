@@ -118,7 +118,7 @@ const char * ini_file::ParseStringData (const char * pSection, const char* pKey)
     if(!m_LoadedData.IsEmpty())
     {
         //Look for Section
-        for(int i = 0, index = 0; i < m_LoadedData.GetLength(); i++)
+        for(s32 i = 0, index = 0; i < m_LoadedData.GetLength(); i++)
         {
             StrDelimter = m_LoadedData.GetAt(i);
 
@@ -246,7 +246,7 @@ const char* ini_file::SearchForField(const char * pKey,  s32 StartIndex)
 void ini_file::StripChars(xstring &String, const char RemoveChar)
 {
     s32 index;
-    for(int ii = 0; ii < String.GetLength(); ii++)
+    for(s32 ii = 0; ii < String.GetLength(); ii++)
     {
         index = String.Find(RemoveChar);
         if(index !=-1)

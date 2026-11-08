@@ -266,6 +266,7 @@ public:
     struct font
     {
         xstring         Name;
+        xstring         PathName;
         ui_font*        pFont;
     };
 
@@ -288,6 +289,7 @@ protected:
     void            UpdateViewport          ( void );
     void            UpdateButton            ( ui_manager::button& Button, xbool State, f32 DeltaTime );
     void            SetHoveredWindow        ( user* pUser, ui_win* pWin );
+    void            UpdateMousePosition     ( user* pUser, s32 ScreenDeltaX, s32 ScreenDeltaY );
     void            SetInputMode            ( user* pUser, ui_input_device Device, input_platform Platform );
     void            RenderNavText           ( const user* pUser ) const;
 
@@ -316,9 +318,13 @@ public:
     void            RenderElementUV         ( s32 iElement, const irect& Position, const irect& UV, const xcolor& Color = XCOLOR_WHITE, xbool IsAdditive = FALSE ) const;
     void            RenderElementUV         ( s32 iElement, const irect& Position, const vector2& UV0, const vector2& UV1, const xcolor& Color = XCOLOR_WHITE, xbool IsAdditive = FALSE ) const;
 
+    void            BuildTextData           ( const xwchar* pString, struct ui_text_data& Result,
+                                               xarray<s32>* pSourceOffsets = NULL ) const;
     s32             LoadFont                ( const char* pName, const char* pPathName );
+    xbool           ReloadFonts             ( void );
     s32             FindFont                ( const char* pName ) const;
     ui_font*        GetFont                 ( const char* pName) const;
+    ui_font*        GetFont                 ( s32 Index ) const;
     void            RenderText              ( s32 iFont, const irect& Position, s32 Flags, const xcolor& Color, const   char* pString, xbool IgnoreEmbeddedColor = TRUE, xbool UseGradient = TRUE, f32 FlareAmount = R_0  ) const;
     void            RenderText              ( s32 iFont, const irect& Position, s32 Flags, const xcolor& Color, const xwchar* pString, xbool IgnoreEmbeddedColor = TRUE, xbool UseGradient = TRUE, f32 FlareAmount = R_0  ) const;
     void            RenderText              ( s32 iFont, const irect& Position, s32 Flags,       s32     Alpha, const xwchar* pString, xbool IgnoreEmbeddedColor = TRUE, xbool UseGradient = TRUE, f32 FlareAmount = R_0  ) const;
@@ -377,6 +383,7 @@ public:
 
     void            EnableUserInput         ( void );
     void            DisableUserInput        ( void );
+    void            SuppressInputUntilRelease( void );
 
     void            Update                  ( f32 DeltaTime );
     void            Render                  ( void );
@@ -424,6 +431,7 @@ public:
     void            EnableScreenHighlight   ( void )                { m_ScreenHighlightEnabled = TRUE; }
     void            DisableScreenHighlight  ( void )                { m_ScreenHighlightEnabled = FALSE; }
     s32             GetHighlightAlpha       ( s32 cycle );
+    f32             GetHighlightAlpha       ( void ) const { return m_HighlightAlpha; }
 
     // Glow bar
     void            InitGlowBar             ( void );
@@ -450,6 +458,7 @@ public:
 
 protected:
     void                    DestroyDeferredDialogs( void );
+    void                    ClearUserInput        ( void );
 
     f32                     m_AlphaTime;
 
@@ -468,6 +477,7 @@ protected:
     s32                     m_CallbackDepth;
 
     xbool                   m_EnableUserInput;
+    xbool                   m_WaitForInputRelease;
 
     u32                     m_ActiveController;
 

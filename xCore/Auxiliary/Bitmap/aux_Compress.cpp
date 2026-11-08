@@ -10,14 +10,6 @@
 #include "aux_Bitmap.hpp"
 #include "x_math.hpp"
 
-#ifndef TARGET_PS2
-#   ifdef TARGET_XBOX
-#       ifdef CONFIG_RETAIL
-#           define D3DCOMPILE_PUREDEVICE 1
-#       endif
-#       include<xtl.h>
-#       include<XGraphics.h>
-#   endif
 #   include<../3rdParty/DXTLibrary/ImageDXTC.h>
 #   if _MSC_VER >= 1300
 #       define WIN32_LEAN_AND_MEAN
@@ -27,15 +19,6 @@
 #           include <XGraphics.h>
 #       endif
 #   endif
-#else
-enum DXTCMethod
-{
-    DC_None,
-    DC_DXT1,
-    DC_DXT3,
-    DC_DXT5,
-};
-#endif
 
 //==============================================================================
 //  DEFINES
@@ -47,7 +30,6 @@ static auxcompress_fn*     s_pCallback = NULL;      // Progress callback func
 
 //=============================================================================
 
-#ifndef TARGET_PS2
 static AlphaType GetAlphaUsage( xbitmap& Source )
 {
     if( !Source.HasAlphaBits( ))
@@ -112,7 +94,6 @@ static AlphaType GetAlphaUsage( xbitmap& Source )
             return AT_Modulated;
     }
 }
-#endif
 
 //=============================================================================
 
@@ -488,11 +469,6 @@ void auxbmp_CompressDXT1( xbitmap& Bitmap,xbool bForceMips )
 
 static void DecompressDXTC( xbitmap& Dest, const xbitmap& Source, DXTCMethod Method )
 {
-#ifdef TARGET_PS2
-    (void)Method;
-    (void)Source;
-    (void)Dest;
-#else
     s32  H     = Source.GetHeight( );
     s32  W     = Source.GetWidth ( );
     s32  NMips = Source.GetNMips ( );
@@ -540,7 +516,6 @@ static void DecompressDXTC( xbitmap& Dest, const xbitmap& Source, DXTCMethod Met
             H >>= 1;
         }
     }
-#endif
 }
 
 //=============================================================================
@@ -586,13 +561,6 @@ void auxbmp_SetCompressCallback( auxcompress_fn* pFn )
 
 xcolor auxbmp_ReadPixelColorDXT1( const xbitmap& Bitmap,s32 X,s32 Y,s32 Mip )
 {
-#ifdef TARGET_PS2
-    (void)Bitmap;
-    (void)Mip;
-    (void)X;
-    (void)Y;
-    return xcolor(0,0,0,0);
-#else
     xcolor Result;
     {
         s32 y = Y/4;
@@ -619,20 +587,12 @@ xcolor auxbmp_ReadPixelColorDXT1( const xbitmap& Bitmap,s32 X,s32 Y,s32 Mip )
             Cache[I].a );
     }
     return Result;
-#endif
 }
 
 //=============================================================================
 
 xcolor auxbmp_ReadPixelColorDXT3( const xbitmap& Bitmap,s32 X,s32 Y,s32 Mip )
 {
-#ifdef TARGET_PS2
-    (void)Bitmap;
-    (void)Mip;
-    (void)X;
-    (void)Y;
-    return xcolor(0,0,0,0);
-#else
     xcolor Result;
     {
         s32 y = Y/4;
@@ -661,5 +621,4 @@ xcolor auxbmp_ReadPixelColorDXT3( const xbitmap& Bitmap,s32 X,s32 Y,s32 Mip )
             Cache[I].a );
     }
     return Result;
-#endif
 }

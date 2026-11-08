@@ -71,8 +71,8 @@ void player::OnEnumProp( prop_enum&  rList )
     s32 PathIndex = rList.PushPath( "Player\\Human Strain\\" );
     m_Physics.OnEnumProp( rList );
     m_Skin.OnEnumProp( rList );
-    rList.PropEnumExternal( "RenderInst\\AnimFile", "Resource\0anim", "Resource Animation File", PROP_TYPE_MUST_ENUM | PROP_TYPE_DONT_SAVE_GAME );
-    rList.PropEnumExternal( "Audio Package", "Resource\0audiopkg","The audio package associated with human strain.", PROP_TYPE_DONT_SAVE_GAME );
+    rList.PropEnumExternal( "RenderInst\\AnimFile", "Resource\0anim\0", "Resource Animation File", PROP_TYPE_MUST_ENUM | PROP_TYPE_DONT_SAVE_GAME );
+    rList.PropEnumExternal( "Audio Package", "Resource\0audiopkg\0","The audio package associated with human strain.", PROP_TYPE_DONT_SAVE_GAME );
     EnumrateStrainControls( rList );
     rList.PropEnumHeader("Friendly Factions", "Reticle doesn't highlight on friends", 0 );
     s32 ID = rList.PushPath( "Friendly Factions\\" );
@@ -425,6 +425,12 @@ xbool player::OnProperty( prop_query& rPropQuery )
 
     if( object::OnProperty( rPropQuery ) )
     {
+        if( !rPropQuery.IsRead() &&
+            (rPropQuery.IsVar( "Base\\Position" ) || rPropQuery.IsVar( "Base\\ZoneInfo" )) )
+        {
+            InitZoneTracking();
+        }
+
         if( rPropQuery.IsVar( "Base\\Position" ) )
         {
             if( rPropQuery.IsRead() )

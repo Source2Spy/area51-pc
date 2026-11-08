@@ -21,7 +21,7 @@
 #include "Dialogs/dlg_PopUp.hpp"
 
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 
 //==============================================================================
 //  dlg_online_login

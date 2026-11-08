@@ -555,31 +555,7 @@ void sound_emitter::OnAdvanceSimulation ( f32 DeltaTime )
     //
     // If the player is no longer in the sound emitter stop updating it.
     //
-    xbool  bCollided = FALSE;
-    ear_id EarID = g_AudioMgr.GetFirstEar();
-
-    while( EarID )
-    {
-        matrix4 W2V;
-        vector3 Position; 
-        s32     Zone;
-        f32     Volume;
-
-        g_AudioMgr.GetEar( EarID, W2V, Position, Zone, Volume );
-
-        if( Volume && ColBox.Intersect( Position ) )
-        {
-            bCollided = TRUE;
-            EarID = 0;
-        }
-        else
-        {
-            EarID = g_AudioMgr.GetNextEar();
-        }
-    }
-
-    // Clear the current ear.
-    g_AudioMgr.ResetCurrentEar();
+    xbool bCollided = g_AudioMgr.IsEarInBox( ColBox );
     
     // If we aren't colliding with any ear then we need to start shutting out selves down.
     if( !bCollided )
@@ -731,18 +707,7 @@ void sound_emitter::OnAdvanceSimulation ( f32 DeltaTime )
 
 xbool sound_emitter::IsSoundActive( void )
 {
-    if( m_Flags & STREAM_EMITTER )
-    {
-        if( g_ConverseMgr.IsActive( m_VoiceID ) )
-            return TRUE;
-    }
-    else
-    {
-        if( g_AudioMgr.IsValidVoiceId( m_VoiceID ) )
-            return TRUE;
-    }
-    
-    return FALSE;
+    return g_AudioMgr.IsValidVoiceIdCached( m_VoiceID );
 }
 
 //=========================================================================
@@ -815,15 +780,8 @@ void sound_emitter::UpdateSound( vector3& VirtualPos, f32 EmitterClipScale, f32 
             // PASS 0 AS THE PORTAL ID SO THE SOUND WON'T BE PROPAGATED SINCE WE HAVE ALREADY DONE THAT!!!!
             //
 
-            m_VoiceID = g_AudioMgr.PlayVolumeClipped( m_Label, VirtualPos, GetZone1(), FALSE );
-
-            if( EmitterClipScale != 0.0f )
-            {
-                g_AudioMgr.SetFalloff( m_VoiceID, 0.0f, EmitterClipScale );
-            }
-
-            g_AudioMgr.SetVolume( m_VoiceID, FinalVolume * m_CurrentVolume );
-            g_AudioMgr.Start( m_VoiceID );
+            m_VoiceID = g_AudioMgr.PlayConfigured( m_Label, VirtualPos, GetZone1(), TRUE,
+                                                   FinalVolume * m_CurrentVolume, EmitterClipScale );
         }
         else
         {
@@ -880,10 +838,8 @@ void sound_emitter::Update2DSound( f32 FinalVolume )
             // PASS 0 AS THE PORTAL ID SO THE SOUND WON'T BE PROPAGATED SINCE WE HAVE ALREADY DONE THAT!!!!
             //
 
-            m_VoiceID = g_AudioMgr.Play( m_Label, FALSE );
-
-            g_AudioMgr.SetVolume( m_VoiceID, FinalVolume * m_CurrentVolume );
-            g_AudioMgr.Start( m_VoiceID );
+            m_VoiceID = g_AudioMgr.PlayConfigured( m_Label, vector3(0.0f,0.0f,0.0f), GetZone1(), FALSE,
+                                                   FinalVolume * m_CurrentVolume, 0.0f );
         }
         else
         {

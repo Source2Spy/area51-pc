@@ -117,6 +117,7 @@ void ui_button::Render( s32 ox, s32 oy )
         {
             xcolor FillColor   ( 25,  77, 18, 224 );
             xcolor OutlineColor( 79, 214, 60, 224 );
+            highlight_state HighlightState = HS_NONE;
 
             if( m_Flags & WF_DISABLED )
             {
@@ -125,17 +126,18 @@ void ui_button::Render( s32 ox, s32 oy )
             }
             else if( IsPressed() )
             {
-                FillColor    = xcolor( 79, 214, 60, 224 );
-                OutlineColor = xcolor( 154, 255, 136, 255 );
+                HighlightState = HS_PRESSED;
+                OutlineColor   = xcolor( 154, 255, 136, 255 );
             }
-            else if( RenderHighlight || IsActive() )
+            else if( IsFocused() || IsActive() )
             {
-                FillColor    = xcolor( 39, 117, 28, 255 );
-                OutlineColor = xcolor( 121, 236, 104, 255 );
+                HighlightState = HS_ACTIVE;
+                OutlineColor   = xcolor( 121, 236, 104, 255 );
             }
 
             m_pManager->RenderRect( r, FillColor,    FALSE );
-            m_pManager->RenderRect( r, OutlineColor, TRUE  );
+            RenderHighlightRect( r, HighlightState );
+            m_pManager->RenderRect( r, OutlineColor, TRUE );
         }
         else if( m_Flags & WF_BORDER )
         {
@@ -188,6 +190,8 @@ void ui_button::Render( s32 ox, s32 oy )
         else
             justFlags = (ui_font::h_center|ui_font::v_center);
 
+        if( m_ButtonStyle == BUTTON_STYLE_FLAT )
+            justFlags |= ui_font::clip_ellipsis;
 
         // Render Text
         if( m_useSmallText )
@@ -205,9 +209,10 @@ void ui_button::Render( s32 ox, s32 oy )
             TextColor1.A = (u8)m_PulseValue;
         }
 
-        r.Translate( 1, -1 );
-        m_pManager->RenderText( FontID, r, justFlags, TextColor2, m_Label );
-        r.Translate( -1, -1 );
+        irect Shadow = r;
+        Shadow.Translate( 1, 1 );
+
+        m_pManager->RenderText( FontID, Shadow, justFlags, TextColor2, m_Label );
         m_pManager->RenderText( FontID, r, justFlags, TextColor1, m_Label );
 
 

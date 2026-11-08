@@ -25,8 +25,6 @@ enum online_main_controls
 {
     IDC_ONLINE_JOIN,
     IDC_ONLINE_HOST,
-    IDC_ONLINE_FRIENDS,
-    IDC_ONLINE_PLAYERS,
     IDC_ONLINE_EDIT_PROFILE,
     IDC_ONLINE_VIEW_STATS,
     IDC_ONLINE_SIGN_OUT,
@@ -66,8 +64,6 @@ protected:
     ui_frame*           m_pFrame1;
     ui_button*          m_pButtonJoin;      
     ui_button*          m_pButtonHost;
-    ui_button*          m_pButtonFriends;
-    ui_button*          m_pButtonPlayers;
     ui_button*          m_pButtonEditProfile;
     ui_button*          m_pButtonViewStats;
     ui_button*          m_pButtonSignOut;

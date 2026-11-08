@@ -101,6 +101,20 @@ struct rbuffer_upload_desc
 
 //------------------------------------------------------------------------------
 
+struct rbuffer_upload_batch_item
+{
+    rbuffer*             pBuffer;
+    rbuffer_upload_desc  Upload;
+
+    rbuffer_upload_batch_item( void ) :
+        pBuffer( NULL ),
+        Upload ()
+    {
+    }
+};
+
+//------------------------------------------------------------------------------
+
 struct rbuffer_vertex_binding
 {
     const rbuffer* pBuffer;
@@ -129,10 +143,13 @@ struct rbuffer_vertex_binding
 xbool                   rbuffer_Create              ( rbuffer& Buffer,
                                                       const rbuffer_desc& Desc,
                                                       const void* pInitialData = NULL );
+void                    rbuffer_Swap                ( rbuffer& A, rbuffer& B );
 void                    rbuffer_Destroy             ( rbuffer& Buffer );
 
 xbool                   rbuffer_Upload              ( rbuffer& Buffer,
                                                       const rbuffer_upload_desc& Upload );
+xbool                   rbuffer_UploadBatch         ( const rbuffer_upload_batch_item* pItems,
+                                                      u32 Count );
 xbool                   rbuffer_Upload              ( rbuffer& Buffer,
                                                       const void* pData,
                                                       u32 Size,

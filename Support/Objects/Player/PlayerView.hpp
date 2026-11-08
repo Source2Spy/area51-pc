@@ -34,8 +34,8 @@ struct PlayerViewSample
     f32             FarClip;
     PlayerViewMode  Mode;
     xbool           HasZoneSnapshot;
-    zone_mgr::zone_id Zone1;
-    zone_mgr::zone_id Zone2;
+    guid            ZoneSourceGuid;
+    zone_mgr::tracker ZoneSnapshot;
 };
 
 //-------------------------------------------------------------------------
@@ -67,6 +67,20 @@ struct PlayerViewContext
 
 //=========================================================================
 //  PLAYER VIEW
+//=========================================================================
+
+class PlayerStepView
+{
+public:
+                    PlayerStepView  ( void );
+    void            Clear           ( void );
+    void            Advance         ( f32 GroundOffset, f32 DeltaTime, f32 StepHeight );
+    f32             GetOffset       ( void ) const;
+
+private:
+    f32             m_Offset;
+};
+
 //=========================================================================
 
 class PlayerView

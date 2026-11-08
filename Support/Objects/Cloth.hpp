@@ -42,10 +42,10 @@ public:
     vector3 m_BindPos ;     // Bind position
     vector3 m_Pos ;         // Current position
     vector3 m_LastPos ;     // Last frame position
-    vector3 m_Normal ;      // Normal
     vector2 m_UV ;          // Texture UV
     f32     m_InvMass ;     // 1.0f / Mass
-    xcolor  m_Color ;       // Render color
+    f32     m_WindStrength;
+    f32     m_WindTarget;
 } ;
 
 //==============================================================================
@@ -114,13 +114,12 @@ private:
 
             // Simulation state
             f32                         m_DeltaTime ;           // Accumulated delta time
+            u32                         m_RenderRevision;       // Revision of particle positions used by render caches
             guid                        m_ObjectGuid ;          // Owner guid (or NULL if none)
             matrix4                     m_L2W ;                 // Local to world matrix
             matrix4                     m_W2L ;                 // World to local matrix
             bbox                        m_LocalBBox ;           // Local space bbox
             bbox                        m_WorldBBox ;           // World space bbox
-            xcolor                      m_LightAmbColor;        // Ambient lighting color
-            f32                         m_LightDirAmount;       // Amount of directional lighting to receive
 
             // Damage map
             xarray<u8>                  m_DamageMap;            // CPU-owned R8 damage mask
@@ -133,14 +132,10 @@ private:
             u32                         m_DamageStamp;
 
             // Wind vars
-            xbool                       m_bWind;                // Wind on or off?
-            f32                         m_WindTimer;            // Time of on/off
+            xbool                       m_bWindEnabled;
+            f32                         m_WindSampleTime;       // Time until the next turbulence sample
             vector3                     m_WindDir;              // Direction of wind
             radian3                     m_WindRot;              // Rotation of wind
-            f32                         m_WindMinOnTime;        // Min amount of time wind is on
-            f32                         m_WindMaxOnTime;        // Max amount of time wind is on
-            f32                         m_WindMinOffTime;       // Min amount of time wind is off
-            f32                         m_WindMaxOffTime;       // Max amount of time wind is off
             f32                         m_WindMinStrength;      // Min strength of wind
             f32                         m_WindMaxStrength;      // Max strength of wind
 
@@ -204,9 +199,9 @@ private:
             void        ApplyConstraints        ( void ) ;
             void        ApplyWind               ( void ) ;
             void        Integrate               ( f32 DeltaTime ) ;
-            void        ComputeLighting         ( void ) ;    // Recomputes per-particle m_Normal and bakes CPU vertex lighting into m_Color; called from Reset() and Advance()
             void        ComputeBounds           ( void ) ;
             void        ComputeWorldCollBBox    ( void ) ;
+            void        MarkRenderDataDirty     ( void ) ;
 
 public:
 
@@ -232,6 +227,7 @@ public:
     // Set functions
             void        SetL2W                  ( const matrix4& L2W, xbool bReset = TRUE, f32 AirResistance = 0.0f ) ;
             void        SetLocalCollBBox        ( const bbox& BBox ) ;
+            void        SetWindEnabled          ( xbool Enabled );
 
     // Tuning functions (let owning objects like flag specialize physics behaviour)
             void        SetGravity              ( const vector3& Gravity ) { m_Gravity = Gravity; }
@@ -253,10 +249,19 @@ public:
           xbool                        GetDamageDirty   ( s32& MinX, s32& MinY, s32& MaxX, s32& MaxY ) const ;
     const vector3&                     GetWindDir       ( void ) const ;
           xbool                        IsWindActive     ( void ) const ;
+          u32                          GetRenderRevision ( void ) const ;
 } ;
 
 //==============================================================================
 // Query functions
+//==============================================================================
+
+inline
+void cloth::SetWindEnabled( xbool Enabled )
+{
+    m_bWindEnabled = Enabled;
+}
+
 //==============================================================================
 
 inline
@@ -358,7 +363,7 @@ const vector3& cloth::GetWindDir( void ) const
 inline
 xbool cloth::IsWindActive( void ) const
 {
-    return m_bWind;
+    return m_bWindEnabled;
 }
 
 //==============================================================================

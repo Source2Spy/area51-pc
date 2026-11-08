@@ -8,7 +8,7 @@
 #define TEXTURE_HPP
 
 //=========================================================================
-// INCLUDES
+//  INCLUDES
 //=========================================================================
 
 #include "../ResourceMgr/ResourceMgr.hpp"
@@ -17,27 +17,28 @@
 #include "e_VRAM.hpp"
 
 //=========================================================================
-// CLASS
+//  CLASS
 //=========================================================================
 
 class texture
 {
 public:
+
     texture( void );
-    
+
     static void GetStats( s32* pNumTexturesLoaded, s32* pTextureMemorySize );
-    
+
     using handle = rhandle<texture>;
-    
+
     vram_texture const&    GetTexture                ( void ) const;
     shader_resource const* GetShaderResource         ( void ) const;
     shader_resource const* GetShaderResourceOverride ( void ) const;
     void                   SetShaderResourceOverride ( shader_resource const* pResource );
-    
+
     xbitmap                m_bitmap;
     vram_texture           m_texture;
     shader_resource const* m_pShaderResourceOverride;
-    
+
     friend struct texture_loader;
 };
 
@@ -46,8 +47,9 @@ public:
 class cubemap
 {
 public:
+
     cubemap( void );
-    
+
     enum sides
     {
         TOP = 0,
@@ -57,15 +59,15 @@ public:
         LEFT,
         RIGHT
     };
-    
+
     using handle = rhandle<cubemap>;
-    
+
     vram_texture const&    GetTexture        ( void ) const;
     shader_resource const* GetShaderResource ( void ) const;
-    
+
     vram_texture m_texture;
     xbitmap      m_bitmap[6];
-    
+
     friend struct cubemap_loader;
 };
 

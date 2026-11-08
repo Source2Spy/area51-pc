@@ -13,8 +13,8 @@
 #include "../Support/Objects/Portal.hpp"
 #include "AudioMgr/AudioMgr.hpp"
 #include "x_profile.hpp"
-#include "NetworkMgr/GameMgr.hpp"
-#include "NetworkMgr/NetObjMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
+#include "NetworkMgr/Replication/NetObjMgr.hpp"
 
 //=========================================================================
 
@@ -290,7 +290,7 @@ void door::WakeUp( void )
         //
         if( m_CurrentState == LOCKED )
         {
-            if( !g_AudioMgr.IsValidVoiceId( m_DoorSoundID ) )
+            if( !g_AudioMgr.IsValidVoiceIdCached( m_DoorSoundID ) )
                 m_DoorSoundID = g_AudioMgr.PlayVolumeClipped( m_DoorClosedSfx, GetPosition(), GetZone1(), TRUE );
         }
         else

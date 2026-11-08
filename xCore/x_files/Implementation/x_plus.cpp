@@ -12,6 +12,8 @@
 #include "../x_plus.hpp"
 #endif
 
+#include <cstdlib>
+
 #ifndef X_MATH_HPP
 #include "../x_math.hpp"
 #endif
@@ -27,6 +29,12 @@
 #ifndef X_FILES_PRIVATE_HPP
 #include "x_files_private.hpp"
 #endif
+
+const char* x_getenv( const char* pName )
+{
+    // TODO: Implement native environment variable access without std::getenv.
+    return std::getenv( pName );
+}
 
 //==============================================================================
 //  FUNCTIONS
@@ -1692,77 +1700,56 @@ s32 x_memcmp( const void* pBuf1, const void* pBuf2, s32 Count )
 
 //==============================================================================
 
-static u32      crc32_table[256];               // Lookup table array 
-static void     Init_CRC32_Table();             // Builds lookup table array 
-static u32      Reflect(u32 ref, char ch);    // Reflects CRC bits in the lookup table 
-static xbool    crc_initialized = FALSE;
+struct checksum_tables
+{
+    u32 Values[8][256];
 
-static void Init_CRC32_Table( void ) 
-{// Call this function only once to initialize the CRC table. 
+    checksum_tables( void )
+    {
+        for( u32 i = 0; i < 256; ++i )
+        {
+            u32 Value = i;
+            for( s32 Bit = 0; Bit < 8; ++Bit )
+                Value = ( Value >> 1 ) ^ ( ( Value & 1 ) ? 0xedb88320u : 0 );
+            Values[0][i] = Value;
+        }
+        for( s32 Slice = 1; Slice < 8; ++Slice )
+            for( u32 i = 0; i < 256; ++i )
+            {
+                const u32 Value = Values[Slice - 1][i];
+                Values[Slice][i] = ( Value >> 8 ) ^ Values[0][Value & 255];
+            }
+    }
+};
 
-    // This is the official polynomial used by CRC-32 
-    // in PKZip, WinZip and Ethernet. 
-    u32 ulPolynomial = 0x04c11db7; 
-
-    // 256 values representing ASCII character codes. 
-    for(int i = 0; i <= 0xFF; i++) 
-    { 
-        crc32_table[i]=Reflect(i, 8) << 24; 
-        for (int j = 0; j < 8; j++) 
-            crc32_table[i] = (crc32_table[i] << 1) ^ (crc32_table[i] & (1 << 31) ? ulPolynomial : 0); 
-        crc32_table[i] = Reflect(crc32_table[i], 32); 
-    } 
-} 
-
-static u32 Reflect(u32 ref, char ch) 
-{// Used only by Init_CRC32_Table(). 
-
-    u32 value(0); 
-
-    // Swap bit 0 for bit 7 
-    // bit 1 for bit 6, etc. 
-    for(int i = 1; i < (ch + 1); i++) 
-    { 
-        if(ref & 1) 
-            value |= 1 << (ch - i); 
-        ref >>= 1; 
-    } 
-    return value; 
-} 
+//==============================================================================
 
 u32 x_chksum( const void* pBuf, s32 Count )
 {
-    if( crc_initialized == FALSE )
+    ASSERT( Count >= 0 );
+    ASSERT( pBuf || Count == 0 );
+    if( Count <= 0 )
+        return 0;
+
+    // Local static initialization also serializes the first concurrent callers.
+    static const checksum_tables Tables;
+    const byte* pData = (const byte*)pBuf;
+    u32 CRC = 0xffffffffu;
+    // Eight independent table lookups preserve IEEE CRC32 without CPU extensions.
+    while( Count >= 8 )
     {
-        Init_CRC32_Table();
-        crc_initialized = TRUE;
+        const u32 First = x_load_le32( pData ) ^ CRC;
+        const u32 Second = x_load_le32( pData + 4 );
+        CRC = Tables.Values[7][First & 255] ^ Tables.Values[6][( First >> 8 ) & 255] ^
+              Tables.Values[5][( First >> 16 ) & 255] ^ Tables.Values[4][First >> 24] ^
+              Tables.Values[3][Second & 255] ^ Tables.Values[2][( Second >> 8 ) & 255] ^
+              Tables.Values[1][( Second >> 16 ) & 255] ^ Tables.Values[0][Second >> 24];
+        pData += 8;
+        Count -= 8;
     }
-    // Pass a buffer to this function and it will return the CRC. 
-
-    // Once the lookup table has been filled in by the two functions above, 
-    // this function creates all CRCs using only the lookup table. 
-
-    // Be sure to use unsigned variables, 
-    // because negative values introduce high bits 
-    // where zero bits are required. 
-
-    // Start out with all bits set high. 
-    u32     ulCRC(0xffffffff); 
-    u8*     buffer; 
-
-
-    // Get the length. 
-    // Save the text in the buffer. 
-    buffer = (u8*)pBuf; 
-    // Perform the algorithm on each character 
-    // in the string, using the lookup table values. 
-    while(Count--) 
-    {
-        ulCRC = (ulCRC >> 8) ^ crc32_table[(ulCRC & 0xFF) ^ *buffer++]; 
-    }
-
-    // Exclusive OR the result with the beginning value. 
-    return ulCRC ^ 0xffffffff; 
+    while( Count-- )
+        CRC = ( CRC >> 8 ) ^ Tables.Values[0][( CRC & 255 ) ^ *pData++];
+    return CRC ^ 0xffffffffu;
 }
 
 //==============================================================================

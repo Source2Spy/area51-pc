@@ -17,11 +17,17 @@
 #include "x_color.hpp"
 #include "x_math.hpp"
 
-#include "e_Frame.hpp"
 #include "e_RenderBuffer.hpp"
 #include "e_RenderState.hpp"
 #include "e_VRAM.hpp"
-#include "Render/RenderPipelineCache.hpp"
+#include "Render/GraphicsPipelineCache.hpp"
+
+namespace render
+{
+class FrameGraphBuilder;
+class RenderPassContext;
+struct RenderFrameContext;
+}
 
 class texture;
 
@@ -151,6 +157,7 @@ struct ui_material
     shader_resource        Texture;
     ui_blend_mode          Blend;
     ui_sampler_mode        Sampler;
+    xbool                  Coverage;
 
     ui_material( void );
     ui_material( const texture& Texture,
@@ -193,6 +200,13 @@ public:
                                           const xcolor& Color,
                                           ui_blend_mode Blend = UI_BLEND_ALPHA );
     xbool           AddGradientRect    ( const irect& Rect,
+                                          const xcolor& TopLeft,
+                                          const xcolor& TopRight,
+                                          const xcolor& BottomRight,
+                                          const xcolor& BottomLeft,
+                                          ui_blend_mode Blend = UI_BLEND_ALPHA );
+    xbool           AddRectOutline     ( const rect& Rect,
+                                          f32 Width,
                                           const xcolor& TopLeft,
                                           const xcolor& TopRight,
                                           const xcolor& BottomRight,
@@ -243,9 +257,11 @@ protected:
                                           const irect& Bounds,
                                           const irect& Viewport );
     void            PopCoordinateSpace ( void );
+public:
     ui_coordinate_space
                     GetCoordinateSpace ( void ) const;
     const irect&    GetCoordinateViewport( void ) const;
+protected:
     s32             GetCoordinateClipDepth( void ) const;
     xbool           AreStacksBalanced      ( void ) const;
 
@@ -332,25 +348,29 @@ public:
                                           ui_blend_mode Blend = UI_BLEND_ALPHA );
 
     void            BeginFrame         ( void );
-    void            Prepare            ( void );
-    void            Execute            ( void );
+    xbool           Prepare            ( void );
+    xbool           HasPendingCommands ( void ) const;
+    xbool           DeclarePass        ( render::FrameGraphBuilder& Graph, render::RenderFrameContext const& Frame );
 
 protected:
-    struct DrawConstants
-    {
-        f32 LogicalOrigin[2];
-        f32 InverseLogicalSize[2];
-    };
 
+    xbool           DrawRectOutline    ( const irect& Rect,
+                                          const xcolor& TopLeft,
+                                          const xcolor& TopRight,
+                                          const xcolor& BottomRight,
+                                          const xcolor& BottomLeft,
+                                          ui_blend_mode Blend );
     xbool           LoadShaders        ( void );
     xbool           CreateSamplers     ( void );
     xbool           CreateWhiteTexture ( void );
-    xbool           PrewarmPipelines   ( void );
+    xbool           PrewarmPipelinesForFormat( rtarget_format Format );
     void            DestroyPipelines   ( void );
     void            DestroyBuffers     ( void );
     xbool           EnsureBufferCapacity( s32 VertexCount, s32 IndexCount );
     xbool           CreateBuffers      ( s32 VertexCapacity, s32 IndexCapacity );
     xbool           BindPipeline       ( rtarget_format Format, ui_blend_mode Blend );
+    xbool           ExecuteGraphPass   ( render::RenderPassContext& Context );
+    static xbool    ExecuteGraphPassThunk( render::RenderPassContext& Context, ui_renderer* pRenderer );
     render_pipeline*
                     GetOrCreatePipeline( rtarget_format Format,
                                           ui_blend_mode Blend,
@@ -374,15 +394,15 @@ protected:
     shader           m_vertexShader;
     shader           m_pixelShader;
     u32              m_DrawUniformSlot;
+    u32              m_PixelDrawUniformSlot;
     u32              m_textureSlot;
     rstate_sampler   m_samplers[UI_SAMPLER_COUNT];
     vram_texture     m_whiteTexture;
-    RenderPipelineCache
+    render::GraphicsPipelineCache
                      m_pipelines;
     rtarget_format   m_prewarmedFormat;
 
     xbool            m_bPrepared;
-    xbool            m_bStagesRegistered;
     xbool            m_isInitialized;
 };
 

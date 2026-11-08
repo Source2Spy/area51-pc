@@ -164,10 +164,12 @@ xbool io_device::ProcessReadComplete( io_request* pRequest )
                 pDest = (void*)pRequest->m_pBuffer;
 
                 // Set length
-                pRequest->m_ChunkOffset = pRequest->m_ChunkLength + pRequest->m_ChunkOffset;
                 Count = pRequest->m_ChunkLength + pRequest->m_ChunkOffset;
                 if( Count > pRequest->m_Length )
+                {
                     Count = pRequest->m_Length;
+                }
+                pRequest->m_ChunkOffset = Count;
             }
             else
             {
@@ -197,7 +199,9 @@ xbool io_device::ProcessReadComplete( io_request* pRequest )
 
             // Copy the data from the internal buffers (if needed).
             if ( ( pDest != pSrc ) && (pRequest->m_Destination==0) )
+            {
                 x_memcpy( pDest, pSrc, Count );
+            }
 
             // Error check
             ASSERT( pRequest->m_ChunkOffset >= 0 );
@@ -246,17 +250,24 @@ xbool io_device::ProcessWriteComplete( io_request* pRequest )
     switch( pRequest->m_HardwareStatus )
     {
         case io_request::COMPLETED:
+        {
             pRequest->m_Status = io_request::COMPLETED;
             RequestDone = TRUE;
-            break;
+        }
+        break;
 
         case io_request::FAILED:
+        {
             pRequest->m_Status = io_request::FAILED;
             RequestDone = TRUE;
-            break;
+        }
+        break;
 
         default:
+        {
             ASSERT( 0 );
+        }
+        break;
     }        
 
     return RequestDone;
@@ -282,9 +293,21 @@ void io_device::ServiceDeviceCurrentRequest( void )
         // What kind of operation?
         switch( pRequest->m_Operation )
         {
-            case io_request::READ_OP:   bDone = ProcessReadComplete ( pRequest );   break;
-            case io_request::WRITE_OP:  bDone = ProcessWriteComplete( pRequest );   break;
-            default:                    bDone = FALSE; ASSERT( 0 );
+            case io_request::READ_OP:
+            {
+                bDone = ProcessReadComplete ( pRequest );
+                break;
+            }
+            case io_request::WRITE_OP:
+            {
+                bDone = ProcessWriteComplete( pRequest );
+                break;
+            }
+            default:
+            {
+                bDone = FALSE;
+                ASSERT( 0 );
+            }
         }
 
         // Request done?
@@ -318,7 +341,9 @@ void io_device::ServiceDeviceCurrentRequest( void )
             f32   ReadMS        = x_TicksToMs( ReadTicks );
             f32   TotalMS       = DispatchMS + ReadMS;
             if( TotalMS > s_MaxRequestTime )
+            {
                 s_MaxRequestTime = TotalMS;
+            }
             LOG_MESSAGE( "ServiceDeviceCurrentRequest", "Request Complete! Total: %07.3fms, Dispatch: %07.3fms, Read: %07.3fms, MAX: %08.3fms", TotalMS, DispatchMS, ReadMS, s_MaxRequestTime );
 #endif
 
@@ -438,9 +463,10 @@ void io_device::ProcessReadRequest( io_request* pRequest )
     // must be aware of the differences between memory spaces and deal with alignment that may
     // cause.
     //
-    if( Length + pRequest->m_Offset > pFile->Length )
+    s32 const ReadOffset = pRequest->m_Offset + pRequest->m_ChunkOffset;
+    if( Length > pFile->Length - ReadOffset )
     {
-        Length = pFile->Length - pRequest->m_Offset;
+        Length = pFile->Length - ReadOffset;
         ASSERT( Length > 0 );
     }
 
@@ -449,7 +475,7 @@ void io_device::ProcessReadRequest( io_request* pRequest )
                 Success = DeviceRead( pFile,
                                 pFile->pBuffer,
                                 Length,
-                                pRequest->m_Offset+pRequest->m_ChunkOffset,
+                                ReadOffset,
                                 pRequest->m_Destination );
         }
         else
@@ -457,7 +483,7 @@ void io_device::ProcessReadRequest( io_request* pRequest )
                 Success = DeviceRead( pFile,
                                                                 (void*)((byte*)pRequest->m_pBuffer + pRequest->m_ChunkOffset),
                                                                 Length,
-                                                                pRequest->m_Offset+pRequest->m_ChunkOffset,
+                                                                ReadOffset,
                                                                 pRequest->m_Destination );
         }
 
@@ -523,9 +549,20 @@ void io_device::ServiceDeviceQueue( void )
         // Which operation requested?
         switch( pRequest->m_Operation )
         {
-            case io_request::READ_OP:   ProcessReadRequest ( pRequest );    break;
-            case io_request::WRITE_OP:  ProcessWriteRequest( pRequest );    break;
-            default:                    ASSERT( 0 );
+            case io_request::READ_OP:
+            {
+                ProcessReadRequest ( pRequest );
+                break;
+            }
+            case io_request::WRITE_OP:
+            {
+                ProcessWriteRequest( pRequest );
+                break;
+            }
+            default:
+            {
+                ASSERT( 0 );
+            }
         }
     }
 }

@@ -42,6 +42,7 @@ struct language_item
 {
     x_language  Language;
     const char* pStringID;
+    xbool       bTextOnly;
 };
 
 //==============================================================================
@@ -50,12 +51,14 @@ struct language_item
 
 static language_item const s_LanguageItems[] =
 {
-    { XL_LANG_ENGLISH, "IDS_LANGUAGE_ENGLISH" },
-    { XL_LANG_FRENCH,  "IDS_LANGUAGE_FRENCH"  },
-    { XL_LANG_GERMAN,  "IDS_LANGUAGE_GERMAN"  },
-    { XL_LANG_ITALIAN, "IDS_LANGUAGE_ITALIAN" },
-    { XL_LANG_SPANISH, "IDS_LANGUAGE_SPANISH" },
-    { XL_LANG_RUSSIAN, "IDS_LANGUAGE_RUSSIAN" },
+    { XL_LANG_ENGLISH,  "IDS_LANGUAGE_ENGLISH",  FALSE },
+    { XL_LANG_FRENCH,   "IDS_LANGUAGE_FRENCH",   FALSE },
+    { XL_LANG_GERMAN,   "IDS_LANGUAGE_GERMAN",   FALSE },
+    { XL_LANG_ITALIAN,  "IDS_LANGUAGE_ITALIAN",  FALSE },
+    { XL_LANG_SPANISH,  "IDS_LANGUAGE_SPANISH",  FALSE },
+    { XL_LANG_RUSSIAN,  "IDS_LANGUAGE_RUSSIAN",  FALSE },
+    { XL_LANG_CZECH,    "IDS_LANGUAGE_CZECH",    TRUE  },
+    { XL_LANG_JAPANESE, "IDS_LANGUAGE_JAPANESE", TRUE  },
 };
 
 //------------------------------------------------------------------------------
@@ -118,12 +121,17 @@ dlg_language_settings::~dlg_language_settings( void )
 
 //==============================================================================
 
-void dlg_language_settings::PopulateLanguageCombo( ui_combo* pCombo, x_language Language )
+void dlg_language_settings::PopulateLanguageCombo( ui_combo* pCombo, x_language Language, xbool bIncludeTextOnly )
 {
     pCombo->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV );
 
     for( s32 i = 0; i < (s32)(sizeof(s_LanguageItems) / sizeof(language_item)); i++ )
     {
+        if( s_LanguageItems[i].bTextOnly && !bIncludeTextOnly )
+        {
+            continue;
+        }
+
         pCombo->AddItem( g_StringTableMgr( "ui", s_LanguageItems[i].pStringID ),
                          static_cast<uaddr>( s_LanguageItems[i].Language ) );
     }
@@ -167,9 +175,9 @@ xbool dlg_language_settings::Create( s32 UserID, ui_manager* pManager, ui_manage
 
     global_settings& PendingSettings = g_StateMgr.GetPendingSettings();
     m_OriginalSettings = PendingSettings;
-    PopulateLanguageCombo( m_pTextLanguage, PendingSettings.GetTextLanguage() );
-    PopulateLanguageCombo( m_pAudioLanguage, PendingSettings.GetAudioLanguage() );
-    PopulateLanguageCombo( m_pVideoLanguage, PendingSettings.GetVideoLanguage() );
+    PopulateLanguageCombo( m_pTextLanguage, PendingSettings.GetTextLanguage(), TRUE );
+    PopulateLanguageCombo( m_pAudioLanguage, PendingSettings.GetAudioLanguage(), FALSE );
+    PopulateLanguageCombo( m_pVideoLanguage, PendingSettings.GetVideoLanguage(), FALSE );
 
     s32 const CurrentControl = g_StateMgr.GetCurrentControl();
     if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
@@ -253,7 +261,12 @@ void dlg_language_settings::OnAccept( ui_win* pWin )
     }
 
     global_settings Settings = m_OriginalSettings;
-    ApplySettings( Settings );
+
+    if( !ApplySettings( Settings ) )
+    {
+        return;
+    }
+
     if( !Settings.HasChanged() )
     {
         g_AudioMgr.Play( "Select_Norm" );
@@ -274,7 +287,12 @@ void dlg_language_settings::OnCancel( ui_win* pWin )
     if( m_State == DIALOG_STATE_ACTIVE )
     {
         global_settings Settings = m_OriginalSettings;
-        ApplySettings( Settings );
+
+        if( !ApplySettings( Settings ) )
+        {
+            return;
+        }
+
         if( !Settings.HasChanged() )
         {
             g_AudioMgr.Play( "Backup" );
@@ -289,11 +307,21 @@ void dlg_language_settings::OnCancel( ui_win* pWin )
 
 //==============================================================================
 
-void dlg_language_settings::ApplySettings( global_settings& Settings )
+xbool dlg_language_settings::ApplySettings( global_settings& Settings )
 {
-    Settings.SetTextLanguage ( GetSelectedLanguage( m_pTextLanguage  ) );
+    x_language Language = GetSelectedLanguage( m_pTextLanguage );
+
+    if( Language != x_GetLocale() && !g_StringTableMgr.ValidateLocalizedTables( Language ) )
+    {
+        m_pTextLanguage->SetSelection( m_pTextLanguage->FindItemByData( static_cast<uaddr>( x_GetLocale() ) ) );
+        g_AudioMgr.Play( "Backup" );
+        return FALSE;
+    }
+
+    Settings.SetTextLanguage ( Language );
     Settings.SetAudioLanguage( GetSelectedLanguage( m_pAudioLanguage ) );
     Settings.SetVideoLanguage( GetSelectedLanguage( m_pVideoLanguage ) );
+    return TRUE;
 }
 
 //==============================================================================

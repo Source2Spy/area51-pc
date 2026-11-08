@@ -61,8 +61,8 @@ friend  fx_element_reg;
 //------------------------------------------------------------------------------
 public:
         
-static  void AddSpritesThisFrame( s32 Count )  { m_SpritesThisFrame += Count;  }
-static  s32  GetSpritesThisFrame( void )       { return( m_SpritesThisFrame ); }
+static  void AddSpritesThisFrame( s32 Count )  { m_SpritesThisFrame += Count; render::AddActiveRenderScopeSprites( Count ); }
+static  s32  GetSpritesThisFrame( void )       { return( render::GetActiveRenderScopeDesc().SpriteCount ); }
 static  s32  GetSpriteBudget    ( void )       { return( m_SpriteBudget     ); }
 
 //==============================================================================

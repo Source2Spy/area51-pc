@@ -1512,7 +1512,7 @@ void trigger_ex_object::EnumPropSpatial ( prop_enum& rPropList )
         if( m_ActivationType == SPATIAL_ACTIVATE_ON_BULLET )
             rPropList.PropEnumEnum ("Spatial Trigger\\Activation Bullet Type", s_ActivationBulletTypeEnumTable.BuildString (), "Type of bullet activates this trigger", PROP_TYPE_MUST_ENUM );
 
-        rPropList.PropEnumExternal( "Spatial Trigger\\ActivaterVar", "global\0global_guid", 
+        rPropList.PropEnumExternal( "Spatial Trigger\\ActivaterVar", "global\0global_guid\0", 
                                     "(Optional) Global Variable (type guid) where we can store the activator guid; leave blank to not store this info.", PROP_TYPE_MUST_ENUM );
         
         rPropList.PropEnumEnum    ( "Spatial Trigger\\Response Type", 

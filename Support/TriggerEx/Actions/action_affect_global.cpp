@@ -160,7 +160,7 @@ void action_affect_global::OnEnumProp    ( prop_enum& rPropList )
 {
     actions_ex_base::OnEnumProp( rPropList );
 
-    rPropList.PropEnumExternal( "Variable",  "global\0global_all", 
+    rPropList.PropEnumExternal( "Variable",  "global\0global_all\0", 
                                 "Which global Variable to affect.", PROP_TYPE_MUST_ENUM );
     
     rPropList.PropEnumInt     ( "Code" ,     "",  PROP_TYPE_DONT_SHOW  );

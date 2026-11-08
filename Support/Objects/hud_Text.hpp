@@ -19,6 +19,7 @@
 #include "Objects/Player/Player.hpp"
 
 #include "hud_Renderable.hpp"
+#include "UI/ui_text_data.hpp"
 
 //==============================================================================
 // DEFINES
@@ -33,8 +34,8 @@
     
 struct text_display
 {
-    xwchar  SourceText[ MAX_DISPLAY_LENGTH ];
-    xwchar  WrappedText[ MAX_DISPLAY_LENGTH ];
+    ui_text_data Source;
+    ui_text_data Wrapped;
     f32     Time;
     xbool     InUse;
 
@@ -47,8 +48,8 @@ struct text_display
     {
         InUse          = FALSE;
         Time           = -1.0;
-        SourceText[0]  = 0;
-        WrappedText[0] = 0;
+        Source = ui_text_data();
+        Wrapped = ui_text_data();
         ScrollState    = 0.0f;
         SeqNum         = 0;
         KeyingPos      = 0;
@@ -70,12 +71,17 @@ public:
     virtual void    OnRender        ( player*       pPlayer );
     virtual void    OnAdvanceSimulation( player*       pPlayer, f32 DeltaTime );
 
+            void    AddLine         ( const ui_text_data& Line );
+
+            void    UpdateGoal      ( s32 GoalSeq, xbool enabled, const ui_text_data& Goal, f32 Time = -1.0f );
+
+            void    SetBonus        ( const ui_text_data& Bonus, f32 Time );
+            void    SetWeaponInfo   ( const ui_text_data& WeaponInfo, f32 Time );
+
             void    AddLine         ( const xwchar* pLine );
-
-            void    UpdateGoal      ( s32 GoalSeq, xbool enabled, const xwchar* pGoal, f32 Time = -1.0f );
-
-            void    SetBonus        ( const xwchar* pBonus, f32 Time );
-            void    SetWeaponInfo   ( const xwchar* pWeaponInfo, f32 Time );
+            void    UpdateGoal      ( s32 Seq, xbool Enabled, const xwchar* pGoal, f32 Time = -1.0f );
+            void    SetBonus        ( const xwchar* pText, f32 Time );
+            void    SetWeaponInfo   ( const xwchar* pText, f32 Time );
 
             s32     GetIthGoal      ( s32 Index );
 
@@ -84,9 +90,9 @@ public:
 //------------------------------------------------------------------------------
 // Private Functions
 private:
-            void    AddGoal         ( s32 GoalSeq, const xwchar* pGoal, f32 Time = -1.0f );
+            void    AddGoal         ( s32 GoalSeq, const ui_text_data& Goal, f32 Time = -1.0f );
             void    ClearGoal       ( s32 GoalSeq );
-            void    SetDisplayText  ( text_display& Display, const xwchar* pText );
+            void    SetDisplayText  ( text_display& Display, const ui_text_data& Text );
             void    RewrapDisplayText( text_display& Display );
     inline  void    AddLinesAndChars( s32& NumLines, s32& NumChars, const xwchar* pLine );
     inline  void    ClearAllBelow   ( s32 MsgIndex );

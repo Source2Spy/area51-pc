@@ -70,7 +70,9 @@ void audio_mp3_stream_decoder_state::Compact( void )
 s32 audio_mp3_stream_decoder_state::AvailableBytes( void ) const
 {
     if( InputBytes <= InputCursor )
+    {
         return 0;
+    }
 
     return InputBytes - InputCursor;
 }
@@ -80,7 +82,9 @@ s32 audio_mp3_stream_decoder_state::AvailableBytes( void ) const
 void audio_mp3_stream_decoder_state::Finish( void )
 {
     if( DecodeComplete )
+    {
         return;
+    }
 
     DecodeComplete = TRUE;
 }

@@ -57,6 +57,7 @@ protected:
             const char*                 m_pTitle;
             xarray<debug_menu_item*>    m_Items;
             s32                         m_iActiveItem;
+            s32                         m_iFirstVisibleItem;
 };
 
 //==============================================================================

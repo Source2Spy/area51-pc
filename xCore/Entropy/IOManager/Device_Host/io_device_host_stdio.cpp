@@ -242,7 +242,7 @@ xbool io_device_host::DeviceRead( io_device_file* pFile,
 
     const s32 ReadLength = (s32)SDL_ReadIO( (SDL_IOStream*)pFile->Handle,
                                             pBuffer,
-                                            (size_t)Length );
+                                            (usize)Length );
 #else
     if( fseek( (FILE*)pFile->Handle, Offset, SEEK_SET ) != 0 )
     {

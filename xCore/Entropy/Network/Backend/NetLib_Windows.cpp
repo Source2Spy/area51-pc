@@ -98,7 +98,9 @@ xbool    net_socket::Bind( s32 StartPort, s32 Flags )
     }
 
     if( StartPort > 65535 )
+    {
         return FALSE;
+    }
 
     // create an address and bind it
     x_memset(&addr,0,sizeof(struct sockaddr_in));
@@ -126,7 +128,7 @@ xbool    net_socket::Bind( s32 StartPort, s32 Flags )
     while( bind( sd_dg, (struct sockaddr *)&addr, sizeof(addr) ) == SOCKET_ERROR )
     {
         // increment port if that port is assigned
-        if( (WSAGetLastError() == WSAEADDRINUSE) && (StartPort < 65535) )
+        if( (WSAGetLastError() == WSAEADDRINUSE) && (StartPort < 65535) && !(Flags & NET_FLAGS_BIND_EXACT) )
         {
             StartPort++;
             addr.sin_port = htons( StartPort );
@@ -184,7 +186,9 @@ void net_socket::Close( void )
         m_Socket = BAD_SOCKET;
 
         if( s_STAT_NAddressesBound > 0 )
+        {
             s_STAT_NAddressesBound--;
+        }
     }
 
     m_Address.Clear();
@@ -202,7 +206,7 @@ xbool sys_net_Receive( net_socket&   Local,
     ASSERT( s_Inited );
 
     struct sockaddr_in sockfrom;
-    int addrsize = sizeof(sockaddr_in);
+    s32 addrsize = sizeof(sockaddr_in);
 
     // receive any incoming packet
     RetSize = recvfrom( (SOCKET)Local.m_Socket, 
@@ -267,7 +271,9 @@ void sys_net_Send  ( net_socket&         Local,
     {
         LastError = WSAGetLastError();
         if( LastError != WSAEWOULDBLOCK )
+        {
             x_DebugMsg("SendTo returned an error code %d\n", LastError);
+        }
     }
 }
 
@@ -446,10 +452,12 @@ xbool net_socket::CanReceive( void )
 {
     fd_set          fd;
     struct timeval  timeout;
-    int             rcode;
+    s32             rcode;
 
     if( m_Socket == BAD_SOCKET )
+    {
         return FALSE;
+    }
 
     // setup the fd set
     FD_ZERO(&fd);
@@ -462,7 +470,9 @@ xbool net_socket::CanReceive( void )
     // do the actual select
     rcode = select(FD_SETSIZE, &fd, NULL, NULL, &timeout);
     if((rcode == SOCKET_ERROR) || (rcode == 0))
+    {
         return FALSE;
+    }
 
     return TRUE;
 }
@@ -473,10 +483,12 @@ xbool net_socket::CanSend( void )
 {
     fd_set          fd;
     struct timeval  timeout;
-    int             rcode;
+    s32             rcode;
 
     if( m_Socket == BAD_SOCKET )
+    {
         return FALSE;
+    }
 
     // setup the fd set
     FD_ZERO(&fd);
@@ -489,7 +501,9 @@ xbool net_socket::CanSend( void )
     // do the actual select
     rcode = select(FD_SETSIZE, NULL, &fd, NULL, &timeout);
     if((rcode == SOCKET_ERROR) || (rcode == 0))
+    {
         return FALSE;
+    }
 
     return TRUE;
 }

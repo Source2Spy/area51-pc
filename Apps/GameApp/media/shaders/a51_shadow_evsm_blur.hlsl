@@ -11,6 +11,7 @@
 //==============================================================================
 
 #include "common/shader_bindings.hlsl"
+#include "a51_shader_contract.hlsl"
 
 //==============================================================================
 //  TYPES
@@ -31,45 +32,47 @@ A51_SAMPLER_ATTR(0, 0) SamplerState samShadowMoments A51_SAMPLER_BIND(0, 0);
 
 A51_CBUFFER_ATTR(1, 0) cbuffer cbShadowFilter A51_CBUFFER_BIND(1, 0)
 {
-    float4 TextureParams;
-    float4 SourceClampRect;
-    float4 FilterParams; // x/y = EVSM exponents, z = blur scale
-    float4 DepthParams;
-    float4 SourceProjectionParams;
+    A51_ABI_FIELDS_ShadowFilterData
 };
 
 //==============================================================================
 //  FUNCTIONS
 //==============================================================================
 
-float4 SampleGaussian9( float2 uv, float2 direction )
+float4 SampleShadowMoments( float2 UV )
 {
-    float4 result = txShadowMoments.SampleLevel( samShadowMoments, uv, 0.0f ) * 0.2270270270f;
-    result +=
-        txShadowMoments.SampleLevel( samShadowMoments, uv + direction * 1.3846153846f, 0.0f ) * 0.3162162162f;
-    result +=
-        txShadowMoments.SampleLevel( samShadowMoments, uv - direction * 1.3846153846f, 0.0f ) * 0.3162162162f;
-    result +=
-        txShadowMoments.SampleLevel( samShadowMoments, uv + direction * 3.2307692308f, 0.0f ) * 0.0702702703f;
-    result +=
-        txShadowMoments.SampleLevel( samShadowMoments, uv - direction * 3.2307692308f, 0.0f ) * 0.0702702703f;
-    return result;
+    return txShadowMoments.SampleLevel( samShadowMoments,
+                                        clamp( UV, SourceClampRect.xy, SourceClampRect.zw ), 0.0f );
+}
+
+float4 SampleGaussian9( float2 UV, float2 Direction )
+{
+    float4 Result = SampleShadowMoments( UV ) * 0.2270270270f;
+    Result +=
+        SampleShadowMoments( UV + Direction * 1.3846153846f ) * 0.3162162162f;
+    Result +=
+        SampleShadowMoments( UV - Direction * 1.3846153846f ) * 0.3162162162f;
+    Result +=
+        SampleShadowMoments( UV + Direction * 3.2307692308f ) * 0.0702702703f;
+    Result +=
+        SampleShadowMoments( UV - Direction * 3.2307692308f ) * 0.0702702703f;
+    return Result;
 }
 
 //==============================================================================
 //  SHADERS
 //==============================================================================
 
-float4 PSBlurHorizontal( VS_OUTPUT input ) : SV_Target
+float4 PSBlurHorizontal( VS_OUTPUT Input ) : SV_Target
 {
-    const float2 uv = input.Position.xy * TextureParams.xy;
-    return SampleGaussian9( uv, float2( TextureParams.x, 0.0f ) * FilterParams.z );
+    const float2 UV = Input.Position.xy * TextureParams.xy;
+    return SampleGaussian9( UV, float2( TextureParams.x, 0.0f ) * FilterParams.z );
 }
 
 //==============================================================================
 
-float4 PSBlurVertical( VS_OUTPUT input ) : SV_Target
+float4 PSBlurVertical( VS_OUTPUT Input ) : SV_Target
 {
-    const float2 uv = input.Position.xy * TextureParams.xy;
-    return SampleGaussian9( uv, float2( 0.0f, TextureParams.y ) * FilterParams.z );
+    const float2 UV = Input.Position.xy * TextureParams.xy;
+    return SampleGaussian9( UV, float2( 0.0f, TextureParams.y ) * FilterParams.z );
 }

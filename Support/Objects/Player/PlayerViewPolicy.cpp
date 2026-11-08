@@ -16,8 +16,7 @@ PlayerViewSample::PlayerViewSample( void ) :
     FarClip  ( 8000.0f ),
     Mode     ( PlayerViewMode::FirstPerson ),
     HasZoneSnapshot ( FALSE ),
-    Zone1    ( 0 ),
-    Zone2    ( 0 )
+    ZoneSourceGuid  ( NULL_GUID )
 {
     ViewToWorld.Identity();
 }
@@ -85,6 +84,7 @@ PlayerViewSample PlayerView::BlendSamples( const PlayerViewSample& From,
     quaternion const Rotation = Blend( FromRotation, ToRotation, T );
 
     PlayerViewSample Result = To;
+    Result.HasZoneSnapshot = To.HasZoneSnapshot && (T == 1.0f);
     Result.ViewToWorld.Setup( vector3( 1.0f, 1.0f, 1.0f ), Rotation, Position );
     Result.XFOV     = From.XFOV     + ((To.XFOV     - From.XFOV)     * T);
     Result.NearClip = From.NearClip + ((To.NearClip - From.NearClip) * T);

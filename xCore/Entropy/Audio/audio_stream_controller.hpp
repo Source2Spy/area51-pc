@@ -26,6 +26,8 @@ class audio_stream_controller
     {
         voice_id    VoiceID;
         s32         Priority;
+        voice_id    PreviousVoiceID;
+        s32         PreviousPriority;
     };
 
 public:
@@ -64,6 +66,8 @@ public:
     void            ClearStreams        ( void );
 
 private:
+    void            RefreshStreams      ( void );
+
     s32             m_nStreams;         
     controller_data m_Data[ MAX_AUDIO_STREAMS ];
 

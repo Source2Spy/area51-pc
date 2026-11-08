@@ -115,7 +115,7 @@ inline void object::OnSpacialUpdate( void )
         if( GetAttrBits() & ATTR_SPACIAL_ENTRY )
         {
             g_ObjMgr.AddToSpatialDBase     ( m_SlotID );
-        }        
+        }
     }
 }
 

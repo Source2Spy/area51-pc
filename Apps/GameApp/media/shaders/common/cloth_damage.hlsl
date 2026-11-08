@@ -13,28 +13,34 @@
 //  FUNCTIONS
 //==============================================================================
 
-float ClothDamageCoverage( Texture2D damageTexture, SamplerState damageSampler, float2 uv )
+void ClothDiscardDamagedPixel( float DiffuseAlpha, float Damage, bool UsesTextureAlpha )
 {
-    return damageTexture.Sample( damageSampler, uv ).r;
+    // Opaque cloth textures may have an unused alpha channel filled with zero.
+    float const Coverage = UsesTextureAlpha ? DiffuseAlpha : 1.0f;
+    clip( min( Coverage - 0.05f, Damage - 0.5f ) );
 }
 
 //==============================================================================
 
-float ClothDamageEdge( Texture2D damageTexture, SamplerState damageSampler, float2 uv, float coverage )
+float ClothDamageCoverage( Texture2D DamageTexture, SamplerState DamageSampler, float2 UV )
 {
-    uint width;
-    uint height;
-    damageTexture.GetDimensions( width, height );
+    return DamageTexture.Sample( DamageSampler, UV ).r;
+}
 
-    float2 const texelSize = 1.0f / float2( width, height );
-    float2 const edgeStep = texelSize * 1.5f;
+//==============================================================================
 
-    float neighbour = 0.0f;
-    neighbour = max( neighbour, damageTexture.SampleLevel( damageSampler, uv + float2( edgeStep.x, 0.0f ), 0.0f ).r );
-    neighbour = max( neighbour, damageTexture.SampleLevel( damageSampler, uv - float2( edgeStep.x, 0.0f ), 0.0f ).r );
-    neighbour = max( neighbour, damageTexture.SampleLevel( damageSampler, uv + float2( 0.0f, edgeStep.y ), 0.0f ).r );
-    neighbour = max( neighbour, damageTexture.SampleLevel( damageSampler, uv - float2( 0.0f, edgeStep.y ), 0.0f ).r );
-    return smoothstep( 0.0f, 0.65f, saturate( neighbour - coverage ) );
+float ClothDamageEdge( Texture2D DamageTexture, SamplerState DamageSampler, float2 UV, float Coverage, float2 EdgeStep )
+{
+    float Neighbour = 1.0f;
+    Neighbour = min( Neighbour, DamageTexture.SampleLevel( DamageSampler, UV + float2( EdgeStep.x, 0.0f ), 0.0f ).r );
+    Neighbour = min( Neighbour, DamageTexture.SampleLevel( DamageSampler, UV - float2( EdgeStep.x, 0.0f ), 0.0f ).r );
+    Neighbour = min( Neighbour, DamageTexture.SampleLevel( DamageSampler, UV + float2( 0.0f, EdgeStep.y ), 0.0f ).r );
+    Neighbour = min( Neighbour, DamageTexture.SampleLevel( DamageSampler, UV - float2( 0.0f, EdgeStep.y ), 0.0f ).r );
+
+    // Shade the surviving cloth beside the cut, not the discarded hole interior.
+    float const Lip = 1.0f - smoothstep( 0.5f, 0.95f, Coverage );
+    float const Edge = smoothstep( 0.08f, 0.55f, Coverage - Neighbour );
+    return saturate( max( Lip, Edge * 0.65f ) );
 }
 
 //==============================================================================

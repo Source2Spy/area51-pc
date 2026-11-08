@@ -33,7 +33,7 @@ debug_menu_page_aim_assist::debug_menu_page_aim_assist( ) : debug_menu_page()
                             AddItemBool     ( "AimAssist bullet markers"  , g_AimAssist_Render_Bullet );
                             AddItemBool     ( "AimAssist turn damp pill"  , g_AimAssist_Render_Turn );
                             AddItemBool     ( "AimAssist bullet angle"    , g_AimAssist_Render_Bullet_Angle );
-                            AddItemBool     ( "AimAssist player pills"    , g_AimAssist_Render_Player_Pills );
+                            AddItemBool     ( "Include player in aim pills"    , g_AimAssist_Render_Player_Pills );
 #endif
 }
 

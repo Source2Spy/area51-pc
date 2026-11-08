@@ -12,11 +12,8 @@
 #include "GameLib/StatsMgr.hpp"
 #include "AudioMgr/AudioMgr.hpp"
 #include "Render/RigidGeom.hpp"
-#include "Render/LightMgr.hpp"
 #include "PainMgr/Pain.hpp"
 #include "Objects/Actor/Actor.hpp"
-
-
 
 //==============================================================================
 // DEFINES
@@ -24,20 +21,17 @@
 
 #define CLOTH_PRIM_KEY_TRI_FLAG     0x80000000      // Indicates flag tri was hit
 
-
-
 //==============================================================================
 // DATA
 //==============================================================================
-static f32      CLOTH_TIME_STEP                     = 1.0f / 30.0f;
-static f32      CLOTH_PAIN_EXPLOSION_FORCE_SCALE    = 200.0f;
-static f32      CLOTH_PAIN_MELEE_FORCE_SCALE        = 500.0f;
-
+static f32       CLOTH_TIME_STEP                     = 1.0f / 60.0f;
+static const f32 CLOTH_REFERENCE_TIME_STEP           = 1.0f / 30.0f;
+static const f32 CLOTH_WIND_RESPONSE_TIME            = 0.25f;
+static f32       CLOTH_PAIN_EXPLOSION_FORCE_SCALE    = 1000.0f;
+static f32       CLOTH_PAIN_MELEE_FORCE_SCALE        = 500.0f;
 
 #ifdef X_EDITOR
-
 extern xbool g_game_running;
-
 #endif
 
 //==============================================================================
@@ -65,13 +59,12 @@ cloth::cloth()
 
     // Simulation state
     m_DeltaTime  = 0;
+    m_RenderRevision = 1;
     m_ObjectGuid = 0;
     m_L2W.Identity();
     m_W2L.Identity();
     m_LocalBBox.Set(vector3(0,0,0), 0);
     m_WorldBBox.Set(vector3(0,0,0), 0);
-    m_LightAmbColor.Set( (u8)(255.0f * 0.2f), (u8)(255.0f * 0.2f), (u8)(255.0f * 0.2f) );
-    m_LightDirAmount = 1.0f;
 
     // Damage map
     m_DamageMapWidth  = 0;
@@ -80,14 +73,10 @@ cloth::cloth()
     ClearDamageDirty();
 
     // Wind vars
-    m_bWind = FALSE;                // Wind on or off?
-    m_WindTimer = 0.0f;             // Time of on/off
+    m_bWindEnabled = TRUE;
+    m_WindSampleTime = 0.0f;        // Time until the next turbulence sample
     m_WindDir.Set( 0, 0, 1 );       // Direction of wind
     m_WindRot.Set( 0, R_20, 0 );    // Rotation of wind
-    m_WindMinOnTime = 3.0f;         // Min amount of time wind is on
-    m_WindMaxOnTime = 5.0f;         // Max amount of time wind is on
-    m_WindMinOffTime = 3.0f;        // Min amount of time wind is off
-    m_WindMaxOffTime = 5.0f;        // Max amount of time wind is off
     m_WindMinStrength = -0.8f;      // Min strength of wind
     m_WindMaxStrength = 0.8f;       // Max strength of wind
 }
@@ -155,21 +144,13 @@ void cloth::OnEnumProp( prop_enum& List )
         List.PropEnumFloat  ( xfs( "Cloth\\Particles\\Mass[%d]",     i ), "Mass (set to zero to pin)", PROP_TYPE_MUST_ENUM );
     }
 
-    // Lighting
-    List.PropEnumHeader( "Cloth\\Lighting", "Lighting properties of cloth", 0 );
-    List.PropEnumColor ( "Cloth\\Lighting\\AmbColor",  "Ambient lighting color of cloth", 0 );
-    List.PropEnumFloat ( "Cloth\\Lighting\\DirAmount", "Amount of directional lighting to recieve", 0 );
-
     // Wind vars
     List.PropEnumHeader  ( "Cloth\\Wind", "Wind properties of cloth", 0 );
+    List.PropEnumBool    ( "Cloth\\Wind\\Enabled",     "Enable continuous wind", 0 );
     List.PropEnumVector3 ( "Cloth\\Wind\\Dir",         "Direction in local space (relative to object)", 0 );
     List.PropEnumRotation( "Cloth\\Wind\\Rot",         "Local space rotation (per second) of wind direction", 0 );
-    List.PropEnumFloat   ( "Cloth\\Wind\\MinOnTime",   "Minimum amount of time wind is active", 0 );
-    List.PropEnumFloat   ( "Cloth\\Wind\\MaxOnTime",   "Maximum amount of time wind is active", 0 );
-    List.PropEnumFloat   ( "Cloth\\Wind\\MinOffTime",  "Minimum amount of time wind is inactive", 0 );
-    List.PropEnumFloat   ( "Cloth\\Wind\\MaxOffTime",  "Maximum amount of time wind is inactive", 0 );
-    List.PropEnumFloat   ( "Cloth\\Wind\\MinStrength", "Maximum strength of wind", 0 );
-    List.PropEnumFloat   ( "Cloth\\Wind\\MaxStrength", "Minimum strength of wind", 0 );
+    List.PropEnumFloat   ( "Cloth\\Wind\\MinStrength", "Minimum strength of wind", 0 );
+    List.PropEnumFloat   ( "Cloth\\Wind\\MaxStrength", "Maximum strength of wind", 0 );
 
     // Physics properties
     List.PropEnumHeader ( "Cloth\\Physics", "Physical properties of cloth", 0 );
@@ -220,29 +201,17 @@ xbool cloth::OnProperty( prop_query& I )
         }
     }
 
-    // Lighting properties?
-    if( I.IsSimilarPath( "Cloth\\Lighting" ) )
-    {
-        if( I.VarColor( "Cloth\\Lighting\\AmbColor", m_LightAmbColor ) )
-            return TRUE;
-        if( I.VarFloat( "Cloth\\Lighting\\DirAmount", m_LightDirAmount, 0.0f, 1.0f ) )
-            return TRUE;
-    }
-
     // Wind properties?
     if( I.IsSimilarPath( "Cloth\\Wind" ) )
     {
+        if( I.VarBool( "Cloth\\Wind\\Enabled", m_bWindEnabled ) )
+        {
+            return TRUE;
+        }
+
         if( I.VarVector3( "Cloth\\Wind\\Dir", m_WindDir ) )
             return TRUE;
         if( I.VarRotation( "Cloth\\Wind\\Rot", m_WindRot ) )
-            return TRUE;
-        if( I.VarFloat( "Cloth\\Wind\\MinOnTime", m_WindMinOnTime ) )
-            return TRUE;
-        if( I.VarFloat( "Cloth\\Wind\\MaxOnTime", m_WindMaxOnTime ) )
-            return TRUE;
-        if( I.VarFloat( "Cloth\\Wind\\MinOffTime", m_WindMinOffTime ) )
-            return TRUE;
-        if( I.VarFloat( "Cloth\\Wind\\MaxOffTime", m_WindMaxOffTime ) )
             return TRUE;
         if( I.VarFloat( "Cloth\\Wind\\MinStrength", m_WindMinStrength ) )
             return TRUE;
@@ -817,7 +786,7 @@ cloth_init_result cloth::Init( rigid_geom* pGeom )
     // Default to pegging top particles
     PegParticles( 1, 1 );   // Y, +ve dir
 
-    // Reset motion (also seeds particle normals/color via ComputeLighting - see Reset())
+    // Reset motion.
     Reset();
 
     return Result;
@@ -873,11 +842,18 @@ void cloth::ClearAllInvMasses( void )
 
 void cloth::Reset( void )
 {
+    MarkRenderDataDirty();
     m_DeltaTime = 0.0f;
+    m_WindSampleTime = 0.0f;
 
     // Resets all particles to bind position
-    for (s32 i = 0; i < m_Particles.GetCount(); i++)
-        m_Particles[i].m_Pos = m_Particles[i].m_LastPos = m_L2W * m_Particles[i].m_BindPos;
+    for( s32 i = 0; i < m_Particles.GetCount(); ++i )
+    {
+        cloth_particle& Particle = m_Particles[i];
+        Particle.m_Pos = Particle.m_LastPos = m_L2W * Particle.m_BindPos;
+        Particle.m_WindStrength = 0.0f;
+        Particle.m_WindTarget   = 0.0f;
+    }
 
     // Update bounds
     ComputeBounds();
@@ -886,10 +862,6 @@ void cloth::Reset( void )
     // Apply constraints incase collision bbox is smaller than geometry
     ApplyConstraints();
 
-    // Seed normals so a freshly (re)placed cloth has correct shading normals
-    // immediately, even if Advance() never ticks (e.g. World Editor placement
-    // with the game not running)
-    ComputeLighting();
 }
 
 //==============================================================================
@@ -1030,6 +1002,10 @@ void cloth::ApplyDistConstraints( void )
 {
     X_PROFILE_SCOPE_CATEGORY( "Context", "cloth::ApplyDistConstraints");
 
+    // Authored stiffness is the correction per iteration at the reference rate.
+    f32 const StepScale = CLOTH_TIME_STEP / CLOTH_REFERENCE_TIME_STEP;
+    f32 const Stretch = 1.0f - x_pow( 1.0f - x_clamp( m_Stretch, 0.0f, 1.0f ), StepScale );
+
     // Loop through all connections
     for (s32 i = 0; i < m_Connections.GetCount(); i++)
     {
@@ -1060,7 +1036,7 @@ void cloth::ApplyDistConstraints( void )
         f32 Diff = -2.0f * ((RestDistSqr / (DistSqr + RestDistSqr)) - 0.5f) / TotalInvMass;
 
         // Scale and dampen
-        Delta *= Diff * m_Stretch;
+        Delta *= Diff * Stretch;
 
         // Apply deltas
         ParticleA.m_Pos += InvMass0 * Delta;
@@ -1162,7 +1138,9 @@ void cloth::Integrate( f32 DeltaTime )
     vector3 Accel            = m_Gravity * DeltaTimeSquared;
 
     // Apply verlet integration to all particles
-    f32 Dampen = x_clamp( 1.0f - m_Dampen, 0.0f, 1.0f );
+    // Preserve the loss of velocity over time when the solver rate changes.
+    f32 const Dampen = x_pow( x_clamp( 1.0f - m_Dampen, 0.0f, 1.0f ),
+                              DeltaTime / CLOTH_REFERENCE_TIME_STEP );
     for (s32 i = 0; i < m_Particles.GetCount(); i++)
     {
         // Lookup particle
@@ -1188,115 +1166,36 @@ void cloth::Integrate( f32 DeltaTime )
 
 void cloth::ApplyWind( void )
 {
-    // Compute world space wind dir
-    vector3 WorldWindDir = m_L2W.RotateVector( m_WindDir );
-
-    // Update all particles
-    for( s32 i = 0; i < m_Particles.GetCount(); i++ )
+    const xbool SampleWind = m_WindSampleTime <= 0.0f;
+    if( SampleWind )
     {
-        // Compute wind velocity
-        f32     Strength = x_frand( m_WindMinStrength, m_WindMaxStrength );
-        vector3 WindVel  = WorldWindDir * Strength;
+        m_WindSampleTime += CLOTH_REFERENCE_TIME_STEP;
+    }
+    m_WindSampleTime -= CLOTH_TIME_STEP;
 
-        // Update particle velocity
+    const f32     StepScale    = CLOTH_TIME_STEP / CLOTH_REFERENCE_TIME_STEP;
+    const f32     Blend        = 1.0f - x_exp( -CLOTH_TIME_STEP / CLOTH_WIND_RESPONSE_TIME );
+    const vector3 WorldWindDir = m_L2W.RotateVector( m_WindDir );
+
+    for( s32 i = 0; i < m_Particles.GetCount(); ++i )
+    {
         cloth_particle& Particle = m_Particles[i];
-        Particle.m_LastPos -= WindVel;
-    }
-}
+        if( Particle.m_InvMass == 0.0f )
+        {
+            continue;
+        }
 
-//==============================================================================
+        if( !m_bWindEnabled )
+        {
+            Particle.m_WindTarget = 0.0f;
+        }
+        else if( SampleWind )
+        {
+            Particle.m_WindTarget = x_frand( m_WindMinStrength, m_WindMaxStrength );
+        }
 
-// Recomputes per-particle m_Normal from the current (possibly deformed)
-// triangle positions, then bakes ambient + directional CPU vertex lighting
-// into m_Color for the dynamic geometry G-buffer pass.
-void cloth::ComputeLighting( void )
-{
-    X_PROFILE_SCOPE_CATEGORY( "Context", "cloth::ComputeLighting");
-
-    s32 i;
-
-    // Clear particle normals
-    for (i = 0; i < m_Particles.GetCount(); i++)
-        m_Particles[i].m_Normal.Zero();
-
-    // Loop through all triangles and accumulate normals into particles
-    for (i = 0; i < m_Triangles.GetCount(); i++)
-    {
-        // Lookup triangle
-        cloth_triangle& Triangle = m_Triangles[i];
-
-        // Lookup particles
-        cloth_particle& Particle0 = m_Particles[(s32)Triangle.m_Particles[0]];
-        cloth_particle& Particle1 = m_Particles[(s32)Triangle.m_Particles[1]];
-        cloth_particle& Particle2 = m_Particles[(s32)Triangle.m_Particles[2]];
-
-        // Lookup particle positions
-        const vector3& P0 = Particle0.m_Pos;
-        const vector3& P1 = Particle1.m_Pos;
-        const vector3& P2 = Particle2.m_Pos;
-
-        // Compute triangle normal
-        vector3 Normal = (P1-P0).Cross(P2-P0);
-
-        // Accumulate into particles normal
-        Particle0.m_Normal += Normal;
-        Particle1.m_Normal += Normal;
-        Particle2.m_Normal += Normal;
-    }
-
-    // Collect directional lights
-    s32     nLights = g_LightMgr.CollectCharLightsOnly( m_L2W, m_LocalBBox, 3 );
-    vector3 LightDirs[3];
-    vector3 LightCols[3];
-    xcolor  Col;
-    i = 0;
-    while( i < nLights )
-    {
-        g_LightMgr.GetCollectedCharLight( i, LightDirs[i], Col );
-        LightDirs[i] *= -m_LightDirAmount;
-        LightCols[i].Set( (f32)Col.R, (f32)Col.G, (f32)Col.B );
-        i++;
-    }
-    while( i < 3 )
-    {
-        LightDirs[i].Zero();
-        LightCols[i].Zero();
-        i++;
-    }
-
-    // Setup light direction and color matrices
-    matrix4 LightDirsMat;
-    matrix4 LightColsMat;
-    LightDirsMat.Zero();
-    LightColsMat.Zero();
-    LightDirsMat.SetRows   ( LightDirs[0], LightDirs[1], LightDirs[2] );
-    LightColsMat.SetColumns( LightCols[0], LightCols[1], LightCols[2] );
-
-    // Setup ambient
-    LightColsMat.SetTranslation( vector3( (f32)m_LightAmbColor.R, (f32)m_LightAmbColor.G, (f32)m_LightAmbColor.B ) );
-
-    // Normalize particle normals and compute color
-    for (i = 0; i < m_Particles.GetCount(); i++)
-    {
-        // Lookup particle
-        cloth_particle& Particle = m_Particles[i];
-
-        // Compute final normal
-        Particle.m_Normal.Normalize();
-
-        // Compute intensity of each light on both sides of cloth, keeping the brightest
-        vector3 I = LightDirsMat * Particle.m_Normal;
-        I.Max( -I );
-
-        // Compute colors of each light + ambient
-        vector3 C = LightColsMat * I;
-        C.Min( 255.0f );
-
-        // Setup final color
-        Particle.m_Color.R = (u8)C.GetX();
-        Particle.m_Color.G = (u8)C.GetY();
-        Particle.m_Color.B = (u8)C.GetZ();
-        Particle.m_Color.A = 255;
+        Particle.m_WindStrength += ( Particle.m_WindTarget - Particle.m_WindStrength ) * Blend;
+        Particle.m_LastPos -= WorldWindDir * ( Particle.m_WindStrength * x_sqr( StepScale ) );
     }
 }
 
@@ -1334,6 +1233,7 @@ void cloth::ComputeWorldCollBBox( void )
 // Applies blast force to particles
 void cloth::ApplyBlast( const vector3& Pos, f32 Radius, f32 Amount )
 {
+    MarkRenderDataDirty();
     // Compute radius squared just once ready for loop
     f32 RadiusSqr = Radius * Radius;
 
@@ -1377,6 +1277,7 @@ void cloth::ApplyBlast( const vector3& Pos, f32 Radius, f32 Amount )
 // Applies directional blast force to particles
 void cloth::ApplyBlast( const vector3& Pos, const vector3& Dir, f32 Radius, f32 Amount )
 {
+    MarkRenderDataDirty();
     // Compute radius squared just once ready for loop
     f32 RadiusSqr = Radius * Radius;
 
@@ -1419,8 +1320,9 @@ void cloth::ApplyBlast( const vector3& Pos, const vector3& Dir, f32 Radius, f32 
 // Applies pain blast to particles
 void cloth::OnPain( const pain& Pain )
 {
-    // Pain come from melee?
-    if( Pain.IsDirectHit() )
+    // Direct impacts from actors can apply melee force. A direct-hit target
+    // on an explosion must not prevent the radial blast response.
+    if( !Pain.IsExplosion() )
     {
         // Come from an actor's melee?
         object* pSource = g_ObjMgr.GetObjectByGuid( Pain.GetOriginGuid() );
@@ -1471,7 +1373,7 @@ s32 cloth::SampleDamage( f32 U, f32 V ) const
     s32 const X = (s32)( MINMAX( 0.0f, U, 1.0f ) * ( m_DamageMapWidth  - 1 ) );
     s32 const Y = (s32)( MINMAX( 0.0f, V, 1.0f ) * ( m_DamageMapHeight - 1 ) );
     u8 const Alpha = m_DamageMap[( Y * m_DamageMapWidth ) + X];
-    return MIN( 15, ( (s32)Alpha * 15 + 127 ) / 255 );
+    return MINMAX( 0, ( (s32)Alpha - 128 ) * 15 / 127, 15 );
 }
 
 //==============================================================================
@@ -1484,86 +1386,95 @@ s32 cloth::PunchDamage( f32 U, f32 V )
         return Status;
     }
 
-    s32 const X = (s32)( MINMAX( 0.0f, U, 1.0f ) * ( m_DamageMapWidth  - 1 ) );
-    s32 const Y = (s32)( MINMAX( 0.0f, V, 1.0f ) * ( m_DamageMapHeight - 1 ) );
-    f32 const Radius = MAX( 2.0f, (f32)MIN( m_DamageMapWidth, m_DamageMapHeight ) / 128.0f );
-    u32 Seed = (u32)( X * 73856093 ) ^ (u32)( Y * 19349663 ) ^ ( ++m_DamageStamp * 83492791 );
+    // Keep the hit between texels so nearby shots do not share the same centre.
+    f32 const X = MINMAX( 0.0f, U, 1.0f ) * ( m_DamageMapWidth  - 1 );
+    f32 const Y = MINMAX( 0.0f, V, 1.0f ) * ( m_DamageMapHeight - 1 );
+    f32 const Radius = MAX( 2.0f, (f32)MIN( m_DamageMapWidth, m_DamageMapHeight ) / 64.0f );
+    u32 Seed = (u32)X * 73856093u ^ (u32)Y * 19349663u ^ ++m_DamageStamp * 83492791u;
     Seed ^= Seed << 13;
     Seed ^= Seed >> 17;
     Seed ^= Seed << 5;
 
+    f32 const Phase = (f32)( Seed & 255 ) * ( R_360 / 255.0f );
+    f32 const Stretch = 1.15f + (f32)( ( Seed >> 8 ) & 255 ) / 255.0f * 0.6f;
+    xbool const AlongU = ( Seed & 0x10000 ) != 0;
+    f32 const EdgeWidth = MAX( 0.65f, Radius * 0.22f );
+
+    // Tears follow the warp and weft. Each direction occurs only once, with
+    // unequal lengths and a small bend instead of several overlapping capsules.
     enum { MAX_TEAR_BRANCHES = 4 };
-    s32 const BranchCount = 2 + (s32)( Seed % 3 );
-    f32 BranchDirX[MAX_TEAR_BRANCHES];
-    f32 BranchDirY[MAX_TEAR_BRANCHES];
     f32 BranchLength[MAX_TEAR_BRANCHES];
-    for( s32 i = 0; i < BranchCount; ++i )
+    f32 BranchBend[MAX_TEAR_BRANCHES];
+    f32 MaxRadius = Radius * Stretch;
+    for( s32 i = 0; i < MAX_TEAR_BRANCHES; ++i )
     {
         Seed ^= Seed << 13;
         Seed ^= Seed >> 17;
         Seed ^= Seed << 5;
-        xbool const AlongU = ( ( Seed >> 5 ) & 1 ) != 0;
-        f32 const Sign = ( ( Seed >> 6 ) & 1 ) ? 1.0f : -1.0f;
-        f32 const Wander = ( (f32)( ( Seed >> 8 ) & 255 ) / 255.0f - 0.5f ) * 0.36f;
-        BranchDirX[i] = AlongU ? Sign : Wander;
-        BranchDirY[i] = AlongU ? Wander : Sign;
-        f32 const InvLength = 1.0f / x_sqrt( BranchDirX[i] * BranchDirX[i] + BranchDirY[i] * BranchDirY[i] );
-        BranchDirX[i] *= InvLength;
-        BranchDirY[i] *= InvLength;
-        BranchLength[i] = Radius * ( 2.5f + (f32)( Seed & 255 ) / 255.0f * 2.5f );
+        BranchLength[i] = Radius * ( 1.4f + (f32)( Seed & 255 ) / 255.0f * 1.9f );
+        BranchBend[i] = ( (f32)( ( Seed >> 8 ) & 255 ) / 255.0f - 0.5f ) * 0.32f;
+        MaxRadius = MAX( MaxRadius, BranchLength[i] );
     }
 
-    f32 MaxRadius = Radius * 2.2f;
-    for( s32 i = 0; i < BranchCount; ++i )
-        MaxRadius = MAX( MaxRadius, BranchLength[i] + Radius );
+    // A short missing arm keeps the silhouette from becoming a regular cross.
+    BranchLength[( Seed >> 16 ) & 3] *= 0.45f;
+    MaxRadius += Radius * 0.4f + EdgeWidth;
 
-    s32 const MinX = MAX( 0, (s32)( X - MaxRadius - 1.0f ) );
-    s32 const MaxX = MIN( m_DamageMapWidth - 1, (s32)( X + MaxRadius + 1.0f ) );
-    s32 const MinY = MAX( 0, (s32)( Y - MaxRadius - 1.0f ) );
-    s32 const MaxY = MIN( m_DamageMapHeight - 1, (s32)( Y + MaxRadius + 1.0f ) );
+    s32 const MinX = MAX( 0, (s32)x_floor( X - MaxRadius ) );
+    s32 const MaxX = MIN( m_DamageMapWidth - 1, (s32)x_ceil( X + MaxRadius ) );
+    s32 const MinY = MAX( 0, (s32)x_floor( Y - MaxRadius ) );
+    s32 const MaxY = MIN( m_DamageMapHeight - 1, (s32)x_ceil( Y + MaxRadius ) );
     xbool Changed = FALSE;
 
-    for( s32 iy = MinY; iy <= MaxY; iy++ )
+    for( s32 iy = MinY; iy <= MaxY; ++iy )
     {
-        for( s32 ix = MinX; ix <= MaxX; ix++ )
+        for( s32 ix = MinX; ix <= MaxX; ++ix )
         {
-            f32 const DX = (f32)( ix - X );
-            f32 const DY = (f32)( iy - Y );
-            u32 Noise = (u32)( ix * 374761393 ) + (u32)( iy * 668265263 ) + Seed;
-            Noise = ( Noise ^ ( Noise >> 13 ) ) * 1274126177;
-            f32 const EdgeNoise = ( (f32)( Noise & 255 ) / 255.0f - 0.5f ) * Radius * 0.8f;
-            f32 Distance = x_sqrt( DX * DX + DY * DY ) - Radius * 1.35f - EdgeNoise;
-            f32 FiberAlpha = 0.0f;
+            f32 const DX = (f32)ix - X;
+            f32 const DY = (f32)iy - Y;
+            f32 const PX = DX / Radius;
+            f32 const PY = DY / Radius;
 
-            for( s32 i = 0; i < BranchCount; ++i )
+            // Low frequency distortion makes torn flaps; independent texel noise
+            // would make the edge look chipped rather than pulled apart.
+            f32 const Roughness = ( x_sin( PX * 2.3f + PY * 1.7f + Phase ) +
+                                    x_sin( PX * 4.1f - PY * 3.2f - Phase ) * 0.35f ) * Radius * 0.12f;
+            f32 const CoreX = AlongU ? DX / Stretch : DX;
+            f32 const CoreY = AlongU ? DY : DY / Stretch;
+            f32 Distance = x_sqrt( CoreX * CoreX + CoreY * CoreY ) - Radius - Roughness;
+
+            for( s32 i = 0; i < MAX_TEAR_BRANCHES; ++i )
             {
-                f32 const AlongRaw = DX * BranchDirX[i] + DY * BranchDirY[i];
-                f32 const Along = MINMAX( 0.0f, AlongRaw, BranchLength[i] );
-                f32 const AcrossX = DX - BranchDirX[i] * Along;
-                f32 const AcrossY = DY - BranchDirY[i] * Along;
-                f32 const Width = Radius * ( 0.75f - 0.55f * Along / BranchLength[i] );
-                f32 const BranchDistance = x_sqrt( AcrossX * AcrossX + AcrossY * AcrossY ) - Width - EdgeNoise * 0.35f;
-                Distance = MIN( Distance, BranchDistance );
+                f32 const Along = ( i < 2 ? DX : DY ) * ( ( i & 1 ) ? -1.0f : 1.0f );
+                if( ( Along < 0.0f ) || ( Along > BranchLength[i] ) )
+                    continue;
 
-                if( ( AlongRaw > Radius * 0.35f ) && ( AlongRaw < BranchLength[i] - Radius * 0.25f ) )
-                {
-                    u32 const FiberSeed = Seed ^ (u32)( ( i + 1 ) * 2246822519u );
-                    f32 const FiberOffset = ( (f32)( FiberSeed & 255 ) / 255.0f - 0.5f ) * Radius * 0.9f;
-                    f32 const Across = -DX * BranchDirY[i] + DY * BranchDirX[i];
-                    f32 const FiberWidth = MAX( 0.4f, Radius * 0.12f );
-                    f32 const Fiber = 1.0f - MINMAX( 0.0f, x_abs( Across - FiberOffset ) / FiberWidth, 1.0f );
-                    f32 const EndFade = MIN( MINMAX( 0.0f, AlongRaw / Radius, 1.0f ),
-                                             MINMAX( 0.0f, ( BranchLength[i] - AlongRaw ) / Radius, 1.0f ) );
-                    FiberAlpha = MAX( FiberAlpha, Fiber * EndFade * 0.7f );
-                }
+                f32 const T = Along / BranchLength[i];
+                f32 const Across = ( i < 2 ? DY : DX ) - BranchBend[i] * Along * T;
+                f32 const Width = Radius * 0.6f * ( 1.0f - T );
+                f32 const Tear = MAX( x_abs( Across ) - Width - Roughness * 0.3f,
+                                      Along - BranchLength[i] );
+                Distance = MIN( Distance, Tear );
             }
 
-            if( Distance > Radius )
+            if( Distance >= EdgeWidth )
                 continue;
 
-            f32 KeepAlpha = MINMAX( 0.0f, Distance / Radius, 1.0f );
-            if( Distance < -Radius * 0.15f )
-                KeepAlpha = MAX( KeepAlpha, FiberAlpha );
+            f32 KeepAlpha = MINMAX( 0.0f, 0.5f + Distance / ( 2.0f * EdgeWidth ), 1.0f );
+
+            // Leave a few short yarns at the lips, with an open centre. Their
+            // positions stay fixed in cloth UVs when the simulation moves.
+            if( ( x_abs( DX ) + x_abs( DY ) > Radius * 1.25f ) && ( Distance < 0.0f ) )
+            {
+                f32 const YarnX = DX + x_sin( PY * 1.6f + Phase ) * 0.25f;
+                f32 const YarnY = DY + x_sin( PX * 1.8f - Phase ) * 0.25f;
+                f32 const Spacing = MAX( 2.5f, Radius * 1.1f );
+                f32 const ThreadX = x_abs( YarnX - x_floor( YarnX / Spacing + 0.5f ) * Spacing );
+                f32 const ThreadY = x_abs( YarnY - x_floor( YarnY / Spacing + 0.5f ) * Spacing );
+                f32 const Thread = 1.0f - MINMAX( 0.0f, MIN( ThreadX, ThreadY ) / 0.65f, 1.0f );
+                f32 const Lip = MINMAX( 0.0f, 1.0f + Distance / ( Radius * 0.55f ), 1.0f );
+                KeepAlpha = MAX( KeepAlpha, Thread * Lip );
+            }
 
             u8 const Alpha = (u8)( KeepAlpha * 255.0f );
             u8& Current = m_DamageMap[( iy * m_DamageMapWidth ) + ix];
@@ -1650,6 +1561,8 @@ void cloth::OnProjectileImpact( const object&   ProjectileObject,
         return;
     }
 
+    MarkRenderDataDirty();
+
     vector2 const UV = ( Bary.GetX() * ParticleA.m_UV ) +
                        ( Bary.GetY() * ParticleB.m_UV ) +
                        ( Bary.GetZ() * ParticleC.m_UV );
@@ -1668,7 +1581,9 @@ void cloth::OnProjectileImpact( const object&   ProjectileObject,
     {
         ImpactVel *= m_ImpactScale;
     }
-    ImpactVel *= Scale;
+    // Impact settings describe a velocity change at the reference step. The
+    // previous-position offset must shrink with dt to keep that velocity.
+    ImpactVel *= Scale * ( CLOTH_TIME_STEP / CLOTH_REFERENCE_TIME_STEP );
 
     // Apply to particles
     ParticleA.m_LastPos -= Bary.GetX() * ImpactVel;
@@ -1696,34 +1611,15 @@ void cloth::Advance( f32 DeltaTime)
 
     LOG_STAT(k_stats_Physics);
 
-    // Update wind on/off state
-    m_WindTimer -= DeltaTime;
-    if( m_WindTimer <= 0.0f )
-    {
-        // Toggle state
-        m_bWind ^= TRUE;
-
-        // Setup timer
-        if( m_bWind )
-            m_WindTimer = x_frand( m_WindMinOnTime, m_WindMaxOnTime );
-        else
-            m_WindTimer = x_frand( m_WindMinOffTime, m_WindMaxOffTime );
-    }
-
-    // Update wind direction
-    m_WindDir.Rotate( m_WindRot * DeltaTime );
-    m_WindDir.Normalize();
-
     // Add to total time
     m_DeltaTime += DeltaTime;
 
     // Apply delta time pool
     while(m_DeltaTime >= CLOTH_TIME_STEP)
     {
-        // Wind is an impulse in the Verlet representation and must be applied
-        // once per fixed simulation step, not once per render/update call.
-        if( m_bWind )
-            ApplyWind();
+        m_WindDir.Rotate( m_WindRot * CLOTH_TIME_STEP );
+        m_WindDir.Normalize();
+        ApplyWind();
 
         // Integrate
         Integrate(CLOTH_TIME_STEP);
@@ -1737,9 +1633,8 @@ void cloth::Advance( f32 DeltaTime)
 
     // Update bounds
     ComputeBounds();
+    MarkRenderDataDirty();
 
-    // Recompute shading normals/color once per sim tick (not once per render call/viewport)
-    ComputeLighting();
 }
 
 //==============================================================================
@@ -1812,7 +1707,24 @@ void cloth::SetL2W( const matrix4& L2W, xbool bReset, f32 AirResistance )
         // Update bounds
         ComputeBounds();
         ComputeWorldCollBBox();
+        MarkRenderDataDirty();
     }
+}
+
+//==============================================================================
+
+void cloth::MarkRenderDataDirty( void )
+{
+    ++m_RenderRevision;
+    if( m_RenderRevision == 0 )
+        m_RenderRevision = 1;
+}
+
+//==============================================================================
+
+u32 cloth::GetRenderRevision( void ) const
+{
+    return m_RenderRevision;
 }
 
 //==============================================================================
@@ -1837,10 +1749,10 @@ cloth_particle::cloth_particle() :
     m_BindPos       ( 0.0f, 0.0f, 0.0f ),
     m_Pos           ( 0.0f, 0.0f, 0.0f ),
     m_LastPos       ( 0.0f, 0.0f, 0.0f ),
-    m_Normal        ( 0.0f, 0.0f, 1.0f ),
     m_UV            ( 0.0f, 0.0f ),
     m_InvMass       ( 1.0f ),
-    m_Color         ( 128, 128, 128 )
+    m_WindStrength  ( 0.0f ),
+    m_WindTarget    ( 0.0f )
 {
 }
 

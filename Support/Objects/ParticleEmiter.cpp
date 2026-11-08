@@ -324,14 +324,7 @@ void particle_emitter::OnRenderTransparent( void )
         default: ASSERT(FALSE); break;
         }
 
-        // most particles are additive, so simply multiplying them by the
-        // fog color is not good enough. If we tweak their alpha values,
-        // they'll just fade with distance so the fog will overtake them.
-        // This isn't quite right either, but might be "good enough".
-        xcolor FogColor = render::GetFogValue( GetBBox().GetCenter(), g_RenderContext.LocalPlayerIndex );
-        xcolor FxColor  = m_Color;
-        FxColor.A = (u8)((f32)FxColor.A * ( (f32)(255 - FogColor.A) / 255.0f ) );
-        m_FxHandle.m_Fx.SetColor( FxColor );
+        m_FxHandle.m_Fx.SetColor( m_Color );
         
         m_FxHandle.m_Fx.Render();
     }
@@ -556,7 +549,7 @@ void particle_emitter::OnEnumProp( prop_enum&  rPropList )
     rPropList.PropEnumString ( "Particle Emitter", 
         "Particle Emitter information.", PROP_TYPE_HEADER );
 
-    rPropList.PropEnumExternal ( "Particle Emitter\\Audio Package", "Resource\0audiopkg","The audio package associated with this particle object.", 0 );
+    rPropList.PropEnumExternal ( "Particle Emitter\\Audio Package", "Resource\0audiopkg\0","The audio package associated with this particle object.", 0 );
         
     rPropList.PropEnumBool( "Particle Emitter\\OnActivate" , "On Activate flag.", 0 );
 
@@ -580,7 +573,7 @@ void particle_emitter::OnEnumProp( prop_enum&  rPropList )
 
     rPropList.PropEnumEnum( "Particle Emitter\\Particle Logic" , s_LogicEnumTable.BuildString(), "Particle logic.", PROP_TYPE_MUST_ENUM );
   
-    rPropList.PropEnumExternal( "Particle Emitter\\FxFile" ,  "Resource\0fxo", "File of particle type" , PROP_TYPE_MUST_ENUM);
+    rPropList.PropEnumExternal( "Particle Emitter\\FxFile" ,  "Resource\0fxo\0", "File of particle type" , PROP_TYPE_MUST_ENUM);
 
     rPropList.PropEnumColor ( "Particle Emitter\\Color",     "Color multiplier applied to the FX.\nAllows you to tint effects or make them darker, more transparent etc", 0 );
 
@@ -1397,10 +1390,6 @@ void particle_emitter::OnActivate ( xbool Flag )
     m_OnActivate = Flag;
     m_PlayedOnce = FALSE;
 }
-
-
-
-
 
 
 

@@ -62,9 +62,9 @@ public:
                                                       const char**      pValues,
                                                       s32               nValues );
 
-            void                Render              ( s32               ScreenX, 
-                                                      s32               ScreenY,
-                                                      xbool             bHighlight );
+            void                Render              ( s32 ScreenX,
+                                                      s32 ScreenY,
+                                                      xbool bHighlight );
 
     const   char*               GetName             ( void );
     const   char*               GetValueAsString    ( void );

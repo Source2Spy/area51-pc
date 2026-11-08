@@ -21,11 +21,11 @@ public:
              floor_properties    ( void );
             ~floor_properties    ( void );
 
-            void    Init            ( f32 Radius, f32 ColorFadeTime );
+            void    Init            ( f32 Radius, f32 ColorFadeTime, guid ObjectGuid = 0, f32 TraceDepth = 100.0f );
             void    Update          ( const vector3& Position, f32 DeltaTime, xbool bIgnorePosition = FALSE );
             void    ForceUpdate     ( const vector3& NewPosition );
 
-            xcolor  GetColor        ( void ) { return m_CurrentColor; }
+            xcolor  GetColor        ( void ) const { return m_CurrentColor; }
             u32     GetMaterial     ( void ) { return m_FloorMat; }
 private:
 
@@ -35,6 +35,7 @@ private:
 
     vector3 m_LastPosition;
     f32     m_RadiusSquared;
+    f32     m_TraceDepth;
 
     vector3 m_StartColor;
     vector3 m_EndColor;
@@ -43,6 +44,8 @@ private:
     f32     m_ColorFadeT;
     
     u32     m_FloorMat;
+    guid    m_ObjectGuid;
+    xbool   m_bFirstUpdate;
 };
 
 //==============================================================================

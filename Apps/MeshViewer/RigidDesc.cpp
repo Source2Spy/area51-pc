@@ -118,7 +118,7 @@ void rigidgeom_rsc_desc::OnGetCompilerRules( xstring& CompilerRules )
     CompilerRules.Clear();
 
     // name of the compiler
-    CompilerRules += "GeomCompiler.exe ";
+        CompilerRules += "GeomTool.exe ";
 
     // Verbose
     if( IsVerbose() )

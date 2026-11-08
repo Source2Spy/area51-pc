@@ -1,6 +1,6 @@
 #include "PerceptionMgr.hpp"
 #include "e_Audio.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #ifndef X_EDITOR
 #include "NetworkMgr/NetworkMgr.hpp"
 #endif
@@ -195,7 +195,7 @@ void perception_mgr::Update( f32 DeltaTime )
             {
                 // Move to normal values!
                 f32 Delta;
-                f32 Scale = 1.0f - (m_Timer / m_BeginMutantLength);
+                f32 Scale = 1.0f - (m_Timer / m_EndMutantLength);
 
                 Delta = m_MutantTargetGlobalTimeDialation - 1.0f;
                 m_GlobalTimeDialation = 1.0f + Delta * Scale;

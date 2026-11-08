@@ -14,6 +14,9 @@
 #include "x_math.hpp"
 #include "x_color.hpp"
 #include "Render/Texture.hpp"
+#include "Render/RenderScope.hpp"
+
+namespace render { class PipelinePrewarmContext; }
 
 //==============================================================================
 //  DEFINES
@@ -61,7 +64,6 @@ struct fx_debug
     xbool   ElementWire;
     xbool   ElementSpriteCenter;
     xbool   ElementSpriteCount;
-    xbool   ElementCustom;
     xbool   ElementReserved;  // RESERVED
 };
 
@@ -273,6 +275,7 @@ public:
         xbool       LoadEffect      ( const char* pEffectName,     X_FILE* pFile     );
         xbool       LoadEffect      ( const char* pEffectName, const char* pFileName );
         xbool       UnloadEffect    ( const char* pEffectName );
+        xbool       QueueLoadedPipelines( render::PipelinePrewarmContext& Context ) const;
 
         void        SetSpriteBudget ( s32 MaxSprites );
         s32         GetSpriteCount  ( void );

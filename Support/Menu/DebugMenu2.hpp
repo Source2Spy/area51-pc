@@ -29,11 +29,7 @@
 #include "DebugMenuPageFX.hpp"
 #include "DebugMenuPageMultiplayer.hpp"
 #include "DebugMenuPageLocalization.hpp"
-#ifdef CONFIG_VIEWER
-#include "../../Apps/ArtistViewer/Config.hpp"
-#else
 #include "../../Apps/GameApp/Config.hpp"    
-#endif
 #include "../StateMgr/StateMgr.hpp"
 
 //==============================================================================
@@ -48,17 +44,7 @@
 
 struct stats
 {
-    struct ps2
-    {
-        xbool   MemoryUsage;
-    };
-
-    xbool   EngineStats;    
-    xbool   RenderStats;
-    xbool   PS2_MemStats;
-    xbool   RenderVerbose;
-    xbool   MemVertBars;
-    ps2     PS2;
+    xbool   EngineStats;
     s32     Interval;
 };
 

@@ -22,11 +22,7 @@
 #include "Parsing/TextIn.hpp"
 #include "StateMgr/MapList.hpp"
 #include "Configuration/GameConfig.hpp"
-#ifdef CONFIG_VIEWER
-#include "../../Apps/ArtistViewer/Config.hpp"
-#else
 #include "../../Apps/GameApp/Config.hpp"    
-#endif
 #include "SaveData/SaveDataMgr.hpp"
 
 //=========================================================================
@@ -71,18 +67,6 @@ ui_manager::dialog_tem OnlineLevelSelectDialog =
     &OnlineLevelSelectControls[0],
     0
 };
-
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
 
 //=========================================================================
 //  Registration function
@@ -259,7 +243,7 @@ xbool dlg_online_level_select::Create( s32                        UserID,
         if( (g_StateMgr.GetState() != SM_MP_LEVEL_SELECT) &&
             (g_StateMgr.IsPaused() == FALSE) )
         {
-            for( int i=0; i<MAX_LOCAL_PLAYERS; i++)
+            for( s32 i=0; i<MAX_LOCAL_PLAYERS; i++)
             {
                 g_StateMgr.SetControllerRequested(i, FALSE);
             }
@@ -793,8 +777,11 @@ void dlg_online_level_select::FillLevelList( void )
                 // check if loaded
                 if( Entry.IsAvailable() )
                 {
-                    // add an entry to the list
-                    m_pLevelList->AddItem( Entry.GetDisplayName(), (uaddr)&Entry );
+                    xwstring DisplayName;
+                    if( DecodeFontText( Entry.GetDisplayName(), DisplayName ) )
+                    {
+                        m_pLevelList->AddItem( DisplayName, (uaddr)&Entry );
+                    }
                 }
             }
         }
@@ -831,8 +818,11 @@ void dlg_online_level_select::FillMapCycleList( void )
         // available if the memory card has not completed scanning.
         if( pMapEntry )
         {
-            // get the display name from the map ID and add to the list
-            m_pLevelCycle->AddItem( pMapEntry->GetDisplayName(), m_pLevelList->GetSelection() );
+            xwstring DisplayName;
+            if( DecodeFontText( pMapEntry->GetDisplayName(), DisplayName ) )
+            {
+                m_pLevelCycle->AddItem( DisplayName, m_pLevelList->GetSelection() );
+            }
         }
 
         // get the next entry index
@@ -907,13 +897,9 @@ void dlg_online_level_select::LaunchServer( void )
         SetNavTextVisible( FALSE );
 
         // configure message
-        m_PopUp->Configure( g_StringTableMgr( "ui", "IDS_MAP_CYCLE" ), 
-            TRUE, 
-            FALSE, 
-            FALSE, 
-            g_StringTableMgr( "ui", "IDS_EMPTY_CYCLE_MSG" ),
-            navText,
-            &m_PopUpResult );
+        m_PopUp->ConfigureMessage( g_StringTableMgr( "ui", "IDS_MAP_CYCLE" ),
+                                   g_StringTableMgr( "ui", "IDS_EMPTY_CYCLE_MSG" ),
+                                   &m_PopUpResult );
 
         m_PopUpType = POPUP_EMPTY_LIST;
         return;

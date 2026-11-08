@@ -11,6 +11,7 @@
 
 #include "NetProjectile.hpp"
 #include "Objects/ParticleEmiter.hpp"
+#include "Characters/FloorProperties.hpp"
 
 enum grenade_mode
 {
@@ -27,6 +28,8 @@ enum grenade_stage
 };
 
 //=========================================================================
+
+struct net_projectile_update;
 
 class jumping_bean_projectile : public net_proj
 {
@@ -70,10 +73,7 @@ virtual         void            StageLogic          ( f32 DeltaTime );
 #ifndef X_EDITOR
 //------------------------------------------------------------------------------
 
-virtual         void            net_AcceptActivate  ( const bitstream& BitStream );
-virtual         void            net_ProvideActivate (       bitstream& BitStream );
-
-virtual         void            net_AcceptStart     ( const bitstream& BitStream );
+virtual         void            net_AcceptStart     ( const net_projectile_update& Update );
 virtual         void            net_ProvideStart    (       bitstream& BitStream );
 
 //------------------------------------------------------------------------------
@@ -84,7 +84,6 @@ public:
     static f32                          s_JumpingBean_Alert_Time;
 
 protected:
-    s32                                 m_RandomSeed;
     
     f32                                 m_MaxAliveTime;         // How long does this object remain in the world.
     particle_emitter::particle_type     m_ParticleExplosion;
@@ -107,6 +106,7 @@ protected:
 //  matrix4                             m_OldMovingPlatformL2W;
 
     rigid_inst                          m_RigidInst;        // Instance for rendering object.
+    floor_properties                    m_FloorProperties;
 //  rhandle<char>                       m_ProjectileFx;     // The energy projectile particle effect.
 //  guid                                m_FxGuid;           // Guid of the effect object.
 };

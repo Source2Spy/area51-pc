@@ -28,6 +28,7 @@ config_options::config_options( void )
 {
     // Self lobotomy.
     x_memset( this, 0, sizeof(config_options) );
+    x_strcpy( AutoClientAddress, "127.0.0.1:3658" );
 }
 
 //==============================================================================

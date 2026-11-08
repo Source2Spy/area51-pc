@@ -44,6 +44,8 @@ a51_add_project( x_files STATIC
         "${CMAKE_CURRENT_LIST_DIR}/Implementation/x_debug.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Implementation/x_files.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Implementation/x_flare.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/Implementation/x_hash.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/x_hash.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/Implementation/x_locale.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Implementation/x_log.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Implementation/x_math.cpp"

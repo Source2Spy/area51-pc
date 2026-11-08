@@ -107,19 +107,20 @@ void tracker::OnEnumProp( prop_enum& List )
 
 xbool tracker::OnProperty( prop_query& I )
 {
+    zone_mgr::tracker const PreviousTracker = m_ZoneTracker;
+
     // Call base class
     if( object::OnProperty( I ) )
     {
-        // Position establishes the movement baseline. ZoneInfo is loaded
-        // separately and is the explicit authored seed for that baseline.
-        if( I.IsVar( "Base\\Position" ) || I.IsVar( "Base\\ZoneInfo" ) )
+        if( !I.IsRead() && I.IsVar( "Base\\Position" ) )
         {
-            g_ZoneMgr.RebaseZoneTracking( *this,
-                                          m_ZoneTracker,
-                                          GetPosition(),
-                                          GetZone1(),
-                                          GetZone2(),
-                                          zone_mgr::SeedSource::Object );
+            m_ZoneTracker = PreviousTracker;
+            g_ZoneMgr.RelocateZoneTracking( *this, m_ZoneTracker, GetPosition() );
+        }
+        else if( !I.IsRead() && I.IsVar( "Base\\ZoneInfo" ) )
+        {
+            g_ZoneMgr.RebaseZoneTracking( *this, m_ZoneTracker, GetPosition(),
+                                          GetZone1(), GetZone2() );
         }
     
         return TRUE ;
@@ -166,12 +167,9 @@ xbool tracker::OnProperty( prop_query& I )
     // Time?
     if (I.VarFloat("Tracker\\Time", m_Time, 0.0f, F32_MAX))
     {
-        // Update previous time also
-        m_PrevTime = m_Time ;
-
         // Update position if user has entered a value
         if (I.IsRead() == FALSE)
-            UpdateTrackedTransform(FALSE) ;
+            SetTime( m_Time );
 
         return TRUE ;
     }
@@ -224,8 +222,7 @@ void tracker::OnMove( const vector3& NewPos )
     // Update zone tracking
     g_ZoneMgr.AdvanceZoneTracking( *this,
                                    m_ZoneTracker,
-                                   NewPos,
-                                   GetZoneTrackingMode() );
+                                   NewPos );
 }
 
 //=========================================================================
@@ -238,17 +235,11 @@ void tracker::OnTransform( const matrix4& L2W )
     // Update zone tracking
     g_ZoneMgr.AdvanceZoneTracking( *this,
                                    m_ZoneTracker,
-                                   L2W.GetTranslation(),
-                                   GetZoneTrackingMode() );
+                                   L2W.GetTranslation() );
 }
 
 //=========================================================================
 
-zone_mgr::TrackingMode tracker::GetZoneTrackingMode( void ) const
-{
-    return zone_mgr::TrackingMode::PortalTraversal;
-}
-    
 //=========================================================================
 
 void tracker::OnInit( void )
@@ -280,7 +271,7 @@ void tracker::OnAdvanceSimulation( f32 DeltaTime )
     m_PrevTime = m_Time ;
 
     //
-    xbool bUsePathZones = FALSE;
+    xbool bDiscontinuous = FALSE;
 
     // Get path
     object_ptr<path> pPath(m_PathGuid) ;
@@ -315,6 +306,7 @@ void tracker::OnAdvanceSimulation( f32 DeltaTime )
                     // Now put to end
                     m_PrevTime = TotalTime ;
                     m_Time     += TotalTime ;
+                    bDiscontinuous = TRUE;
                     break ;
 
                 case PLAY_TYPE_PING_PONG:
@@ -349,9 +341,7 @@ void tracker::OnAdvanceSimulation( f32 DeltaTime )
                     m_PrevTime = 0 ;
                     m_Time     -= TotalTime ;
 
-                    // Just in case we have passed through any portals,
-                    // copy the zone info from the parent path
-                    bUsePathZones = TRUE;
+                    bDiscontinuous = TRUE;
                     break ;
 
                 case PLAY_TYPE_PING_PONG:
@@ -363,19 +353,8 @@ void tracker::OnAdvanceSimulation( f32 DeltaTime )
     }
 
     // Make sure position is up to date
-    UpdateTrackedTransform(TRUE) ;
+    UpdateTrackedTransform( TRUE, bDiscontinuous );
 
-    if (bUsePathZones)
-    {
-        SetZone1( pPath->GetZone1() );
-        SetZone2( pPath->GetZone2() );
-        g_ZoneMgr.RebaseZoneTracking( *this,
-                                      m_ZoneTracker,
-                                      GetPosition(),
-                                      GetZone1(),
-                                      GetZone2(),
-                                      zone_mgr::SeedSource::Object );
-    }
 }
 
 //=========================================================================
@@ -388,7 +367,7 @@ void tracker::OnActivate( xbool bFlag )
 
 //=========================================================================
 
-void tracker::UpdateTrackedTransform( xbool bSendKeyEvents )
+void tracker::UpdateTrackedTransform( xbool bSendKeyEvents, xbool bDiscontinuous )
 {
     // Get path
     object_ptr<path> pPath(m_PathGuid) ;
@@ -403,6 +382,9 @@ void tracker::UpdateTrackedTransform( xbool bSendKeyEvents )
             pPath->GetInterpKey(m_PrevTime, m_Time, m_CurrentKey) ;
         else
             pPath->GetInterpKey(m_Time, m_Time, m_CurrentKey) ;
+
+        if( bDiscontinuous )
+            g_ZoneMgr.RelocateZoneTracking( *this, m_ZoneTracker, m_CurrentKey.m_Position );
 
         // Update position and rotation?
         if (pPath->GetFlags() & path::FLAG_KEY_ROTATION)
@@ -451,6 +433,8 @@ void tracker::UpdateTrackedTransform( xbool bSendKeyEvents )
         object_ptr<object> pObject(m_PathGuid) ;
         if (pObject)
         {
+            if( bDiscontinuous )
+                g_ZoneMgr.RelocateZoneTracking( *this, m_ZoneTracker, pObject->GetPosition() );
             m_CurrentKey.m_Position = pObject->GetPosition() ;
             m_CurrentKey.m_Rotation.Setup(pObject->GetL2W()) ;
             OnTransform(pObject->GetL2W()) ;
@@ -493,7 +477,7 @@ xbool tracker::IsEditorSelected( void )
 void tracker::SetTime( f32 Time )
 {
     m_PrevTime = m_Time = Time;
-    UpdateTrackedTransform(FALSE);
+    UpdateTrackedTransform( FALSE, TRUE );
 }
 
 //=========================================================================

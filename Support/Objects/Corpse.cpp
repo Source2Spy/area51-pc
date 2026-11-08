@@ -14,7 +14,7 @@
 #include "Characters/Character.hpp"
 #include "Loco/Loco.hpp"
 #include "Objects/BaseProjectile.hpp"
-#include "NetworkMgr/NetObj.hpp"
+#include "NetworkMgr/Replication/NetObj.hpp"
 #include "Decals/DecalMgr.hpp"
 #include "Dictionary/Global_Dictionary.hpp"
 #include "Characters/ActorEffects.hpp"
@@ -218,7 +218,7 @@ corpse::corpse( void ) :
 {
     PHYSICS_DEBUG_DYNAMIC_MEM_ALLOC( sizeof( corpse ) );
     
-    m_FloorProperties.Init( 100.0f, 0.128f );
+    m_FloorProperties.Init( 1.0f, 0.128f );
     
     // This assumes that the dead body is about 2.5 meters tall.  Then is about 2 
     // meters around.  The bbox is center around the eyes of the player.
@@ -470,7 +470,7 @@ xbool corpse::Initialize(actor& Actor, xbool bDoBodyFade, actor_effects* pActorE
     // Now setup the matrices of the ragdoll from the current animation to inherit velocities
     loco* pLoco = Actor.GetLocoPointer();
     if (pLoco)
-        m_PhysicsInst.SetAnimatedPose(pLoco->m_Player, pLoco->m_Physics.GetLastMoveVelocity());
+        m_PhysicsInst.SetAnimatedPose(pLoco->m_Player, pLoco->m_Physics.GetContactVelocity());
 
     // Now rigid body matrices have been setup, update the object transform, which will
     // correctly update the world bounding box and zone
@@ -1120,7 +1120,7 @@ void corpse::OnEnumProp( prop_enum&    List )
     List.PropEnumFloat   ( "DeadBody\\SimulationTime",    "Physics time to simulate before level starts.",      PROP_TYPE_MUST_ENUM );
 
     // Animation properties
-    List.PropEnumExternal( "DeadBody\\AnimGroupName",  "Resource\0animexternal",          "Select the animation group and animation.", PROP_TYPE_MUST_ENUM | PROP_TYPE_EXTERNAL );
+    List.PropEnumExternal( "DeadBody\\AnimGroupName",  "Resource\0animexternal\0",          "Select the animation group and animation.", PROP_TYPE_MUST_ENUM | PROP_TYPE_EXTERNAL );
     List.PropEnumString  ( "DeadBody\\AnimName",       "Name of the animation to play.",  PROP_TYPE_MUST_ENUM);
     List.PropEnumInt     ( "DeadBody\\AnimFrame",      "Frame of animation to start at.", PROP_TYPE_MUST_ENUM);
 
@@ -1141,14 +1141,14 @@ xbool corpse::OnProperty( prop_query&   I )
     if( object::OnProperty( I ) )
     {
         // Initialize zone tracker?
-        if( I.IsVar( "Base\\Position" ) )
+        if( !I.IsRead() &&
+            (I.IsVar( "Base\\Position" ) || I.IsVar( "Base\\ZoneInfo" )) )
         {
             g_ZoneMgr.RebaseZoneTracking( *this,
                                           m_ZoneTracker,
                                           GetPosition(),
                                           GetZone1(),
-                                          GetZone2(),
-                                          zone_mgr::SeedSource::Object );
+                                          GetZone2() );
         }
 
         // Update physics instance zone                    

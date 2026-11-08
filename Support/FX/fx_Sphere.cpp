@@ -365,8 +365,7 @@ void fx_sphere::SubmitRender( const fx_effect_base* pEffect ) const
                                                         render::PRIMITIVE_BLEND_OPAQUE,
                                                         render::PRIMITIVE_DEPTH_READ_WRITE,
                                                         render::PRIMITIVE_RASTER_WIREFRAME_NO_CULL,
-                                                        render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                        render::PRIMITIVE_LAYER_SURFACE );
+                                                        render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
         VERIFY( fx_SubmitMesh( wireMaterial, L2W, m_pVertex, m_pUV, m_pColor, m_NVerts, m_pSIndex,
                                m_NSIndexes, FX_MESH_TRIANGLE_STRIP ) );
     }

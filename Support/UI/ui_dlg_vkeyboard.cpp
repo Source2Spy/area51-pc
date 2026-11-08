@@ -990,15 +990,21 @@ s32 ui_dlg_vkeyboard::IsValid( const xwstring* pString, xbool bIsName )
         //
         // Obscenity Filter.
         //
-        g_StringTableMgr.LoadTable( "Obscenities", "ENG_obscenities.stringbin" );
-        xwstring Words[ 100 ];
+        VERIFY( g_StringTableMgr.LoadTable( "Obscenities", "ENG_OBSCENITIES.string" ) );
+        xarray<xwstring> Words;
+        s32 nStrings = g_StringTableMgr.GetStringCount( "Obscenities" );
 
-        s32 NumWords = -1;
-        do {
-            NumWords++;
-            Words[ NumWords ] = g_StringTableMgr( "Obscenities", xfs( "Word_%02d", NumWords ) );
-        } while( x_wstrcmp( (const xwchar*)Words[ NumWords ], 
-                            (const xwchar*)xwstring( "<null>" ) ) != 0 );
+        for( s32 i = 0; i < nStrings; i++ )
+        {
+            const xwstring& Word = g_StringTableMgr( "Obscenities", i );
+            if( (Word.GetLength() > 0) &&
+                (x_wstrcmp( (const xwchar*)Word, (const xwchar*)xwstring( "<null>" ) ) != 0) )
+            {
+                Words.Append() = Word;
+            }
+        }
+
+        s32 NumWords = Words.GetCount();
 
         g_StringTableMgr.UnloadTable( "Obscenities" );
         
@@ -1170,23 +1176,15 @@ void ui_dlg_vkeyboard::OnNotify( ui_notification const& Event )
 
                     if( ValidCode == 1 )
                     {
-                        m_pPopUp->Configure( g_StringTableMgr( "ui", "IDS_OBSCENITY_FILTER" ),
-                            TRUE,
-                            TRUE,
-                            FALSE,
-                            g_StringTableMgr( "ui", "IDS_OBSCENE_PROFILE_PS2" ),
-                            pNavtext,
-                            &m_PopUpResult );
+                        m_pPopUp->ConfigureMessage( g_StringTableMgr( "ui", "IDS_OBSCENITY_FILTER" ),
+                                                    g_StringTableMgr( "ui", "IDS_OBSCENE_PROFILE_PS2" ),
+                                                    &m_PopUpResult );
                     }
                     else
                     {
-                        m_pPopUp->Configure( g_StringTableMgr( "ui", "IDS_INVALID_NAME" ),
-                            TRUE,
-                            TRUE,
-                            FALSE,
-                            g_StringTableMgr( "ui", "IDS_INVALID_NAME_TEXT" ),
-                            pNavtext,
-                            &m_PopUpResult );
+                        m_pPopUp->ConfigureMessage( g_StringTableMgr( "ui", "IDS_INVALID_NAME" ),
+                                                    g_StringTableMgr( "ui", "IDS_INVALID_NAME_TEXT" ),
+                                                    &m_PopUpResult );
                     }
                 }
                 else

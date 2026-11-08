@@ -16,6 +16,8 @@
 
 //=========================================================================
 
+struct net_projectile_update;
+
 class mutant_parasite_projectile : public net_proj
 {
 public:
@@ -56,10 +58,10 @@ public:
 #ifndef X_EDITOR
 //------------------------------------------------------------------------------
 
-    virtual void    net_AcceptActivate  ( const bitstream& BitStream );
+    virtual void    net_AcceptActivate  ( const net_projectile_update& Update );
     virtual void    net_ProvideActivate (       bitstream& BitStream );
 
-    virtual void    net_AcceptStart     ( const bitstream& BitStream );
+    virtual void    net_AcceptStart     ( const net_projectile_update& Update );
     virtual void    net_ProvideStart    (       bitstream& BitStream );
 
             void    ResyncGhosts        ( void );

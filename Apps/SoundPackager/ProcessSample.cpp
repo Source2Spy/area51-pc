@@ -1571,16 +1571,13 @@ void DumpSamples( void )
     // for each target
     for( i=0 ; i<s_Targets.GetCount() ; i++ )
     {
-        s32   Target        = s_Targets[i];
-        xbool ReverseEndian = (Target == EXPORT_GCN); 
+        s32 Target = s_Targets[i];
 
         // for each file...
         for( j=0 ; j<s_Package.m_Files.GetCount() ; j++ )
         {
             file_info&  File = s_Package.m_Files[j];
             X_FILE*     out;
-            const char* pDefine = "";
-            const char* pTarget = "";
 
             nBytesInLine   = 0;
             nBytesInBuffer = 0;
@@ -1588,36 +1585,14 @@ void DumpSamples( void )
             // Load the multi channel file
             if( LoadMultiChannelFile( File, &Data, TRUE, Target ) )
             {
-                if( (Data.nChannels==1) && (Data.nWaveforms==1) )
+                if( (Target == EXPORT_DESKTOP) &&
+                    (Data.nChannels==1) && (Data.nWaveforms==1) )
                 {
                     // Split out the full filename
                     x_splitpath( File.Filename, Drive, Dir, Filename, Ext );
                     
-                    switch( Target )
-                    {
-                        case EXPORT_GCN:
-                            pDefine = "#ifdef TARGET_GCN";
-                            pTarget = "gcn";
-                            break;
-
-                        case EXPORT_DESKTOP:
-                            pDefine = "#ifdef TARGET_WINDOWS";
-                            pTarget = "pc";
-                            break;
-
-                        case EXPORT_PS2:
-                            pDefine = "#ifdef TARGET_PS2";
-                            pTarget = "ps2";
-                            break;
-
-                        case EXPORT_XBOX:
-                            pDefine = "#ifdef TARGET_XBOX";
-                            pTarget = "xbox";
-                            break;
-                    }
-
                     // Build filename.
-                    x_sprintf( FullFilename, "%s_%s.hpp", Filename, pTarget );
+                    x_sprintf( FullFilename, "%s_pc.hpp", Filename );
 
                     // Open the output file.
                     out = x_fopen( FullFilename, "w+t" );
@@ -1629,7 +1604,7 @@ void DumpSamples( void )
                             x_DebugMsg( "    %s <== %s\n", FullFilename, File.Filename );
                         }
                         
-                        x_fprintf( out, "%s\n\n", pDefine );
+                        x_fprintf( out, "#ifdef TARGET_WINDOWS\n\n" );
                         x_fprintf( out, "unsigned char AUDIO_WARN_%s[] =\n", x_strtoupper( Filename ) );  
                         x_fprintf( out, "{\n" );
 
@@ -1669,7 +1644,7 @@ void DumpSamples( void )
                             DumpByte( out, Data.WaveformData[0].GetAt(k), FALSE ); 
                         }
                         
-                        x_fprintf( out, "\n}; GCN_ALIGNMENT(32)\n\n#endif\n\n" );
+                        x_fprintf( out, "\n};\n\n#endif\n\n" );
                         x_fclose( out );                   
                     }
                 }

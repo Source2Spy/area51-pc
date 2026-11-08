@@ -1,4 +1,13 @@
+//=========================================================================
+//
+//  CollisionPrimatives.cpp
+//
+//=========================================================================
+//  INCLUDES
+//=========================================================================
+
 #include "Entropy.hpp"
+#include "CollisionPrimatives.hpp"
 //    vector3 g_LastBBoxTris[12][3];
 //    xbool   g_LastBBoxSet = FALSE;
 //    vector3 g_LastRaySelect[2];
@@ -690,3 +699,448 @@ xbool ComputeRayAABBoxCollision   ( const bbox&    AABBox,
 }
 
 
+
+//==============================================================================
+//  CAPSULE GEOMETRY HELPERS
+//==============================================================================
+
+static
+void ClosestSegments( const vector3& A,
+                      const vector3& B,
+                      const vector3& C,
+                      const vector3& D,
+                      vector3&       P,
+                      vector3&       Q )
+{
+    const vector3 U = B - A;
+    const vector3 V = D - C;
+    const vector3 W = A - C;
+
+    const f32 UU = U.Dot( U );
+    const f32 VV = V.Dot( V );
+    const f32 UV = U.Dot( V );
+    const f32 UW = U.Dot( W );
+    const f32 VW = V.Dot( W );
+
+    f32 S = 0.0f;
+    f32 T = 0.0f;
+
+    // A degenerate segment reduces the query to a point against the other segment.
+    if( UU <= F32_MIN )
+        T = VV > F32_MIN ? x_clamp( VW / VV, 0.0f, 1.0f ) : 0.0f;
+    else if( VV <= F32_MIN )
+        S = x_clamp( -UW / UU, 0.0f, 1.0f );
+    else
+    {
+        // Nearly parallel segments keep S at zero to avoid an unstable division.
+        const f32 Denominator = UU * VV - UV * UV;
+
+        if( Denominator > UU * VV * 0.000001f )
+            S = x_clamp( ( UV * VW - VV * UW ) / Denominator, 0.0f, 1.0f );
+
+        T = ( UV * S + VW ) / VV;
+
+        // Clamping the second segment requires recomputing the first parameter.
+        if( T < 0.0f )
+        {
+            T = 0.0f;
+            S = x_clamp( -UW / UU, 0.0f, 1.0f );
+        }
+        else if( T > 1.0f )
+        {
+            T = 1.0f;
+            S = x_clamp( ( UV - UW ) / UU, 0.0f, 1.0f );
+        }
+    }
+
+    P = A + U * S;
+    Q = C + V * T;
+}
+
+//==============================================================================
+
+static
+xbool InsideTriangle( const vector3* Triangle,
+                      const vector3& Point,
+                      const vector3& Normal )
+{
+    // The supplied face normal follows the triangle winding.
+    for( s32 i = 0; i < 3; i++ )
+        if( ( Triangle[( i + 1 ) % 3] - Triangle[i] ).Cross( Point - Triangle[i] ).Dot( Normal ) < 0.0f )
+            return FALSE;
+
+    return TRUE;
+}
+
+//==============================================================================
+
+static
+vector3 ClosestTrianglePoint( const vector3* Triangle,
+                              const vector3& Point,
+                              const vector3& Normal,
+                              xbool&         HitEdge )
+{
+    // The normal is normalized by the caller, so projection gives the face candidate.
+    HitEdge = FALSE;
+
+    vector3 Best = Point - Normal * ( Point - Triangle[0] ).Dot( Normal );
+
+    if( InsideTriangle( Triangle, Best, Normal ) )
+        return Best;
+
+    // Outside the face, the closest point lies on one of the three edges.
+    HitEdge = TRUE;
+
+    f32 Distance = F32_MAX;
+
+    for( s32 i = 0; i < 3; i++ )
+    {
+        const vector3 Candidate = Point.GetClosestPToLSeg( Triangle[i], Triangle[( i + 1 ) % 3] );
+        const f32     Squared   = ( Candidate - Point ).LengthSquared();
+
+        if( Squared < Distance )
+        {
+            Distance = Squared;
+            Best     = Candidate;
+        }
+    }
+
+    return Best;
+}
+
+//==============================================================================
+
+static
+void ClosestSegmentTriangle( const vector3* Triangle,
+                             const vector3& Normal,
+                             const vector3& A,
+                             const vector3& B,
+                             vector3&       P,
+                             vector3&       Q,
+                             xbool&         HitEdge )
+{
+    HitEdge = FALSE;
+
+    const f32 DA = ( A - Triangle[0] ).Dot( Normal );
+    const f32 DB = ( B - Triangle[0] ).Dot( Normal );
+
+    // A segment crossing the triangle face has zero separation.
+    if( ( DA * DB <= 0.0f ) && ( x_abs( DA - DB ) > 0.000001f ) )
+    {
+        const vector3 Crossing = A + ( B - A ) * ( DA / ( DA - DB ) );
+
+        if( InsideTriangle( Triangle, Crossing, Normal ) )
+        {
+            P = Q = Crossing;
+            return;
+        }
+    }
+
+    // Compare both endpoints against the face and its boundary.
+    P = A;
+    Q = ClosestTrianglePoint( Triangle, A, Normal, HitEdge );
+
+    f32   Best = ( P - Q ).LengthSquared();
+    xbool EndEdge;
+
+    const vector3 EndPoint = ClosestTrianglePoint( Triangle, B, Normal, EndEdge );
+
+    if( ( B - EndPoint ).LengthSquared() < Best )
+    {
+        P       = B;
+        Q       = EndPoint;
+        HitEdge = EndEdge;
+        Best    = ( P - Q ).LengthSquared();
+    }
+
+    // The remaining candidates are closest pairs between the segment and each edge.
+    for( s32 i = 0; i < 3; i++ )
+    {
+        vector3 SegmentPoint, TrianglePoint;
+        ClosestSegments( A, B, Triangle[i], Triangle[( i + 1 ) % 3], SegmentPoint, TrianglePoint );
+
+        const f32 Squared = ( SegmentPoint - TrianglePoint ).LengthSquared();
+
+        if( Squared < Best )
+        {
+            Best    = Squared;
+            P       = SegmentPoint;
+            Q       = TrianglePoint;
+            HitEdge = TRUE;
+        }
+    }
+}
+
+//==============================================================================
+//  CAPSULE QUERIES
+//==============================================================================
+
+xbool ComputeCapsuleTriCollision( const vector3* Triangle,
+                                  const vector3& A,
+                                  const vector3& B,
+                                  const vector3& Delta,
+                                  f32            Radius,
+                                  f32&           T,
+                                  vector3&       Point,
+                                  vector3&       Normal,
+                                  xbool&         HitEdge )
+{
+    // Reject degenerate faces and capsules entirely behind the one-sided triangle.
+    vector3 FaceNormal = ( Triangle[1] - Triangle[0] ).Cross( Triangle[2] - Triangle[0] );
+
+    if( FaceNormal.LengthSquared() <= 0.000001f )
+        return FALSE;
+
+    FaceNormal.Normalize();
+
+    if( x_max( ( A - Triangle[0] ).Dot( FaceNormal ), ( B - Triangle[0] ).Dot( FaceNormal ) ) < 0.0f )
+        return FALSE;
+
+    // Advance the capsule against the current closest feature until contact or exit.
+    T = 0.0f;
+
+    for( s32 i = 0; i < 64; i++ )
+    {
+        vector3 AxisPoint;
+        ClosestSegmentTriangle( Triangle, FaceNormal, A + Delta * T, B + Delta * T, AxisPoint, Point, HitEdge );
+
+        Normal = AxisPoint - Point;
+        const f32 Distance = Normal.Length();
+        Normal = Distance > 0.000001f ? Normal / Distance : FaceNormal;
+
+        const f32 Closing = -Normal.Dot( Delta );
+
+        if( Closing <= 0.000001f )
+            return FALSE;
+
+        if( Distance - Radius <= CAPSULE_CAST_EPSILON )
+            return TRUE;
+
+        // Advance only as far as the current separating plane permits.
+        const f32 Next = T + ( Distance - Radius ) / Closing;
+
+        if( Next > 1.0f )
+            return FALSE;
+        if( Next <= T )
+            return TRUE;
+
+        T = Next;
+    }
+
+    return FALSE;
+}
+
+//==============================================================================
+
+xbool ComputeCapsuleTriPenetration( const vector3* Triangle,
+                                    const vector3& A,
+                                    const vector3& B,
+                                    f32            Radius,
+                                    vector3&       Correction )
+{
+    // Use the same face orientation and closest-feature query as the sweep.
+    vector3 Normal = ( Triangle[1] - Triangle[0] ).Cross( Triangle[2] - Triangle[0] );
+
+    if( Normal.LengthSquared() <= 0.000001f )
+        return FALSE;
+
+    Normal.Normalize();
+
+    if( x_max( ( A - Triangle[0] ).Dot( Normal ), ( B - Triangle[0] ).Dot( Normal ) ) < 0.0f )
+        return FALSE;
+
+    vector3 P, Q;
+    xbool   HitEdge;
+    ClosestSegmentTriangle( Triangle, Normal, A, B, P, Q, HitEdge );
+
+    const vector3 Offset   = P - Q;
+    const f32     Distance = Offset.Length();
+
+    // Ignore shallow overlap, then include recovery clearance in the correction.
+    if( Radius - Distance <= 0.1f )
+        return FALSE;
+
+    Correction = ( Distance > 0.000001f ? Offset / Distance : Normal ) * ( Radius - Distance + 0.1f );
+
+    return TRUE;
+}
+
+//==============================================================================
+
+xbool ComputeCapsuleCapsuleCollision( const vector3& A,
+                                      const vector3& B,
+                                      const vector3& Delta,
+                                      f32            Radius,
+                                      const vector3& C,
+                                      const vector3& D,
+                                      f32            OtherRadius,
+                                      f32&           T,
+                                      vector3&       Point,
+                                      vector3&       Normal )
+{
+    // Sweep the moving axis against the stationary axis, accounting for both radii.
+    T = 0.0f;
+
+    for( s32 i = 0; i < 64; i++ )
+    {
+        vector3 P, Q;
+        ClosestSegments( A + Delta * T, B + Delta * T, C, D, P, Q );
+
+        Normal = P - Q;
+        const f32 Distance = Normal.Length();
+
+        if( Distance > 0.000001f )
+            Normal /= Distance;
+        else
+        {
+            // Coincident axes have no separation normal. Prefer opposing motion.
+            Normal = -Delta;
+
+            if( Normal.LengthSquared() > 0.000001f )
+                Normal.Normalize();
+            else
+                Normal.Set( 0.0f, 1.0f, 0.0f );
+        }
+
+        Point = Q + Normal * OtherRadius;
+
+        const f32 Closing = -Normal.Dot( Delta );
+
+        if( Closing <= 0.000001f )
+            return FALSE;
+
+        if( Distance - Radius - OtherRadius <= CAPSULE_CAST_EPSILON )
+            return TRUE;
+
+        // Conservative advancement stops at the current separating plane.
+        const f32 Next = T + ( Distance - Radius - OtherRadius ) / Closing;
+
+        if( Next > 1.0f )
+            return FALSE;
+        if( Next <= T )
+            return TRUE;
+
+        T = Next;
+    }
+
+    return FALSE;
+}
+
+//==============================================================================
+
+xbool ComputeCapsuleAABBoxOverlap( const vector3& A,
+                                   const vector3& B,
+                                   f32            Radius,
+                                   const bbox&    Bounds )
+{
+    const vector3 Delta   = B - A;
+    f32           Cuts[8] = { 0.0f, 1.0f };
+    s32           Count   = 2;
+
+    // Split the segment at box faces. The distance formula is quadratic within
+    // each interval because the set of coordinates outside the box stays fixed.
+    for( s32 Axis = 0; Axis < 3; Axis++ )
+    {
+        if( x_abs( Delta[Axis] ) <= 0.000001f )
+            continue;
+
+        for( s32 Side = 0; Side < 2; Side++ )
+        {
+            const f32 T = ( ( Side ? Bounds.Max[Axis] : Bounds.Min[Axis] ) - A[Axis] ) / Delta[Axis];
+
+            if( ( T > 0.0f ) && ( T < 1.0f ) )
+            {
+                s32 i = Count++;
+
+                while( ( i > 0 ) && ( Cuts[i - 1] > T ) )
+                {
+                    Cuts[i] = Cuts[i - 1];
+                    --i;
+                }
+
+                Cuts[i] = T;
+            }
+        }
+    }
+
+    // Minimize squared distance on every interval, including its endpoints.
+    for( s32 i = 0; i < Count - 1; i++ )
+    {
+        const f32 Mid       = ( Cuts[i] + Cuts[i + 1] ) * 0.5f;
+        f32       Linear    = 0.0f;
+        f32       Quadratic = 0.0f;
+
+        for( s32 Axis = 0; Axis < 3; Axis++ )
+        {
+            const f32 Point = A[Axis] + Delta[Axis] * Mid;
+
+            if( ( Point < Bounds.Min[Axis] ) || ( Point > Bounds.Max[Axis] ) )
+            {
+                const f32 Edge = Point < Bounds.Min[Axis] ? Bounds.Min[Axis] : Bounds.Max[Axis];
+
+                Linear += ( A[Axis] - Edge ) * Delta[Axis];
+                Quadratic += Delta[Axis] * Delta[Axis];
+            }
+        }
+
+        // Clamp the stationary point of the quadratic to the current interval.
+        const f32     T       = Quadratic > F32_MIN ? x_clamp( -Linear / Quadratic, Cuts[i], Cuts[i + 1] ) : Mid;
+        const vector3 Point   = A + Delta * T;
+        f32           Squared = 0.0f;
+
+        for( s32 Axis = 0; Axis < 3; Axis++ )
+            Squared += x_sqr( Point[Axis] - x_clamp( Point[Axis], Bounds.Min[Axis], Bounds.Max[Axis] ) );
+
+        if( Squared <= Radius * Radius )
+            return TRUE;
+    }
+
+    return FALSE;
+}
+
+//==============================================================================
+
+f32 ComputeCapsuleCapsuleSeparation( const vector3& A,
+                                     const vector3& B,
+                                     f32            Radius,
+                                     const vector3& C,
+                                     const vector3& D,
+                                     f32            OtherRadius,
+                                     const vector3& CoincidentNormal,
+                                     vector3&       Normal )
+{
+    vector3 P, Q;
+    ClosestSegments( A, B, C, D, P, Q );
+
+    const vector3 Offset   = P - Q;
+    const f32     Distance = Offset.Length();
+
+    // Preserve the caller's chosen direction when the axes coincide.
+    Normal = Distance > 0.000001f ? Offset / Distance : CoincidentNormal;
+
+    // Negative separation denotes overlap between the capsule surfaces.
+    return Distance - Radius - OtherRadius;
+}
+
+//==============================================================================
+
+xbool ComputeCapsuleCapsulePenetration( const vector3& A,
+                                        const vector3& B,
+                                        f32            Radius,
+                                        const vector3& C,
+                                        const vector3& D,
+                                        f32            OtherRadius,
+                                        const vector3& CoincidentNormal,
+                                        vector3&       Correction )
+{
+    vector3   Normal;
+    const f32 Depth = -ComputeCapsuleCapsuleSeparation( A, B, Radius, C, D, OtherRadius, CoincidentNormal, Normal );
+
+    if( Depth <= 0.1f )
+        return FALSE;
+
+    // Add clearance so recovery does not leave the capsules exactly touching.
+    Correction = Normal * ( Depth + 0.1f );
+
+    return TRUE;
+}

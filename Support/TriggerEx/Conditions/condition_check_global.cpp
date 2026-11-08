@@ -187,7 +187,7 @@ s32 condition_check_global::GetVariableType( void )
 
 void condition_check_global::OnEnumProp ( prop_enum& rPropList )
 { 
-    rPropList.PropEnumExternal( "Variable",  "global\0global_all", "Which global Variable to check.", PROP_TYPE_MUST_ENUM );
+    rPropList.PropEnumExternal( "Variable",  "global\0global_all\0", "Which global Variable to check.", PROP_TYPE_MUST_ENUM );
     rPropList.PropEnumInt     ( "Code" ,     "",  PROP_TYPE_DONT_SHOW  );
 
     var_mngr::global_types Type = (var_mngr::global_types)GetVariableType();

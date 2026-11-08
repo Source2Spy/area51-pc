@@ -7,7 +7,6 @@
 #include "Entropy.hpp"
 
 #include "UI/ui_button.hpp"
-#include "UI/ui_check.hpp"
 #include "UI/ui_combo.hpp"
 #include "UI/ui_font.hpp"
 #include "UI/ui_manager.hpp"
@@ -23,43 +22,22 @@
 
 //==============================================================================
 
-enum graphics_controls
-{
-    IDC_GRAPHICS_FIELD_OF_VIEW_TEXT,
-    IDC_GRAPHICS_DYNAMIC_SHADOWS_TEXT,
-    IDC_GRAPHICS_SHADOW_FILTER_TEXT,
-    IDC_GRAPHICS_FILM_GRAIN_TEXT,
-    IDC_GRAPHICS_BACKGROUND_BLUR_TEXT,
-    IDC_GRAPHICS_ANTI_ALIASING_TEXT,
-
-    IDC_GRAPHICS_FIELD_OF_VIEW,
-    IDC_GRAPHICS_DYNAMIC_SHADOWS,
-    IDC_GRAPHICS_SHADOW_FILTER,
-    IDC_GRAPHICS_FILM_GRAIN,
-    IDC_GRAPHICS_BACKGROUND_BLUR,
-    IDC_GRAPHICS_ANTI_ALIASING,
-    IDC_GRAPHICS_BUTTON_APPLY,
-};
-
-//==============================================================================
-
 ui_manager::control_tem GraphicsSettingsControls[] =
 {
-    { IDC_GRAPHICS_FIELD_OF_VIEW_TEXT,   "IDS_NULL",                   "text",    40,  40, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_DYNAMIC_SHADOWS_TEXT, "IDS_NULL",                   "text",    40,  75, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_SHADOW_FILTER_TEXT,   "IDS_NULL",                   "text",    40, 110, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_FILM_GRAIN_TEXT,      "IDS_NULL",                   "text",    40, 145, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_BACKGROUND_BLUR_TEXT, "IDS_NULL",                   "text",    40, 180, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_ANTI_ALIASING_TEXT,   "IDS_NULL",                   "text",    40, 215, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_FIELD_OF_VIEW_TEXT,       "IDS_NULL",                   "text",    40,  40, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_FILM_GRAIN_TEXT,          "IDS_NULL",                   "text",    40,  75, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_RENDER_SCALE_TEXT,        "IDS_NULL",                   "text",    40, 110, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_ANTI_ALIASING_TEXT,       "IDS_NULL",                   "text",    40, 145, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_TEXTURE_FILTERING_TEXT,   "IDS_NULL",                   "text",    40, 180, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
 
-    { IDC_GRAPHICS_FIELD_OF_VIEW,        "IDS_NULL",                   "slider", 300,  40, 120, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_DYNAMIC_SHADOWS,      "IDS_NULL",                   "check",  290,  75, 140, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_SHADOW_FILTER,        "IDS_NULL",                   "combo",  290, 110, 140, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_FILM_GRAIN,           "IDS_NULL",                   "slider", 300, 145, 120, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_BACKGROUND_BLUR,      "IDS_NULL",                   "check",  290, 180, 140, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_ANTI_ALIASING,        "IDS_NULL",                   "combo",  290, 215, 140, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_FIELD_OF_VIEW,            "IDS_NULL",                   "slider", 300,  40, 120, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_FILM_GRAIN,               "IDS_NULL",                   "slider", 300,  75, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_RENDER_SCALE,             "IDS_NULL",                   "combo",  290, 110, 140, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_ANTI_ALIASING,            "IDS_NULL",                   "combo",  290, 145, 140, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_TEXTURE_FILTERING,        "IDS_NULL",                   "combo",  290, 180, 140, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_ADVANCED,                 "IDS_GRAPHICS_ADVANCED_SETTINGS", "button", 40, 250, 220, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE },
 
-    { IDC_GRAPHICS_BUTTON_APPLY,         "IDS_PROFILE_OPTIONS_ACCEPT", "button",  40, 285, 220, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_BUTTON_APPLY,             "IDS_PROFILE_OPTIONS_ACCEPT", "button",  40, 285, 220, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE },
 };
 
 //==============================================================================
@@ -118,18 +96,17 @@ xbool dlg_graphics_settings::Create( s32                       UserID,
     xbool const Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
     m_pFieldOfView        = (ui_slider*)FindChildByID( IDC_GRAPHICS_FIELD_OF_VIEW );
-    m_pDynamicShadows     = (ui_check*) FindChildByID( IDC_GRAPHICS_DYNAMIC_SHADOWS );
-    m_pShadowFilter       = (ui_combo*) FindChildByID( IDC_GRAPHICS_SHADOW_FILTER );
+    m_pRenderScale        = (ui_combo*) FindChildByID( IDC_GRAPHICS_RENDER_SCALE );
     m_pFilmGrain          = (ui_slider*)FindChildByID( IDC_GRAPHICS_FILM_GRAIN );
-    m_pBackgroundBlur     = (ui_check*) FindChildByID( IDC_GRAPHICS_BACKGROUND_BLUR );
+    m_pTextureFiltering     = (ui_combo*) FindChildByID( IDC_GRAPHICS_TEXTURE_FILTERING );
     m_pAntiAliasing       = (ui_combo*) FindChildByID( IDC_GRAPHICS_ANTI_ALIASING );
+    m_pAdvanced           = (ui_button*)FindChildByID( IDC_GRAPHICS_ADVANCED );
     m_pButtonApply        = (ui_button*)FindChildByID( IDC_GRAPHICS_BUTTON_APPLY );
 
     m_pFieldOfViewText    = (ui_text*)FindChildByID( IDC_GRAPHICS_FIELD_OF_VIEW_TEXT );
-    m_pDynamicShadowsText = (ui_text*)FindChildByID( IDC_GRAPHICS_DYNAMIC_SHADOWS_TEXT );
-    m_pShadowFilterText   = (ui_text*)FindChildByID( IDC_GRAPHICS_SHADOW_FILTER_TEXT );
+    m_pRenderScaleText    = (ui_text*)FindChildByID( IDC_GRAPHICS_RENDER_SCALE_TEXT );
     m_pFilmGrainText      = (ui_text*)FindChildByID( IDC_GRAPHICS_FILM_GRAIN_TEXT );
-    m_pBackgroundBlurText = (ui_text*)FindChildByID( IDC_GRAPHICS_BACKGROUND_BLUR_TEXT );
+    m_pTextureFilteringText = (ui_text*)FindChildByID( IDC_GRAPHICS_TEXTURE_FILTERING_TEXT );
     m_pAntiAliasingText   = (ui_text*)FindChildByID( IDC_GRAPHICS_ANTI_ALIASING_TEXT );
 
     global_settings& PendingSettings = g_StateMgr.GetPendingSettings();
@@ -140,55 +117,69 @@ xbool dlg_graphics_settings::Create( s32                       UserID,
     m_pFieldOfView->SetValue( PendingSettings.GetFieldOfView() );
     m_pFieldOfView->UseDefaultSound( FALSE );
 
-    m_pDynamicShadows->SetChecked( PendingSettings.GetDynamicShadowsEnabled() );
-
-    m_pShadowFilter->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV );
-    m_pShadowFilter->AddItem( g_StringTableMgr( "ui", "IDS_GRAPHICS_SHADOW_FILTER_EVSM" ),
-                              static_cast<uaddr>( ShadowFilterType::Evsm ) );
-    m_pShadowFilter->AddItem( g_StringTableMgr( "ui", "IDS_GRAPHICS_SHADOW_FILTER_HARD" ),
-                              static_cast<uaddr>( ShadowFilterType::Hard ) );
-    s32 ShadowFilterSelection =
-        m_pShadowFilter->FindItemByData( static_cast<uaddr>( PendingSettings.GetShadowFilterType() ) );
-    if( ShadowFilterSelection == -1 )
+    m_pRenderScale->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV );
+    for( s32 Percent = RENDER_SCALE_MIN_PERCENT;
+         Percent <= RENDER_SCALE_MAX_PERCENT;
+         Percent += 25 )
     {
-        ShadowFilterSelection =
-            m_pShadowFilter->FindItemByData( static_cast<uaddr>( SHADOW_FILTER_TYPE_DEFAULT ) );
+        m_pRenderScale->AddItem( xwstring( xfs( "%d%%", Percent ) ), Percent );
     }
-    m_pShadowFilter->SetSelection( ShadowFilterSelection );
+    s32 RenderScaleSelection = m_pRenderScale->FindItemByData( PendingSettings.GetRenderScale() );
+    if( RenderScaleSelection == -1 )
+    {
+        RenderScaleSelection = m_pRenderScale->FindItemByData( RENDER_SCALE_DEFAULT_PERCENT );
+    }
+    m_pRenderScale->SetSelection( RenderScaleSelection );
 
     m_pFilmGrain->SetRange( FILM_GRAIN_MIN_STRENGTH, FILM_GRAIN_MAX_STRENGTH );
     m_pFilmGrain->SetStep( 5, 10 );
     m_pFilmGrain->SetValue( PendingSettings.GetFilmGrainStrength() );
     m_pFilmGrain->UseDefaultSound( FALSE );
 
-    m_pBackgroundBlur->SetChecked( PendingSettings.GetBackgroundBlurEnabled() );
+    m_pTextureFiltering->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV );
+    m_pTextureFiltering->AddItem( g_StringTableMgr( "ui", "IDS_GRAPHICS_FILTER_BILINEAR" ),
+                                 RSTATE_TEXTURE_FILTER_BILINEAR );
+    m_pTextureFiltering->AddItem( g_StringTableMgr( "ui", "IDS_GRAPHICS_FILTER_TRILINEAR" ),
+                                 RSTATE_TEXTURE_FILTER_TRILINEAR );
+    for( s32 Filtering = RSTATE_TEXTURE_FILTER_ANISOTROPIC_2;
+         Filtering <= RSTATE_TEXTURE_FILTER_ANISOTROPIC_16; ++Filtering )
+    {
+        xwstring Label( g_StringTableMgr( "ui", "IDS_GRAPHICS_FILTER_ANISOTROPIC" ) );
+        Label += xwstring( xfs( " %dx", 2 << (Filtering - RSTATE_TEXTURE_FILTER_ANISOTROPIC_2) ) );
+        m_pTextureFiltering->AddItem( Label, Filtering );
+    }
+    m_pTextureFiltering->SetSelection(
+        m_pTextureFiltering->FindItemByData( PendingSettings.GetTextureFiltering() ) );
 
     m_pAntiAliasing->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV );
-    m_pAntiAliasing->AddItem( g_StringTableMgr( "ui", "IDS_GRAPHICS_ANTI_ALIASING_NONE" ),
+    m_pAntiAliasing->AddItem( g_StringTableMgr( "ui", "IDS_OFF" ),
                               static_cast<uaddr>( AntiAliasingType::None ) );
+    m_pAntiAliasing->AddItem( g_StringTableMgr( "ui", "IDS_GRAPHICS_ANTI_ALIASING_MSAA" ),
+                              static_cast<uaddr>( AntiAliasingType::Msaa ) );
     m_pAntiAliasing->AddItem( g_StringTableMgr( "ui", "IDS_GRAPHICS_ANTI_ALIASING_CMAA2" ),
                               static_cast<uaddr>( AntiAliasingType::Cmaa2 ) );
-    s32 const AntiAliasingSelection =
-        m_pAntiAliasing->FindItemByData(
-            static_cast<uaddr>( ANTI_ALIASING_TYPE_DEFAULT ) );
+    s32 AntiAliasingSelection =
+        m_pAntiAliasing->FindItemByData( static_cast<uaddr>( PendingSettings.GetAntiAliasingType() ) );
+    if( AntiAliasingSelection == -1 )
+    {
+        AntiAliasingSelection =
+            m_pAntiAliasing->FindItemByData( static_cast<uaddr>( ANTI_ALIASING_TYPE_DEFAULT ) );
+    }
     m_pAntiAliasing->SetSelection( AntiAliasingSelection );
 
     m_pFieldOfViewText   ->SetLabel( g_StringTableMgr( "ui", "IDS_GRAPHICS_FIELD_OF_VIEW" ) );
-    m_pDynamicShadowsText->SetLabel( g_StringTableMgr( "ui", "IDS_GRAPHICS_DYNAMIC_SHADOWS" ) );
-    m_pShadowFilterText  ->SetLabel( g_StringTableMgr( "ui", "IDS_GRAPHICS_SHADOW_FILTER" ) );
+    m_pRenderScaleText   ->SetLabel( g_StringTableMgr( "ui", "IDS_GRAPHICS_RENDER_SCALE" ) );
     m_pFilmGrainText     ->SetLabel( g_StringTableMgr( "ui", "IDS_GRAPHICS_FILM_GRAIN" ) );
-    m_pBackgroundBlurText->SetLabel( g_StringTableMgr( "ui", "IDS_GRAPHICS_BACKGROUND_BLUR" ) );
+    m_pTextureFilteringText->SetLabel( g_StringTableMgr( "ui", "IDS_GRAPHICS_TEXTURE_FILTERING" ) );
     m_pAntiAliasingText  ->SetLabel( g_StringTableMgr( "ui", "IDS_GRAPHICS_ANTI_ALIASING" ) );
 
     m_pFieldOfViewText   ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
-    m_pDynamicShadowsText->SetLabelFlags( ui_font::h_left|ui_font::v_center );
-    m_pShadowFilterText  ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
+    m_pRenderScaleText   ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
     m_pFilmGrainText     ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
-    m_pBackgroundBlurText->SetLabelFlags( ui_font::h_left|ui_font::v_center );
+    m_pTextureFilteringText->SetLabelFlags( ui_font::h_left|ui_font::v_center );
     m_pAntiAliasingText  ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
     m_pButtonApply       ->SetFlag( ui_win::WF_BUTTON_LEFT, TRUE );
-    m_pAntiAliasing      ->SetFlag( ui_win::WF_DISABLED, TRUE );
-    m_pAntiAliasingText  ->SetFlag( ui_win::WF_DISABLED, TRUE );
+    m_pAdvanced          ->SetFlag( ui_win::WF_BUTTON_LEFT, TRUE );
 
     s32 const CurrentControl = g_StateMgr.GetCurrentControl();
     if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
@@ -202,17 +193,16 @@ xbool dlg_graphics_settings::Create( s32                       UserID,
     }
 
     m_pFieldOfView       ->SetFlag( ui_win::WF_VISIBLE, FALSE );
-    m_pDynamicShadows    ->SetFlag( ui_win::WF_VISIBLE, FALSE );
-    m_pShadowFilter      ->SetFlag( ui_win::WF_VISIBLE, FALSE );
+    m_pRenderScale       ->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pFilmGrain         ->SetFlag( ui_win::WF_VISIBLE, FALSE );
-    m_pBackgroundBlur    ->SetFlag( ui_win::WF_VISIBLE, FALSE );
+    m_pTextureFiltering    ->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pAntiAliasing      ->SetFlag( ui_win::WF_VISIBLE, FALSE );
+    m_pAdvanced          ->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pButtonApply       ->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pFieldOfViewText   ->SetFlag( ui_win::WF_VISIBLE, FALSE );
-    m_pDynamicShadowsText->SetFlag( ui_win::WF_VISIBLE, FALSE );
-    m_pShadowFilterText  ->SetFlag( ui_win::WF_VISIBLE, FALSE );
+    m_pRenderScaleText   ->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pFilmGrainText     ->SetFlag( ui_win::WF_VISIBLE, FALSE );
-    m_pBackgroundBlurText->SetFlag( ui_win::WF_VISIBLE, FALSE );
+    m_pTextureFilteringText->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pAntiAliasingText  ->SetFlag( ui_win::WF_VISIBLE, FALSE );
 
     m_CurrHL = 0;
@@ -280,7 +270,22 @@ void dlg_graphics_settings::Render( s32 ox, s32 oy )
 
 void dlg_graphics_settings::OnAccept( ui_win* pWin )
 {
-    if( (m_State != DIALOG_STATE_ACTIVE) || (pWin != (ui_win*)m_pButtonApply) )
+    if( m_State != DIALOG_STATE_ACTIVE )
+    {
+        return;
+    }
+
+    if( pWin == (ui_win*)m_pAdvanced )
+    {
+        // Keep edits from the basic page when opening Advanced.
+        ApplySettings( g_StateMgr.GetPendingSettings() );
+        g_AudioMgr.Play( "Select_Norm" );
+        m_CurrentControl = IDC_GRAPHICS_ADVANCED;
+        m_State = DIALOG_STATE_SELECT;
+        return;
+    }
+
+    if( pWin != (ui_win*)m_pButtonApply )
     {
         return;
     }
@@ -325,15 +330,21 @@ void dlg_graphics_settings::OnCancel( ui_win* pWin )
 void dlg_graphics_settings::ApplySettings( global_settings& Settings )
 {
     Settings.SetFieldOfView( m_pFieldOfView->GetValue() );
-    Settings.SetDynamicShadowsEnabled( m_pDynamicShadows->IsChecked() );
-    if( m_pShadowFilter->GetSelection() != -1 )
+    if( m_pRenderScale->GetSelection() != -1 )
     {
-        Settings.SetShadowFilterType(
-            static_cast<ShadowFilterType>( m_pShadowFilter->GetSelectedItemData() ) );
+        Settings.SetRenderScale( static_cast<s32>( m_pRenderScale->GetSelectedItemData() ) );
     }
     Settings.SetFilmGrainStrength( m_pFilmGrain->GetValue() );
-    Settings.SetBackgroundBlurEnabled( m_pBackgroundBlur->IsChecked() );
-    Settings.SetAntiAliasingType( ANTI_ALIASING_TYPE_DEFAULT );
+    if( m_pTextureFiltering->GetSelection() != -1 )
+    {
+        Settings.SetTextureFiltering(
+            static_cast<rstate_texture_filtering>( m_pTextureFiltering->GetSelectedItemData() ) );
+    }
+    if( m_pAntiAliasing->GetSelection() != -1 )
+    {
+        Settings.SetAntiAliasingType(
+            static_cast<AntiAliasingType>( m_pAntiAliasing->GetSelectedItemData() ) );
+    }
 }
 
 //==============================================================================
@@ -406,13 +417,12 @@ void dlg_graphics_settings::OnDelete( ui_win* pWin )
         PendingSettings.Reset( RESET_GRAPHICS );
 
         m_pFieldOfView->SetValue( PendingSettings.GetFieldOfView() );
-        m_pDynamicShadows->SetChecked( PendingSettings.GetDynamicShadowsEnabled() );
-        s32 const ShadowFilterSelection =
-            m_pShadowFilter->FindItemByData(
-                static_cast<uaddr>( PendingSettings.GetShadowFilterType() ) );
-        m_pShadowFilter->SetSelection( ShadowFilterSelection );
+        s32 const RenderScaleSelection =
+            m_pRenderScale->FindItemByData( PendingSettings.GetRenderScale() );
+        m_pRenderScale->SetSelection( RenderScaleSelection );
         m_pFilmGrain->SetValue( PendingSettings.GetFilmGrainStrength() );
-        m_pBackgroundBlur->SetChecked( PendingSettings.GetBackgroundBlurEnabled() );
+        m_pTextureFiltering->SetSelection(
+            m_pTextureFiltering->FindItemByData( PendingSettings.GetTextureFiltering() ) );
         s32 const AntiAliasingSelection =
             m_pAntiAliasing->FindItemByData(
                 static_cast<uaddr>( ANTI_ALIASING_TYPE_DEFAULT ) );
@@ -449,17 +459,16 @@ void dlg_graphics_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
     if( g_UiMgr->IsScreenScaling() && (UpdateScreenScaling( DeltaTime ) == FALSE) )
     {
         m_pFieldOfView       ->SetFlag( ui_win::WF_VISIBLE, TRUE );
-        m_pDynamicShadows    ->SetFlag( ui_win::WF_VISIBLE, TRUE );
-        m_pShadowFilter      ->SetFlag( ui_win::WF_VISIBLE, TRUE );
+        m_pRenderScale       ->SetFlag( ui_win::WF_VISIBLE, TRUE );
         m_pFilmGrain         ->SetFlag( ui_win::WF_VISIBLE, TRUE );
-        m_pBackgroundBlur    ->SetFlag( ui_win::WF_VISIBLE, TRUE );
+        m_pTextureFiltering    ->SetFlag( ui_win::WF_VISIBLE, TRUE );
         m_pAntiAliasing      ->SetFlag( ui_win::WF_VISIBLE, TRUE );
+        m_pAdvanced          ->SetFlag( ui_win::WF_VISIBLE, TRUE );
         m_pButtonApply       ->SetFlag( ui_win::WF_VISIBLE, TRUE );
         m_pFieldOfViewText   ->SetFlag( ui_win::WF_VISIBLE, TRUE );
-        m_pDynamicShadowsText->SetFlag( ui_win::WF_VISIBLE, TRUE );
-        m_pShadowFilterText  ->SetFlag( ui_win::WF_VISIBLE, TRUE );
+        m_pRenderScaleText   ->SetFlag( ui_win::WF_VISIBLE, TRUE );
         m_pFilmGrainText     ->SetFlag( ui_win::WF_VISIBLE, TRUE );
-        m_pBackgroundBlurText->SetFlag( ui_win::WF_VISIBLE, TRUE );
+        m_pTextureFilteringText->SetFlag( ui_win::WF_VISIBLE, TRUE );
         m_pAntiAliasingText  ->SetFlag( ui_win::WF_VISIBLE, TRUE );
 
         s32 const CurrentControl = g_StateMgr.GetCurrentControl();
@@ -477,10 +486,6 @@ void dlg_graphics_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     g_UiMgr->UpdateGlowBar( DeltaTime );
 
-    xbool const ShadowFilterDisabled = !m_pDynamicShadows->IsChecked();
-    m_pShadowFilter->SetFlag( ui_win::WF_DISABLED, ShadowFilterDisabled );
-    m_pShadowFilterText->SetFlag( ui_win::WF_DISABLED, ShadowFilterDisabled );
-
     if( m_pFieldOfView->IsFocused() )
     {
         highLight = 0;
@@ -492,31 +497,9 @@ void dlg_graphics_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         m_pFieldOfViewText->SetLabelColor( xcolor(126,220,60,255) );
     }
 
-    if( m_pDynamicShadows->IsFocused() )
-    {
-        highLight = 1;
-        m_pDynamicShadowsText->SetLabelColor( xcolor(255,252,204,255) );
-        g_UiMgr->SetScreenHighlight( m_pDynamicShadowsText->GetPosition() );
-    }
-    else
-    {
-        m_pDynamicShadowsText->SetLabelColor( xcolor(126,220,60,255) );
-    }
-
-    if( m_pShadowFilter->IsFocused() )
-    {
-        highLight = 2;
-        m_pShadowFilterText->SetLabelColor( xcolor(255,252,204,255) );
-        g_UiMgr->SetScreenHighlight( m_pShadowFilterText->GetPosition() );
-    }
-    else
-    {
-        m_pShadowFilterText->SetLabelColor( xcolor(126,220,60,255) );
-    }
-
     if( m_pFilmGrain->IsFocused() )
     {
-        highLight = 3;
+        highLight = 1;
         m_pFilmGrainText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pFilmGrainText->GetPosition() );
     }
@@ -525,26 +508,43 @@ void dlg_graphics_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         m_pFilmGrainText->SetLabelColor( xcolor(126,220,60,255) );
     }
 
-    if( m_pBackgroundBlur->IsFocused() )
+    if( m_pTextureFiltering->IsFocused() )
     {
         highLight = 4;
-        m_pBackgroundBlurText->SetLabelColor( xcolor(255,252,204,255) );
-        g_UiMgr->SetScreenHighlight( m_pBackgroundBlurText->GetPosition() );
+        m_pTextureFilteringText->SetLabelColor( xcolor(255,252,204,255) );
+        g_UiMgr->SetScreenHighlight( m_pTextureFilteringText->GetPosition() );
     }
     else
     {
-        m_pBackgroundBlurText->SetLabelColor( xcolor(126,220,60,255) );
+        m_pTextureFilteringText->SetLabelColor( xcolor(126,220,60,255) );
+    }
+
+    if( m_pRenderScale->IsFocused() )
+    {
+        highLight = 2;
+        m_pRenderScaleText->SetLabelColor( xcolor(255,252,204,255) );
+        g_UiMgr->SetScreenHighlight( m_pRenderScaleText->GetPosition() );
+    }
+    else
+    {
+        m_pRenderScaleText->SetLabelColor( xcolor(126,220,60,255) );
     }
 
     if( m_pAntiAliasing->IsFocused() )
     {
-        highLight = 5;
+        highLight = 3;
         m_pAntiAliasingText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pAntiAliasingText->GetPosition() );
     }
     else
     {
         m_pAntiAliasingText->SetLabelColor( xcolor(126,220,60,255) );
+    }
+
+    if( m_pAdvanced->IsFocused() )
+    {
+        highLight = 5;
+        g_UiMgr->SetScreenHighlight( m_pAdvanced->GetPosition() );
     }
 
     if( m_pButtonApply->IsFocused() )

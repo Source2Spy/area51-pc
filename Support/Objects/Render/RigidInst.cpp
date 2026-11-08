@@ -7,6 +7,7 @@
 #include "Entropy.hpp"
 #include "Objects/Render/RigidInst.hpp"
 #include "ResourceMgr/ResourceMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 
 //=============================================================================
 // LOADER FOR THE RIGID COLOR RESOURCE
@@ -165,6 +166,16 @@ void rigid_inst::RenderShadowCast( const matrix4* pL2W,
                                    u32            Flags,
                                    u64            ProjMask )
 {
+    RenderShadowCast( pL2W, Flags, ProjMask, m_VMeshMask.VMeshMask );
+}
+
+//=============================================================================
+
+void rigid_inst::RenderShadowCast( const matrix4* pL2W,
+                                   u32            Flags,
+                                   u64            ProjMask,
+                                   u32            VMeshMask )
+{
     if( !pL2W || !m_hInst.IsNonNull() || ( m_Alpha == 0 ) )
         return;
 
@@ -172,14 +183,14 @@ void rigid_inst::RenderShadowCast( const matrix4* pL2W,
     if( !pRigidGeom )
         return;
 
-    u64 LODMask = GetLODMask( *pL2W );
+    u64 LODMask = GetLODMask( *pL2W, VMeshMask );
     if( LODMask == 0 )
         return;
 
     (void)Flags;
 
     // add the shadow
-    render::AddRigidCaster( m_hInst,
+    render::GetRenderPipeline().GetShadowSubmission().AddRigidCaster( m_hInst,
                             pL2W,
                             LODMask,
                             ProjMask );
@@ -187,7 +198,7 @@ void rigid_inst::RenderShadowCast( const matrix4* pL2W,
 
 //=============================================================================
 
-void rigid_inst::Render( const matrix4* pL2W, u32 Flags, u64 Mask )
+void rigid_inst::Render( const matrix4* pL2W, u32 Flags, u64 Mask, xcolor Ambient )
 {
     if ( m_Alpha == 0 )
         return;
@@ -196,17 +207,19 @@ void rigid_inst::Render( const matrix4* pL2W, u32 Flags, u64 Mask )
         Flags |= render::FADING_ALPHA;
 
     // Add a Rigid Instance
-    render::AddRigidInstance( m_hInst,
+    render::GetRenderPipeline().GetSubmission().AddRigidInstance( m_hInst,
                               GetColorTable(),
                               pL2W,
                               Mask,
                               Flags,
-                              m_Alpha );
+                              m_Alpha,
+                              render::RENDER_CONTRIBUTION_DEFAULT,
+                              Ambient );
 }
 
 //=============================================================================
 
-void rigid_inst::Render( const matrix4* pL2W, u32 Flags, u64 Mask, u8 Alpha )
+void rigid_inst::Render( const matrix4* pL2W, u32 Flags, u64 Mask, u8 Alpha, xcolor Ambient )
 {
     if ( Alpha == 0 )
         return;
@@ -215,17 +228,19 @@ void rigid_inst::Render( const matrix4* pL2W, u32 Flags, u64 Mask, u8 Alpha )
         Flags |= render::FADING_ALPHA;
 
     // Add a Rigid Instance
-    render::AddRigidInstance( m_hInst,
+    render::GetRenderPipeline().GetSubmission().AddRigidInstance( m_hInst,
         GetColorTable(),
         pL2W,
         Mask,
         Flags,
-        Alpha );
+        Alpha,
+        render::RENDER_CONTRIBUTION_DEFAULT,
+        Ambient );
 }
 
 //=============================================================================
 
-void rigid_inst::Render( const matrix4* pL2W, u32 Flags, u32 VTextureMask, s32 Alpha )
+void rigid_inst::Render( const matrix4* pL2W, u32 Flags, u32 VTextureMask, s32 Alpha, xcolor Ambient )
 {
     if ( Alpha == 0 )
         return;
@@ -234,21 +249,23 @@ void rigid_inst::Render( const matrix4* pL2W, u32 Flags, u32 VTextureMask, s32 A
         Flags |= render::FADING_ALPHA;
 
     // Add a Rigid Instance
-    render::AddRigidInstance( m_hInst,
+    render::GetRenderPipeline().GetSubmission().AddRigidInstance( m_hInst,
         GetColorTable(),
         pL2W,
         GetLODMask( *pL2W ),
         VTextureMask,
         Flags,
-        Alpha );
+        Alpha,
+        render::RENDER_CONTRIBUTION_DEFAULT,
+        Ambient );
 }
 
 //=============================================================================
 
-void rigid_inst::Render( const matrix4* pL2W, u32 Flags )
+void rigid_inst::Render( const matrix4* pL2W, u32 Flags, xcolor Ambient )
 {
     // Add a Rigid Instance
-    Render( pL2W, Flags, GetLODMask( *pL2W ) );
+    Render( pL2W, Flags, GetLODMask( *pL2W ), Ambient );
 }
 
 //=============================================================================
@@ -257,7 +274,7 @@ void rigid_inst::OnEnumProp( prop_enum& List )
 {
     // Important: The Header and External MUST be enumerated first!
     List.PropEnumHeader  ( "RenderInst", "Render Instance", 0 );
-    List.PropEnumExternal( "RenderInst\\File", "Resource\\0rigidgeom", "Resource File", PROP_TYPE_MUST_ENUM );
+    List.PropEnumExternal( "RenderInst\\File", "Resource\0rigidgeom\0", "Resource File", PROP_TYPE_MUST_ENUM );
 
     render_inst::OnEnumProp( List );
 

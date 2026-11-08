@@ -11,6 +11,7 @@
 //==============================================================================
 
 #include "common/shader_bindings.hlsl"
+#include "a51_shader_contract.hlsl"
 
 //==============================================================================
 //  TYPES
@@ -46,11 +47,7 @@ A51_SAMPLER_ATTR(0, 0) SamplerState samCompositeSource A51_SAMPLER_BIND(0, 0);
 
 A51_CBUFFER_ATTR(1, 0) cbuffer CompositeParams A51_CBUFFER_BIND(1, 0)
 {
-    float4 BlendColor;
-    int    BlendMode;
-    float  Padding0;
-    float  Padding1;
-    float  Padding2;
+    A51_ABI_FIELDS_CompositeData
 };
 
 //==============================================================================
@@ -72,4 +69,18 @@ float4 PSMain( VS_OUTPUT Input ) : SV_Target
     }
 
     return Color;
+}
+
+//==============================================================================
+
+float4 PSPresent( VS_OUTPUT Input ) : SV_Target
+{
+    return CompositeSource.SampleLevel( samCompositeSource, Input.UV, 0.0f );
+}
+
+//==============================================================================
+
+float4 PSClampNegative( VS_OUTPUT Input ) : SV_Target
+{
+    return 0.0f.xxxx;
 }

@@ -63,7 +63,6 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\Support\Font\font.cpp" />
     <ClCompile Include="..\..\Support\GenericDialog\GenericDialog.cpp" />
     <ClCompile Include="Axis3d.cpp" />
     <ClCompile Include="BaseDocument.cpp" />
@@ -102,7 +101,6 @@
     <ClCompile Include="WorkspaceTabCtrl.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\Support\Font\font.hpp" />
     <ClInclude Include="..\..\Support\GenericDialog\GenericDialog.hpp" />
     <ClInclude Include="Axis3d.hpp" />
     <ClInclude Include="BaseDocument.h" />

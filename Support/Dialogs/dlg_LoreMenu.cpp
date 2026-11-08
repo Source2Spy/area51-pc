@@ -77,14 +77,6 @@ ui_manager::dialog_tem LoreMenuDialog =
 };
 
 //=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
 //  Data
 //=========================================================================
 
@@ -149,11 +141,11 @@ xbool dlg_lore_menu::Create( s32                        UserID,
     s_Scaled = FALSE;
 
     // load bitmaps
-    m_LoreIconID[LORE_TYPE_VIDEO]   = g_UiMgr->LoadBitmap( "LoreVideo",  "UI_LoreVideo.xbmp"   );
-    m_LoreIconID[LORE_TYPE_AUDIO]   = g_UiMgr->LoadBitmap( "LoreAudio",  "UI_LoreAudio.xbmp"   );
-    m_LoreIconID[LORE_TYPE_STILL]   = g_UiMgr->LoadBitmap( "LoreStill",  "UI_LoreStill.xbmp"   );
-    m_LoreIconID[LORE_TYPE_TEXT]    = g_UiMgr->LoadBitmap( "LoreText",   "UI_LoreText.xbmp"    );
-    m_LoreIconID[LORE_TYPE_UNKNOWN] = g_UiMgr->LoadBitmap( "LoreNull",   "UI_LoreUnknown.xbmp" );
+    m_LoreIconID[LORE_TYPE_VIDEO]   = g_UiMgr->LoadBitmap( "LoreVideo",  "LORE/INTERFACE/UI_LOREVIDEO.XBMP"   );
+    m_LoreIconID[LORE_TYPE_AUDIO]   = g_UiMgr->LoadBitmap( "LoreAudio",  "VARIANTS/COMMON/LORE/INTERFACE/UI_LOREAUDIO.XBMP"   );
+    m_LoreIconID[LORE_TYPE_STILL]   = g_UiMgr->LoadBitmap( "LoreStill",  "LORE/INTERFACE/UI_LORESTILL.XBMP"   );
+    m_LoreIconID[LORE_TYPE_TEXT]    = g_UiMgr->LoadBitmap( "LoreText",   "LORE/INTERFACE/UI_LORETEXT.XBMP"    );
+    m_LoreIconID[LORE_TYPE_UNKNOWN] = g_UiMgr->LoadBitmap( "LoreNull",   "VARIANTS/COMMON/LORE/INTERFACE/UI_LOREUNKNOWN.XBMP" );
 
     // set up nav text 
     xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_BACK" ));
@@ -222,7 +214,13 @@ xbool dlg_lore_menu::Create( s32                        UserID,
 #endif
                 {
                     // add an entry to the list
-                    m_pLoreSelect->AddItem( Entry.GetDisplayName(), (uaddr)&Entry );
+                    xwstring DisplayName;
+                    if( !DecodeFontText( Entry.GetDisplayName(), DisplayName ) )
+                    {
+                        x_DebugMsg( "Lore menu: skipping map ID %d with invalid UTF-8 name.\n", Entry.GetMapID() );
+                        continue;
+                    }
+                    m_pLoreSelect->AddItem( DisplayName, (uaddr)&Entry );
                     // increment count
                     Count++;
                 }
@@ -444,11 +442,11 @@ void dlg_lore_menu::Render( s32 ox, s32 oy )
                         g_UiMgr->UnloadBitmap( "Still" );
                         if( m_CurrentType == LORE_TYPE_TEXT )
                         {
-                            m_StillBitmapID = g_UiMgr->LoadBitmap( "Still", xfs( "%s.xbmp", m_FileName ) );
+                            m_StillBitmapID = g_UiMgr->LoadBitmap( "Still", xfs( "LORE/IMAGES/%s.xbmp", m_FileName ) );
                         }
                         else
                         {
-                            m_StillBitmapID = g_UiMgr->LoadBitmap( "Still", xfs( "%s%d.xbmp", m_FileName, m_CurrItem+1 ) );
+                            m_StillBitmapID = g_UiMgr->LoadBitmap( "Still", xfs( "LORE/GALLERY/%s%d.xbmp", m_FileName, m_CurrItem+1 ) );
                         }
                     }
                     m_pManager->RenderBitmap( m_StillBitmapID, r, XCOLOR_WHITE );
@@ -917,9 +915,9 @@ void dlg_lore_menu::InitIconScaling ( xbool ScaleDown )
             m_CurrItem = 0;
             x_strcpy( m_FileName, pSelectedEntry->FileName );
             if( m_NumItems > 1 )
-                m_StillBitmapID = g_UiMgr->LoadBitmap( "Still", xfs( "%s%d.xbmp", m_FileName, m_CurrItem+1 ) );
+                m_StillBitmapID = g_UiMgr->LoadBitmap( "Still", xfs( "LORE/GALLERY/%s%d.xbmp", m_FileName, m_CurrItem+1 ) );
             else
-                m_StillBitmapID = g_UiMgr->LoadBitmap( "Still", xfs( "%s.xbmp", m_FileName ) );
+                m_StillBitmapID = g_UiMgr->LoadBitmap( "Still", xfs( "LORE/IMAGES/%s.xbmp", m_FileName ) );
         }
     }
 
@@ -1102,9 +1100,25 @@ void dlg_lore_menu::PopulateLoreDetails( xbool bVaultDetails )
             }
         }
 
-        m_pLoreLine1->SetLabel( pEntry->GetDisplayName() );
-        m_pLoreLine2->SetLabel( xwstring(xfs("%s   : %d/%d", (const char*)xstring(g_StringTableMgr("ui", "IDS_LEVEL")), Count, NUM_PER_VAULT)) );
-        m_pLoreLine3->SetLabel( xwstring(xfs("%s : %d/90", (const char*)xstring(g_StringTableMgr("ui", "IDS_OVERALL")), Profile.GetTotalLoreAcquired())) );
+        xwstring DisplayName;
+        if( DecodeFontText( pEntry->GetDisplayName(), DisplayName ) )
+        {
+            m_pLoreLine1->SetLabel( DisplayName );
+        }
+        else
+        {
+            x_DebugMsg( "Lore menu: invalid UTF-8 map name for ID %d.\n", pEntry->GetMapID() );
+        }
+
+        xwstring LevelCount( g_StringTableMgr( "ui", "IDS_LEVEL" ) );
+        LevelCount += xwstring( "   : " );
+        LevelCount += xwstring( xfs( "%d/%d", Count, NUM_PER_VAULT ) );
+        m_pLoreLine2->SetLabel( LevelCount );
+
+        xwstring OverallCount( g_StringTableMgr( "ui", "IDS_OVERALL" ) );
+        OverallCount += xwstring( " : " );
+        OverallCount += xwstring( xfs( "%d/90", Profile.GetTotalLoreAcquired() ) );
+        m_pLoreLine3->SetLabel( OverallCount );
 
         //xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_CYCLE_VAULT" ));
         //navText += g_StringTableMgr( "ui", "IDS_NAV_BACK" );

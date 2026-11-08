@@ -3,6 +3,7 @@
 //=========================================================================
 #include "Render/PrimitiveDebug.hpp"
 #include "Camera.hpp"
+#include "Render/Render.hpp"
 #include "Render/Editor/EditorIcons.hpp"
 #include "../MiscUtils/SimpleUtils.hpp"
 #include "Path.hpp"
@@ -192,6 +193,14 @@ void camera::OnMove( const vector3& NewPos )
 
 //=========================================================================
 
+void camera::OnCameraCut( const matrix4& L2W )
+{
+    g_ZoneMgr.RelocateZoneTracking( *this, m_ZoneTracker, L2W.GetTranslation() );
+    OnTransform( L2W );
+}
+
+//=========================================================================
+
 void camera::OnTransform( const matrix4& L2W )
 {
     // Lookup position
@@ -276,11 +285,6 @@ void camera::OnTransform( const matrix4& L2W )
 
 //=========================================================================
 
-zone_mgr::TrackingMode camera::GetZoneTrackingMode( void ) const
-{
-    return zone_mgr::TrackingMode::CameraPath;
-}
-    
 //=========================================================================
 
 void camera::OnInit( void )
@@ -325,10 +329,10 @@ void camera::OnRender  ( void )
 
 //=========================================================================
 
-void camera::UpdateTrackedTransform( xbool bSendKeyEvents )
+void camera::UpdateTrackedTransform( xbool bSendKeyEvents, xbool bDiscontinuous )
 {
     // Call base class which will update L2W
-    tracker::UpdateTrackedTransform(bSendKeyEvents) ;
+    tracker::UpdateTrackedTransform(bSendKeyEvents, bDiscontinuous) ;
 
     // If the camera is not on a path, then we need to call an OnTransform
     // so that the look direction is updated!
@@ -368,27 +372,19 @@ void camera::RenderView( const irect& Viewport )
     // The editor draws the camera view after the normal render.
     if( eng_Begin( "camera::RenderViewEditorClear" ) )
     {
-        render::BeginPrimitiveRender();
-        render::SetDepthRect( Viewport, 1.0f );
         g_UIRenderer.DrawRect( Viewport, XCOLOR_BLACK );
-        render::EndPrimitiveRender();
-        render::ExecuteForwardRender();
         eng_End();
     }
 #endif // X_EDITOR
 
     // Render the world.
-    g_ObjMgr.Render3dObjects( TRUE, m_View, m_ZoneTracker.GetMainZone() );
-    render::ExecuteForwardRender();
+    g_ObjMgr.Render3dObjects( TRUE, m_View, m_ZoneTracker );
 
 #ifdef X_EDITOR
     // Fill the camera viewport depth buffer in the editor.
     if( eng_Begin( "Fill camera viewport Z buffer" ) )
     {
-        render::BeginPrimitiveRender();
         render::SetDepthRect( Viewport, 0.0f );
-        render::EndPrimitiveRender();
-        render::ExecuteForwardRender();
         eng_End();
     }
 #endif // X_EDITOR
@@ -396,6 +392,24 @@ void camera::RenderView( const irect& Viewport )
     // Restore the previous view.
     eng_SetView( View );
     eng_SetViewport( View );
+}
+
+//=========================================================================
+
+void camera::RenderView( const irect& Viewport, render::RenderScopeDesc const& Scope )
+{
+    render::ScopedRenderView RenderViewScope( Scope );
+    view const SavedView = *eng_GetView();
+    x_try;
+    RenderView( Viewport );
+    if ( !render::EndRenderScope() )
+        return;
+    x_catch_begin;
+    render::ResetAfterException();
+    eng_SetView( SavedView );
+    eng_SetViewport( SavedView );
+    return;
+    x_catch_end;
 }
 
 //=========================================================================

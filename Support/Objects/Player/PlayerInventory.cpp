@@ -14,7 +14,7 @@
 #include "Objects/Pickup.hpp"
 #include "Characters/ActorEffects.hpp"
 #include "StateMgr/StateMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "Configuration/GameConfig.hpp"
 #include "GameLib/DebugCheats.hpp"
 #include "TemplateMgr/TemplateMgr.hpp"
@@ -22,7 +22,7 @@
 #ifdef X_EDITOR
 #include "../../../Apps/Editor/Project.hpp"
 #else
-#include "NetworkMgr/MsgMgr.hpp"
+#include "NetworkMgr/Messages/MsgMgr.hpp"
 #endif
 
 //=========================================================================
@@ -168,7 +168,7 @@ void player::AcquireAllLoreObjects( void )
 
 #ifndef X_EDITOR
     // acquire all lore objects
-    int i = 0;
+    s32 i = 0;
     for( i = 0; i < MAX_LORE_ITEMS; i++ )
     {
         lore_object* pLoreObject = (lore_object*)g_ObjMgr.GetObjectByGuid(m_LoreObjectGuids[i]);
@@ -185,7 +185,7 @@ void player::AcquireAllLoreObjects( void )
 
 void player::LoadAllLoreObjects( void )
 {
-    int count = 0;
+    s32 count = 0;
 
     // load up all the lore objects for collecting and for updating the Geiger counter
     slot_id SlotID = g_ObjMgr.GetFirst(object::TYPE_LORE_OBJECT);
@@ -253,7 +253,7 @@ xbool player::GetClosestLoreObjectDist( f32 &ClosestDist )
     }
 
     ClosestDist = Lore_Max_Detect_DistanceTweak.GetF32() + 100.0f; // 31 meters; 1 meter greater than max distance
-    int i;
+    s32 i;
     xbool bAllCollected = TRUE;
     xbool bFound        = FALSE;
 
@@ -959,12 +959,6 @@ void player::DebugSetupInventory( const char* pLevelName )
         m_Inventory2.SetAmount( INVEN_GRENADE_JBEAN, 5.0f );
     if( Weapons & WB_SCN )
         m_Inventory2.SetAmount( INVEN_WEAPON_SCANNER, 1.0f );
-
-    // mreed: You'll only have gloves until you mutate. The final solution is to make sure the player
-    // has goves in the first level. I'm giving the player gloves all the time here so that we can 
-    // see the effect of having them, then losing them from mutation.
-    if( !(Weapons & WB_MM) && !(Weapons & WB_MP) )
-        m_Inventory2.SetAmount( INVEN_GLOVES, 1.0f ); 
 
     m_CurrentWeaponItem = GetEquipedWeaponForLevel( pLevelName );
 }

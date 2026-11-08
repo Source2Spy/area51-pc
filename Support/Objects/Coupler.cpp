@@ -8,6 +8,7 @@
 #include "e_ScratchMem.hpp"
 #include "Dictionary/Global_Dictionary.hpp"
 #include "Objects/AnimSurface.hpp"
+#include "Objects/Camera.hpp"
 #include "Objects/Actor/Actor.hpp"
 #include "TriggerEx/TriggerEx_Object.hpp"
 
@@ -36,8 +37,7 @@ void RenderAttachPointWedge( const matrix4& LocalToWorld, xcolor color )
                                                 render::PRIMITIVE_BLEND_OPAQUE,
                                                 render::PRIMITIVE_DEPTH_READ_WRITE,
                                                 render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                render::PRIMITIVE_LAYER_SURFACE );
+                                                render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
     render::SubmitPrimitives( Material, LocalToWorld, Vertices, ARRAYSIZE( Vertices ),
                               Indices, ARRAYSIZE( Indices ) );
 }
@@ -1090,7 +1090,7 @@ void coupler::OnAdvanceSimulation( f32 DeltaTime )
                     pTargetActor.InitZoneTracking();
                 }
             }
-            else
+            else if( !pTargetObj->IsKindOf( camera::GetRTTI() ) )
             {
                 pTargetObj->SetZone1( NewZone1 );
                 pTargetObj->SetZone2( NewZone2 );           
@@ -1145,7 +1145,19 @@ void coupler::OnAdvanceSimulation( f32 DeltaTime )
             //    outside the spatial database boundaries.
             //ChildL2W.Orthogonalize();
 
-            pTargetObj->OnAttachedMove( m_Child[i].m_AttachPtID, ChildL2W );
+            camera* pCamera = pTargetObj->IsKindOf( camera::GetRTTI() )
+                            ? &camera::GetSafeType( *pTargetObj ) : NULL;
+            simple_anim_player* pAnimPlayer = pDestObj->GetSimpleAnimPlayer();
+            if( pCamera && (m_Child[i].m_AttachPtID == 0) &&
+                pAnimPlayer && (m_ParentID > 0) &&
+                pAnimPlayer->HasCameraCut( m_ParentID-1 ) )
+            {
+                pCamera->OnCameraCut( ChildL2W );
+            }
+            else
+            {
+                pTargetObj->OnAttachedMove( m_Child[i].m_AttachPtID, ChildL2W );
+            }
 
             if( pTargetObj->IsKindOf(actor::GetRTTI()) )
             {            
@@ -1158,7 +1170,7 @@ void coupler::OnAdvanceSimulation( f32 DeltaTime )
                     pTargetActor.InitZoneTracking();
                 }
             }
-            else
+            else if( !pTargetObj->IsKindOf( camera::GetRTTI() ) )
             {
                 pTargetObj->SetZone1( NewZone1 );
                 pTargetObj->SetZone2( NewZone2 );

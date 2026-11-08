@@ -11,6 +11,7 @@
 //==============================================================================
 
 #include "common/shader_bindings.hlsl"
+#include "a51_shader_contract.hlsl"
 
 //==============================================================================
 //  RESOURCES
@@ -18,8 +19,7 @@
 
 A51_CBUFFER_ATTR(0, 0) cbuffer cbShadowCast A51_CBUFFER_BIND(0, 0)
 {
-    float4x4 ShadowViewProjection;
-    uint4    ShadowCastPadding;
+    A51_ABI_FIELDS_ShadowCastData
 };
 
 A51_STORAGE_BUFFER_ATTR(0, 0)
@@ -40,22 +40,21 @@ struct VS_INPUT
 
 //------------------------------------------------------------------------------
 
-struct VS_OUTPUT
-{
-    float4 Position : SV_POSITION;
-    float2 UV       : TEXCOORD0;
-};
+#define VS_OUTPUT A51_SHADOW_PIXEL_INPUT
 
 //==============================================================================
 //  SHADERS
 //==============================================================================
 
-VS_OUTPUT VSMain( VS_INPUT input )
+VS_OUTPUT VSMain( VS_INPUT Input )
 {
-    VS_OUTPUT output;
-    float4 worldPos = mul( ShadowRigidWorld[input.InstanceIndex],
-                           float4( input.Position, 1.0f ) );
-    output.Position = mul( ShadowViewProjection, worldPos );
-    output.UV       = input.UV;
-    return output;
+    VS_OUTPUT Output;
+    float4 WorldPos = mul( ShadowRigidWorld[Input.InstanceIndex],
+                           float4( Input.Position, 1.0f ) );
+    WorldPos.xyz -= ShadowOrigin.xyz;
+    Output.Position = mul( ShadowViewProjection, WorldPos );
+#if A51_SHADOW_MASKED
+    Output.UV       = Input.UV;
+#endif
+    return Output;
 }

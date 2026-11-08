@@ -10,6 +10,7 @@
 //==============================================================================
 
 #include "hud_Vote.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "HudObject.hpp"
 #include "UI/ui_font.hpp"
 #include "UI/ui_renderer.hpp"
@@ -69,7 +70,7 @@ void hud_vote::OnRender( player* pPlayer )
     // Render the key, if applicable.
     //
     {
-        m_ControllerBmp.SetName(PRELOAD_FILE("hud_multiplayer_arrow.xbmp"));
+        m_ControllerBmp.SetName(PRELOAD_FILE("HUD/MULTIPLAYER/HUD_MULTIPLAYER_ARROW.XBMP"));
         texture* pTexture = m_ControllerBmp.GetPointer();
         if( pTexture == NULL )
             return;
@@ -174,7 +175,7 @@ void hud_vote::OnRender( player* pPlayer )
         // Box.
         //
         {
-            m_ControllerBmp.SetName(PRELOAD_FILE("HUD_multiplayer_voting.xbmp"));
+            m_ControllerBmp.SetName(PRELOAD_FILE("HUD/MULTIPLAYER/HUD_MULTIPLAYER_VOTING.XBMP"));
             texture* pTexture = m_ControllerBmp.GetPointer();
             if( pTexture == NULL )
             {
@@ -405,13 +406,8 @@ void hud_vote::OnAdvanceSimulation( player* pPlayer, f32 DeltaTime )
 
     // Setup the edges for everything.
     {
-#ifdef TARGET_XBOX
-        static f32 XPosS = 56.0f;
-        static f32 YPosS = 313.0f;
-#else
         static f32 XPosS = 36.0f;
         static f32 YPosS = 289.0f;
-#endif
         static f32 WidthS  = 85.0f;
         static f32 HeightS = 10.0f;
 

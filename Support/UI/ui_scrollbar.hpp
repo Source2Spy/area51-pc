@@ -38,7 +38,7 @@ public:
     void                OnPointerLeave     ( void );
     xbool               OnPointerDown      ( s32 X, s32 Y );
     xbool               OnPointerUp        ( void );
-    xbool               OnWheel            ( s32 Delta, s32 LinesPerNotch = 3 );
+    xbool               OnWheel            ( s32 Delta, s32 LinesPerNotch = 1 );
     xbool               OnUpdate           ( f32 DeltaTime );
     void                CancelInteraction  ( void );
 

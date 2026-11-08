@@ -20,7 +20,6 @@
 
 class ui_button;
 class dlg_popup;
-class ui_check;
 class ui_combo;
 class ui_slider;
 class ui_text;
@@ -31,6 +30,23 @@ class ui_text;
 
 extern void     dlg_graphics_settings_register  ( ui_manager* pManager );
 extern ui_win*  dlg_graphics_settings_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
+
+enum graphics_settings_controls
+{
+    IDC_GRAPHICS_FIELD_OF_VIEW_TEXT,
+    IDC_GRAPHICS_RENDER_SCALE_TEXT,
+    IDC_GRAPHICS_FILM_GRAIN_TEXT,
+    IDC_GRAPHICS_TEXTURE_FILTERING_TEXT,
+    IDC_GRAPHICS_ANTI_ALIASING_TEXT,
+
+    IDC_GRAPHICS_FIELD_OF_VIEW,
+    IDC_GRAPHICS_RENDER_SCALE,
+    IDC_GRAPHICS_FILM_GRAIN,
+    IDC_GRAPHICS_TEXTURE_FILTERING,
+    IDC_GRAPHICS_ANTI_ALIASING,
+    IDC_GRAPHICS_ADVANCED,
+    IDC_GRAPHICS_BUTTON_APPLY,
+};
 
 class dlg_graphics_settings : public ui_dialog
 {
@@ -63,18 +79,17 @@ protected:
     void                OnSaveSettingsCB   ( void );
 
     ui_slider*          m_pFieldOfView;
-    ui_check*           m_pDynamicShadows;
-    ui_combo*           m_pShadowFilter;
+    ui_combo*           m_pRenderScale;
     ui_slider*          m_pFilmGrain;
-    ui_check*           m_pBackgroundBlur;
+    ui_combo*           m_pTextureFiltering;
     ui_combo*           m_pAntiAliasing;
+    ui_button*          m_pAdvanced;
     ui_button*          m_pButtonApply;
 
     ui_text*            m_pFieldOfViewText;
-    ui_text*            m_pDynamicShadowsText;
-    ui_text*            m_pShadowFilterText;
+    ui_text*            m_pRenderScaleText;
     ui_text*            m_pFilmGrainText;
-    ui_text*            m_pBackgroundBlurText;
+    ui_text*            m_pTextureFilteringText;
     ui_text*            m_pAntiAliasingText;
 
     s32                 m_CurrHL;

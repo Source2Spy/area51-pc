@@ -39,7 +39,7 @@
 #define MAPLIST_HPP
 
 #include "x_files/x_types.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 
 //=========================================================================
 //  Defines

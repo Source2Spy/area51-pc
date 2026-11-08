@@ -10,7 +10,7 @@ void A51_MemReport( const char* pFileName )
 {
     (void)pFileName;
 
-#if defined(USE_OWNER_STACK) && !defined(TARGET_XBOX) && !defined(TARGET_WINDOWS)
+#if defined(USE_OWNER_STACK) && !defined(TARGET_WINDOWS)
 
     // ====== MEMORY ======
 

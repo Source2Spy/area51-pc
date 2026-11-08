@@ -72,6 +72,8 @@ enum class EditorIcon
 //=========================================================================
 
 // Draws an editor visualization icon using the supplied world transform.
-void DrawEditorIcon( EditorIcon icon, matrix4 const& l2W, xbool isSelected, xcolor tintColor );
+void DrawEditorIcon( EditorIcon icon, matrix4 const& L2W, xbool isSelected, xcolor TintColor );
 
+//=========================================================================
 #endif // EDITOR_ICONS_HPP
+//=========================================================================

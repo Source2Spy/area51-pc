@@ -534,6 +534,25 @@ const matrix4* simple_anim_player::GetBoneL2Ws( xbool bApplyTheBindPose /*= TRUE
 
 //=========================================================================
 
+xbool simple_anim_player::HasCameraCut( s32 iBone )
+{
+    if( (m_iAnim == -1) || !GetAnimGroup() )
+        return FALSE;
+    if( m_Cycle != m_PrevCycle )
+        return TRUE;
+
+    s32 const FirstFrame = (s32)x_floor( MIN( m_PrevFrame, m_Frame ) );
+    s32 const LastFrame  = (s32)x_floor( MAX( m_PrevFrame, m_Frame ) );
+    const anim_info& AnimInfo = GetAnimInfo();
+    for( s32 Frame=FirstFrame; Frame<LastFrame; Frame++ )
+    {
+        if( AnimInfo.IsCameraCut( iBone, Frame, Frame+1 ) )
+            return TRUE;
+    }
+    return FALSE;
+}
+
+//=========================================================================
 
 // Returns cached L2W for particular bone
 const matrix4* simple_anim_player::GetBoneL2W( s32 iBone, xbool bApplyTheBindPose /*= TRUE*/  )

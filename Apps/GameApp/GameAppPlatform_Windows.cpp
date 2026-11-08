@@ -95,8 +95,7 @@ void GameAppSetWindowIcon( void )
     }
 
     HINSTANCE const hInstance = GetModuleHandleW( NULL );
-    HICON const hIcon = LoadIconW( hInstance,
-                                   MAKEINTRESOURCEW( A51_ICON_RESOURCE_ID ) );
+    HICON const hIcon = LoadIconW( hInstance, MAKEINTRESOURCEW( A51_ICON_RESOURCE_ID ) );
     if( !hIcon )
     {
         return;

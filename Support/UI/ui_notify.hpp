@@ -31,6 +31,7 @@ enum class ui_notification_type
     SliderChanged,
     CheckChanged,
     ListSelectionChanged,
+    ListSortChanged,
     ListAccepted,
     ListCancelled,
     TabChanged,

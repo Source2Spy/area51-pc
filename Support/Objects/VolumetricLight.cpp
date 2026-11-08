@@ -13,6 +13,7 @@
 #include "../MiscUtils/SimpleUtils.hpp"
 #include "Entropy.hpp"
 #include "Render/PrimitiveBatch.hpp"
+#include "Render/PipelinePrewarm.hpp"
 #include "Render/Render.hpp"
 
 //==============================================================================
@@ -23,8 +24,34 @@
 // OBJECT DESCRIPTION
 //==============================================================================
 
+static render::primitive_draw_desc BuildVolumetricLightLineMaterial( const texture* pTexture )
+{
+    return render::primitive_draw_desc( pTexture,
+                                       render::PRIMITIVE_TOPOLOGY_LINE_LIST,
+                                       render::PRIMITIVE_BLEND_ALPHA,
+                                       render::PRIMITIVE_DEPTH_READ_ONLY,
+                                       render::PRIMITIVE_RASTER_SOLID_NO_CULL,
+                                       render::PRIMITIVE_SAMPLER_LINEAR_CLAMP );
+}
+
+static render::primitive_draw_desc BuildVolumetricLightSpriteMaterial( const texture* pTexture )
+{
+    return render::primitive_draw_desc( pTexture,
+                                       render::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                                       render::PRIMITIVE_BLEND_ADDITIVE,
+                                       render::PRIMITIVE_DEPTH_READ_ONLY,
+                                       render::PRIMITIVE_RASTER_SOLID_NO_CULL,
+                                       render::PRIMITIVE_SAMPLER_LINEAR_CLAMP );
+}
+
 static struct volumetric_light_obj_desc : public object_desc
 {
+    virtual xbool CollectRenderPipelineRequirements( render::PipelinePrewarmContext& Context ) const
+    {
+        return Context.QueuePrimitive( BuildVolumetricLightLineMaterial( NULL ) ) &&
+               Context.QueuePrimitive( BuildVolumetricLightSpriteMaterial( NULL ) );
+    }
+
     volumetric_light_obj_desc( void ) : object_desc( 
         object::TYPE_VOLUMETRIC_LIGHT, 
         "VolumetricLight", 
@@ -122,13 +149,7 @@ void volumetric_light_obj::OnDebugRender( void )
     for( s32 i = 0; i < 8; ++i )
         Vertices[i] = render::primitive_vertex( Verts[i], vector2( 0.0f, 0.0f ), Colors[i] );
 
-    const render::primitive_draw_desc Material( NULL,
-                                                render::PRIMITIVE_TOPOLOGY_LINE_LIST,
-                                                render::PRIMITIVE_BLEND_ALPHA,
-                                                render::PRIMITIVE_DEPTH_READ_ONLY,
-                                                render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                render::PRIMITIVE_LAYER_TRANSPARENT );
+const render::primitive_draw_desc Material = BuildVolumetricLightLineMaterial( NULL );
     render::SubmitPrimitives( Material, GetL2W(), Vertices, 8, Indices, ARRAYSIZE( Indices ) );
 }
 #endif // X_EDITOR
@@ -171,13 +192,7 @@ void volumetric_light_obj::OnRenderTransparent( void )
     pData += ALIGN_16( sizeof(u32) * m_nSprites );
     ASSERT( pData == (m_pData + m_nBytesAlloced) );
 
-    const render::primitive_draw_desc Material( pProjTex,
-                                                render::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                                                render::PRIMITIVE_BLEND_ADDITIVE,
-                                                render::PRIMITIVE_DEPTH_READ_ONLY,
-                                                render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                render::PRIMITIVE_LAYER_ADDITIVE );
+const render::primitive_draw_desc Material = BuildVolumetricLightSpriteMaterial( pProjTex );
     render::SubmitPrimitiveBillboards( Material,
                                        m_nSprites,
                                        1.0f,

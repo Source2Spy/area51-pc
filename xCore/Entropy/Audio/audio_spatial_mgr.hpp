@@ -70,6 +70,7 @@ public:
             void            UpdateEarZoneVolumes    ( ear_id            EarID,
                                                       f32*              pVolumes );
 
+            xbool           IsEarInBox( const bbox& Box );
             ear_id          GetFirstEar             ( void );
             ear_id          GetNextEar              ( void );
             void            ResetCurrentEar         ( void );
@@ -130,6 +131,7 @@ private:
             s32                 m_SpeakerConfig;
             f32                 m_NearClip;
             f32                 m_FarClip;
+            xmutex              m_EarLock;
             audio_spatial_ear   m_Ear[MAX_EARS];
             audio_spatial_ear*  m_pFreeEars;
             audio_spatial_ear*  m_pUsedEars;

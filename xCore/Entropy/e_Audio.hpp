@@ -29,6 +29,28 @@ struct voice;
 //  AUDIO MGR CLASS
 //==============================================================================
 
+struct audio_request;
+
+struct audio_voice_state
+{
+    xbool Valid;
+    xbool Ready;
+    xbool Pending;
+    f32   Length;
+    f32   PlayTime;
+};
+
+//------------------------------------------------------------------------------
+
+struct audio_debug_stats
+{
+    s32 ActiveChannels;
+    s32 ActiveStreams;
+    s32 RunningStreams;
+    s32 OpeningStreams;
+    s32 ReservedStreams;
+};
+
 class audio_mgr
 {
 friend class audio_stream_controller;
@@ -39,6 +61,8 @@ public:
 
 //------------------------------------------------------------------------------
 // Lifecycle.
+
+            xbool           GetDebugStats           ( audio_debug_stats& Stats );
 
                             audio_mgr               ( void );
                            ~audio_mgr               ( void );
@@ -105,6 +129,36 @@ public:
                                                       xbool             AutoStart );
 
 //------------------------------------------------------------------------------
+// Queued playback and published state.
+
+            voice_id        PlayConfigured          ( const char*       pIdentifier,
+                                                      const vector3&    Position,
+                                                      s32               ZoneID,
+                                                      xbool             IsPositional,
+                                                      f32               Volume,
+                                                      f32               FarClipScale );
+            xbool           IsVoicePending          ( voice_id          VoiceID ) const;
+            xbool           GetVoiceStateCached     ( voice_id          VoiceID,
+                                                      audio_voice_state& State );
+            f32             GetCurrentPlayTimeCached( voice_id          VoiceID );
+            f32             GetLengthSecondsCached  ( voice_id          VoiceID );
+            f32             GetVolumeCached         ( voice_id          VoiceID );
+            s32             GetPriorityCached       ( voice_id          VoiceID );
+            xbool           GetVoiceDescriptorCached( voice_id          VoiceID,
+                                                      char*             pName,
+                                                      s32               NameSize );
+            audio_request*  RequestCreateEar        ( const matrix4&    W2V,
+                                                      const vector3&    Position,
+                                                      s32               ZoneID,
+                                                      f32               Volume );
+            xbool           PollCreateEar           ( audio_request*&   pRequest,
+                                                      ear_id&           EarID );
+            audio_request*  RequestBreakPoints      ( voice_id          VoiceID );
+            xbool           PollBreakPoints         ( audio_request*&   pRequest,
+                                                      xarray<f32>&      Values );
+            void            CancelRequest           ( audio_request*&   pRequest );
+
+//------------------------------------------------------------------------------
 // Voice commands.
 
             xbool           Start                   ( voice_id          VoiceID );
@@ -123,8 +177,14 @@ public:
             xbool           SetReleaseTime          ( voice_id          VoiceID,
                                                       f32               Time );
             xbool           IsReleasing             ( voice_id          VoiceID );
+            xbool           GetVoiceState           ( voice_id VoiceID,
+                                                      audio_voice_state& State );
             xbool           IsValidVoiceId          ( voice_id          VoiceID );
+            // Reads published validity without waiting for queued commands.
+            xbool           IsValidVoiceIdCached    ( voice_id          VoiceID );
             xbool           IsVoiceReady            ( voice_id          VoiceID );
+            // Reads readiness published by the audio service without waiting.
+            xbool           IsVoiceReadyCached      ( voice_id          VoiceID );
             void            SetPitchLock            ( voice_id          VoiceID,
                                                       xbool             bPitchLock );
 
@@ -194,6 +254,7 @@ public:
                                                       f32               Volume );
             void            UpdateEarZoneVolumes    ( ear_id            EarID,
                                                       f32*              pVolumes );
+            xbool           IsEarInBox              ( const bbox& Box );
             ear_id          GetFirstEar             ( void );
             ear_id          GetNextEar              ( void );
             void            ResetCurrentEar         ( void );
@@ -248,7 +309,8 @@ static      void            ServiceEntry            ( void* pData );
                                                       s32               Zone,
                                                       xbool             IsPositional,
                                                       xbool             bVolumeClip,
-                                                      xbool             UseReservedStream = FALSE );
+                                                      xbool             UseReservedStream = FALSE,
+                                                      voice_id          ReplaceVoiceID = 0 );
             voice_id        PlayInternalNow         ( const char*       pIdentifier,
                                                       xbool             AutoStart,
                                                       const vector3&    Position,

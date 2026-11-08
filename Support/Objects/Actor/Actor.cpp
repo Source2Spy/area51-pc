@@ -26,7 +26,7 @@
 #include "Objects/Turret.hpp"
 #include "Characters/ActorEffects.hpp"
 #include "TemplateMgr/TemplateMgr.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "Objects/ParticleEmiter.hpp"
 #include "Objects/ForceField.hpp"
 #include "Objects/Teleporter.hpp"
@@ -34,10 +34,10 @@
 
 
 #ifndef X_EDITOR
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
 #include "Objects/NetGhost.hpp"
-#include "NetworkMgr/MsgMgr.hpp"
+#include "NetworkMgr/Messages/MsgMgr.hpp"
 #endif
 
 //=========================================================================
@@ -184,7 +184,7 @@ actor::actor( void ) :
     // Not inactive.
     ClearInactiveTime();
 
-    m_FloorProperties.Init( 100.0f, 0.128f );
+    m_FloorProperties.Init( 1.0f, 0.128f );
 
     m_BigPainTakenTime = (f32)g_ObjMgr.GetSimulationTimeSeconds();
     m_pEffects = NULL;    
@@ -257,6 +257,13 @@ void actor::OnKill( void )
         m_pMPContagion = NULL;
     }
 #endif
+}
+
+//=========================================================================
+
+xbool actor::CanBePushedBy( actor& Other )
+{
+    return !Other.IsPlayer() || IsPlayer();
 }
 
 //=========================================================================
@@ -495,14 +502,10 @@ xbool actor::OnProperty( prop_query& rPropQuery )
     if ( object::OnProperty( rPropQuery ) )
     {
         // Initialize zone tracker?
-        if( rPropQuery.IsVar( "Base\\Position" ) )
+        if( !rPropQuery.IsRead() &&
+            (rPropQuery.IsVar( "Base\\Position" ) || rPropQuery.IsVar( "Base\\ZoneInfo" )) )
         {
-            g_ZoneMgr.RebaseZoneTracking( *this,
-                                          m_ZoneTracker,
-                                          GetPosition(),
-                                          GetZone1(),
-                                          GetZone2(),
-                                          zone_mgr::SeedSource::Object );
+            InitZoneTracking();
         }
         
         // Initialize locomotion?
@@ -941,7 +944,7 @@ void actor::OnRender( void )
     // Setup render flags and get ambient color
     xcolor Ambient;
     u32    Flags = (GetFlagBits() & object::FLAG_CHECK_PLANES) ? render::CLIPPED : 0;
-    if ( g_RenderContext.m_bIsMutated && !g_RenderContext.m_bIsPipRender && m_bAllowedToGlow )
+    if ( g_RenderContext.m_bIsMutated && render::GetActiveRenderScopeDesc().EnablePostProcessing && m_bAllowedToGlow )
     {
         Flags  |= render::GLOWING;
 
@@ -2480,8 +2483,7 @@ void actor::Teleport( const vector3& Position, xbool DoBlend, xbool DoEffect )
                                       m_ZoneTracker,
                                       GetPosition(),
                                       GetZone1(),
-                                      GetZone2(),
-                                      zone_mgr::SeedSource::Destination );
+                                      GetZone2() );
         
         /*
         LOG_MESSAGE( "actor::Teleport", "Zone1:%d - Zone2:%d", 
@@ -2521,8 +2523,7 @@ void actor::InitZoneTracking( void )
                                   m_ZoneTracker,
                                   GetPosition(),
                                   GetZone1(),
-                                  GetZone2(),
-                                  zone_mgr::SeedSource::Object );
+                                  GetZone2() );
 }
 
 //==============================================================================
@@ -3737,7 +3738,7 @@ void actor::UpdateCloak( f32 DeltaTime )
         else
         {
             // add a light flash to draw the user's attention
-            g_LightMgr.AddFadingLight( GetPosition(), xcolor(57, 230, 246), 200.0f, 3.0f * m_CloakTransitionTime / k_CloakTransitionTime, 0.1f );
+            render::GetRenderPipeline().GetLightSystem().AddFadingLight( GetPosition(), xcolor(57, 230, 246), 200.0f, 3.0f * m_CloakTransitionTime / k_CloakTransitionTime, 0.1f );
         }
     }
 }

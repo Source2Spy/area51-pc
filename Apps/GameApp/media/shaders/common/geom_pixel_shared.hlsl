@@ -15,9 +15,13 @@
 
 #include "common/geom_pixel_core.hlsl"
 #include "common/geom_pixel_instances.hlsl"
-#include "common/geom_pixel_distortion.hlsl"
+#if A51_RECIPE_DISTORTION
+    #include "common/geom_pixel_distortion.hlsl"
+#endif
 #include "common/geom_pixel_surface.hlsl"
-#include "common/geom_pixel_lighting.hlsl"
+#if A51_RECIPE_LIGHTING || A51_RECIPE_PROJECTION
+    #include "common/geom_pixel_lighting.hlsl"
+#endif
 #include "common/geom_pixel_shading.hlsl"
 
 //==============================================================================

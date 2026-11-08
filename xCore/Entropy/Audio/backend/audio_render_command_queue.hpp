@@ -67,7 +67,9 @@ u32 audio_render_command_queue<MAX_COMMANDS>::NextIndex( u32 Index ) const
 {
     Index++;
     if( Index >= (u32)MAX_COMMANDS )
+    {
         Index = 0;
+    }
 
     return Index;
 }
@@ -82,7 +84,9 @@ xbool audio_render_command_queue<MAX_COMMANDS>::Push( const audio_render_command
     u32 Read  = x_AtomicLoadAcquire( &m_Read );
 
     if( Next == Read )
+    {
         return FALSE;
+    }
 
     m_Commands[Write] = Command;
     x_AtomicStoreRelease( &m_Write, Next );
@@ -99,7 +103,9 @@ xbool audio_render_command_queue<MAX_COMMANDS>::Pop( audio_render_command& Comma
     u32 Write = x_AtomicLoadAcquire( &m_Write );
 
     if( Read == Write )
+    {
         return FALSE;
+    }
 
     Command = m_Commands[Read];
     x_AtomicStoreRelease( &m_Read, NextIndex( Read ) );

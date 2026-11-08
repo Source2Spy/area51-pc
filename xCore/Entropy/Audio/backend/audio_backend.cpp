@@ -29,7 +29,7 @@
 
 #define MAX_BACKEND_CHANNELS   (64)
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 static xbool        s_IsInitialized         = FALSE;        // Sentinel
 static channel      s_Channels[ MAX_BACKEND_CHANNELS ];    // Channel buffer
@@ -59,13 +59,17 @@ xbool UpdatePosition( audio_runtime& Runtime, channel* pChannel )
                 {
                     // PCM?
                     case PCM:
+                    {
                         // This is one messed up equation...
                         pChannel->nSamplesBase += STREAM_BUFFER_SIZE;
                         break;
+                    }
 
                     default:
+                    {
                         ASSERT( 0 );
                         break;
+                    }
                 }
             }
         }
@@ -132,6 +136,7 @@ void UpdateStreamPCM( audio_runtime& Runtime, channel* pChannel )
         if( pChannel->StreamData.pStream->StreamDone )
         {
         }
+
         // Need to read from the stream?
         else if( pChannel->StreamData.StreamControl )
         {
@@ -179,7 +184,9 @@ void UpdateStreamDecoded( audio_runtime& Runtime, channel* pChannel )
     if( pChannel->Backend.CurrentPosition >= pSample->nSamples )
     {
         if( pChannel->StreamData.pStream && !pChannel->StreamData.pStream->StreamDone )
+        {
             return;
+        }
 
         // Nuke it.
         Runtime.Backend.ReleaseChannel( pChannel );
@@ -195,6 +202,7 @@ audio_backend::audio_backend( void )
     m_pOutputMixer  = NULL;
     m_pOutputDevice = NULL;
     m_pRuntime      = NULL;
+    m_PitchFactor                = 1.0f;
     m_FirstChannel  = s_Channels;
     m_LastChannel   = s_Channels + (MAX_BACKEND_CHANNELS - 1);
     m_RenderCommandOverflowCount = 0;
@@ -243,8 +251,11 @@ channel* audio_backend::GetChannelBuffer( void )
 s32 audio_backend::RenderCallback( void* pContext, s16* pOutput, s32 nSamples )
 {
     audio_backend* pBackend = (audio_backend*)pContext;
+
     if( !pBackend )
+    {
         return 0;
+    }
 
     return pBackend->Render( pOutput, nSamples );
 }
@@ -254,7 +265,9 @@ s32 audio_backend::RenderCallback( void* pContext, s16* pOutput, s32 nSamples )
 s32 audio_backend::Render( s16* pOutput, s32 nSamples )
 {
     if( !m_pOutputMixer )
+    {
         return 0;
+    }
 
     DrainRenderCommands();
 
@@ -268,7 +281,9 @@ void audio_backend::DrainRenderCommands( void )
     audio_render_command Command;
 
     if( !m_pOutputMixer )
+    {
         return;
+    }
 
     while( m_RenderCommands.Pop( Command ) )
     {
@@ -281,10 +296,14 @@ void audio_backend::DrainRenderCommands( void )
 xbool audio_backend::IsRenderCommandProducerThread( void ) const
 {
     if( !m_pRuntime )
+    {
         return TRUE;
+    }
 
     if( !m_pRuntime->ServiceRunning )
+    {
         return TRUE;
+    }
 
     return (m_pRuntime->ServiceThreadId >= 0) && (x_GetThreadID() == m_pRuntime->ServiceThreadId);
 }
@@ -316,15 +335,21 @@ void audio_backend::FlushRenderCommands( void )
     xbool Locked = TRUE;
 
     if( m_pOutputDevice )
+    {
         Locked = m_pOutputDevice->Lock();
+    }
 
     ASSERT( Locked );
 
     if( Locked )
+    {
         DrainRenderCommands();
+    }
 
     if( m_pOutputDevice && Locked )
+    {
         m_pOutputDevice->Unlock();
+    }
 }
 
 //==============================================================================
@@ -332,7 +357,9 @@ void audio_backend::FlushRenderCommands( void )
 s32 audio_backend::GetAudioLevel( void )
 {
     if( !m_pOutputMixer )
+    {
         return 0;
+    }
 
     return m_pOutputMixer->GetOutputLevel();
 }
@@ -344,6 +371,7 @@ void audio_backend::Init( audio_runtime& Runtime, s32 MemSize )
     ASSERTS( !s_IsInitialized, "Already initialized" );
 
     m_pRuntime = &Runtime;
+    m_PitchFactor = 1.0f;
 
     m_pOutputMixer  = new audio_output_mixer;
     m_pOutputDevice = new sdl_audio_device;
@@ -372,6 +400,32 @@ void audio_backend::Init( audio_runtime& Runtime, s32 MemSize )
 
     // ok its done.
     s_IsInitialized = TRUE;
+}
+
+//==============================================================================
+
+void audio_backend::SetPitchFactor( f32 PitchFactor )
+{
+    if( m_PitchFactor == PitchFactor )
+    {
+        return;
+    }
+
+    m_PitchFactor = PitchFactor;
+
+    if( !s_IsInitialized )
+    {
+        return;
+    }
+
+    channel* pHead    = Runtime().Channels.UsedList();
+    channel* pChannel = pHead->Link.pNext;
+
+    while( pChannel != pHead )
+    {
+        pChannel->Dirty |= CHANNEL_DB_PITCH;
+        pChannel = pChannel->Link.pNext;
+    }
 }
 
 //==============================================================================
@@ -434,6 +488,7 @@ void audio_backend::Update( void )
         {
             // Check if anything needs updating for the voice.
             Dirty = pChannel->Dirty;
+
             if( Dirty )
             {
                 // Volume Dirty?
@@ -447,7 +502,9 @@ void audio_backend::Update( void )
                     Command.Volume.VolumeR    = pChannel->Pan3d.GetY() * pChannel->Volume;
 
                     if( QueueRenderCommand( Command ) )
+                    {
                         Dirty &= ~(CHANNEL_DB_VOLUME | CHANNEL_DB_PAN);
+                    }
                 }
 
                 // Pitch Dirty?
@@ -457,7 +514,7 @@ void audio_backend::Update( void )
                     x_memset( &Command, 0, sizeof(Command) );
                     Command.Type            = AUDIO_RENDER_COMMAND_SET_PITCH;
                     Command.Pitch.hChannel  = pChannel->Backend.hChannel;
-                    Command.Pitch.Pitch     = pChannel->Pitch;
+                    Command.Pitch.Pitch     = CalculateChannelPitch( pChannel, m_PitchFactor );
 
                     if( QueueRenderCommand( Command ) )
                     {
@@ -482,7 +539,10 @@ void audio_backend::Update( void )
             switch( pChannel->State )
             {
                 case STATE_NOT_STARTED:
+                {
                     break;
+                }
+
                 case STATE_STARTING:
                 {
                     xbool bStart = bCanStart;
@@ -497,28 +557,43 @@ void audio_backend::Update( void )
 
                     {
                         if( StartChannel( pChannel ) )
+                        {
                             pChannel->State = STATE_RUNNING;
+                        }
                     }
+
                     break;
                 }
+
                 case STATE_RESUMING:
+                {
                     if( bCanStart )
                     {
                         if( ResumeChannel( pChannel ) )
+                        {
                             pChannel->State = STATE_RUNNING;
+                        }
                     }
+
                     break;
+                }
+
                 case STATE_RUNNING:
                 {
                     if( pChannel->Backend.StartPending )
                     {
                         u32 StartSerial = m_pOutputMixer->ChannelStartSerial( pChannel->Backend.hChannel );
+
                         if( StartSerial == pChannel->Backend.StartSerial )
+                        {
                             pChannel->Backend.StartPending = FALSE;
+                        }
                     }
 
                     if( pChannel->Backend.StartPending )
+                    {
                         break;
+                    }
 
                     audio_output_state OutputState = m_pOutputMixer->ChannelStatus( pChannel->Backend.hChannel );
 
@@ -528,20 +603,32 @@ void audio_backend::Update( void )
                     {
                         // Release the channel.
                         if( ReleaseChannel( pChannel ) )
+                        {
                             pChannel->State = STATE_STOPPED;
+                        }
                     }
+
                     break;
                 }
+
                 case STATE_PAUSING:
+                {
                     if( bCanStart )
                     {
                         if( PauseChannel( pChannel ) )
+                        {
                             pChannel->State = STATE_PAUSED;
+                        }
                     }
+
                     break;
+                }
+
                 case STATE_PAUSED:
                 case STATE_STOPPED:
+                {
                     break;
+                }
             }
         }
 
@@ -559,8 +646,10 @@ void audio_backend::Update( void )
         while( pChannel != pHead )
         {    
             if( pChannel->pElement && pChannel->pElement->pVoice && (pChannel->pElement->pVoice->StartQ==2) )
+            {
                 pChannel->pElement->pVoice->StartQ = 0;
-            
+            }
+
             // Previous channel...
             pChannel = pChannel->Link.pPrev;
         }
@@ -614,7 +703,9 @@ xbool audio_backend::ReleaseChannel( channel* pChannel )
         Command.Channel.hChannel = pChannel->Backend.hChannel;
 
         if( !QueueRenderCommand( Command ) )
+        {
             return FALSE;
+        }
 
         pChannel->Backend.StartPending = FALSE;
     }
@@ -684,11 +775,16 @@ void audio_backend::InitChannel( channel* pChannel )
     switch( pHotSample->CompressionType )
     {
     case PCM:
+    {
         break;
+    }
+
     case ADPCM:
     default:
+    {
         ASSERT( 0 );
         break;
+    }
     }
 }
 
@@ -701,8 +797,11 @@ xbool audio_backend::StartChannel( channel* pChannel )
     {
         hot_sample* pHotSample = pChannel->Sample.pHotSample;
         ASSERT( pHotSample );
+
         if( !pHotSample )
+        {
             return FALSE;
+        }
 
         audio_render_command Command;
         x_memset( &Command, 0, sizeof(Command) );
@@ -715,7 +814,7 @@ xbool audio_backend::StartChannel( channel* pChannel )
         Command.Start.SampleRate     = pHotSample->SampleRate;
         Command.Start.VolumeL        = pChannel->Volume * pChannel->Pan3d.GetX();
         Command.Start.VolumeR        = pChannel->Volume * pChannel->Pan3d.GetY();
-        Command.Start.Pitch          = pChannel->Pitch;
+        Command.Start.Pitch          = CalculateChannelPitch( pChannel, m_PitchFactor );
 
         if( pChannel->Type == COLD_SAMPLE )
         {
@@ -743,15 +842,20 @@ xbool audio_backend::StartChannel( channel* pChannel )
             switch( pHotSample->CompressionType )
             {
             case PCM:
+            {
                 Command.Start.nSamples  = pHotSample->nSamples;
                 Command.Start.LoopCount = IsLooped ? 1 : 0;
                 Command.Start.LoopStart = pHotSample->LoopStart;
                 Command.Start.LoopEnd   = pHotSample->LoopEnd;
                 break;
+            }
+
             case ADPCM:
             default:
+            {
                 ASSERT( 0 );
                 return FALSE;
+            }
             }
         }
 
@@ -824,6 +928,7 @@ xbool audio_backend::ResumeChannel( channel* pChannel )
 u32 audio_backend::GetSamplesPlayed( channel* pChannel )
 {
     u32 SamplesPlayed = 0;
+
     if( pChannel )
     {
         if( Runtime().Decoders.UsesRuntimeDecode( (compression_types)pChannel->Sample.pHotSample->CompressionType ) )
@@ -836,23 +941,29 @@ u32 audio_backend::GetSamplesPlayed( channel* pChannel )
             switch( pChannel->Sample.pHotSample->CompressionType )
             {
                 case ADPCM:
+                {
                     ASSERT( 0 );
                     break;
+                }
 
                 case PCM:
+                {
                     pChannel->nSamplesAdjust = pChannel->CurrBufferPosition;
                     break;
+                }
 
                 default:
+                {
                     ASSERT( 0 );
                     break;
+                }
             }
         }
-    
 
         // Tell the world. (base is always 0 on pc until streaming is implemented).
         SamplesPlayed = pChannel->nSamplesBase + pChannel->nSamplesAdjust;
     }
+
     return SamplesPlayed;
 }
 
@@ -897,7 +1008,9 @@ xbool audio_backend::StopStreamLoop( channel* pChannel, u32 EndFrame )
     ASSERT( pChannel );
 
     if( (pChannel == NULL) || (pChannel->Backend.hChannel == 0) )
+    {
         return FALSE;
+    }
 
     audio_render_command Command;
     x_memset( &Command, 0, sizeof(Command) );
@@ -929,12 +1042,16 @@ void audio_backend::UpdateStream( channel* pChannel )
             {
                 // PCM?
                 case PCM:
+                {
                     UpdateStreamPCM( Runtime(), pChannel );
                     break;
+                }
 
                 default:
+                {
                     ASSERT( 0 );
                     break;
+                }
             }
         }
     }

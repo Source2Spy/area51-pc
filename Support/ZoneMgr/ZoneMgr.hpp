@@ -43,32 +43,9 @@ public:
 
 
     //---------------------------------------------------------------------
-    enum max
-    {
-        MAX_PLANES = 16
-    };
-
-    //---------------------------------------------------------------------
     using zone_id = u8;
 
     //---------------------------------------------------------------------
-
-    enum class SeedSource : u8
-    {
-        None,
-        Object,
-        Player,
-        Camera,
-        Destination
-    };
-
-    //---------------------------------------------------------------------
-
-    enum class TrackingMode : u8
-    {
-        PortalTraversal,
-        CameraPath
-    };
 
     struct zone
     {
@@ -106,6 +83,21 @@ public:
 
         zone_id         GetMainZone              ( void ) const         { return iCurrentZone; }
         zone_id         GetZone2                 ( void ) const         { return iTempZone; }
+        xbool           IsZoneCandidate          ( zone_id Zone ) const
+        {
+            return ( ZoneCandidates[Zone / 32] & ( 1U << ( Zone % 32 ) ) ) != 0;
+        }
+
+        xbool           HasZoneCandidates        ( void ) const
+        {
+            for( s32 i = 0; i < 8; i++ )
+                if( ZoneCandidates[i] )
+                    return TRUE;
+
+            return FALSE;
+        }
+
+        u32             GetSeedRevision          ( void ) const         { return SeedRevision; }
         const vector3&  GetPosition              ( void ) const         { return LastPosition; }
         void            SetBBox                  ( const bbox& aBBox )   { BBox = aBBox; }
         const bbox&     GetBBox                  ( void ) const         { return BBox; }
@@ -117,6 +109,8 @@ public:
         zone_id         iCurrentZone;           // Current zone that the tracker is in.
         zone_id         iTempZone;              // Temporary zone which the object may also be in.
         bbox            BBox;                   // Local space BBox.
+        u32             SeedRevision;           // Explicit zone discontinuities.
+        u32             ZoneCandidates[8];      // Possible zones after a cut.
 
         friend class zone_mgr;
     };
@@ -158,7 +152,7 @@ public:
     void        Load                    ( const char* pFileName );
     void        UpdateEar               ( s32 EarID );
     void        Search                  ( f32* pVolumes, f32 Volume, s32 ZoneID, s32 Depth );
-    void        PortalWalk              ( const view& View, s32 iZone );
+    void        PortalWalk              ( const view& View, const tracker& Tracker );
     s32         GetLastPortalWalkZone   ( void ) const;
 
     void        Render                  ( void ) const;
@@ -177,36 +171,34 @@ private:
                                           const vector3& LastDirection,
                                           f32& T ) const;
     void        MoveTracker             ( tracker& Tracker,
-                                          const vector3& NewPosition,
-                                          TrackingMode Mode ) const;
-    void        MoveCameraTracker       ( tracker& Tracker,
                                           const vector3& NewPosition ) const;
+    void        MoveTrackerMain         ( tracker& Tracker,
+                                          const vector3& NewPosition ) const;
+    void        NormalizeZoneCandidates ( tracker& Tracker ) const;
     void        UpdateTemporaryZone     ( tracker& Tracker ) const;
 
 public:
     void        AdvanceZoneTracking     ( tracker& Tracker,
                                           const vector3& NewPosition ) const;
-    void        AdvanceZoneTracking     ( tracker& Tracker,
-                                          const vector3& NewPosition,
-                                          TrackingMode Mode ) const;
     void        AdvanceZoneTracking     ( object& Object,
                                           tracker& Tracker,
                                           const vector3& NewPosition ) const;
-    void        AdvanceZoneTracking     ( object& Object,
+    void        RelocateZoneTracking    ( tracker& Tracker,
+                                          const vector3& NewPosition ) const;
+    void        RelocateZoneTracking    ( object& Object,
                                           tracker& Tracker,
-                                          const vector3& NewPosition,
-                                          TrackingMode Mode ) const;
+                                          const vector3& NewPosition ) const;
     void        RebaseZoneTracking      ( tracker& Tracker,
                                           const vector3& Position,
                                           zone_id Zone1,
-                                          zone_id Zone2,
-                                          SeedSource Source ) const;
+                                          zone_id Zone2 ) const;
+    void        RebaseZoneTracking      ( tracker& Tracker,
+                                          const tracker& SourceTracker ) const;
     void        RebaseZoneTracking      ( object& Object,
                                           tracker& Tracker,
                                           const vector3& Position,
                                           zone_id Zone1,
-                                          zone_id Zone2,
-                                          SeedSource Source ) const;
+                                          zone_id Zone2 ) const;
 
     s32         GetPortalCount          ( void ) const;
     s32         GetZoneCount            ( void ) const;
@@ -231,32 +223,26 @@ public:
 protected:
 
     //---------------------------------------------------------------------
-    enum
-    {
-        MAX_FRUSTUMS = 32
-    };
-
-    //---------------------------------------------------------------------
     struct frustum
     {
-        plane       Plane[MAX_PLANES];          // array of planes
-        vector3     NormalMasks[MAX_PLANES*2];  // masks for doing optimizing vis calculations
-        vector3     Edges[MAX_PLANES];          // Array of the edges
-        s32         nPlanes;                    // Number of planes 
-        s32         nEdges;                     // Number of edges ones all has been cliped. This is more for debuging
-        zone_id     iZone;                      // Which zone does this frustum belongs 
-        s8          iNext;                      // Link list of frustum that have the same zone  
-        s32         iPortal;                    // The portal that caused this frustum to be clipped and created
+        xarray<plane>   Plane;          // Frustum clipping planes.
+        xarray<vector3> NormalMasks;    // Two masks per plane for bbox visibility checks.
+        xarray<vector3> Edges;          // Portal edges remaining after clipping.
+        s32             nPlanes;        // Number of clipping planes.
+        s32             nEdges;         // Number of clipped edges, also used for debug rendering.
+        zone_id         iZone;          // Zone containing this frustum.
+        s32             iNext;          // Next frustum in the same zone.
+        s32             iPortal;        // Portal that produced this frustum.
     };
 
 protected:
 
     xbool       ComputeFrustum          ( const zone&     Zone,
-                                            frustum&        NewFrustum, 
-                                            const frustum&  CurrentFrustum, 
-                                            const vector3&  EyePosition, 
-                                            const portal&   Portal ) const;    
-    void        PortalWalk              ( frustum* pFrustum, const frustum& ParentFrustum );
+                                          frustum&        NewFrustum,
+                                          const frustum&  CurrentFrustum,
+                                          const vector3&  EyePosition,
+                                          const portal&   Portal ) const;
+    void        PortalWalk              ( s32 iParentFrustum );
     xbool       BBoxInView              ( const frustum& Frustum, const bbox& BBox ) const;
 protected:
 
@@ -275,14 +261,13 @@ protected:
     s32             m_MaxPortals;
 
     // Portal Walk variables
-    s32             m_nFrustums;
-    frustum         m_Frustum[ MAX_FRUSTUMS ];
+    xarray<frustum>  m_Frustum;
     vector3         m_EyePosition;
     plane           m_Far;
     s32             m_FarMinIndex[3]; 
 
     // Quick Frustum look up
-    s8              m_ZoneToFrustum[256];
+    s32             m_ZoneToFrustum[256];
     xbool           m_bPortalCullingEnabled;
     xbool           m_bHasValidVisibilityState;
 

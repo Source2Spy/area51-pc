@@ -166,7 +166,27 @@ void debris_cannon::Create              ( const char*      pMeshName,
         F.m_RotationAxis.Set(1,0,0);
     }
 
+    InitializeFragmentLighting( StartPos );
     OnMove( Pos );
+}
+
+//=============================================================================
+
+void debris_cannon::InitializeFragmentLighting( const vector3& Position )
+{
+    floor_properties FloorProperties;
+    FloorProperties.Init( 1.0f, 0.128f, GetGuid() );
+    FloorProperties.ForceUpdate( Position );
+
+    s32 i;
+    for (i=0;i<MAX_FRAGMENTS;i++)
+    {
+        fragment& F = m_Fragment[i];
+        if (F.m_bInUse)
+        {
+            F.m_FloorProperties = FloorProperties;
+        }
+    }
 }
 
 //=============================================================================
@@ -242,6 +262,7 @@ void debris_cannon::OnAdvanceSimulation      ( f32 DeltaTime )
 
         if (F.m_bInUse)       
         {
+            F.m_FloorProperties.Update( F.m_Position, DeltaTime );
             Local[i] = F.m_Position - MyPos;
             if ( F.m_FX.Validate() )
             {
@@ -297,7 +318,7 @@ void debris_cannon::OnAdvanceSimulation      ( f32 DeltaTime )
 
         m_RigidInst.SetVMeshMask( (u32)F.m_MeshMask );
         u64 SubMask = m_RigidInst.GetLODMask( L2W );
-        m_RigidInst.Render( &L2W, Flags, SubMask, m_Alpha );
+        m_RigidInst.Render( &L2W, Flags, SubMask, m_Alpha, F.m_FloorProperties.GetColor() );
     }
 }
 
@@ -584,11 +605,11 @@ void debris_cannon::SetupFlyby( s32 iFragment, const vector3& PlayerPos, player*
     m_FlybyEnd          = ClosestPoint + (DeltaPos * 1200);
     m_FlybyVoiceID      = g_AudioMgr.PlayVolumeClipped( "Explosion_Debris_FlyBy", m_FlybyStart, GetZone1(), TRUE );
     m_FlybyTimer        = 0;
-    m_FlybyLength       = g_AudioMgr.GetLengthSeconds( m_FlybyVoiceID );
+    m_FlybyLength       = 0.0f;
     m_bFlybyActive      = TRUE;
 
     // Safety check
-    if (m_FlybyLength == 0)
+    if (!m_FlybyVoiceID)
         m_bFlybyActive = FALSE;
 
     if (m_FlybyVoiceID == -1)
@@ -601,6 +622,19 @@ void debris_cannon::SetupFlyby( s32 iFragment, const vector3& PlayerPos, player*
 
 void debris_cannon::UpdateFlyby( f32 DeltaTime )
 {
+    if( g_AudioMgr.IsVoicePending( m_FlybyVoiceID ) )
+        return;
+
+    if( m_FlybyLength <= 0.0f )
+        m_FlybyLength = g_AudioMgr.GetLengthSecondsCached( m_FlybyVoiceID );
+
+    if( m_FlybyLength <= 0.0f )
+    {
+        m_bFlybyActive = FALSE;
+        g_AudioMgr.Release( m_FlybyVoiceID, 0.0f );
+        return;
+    }
+
     m_FlybyTimer += DeltaTime;
     if (m_FlybyTimer > m_FlybyLength)
     {
@@ -872,6 +906,8 @@ void debris_cannon::InitializeFragmentsForPlayerDirectedExplosion  ( const vecto
         F.m_Velocity.NormalizeAndScale( Speed );
 
     }
+
+    InitializeFragmentLighting( StartPos );
 }
 
 //=============================================================================

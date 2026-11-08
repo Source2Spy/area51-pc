@@ -49,34 +49,12 @@ enum stat_fields
     k_stats_CPU_Time           ,
     k_stats_NumTimerStats      ,
 
-    // Non logging GPU stats
-    k_stats_GSReset,
-    k_stats_GSSettings0,
-    k_stats_ShadowMap,
-    k_stats_3dObjects,
-    k_stats_SpecialObjects,
-    k_stats_PolyCache,
-    k_stats_2dObjects,
-    k_stats_CollisionMgr,
-    k_stats_GSSettings1,
-    k_stats_StatsMgr,
-    k_stats_UI,
-    k_stats_DebugText,
-    k_stats_GPUUnknown,
+    k_stats_FrameTime,
+    k_stats_SMem,
+    k_stats_Memory,
+    k_stats_TotalObjectCount,
+    k_stats_TextureMemory,
 
-    //  Non logging game stats
-    k_stats_GS                 ,
-    k_stats_VSync              ,
-    k_stats_DList              ,
-    k_stats_SMem               ,
-    k_stats_Memory             ,
-    k_stats_VisibleObjectCount ,
-    k_stats_TotalObjectCount   ,
-    k_stats_Vertices           ,
-    k_stats_Polygons           ,
-    k_stats_TextureMemory      ,
-    k_stats_AudioChannel       ,
-    
     k_stats_Last,
 };
 
@@ -107,6 +85,7 @@ enum stat_measurement
 class stat_logger
 {
 public:
+
     enum { MAX_STAT_LEVELS = 8 };
     stat_logger( stat_fields fieldToTrack );
     ~stat_logger();
@@ -118,56 +97,46 @@ protected:
     static  stat_logger* s_StatStack[MAX_STAT_LEVELS];
 };
 
-struct warning_holder
-{
-    stat_fields m_StatField;
-    f32         m_WarningLevel;
-    u32         X1,
-                Y1;
-
-};
-
-
 class stats_mgr
 {
 public:
-                        stats_mgr(void);
-                       ~stats_mgr();
 
-    static stats_mgr*   GetStatsMgr(void) { if(!s_This) s_This = new stats_mgr; return s_This; }
+                        stats_mgr          ( void );
+                       ~stats_mgr          ();
 
-    void                Reset (void);
-    void                OnGameUpdate( f32 deltaTime );
+    static stats_mgr*   GetStatsMgr( void )
+    {
+        if( !s_This )
+            s_This = new stats_mgr;
 
+        return s_This;
+    }
 
-    void                DrawBar(    stat_fields thisStat, 
-                                    f32 X1, f32 Y1, f32 X2, f32 Y2,
-                                    xcolor BarColor );
-    void                PrintStats( stat_fields thisStat, 
-                                    stat_measurement thisMeasurement, 
-                                    u32 X1, u32 Y1, 
-                                    f32 lengthOfTimeToAverage = 1.0f );
+    //-------------------------------------------------------------------------
+    //  SAMPLING
+    //-------------------------------------------------------------------------
 
-    void                RegisterStat(   stat_fields thisField,
-                                        f32 thisValue );
+    void                Reset              ( void );
+    void                OnGameUpdate       ( f32 deltaTime );
 
-    f32                 GetStat(    stat_fields thisStat,
-                                    stat_measurement thisMeasurement,
-                                    f32 lengthOfTimeToAverage = 1.0f );
+    void                RegisterStat       ( stat_fields thisField,
+                                             f32         thisValue );
 
-    static const char*  GetStatName( stat_fields thisStat );
+    f32                 GetStat            ( stat_fields      thisStat,
+                                             stat_measurement thisMeasurement,
+                                             f32              lengthOfTimeToAverage = 1.0f );
 
-    
-    void                DrawFPS( void );
-    void                DrawSmallBars( void );
-    void                DrawCPULegend( void );
-    void                DrawGPULegend( void );
-    void                DrawSmallBarLegend( void );
+    static const char*  GetStatName         ( stat_fields thisStat );
 
-    void                AddWarning( stat_fields StatField, f32 WarningLevel, u32 X1, u32 Y1 );
+    //-------------------------------------------------------------------------
+    //  DISPLAY
+    //-------------------------------------------------------------------------
 
-    void                DisableAllWarnings( void );
-    void                EnableAllWarning  ( void );
+    void                DrawFPS            ( void );
+    void                DrawSmallBars      ( void );
+    void                DrawCPULegend      ( void );
+    void                DrawGPULegend      ( void );
+    void                DrawSmallBarLegend ( void );
 
     static xbool        m_bShowNumbers;
     static xbool        m_bShowHorizontalBars;
@@ -178,22 +147,22 @@ public:
 
 
 protected:
+
+    void                CompleteFrame      ( f32 DeltaTime );
+
     static stats_mgr*   s_This;
 
     s32                 m_FrameCount;
-    
+
     f32                 m_Stats[k_stats_Last][k_SAMPLE_HISTORY];
-    
+
     f32                 m_StatsMin[k_stats_Last];
     f32                 m_StatsMax[k_stats_Last];
-    f32                 m_StatsAverage[k_stats_Last];
-
-    xbool               m_WarningsEnabled;
-
-    xarray<warning_holder> m_Warnings;
+    f32                 m_FrameDurations[k_SAMPLE_HISTORY];
+    s32                 m_SampleCount;
 };
 
-#endif// STATS_MGR
+#endif // STATS_MGR
 
 #else //ENABLE_STATS_MGR
 

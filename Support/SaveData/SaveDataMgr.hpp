@@ -1,30 +1,31 @@
-//==============================================================================
+//=========================================================================
 //
 //  SaveDataMgr.hpp
 //
-//==============================================================================
+//=========================================================================
 
 #ifndef SAVE_DATA_MGR_HPP
 #define SAVE_DATA_MGR_HPP
 
-//==============================================================================
+//=========================================================================
 //  INCLUDES
-//==============================================================================
+//=========================================================================
 
 #include "SaveDataTypes.hpp"
 #include "StateMgr/PlayerProfile.hpp"
 
 #include <functional>
 
-//==============================================================================
+//=========================================================================
 //  SAVE DATA MGR
-//==============================================================================
+//=========================================================================
 
-class save_data_mgr
+class SaveDataMgr
 {
 public:
-    save_data_mgr ( void );
-    ~save_data_mgr( void );
+
+    SaveDataMgr ( void );
+    ~SaveDataMgr( void );
 
     void  Init                ( void );
     void  Kill                ( void );
@@ -41,8 +42,8 @@ public:
 
     template<class TYPE>
     void CreateProfile( s32 PlayerID,
-                        TYPE* pObject,
-                        void (TYPE::*pMethod)(void) )
+                         TYPE* pObject,
+                         void (TYPE::*pMethod)(void) )
     {
         QueueCreateProfile( PlayerID, pObject, Bind( pObject, pMethod ) );
     }
@@ -70,18 +71,28 @@ public:
     }
 
     template<class TYPE>
+    void SaveProfileSnapshot( const profile_info& Info,
+                              s32 PlayerID,
+                              const player_profile& Profile,
+                              TYPE* pObject,
+                              void (TYPE::*pMethod)(void) )
+    {
+        QueueProfileSnapshot( Info, PlayerID, Profile, pObject, Bind( pObject, pMethod ) );
+    }
+
+    template<class TYPE>
     void OverwriteProfile( const profile_info& Info,
                            s32 PlayerID,
-                           TYPE* pObject,
-                           void (TYPE::*pMethod)(void) )
+                            TYPE* pObject,
+                            void (TYPE::*pMethod)(void) )
     {
         SaveProfile( Info, PlayerID, pObject, pMethod );
     }
 
     template<class TYPE>
     void DeleteProfile( const profile_info& Info,
-                        TYPE* pObject,
-                        void (TYPE::*pMethod)(void) )
+                         TYPE* pObject,
+                         void (TYPE::*pMethod)(void) )
     {
         QueueProfileOperation( SaveDataOperation::DeleteProfile,
                                Info, -1, pObject,
@@ -98,44 +109,48 @@ public:
     void                    CancelCallbacks     ( void* pOwner );
     void                    ClearCachedProfiles ( void );
     xbool                   IsBusy              ( void ) const;
-    const save_data_result& GetLastResult       ( void ) const;
+    const SaveDataResult& GetLastResult       ( void ) const;
     profile_info&           GetProfileInfo      ( s32 PlayerID );
     void                    GetProfileNames     ( xarray<profile_info*>& Result );
 
 private:
-    struct impl;
 
-    typedef std::function<void(const save_data_result&)> completion_callback;
+    struct Impl;
+
+    typedef std::function<void(const SaveDataResult&)> CompletionCallback;
+
+    void QueueProfileSnapshot( const profile_info& Info, s32 PlayerID, const player_profile& Profile,
+                                void* pOwner, CompletionCallback Callback );
 
     template<class TYPE>
-    static completion_callback Bind( TYPE* pObject, void (TYPE::*pMethod)(void) )
+    static CompletionCallback Bind( TYPE* pObject, void (TYPE::*pMethod)(void) )
     {
-        return [pObject, pMethod]( const save_data_result& )
+        return [pObject, pMethod]( const SaveDataResult& )
         {
             (pObject->*pMethod)();
         };
     }
 
     void QueueRefreshProfiles  ( void* pOwner,
-                                 completion_callback Callback );
+                                 CompletionCallback Callback );
     void QueueCreateProfile    ( s32 PlayerID,
                                  void* pOwner,
-                                 completion_callback Callback );
+                                 CompletionCallback Callback );
     void QueueProfileOperation ( SaveDataOperation Operation,
                                  const profile_info& Info,
                                  s32 PlayerID,
                                  void* pOwner,
-                                 completion_callback Callback );
+                                 CompletionCallback Callback );
     void QueueSaveSettings     ( void* pOwner,
-                                 completion_callback Callback );
+                                 CompletionCallback Callback );
 
-    impl* m_pImpl;
+    Impl* m_pImpl;
 };
 
-//==============================================================================
-extern save_data_mgr g_SaveDataMgr;
-//==============================================================================
+//=========================================================================
+extern SaveDataMgr g_SaveDataMgr;
+//=========================================================================
 
-//==============================================================================
+//=========================================================================
 #endif // SAVE_DATA_MGR_HPP
-//==============================================================================
+//=========================================================================

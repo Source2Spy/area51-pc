@@ -10,6 +10,7 @@
 #include "ResourceMgr/ResourceMgr.hpp"
 #include "Objects/Cloth.hpp"
 #include "Objects/Render/ClothInst.hpp"
+#include "Characters/FloorProperties.hpp"
 
 //=========================================================================
 // DEFINES
@@ -75,9 +76,10 @@ protected:
     
 protected:
 
-    cloth       m_ClothSim ;     // Cloth simulation
-    cloth_inst  m_ClothRender ;  // Cloth rendering (rigid inst + dynamic cloth mesh)
-    f32         m_ActiveTimer ;  // If >0, cloth is updated
+    floor_properties    m_FloorProperties;
+    cloth               m_ClothSim ;     // Cloth simulation
+    cloth_inst          m_ClothRender ;  // Cloth rendering (rigid inst + dynamic cloth mesh)
+    f32                 m_ActiveTimer ;  // If >0, cloth is updated
 
 #ifdef X_EDITOR    
     xbool   m_bDrawDebug;   // Draw debug info

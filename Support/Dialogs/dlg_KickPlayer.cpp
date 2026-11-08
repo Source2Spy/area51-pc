@@ -16,7 +16,7 @@
 
 #include "StateMgr/StateMgr.hpp"
 #include "StringMgr/StringMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 
 //=========================================================================
 //  Vote Map Dialog
@@ -42,18 +42,6 @@ ui_manager::dialog_tem KickPlayerDialog =
     &KickPlayerControls[0],
     0
 };
-
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
 
 //=========================================================================
 //  Registration function
@@ -141,6 +129,8 @@ xbool dlg_kick_player::Create( s32                        UserID,
     GotoControl( (ui_control*)m_pPlayerList );
     m_CurrentControl = IDC_KICK_PLAYER_LISTBOX;
     m_PopUp = NULL;
+    m_SelectedPlayer = -1;
+    m_SelectedIdentifier = 0;
 
     // initialize screen scaling
     InitScreenScaling( Position );
@@ -231,19 +221,30 @@ void dlg_kick_player::OnAccept( ui_win* pWin )
 
     if( m_State == DIALOG_STATE_ACTIVE )
     {
+        if( m_pPlayerList->GetSelection() < 0 )
+            return;
+
+        m_SelectedPlayer = (s32)m_pPlayerList->GetSelectedItemData( 1 );
+        const player_score& Player = GameMgr.GetScore().Player[m_SelectedPlayer];
+        if( !Player.IsInGame )
+            return;
+
+        m_SelectedIdentifier = Player.Identifier;
+
         // display confirmation popup
         irect r = g_UiMgr->GetUserBounds( g_UiUserID );
         m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
 
         // set nav text
-        xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_YES" ));
-        navText += g_StringTableMgr( "ui", "IDS_NAV_NO" );
+        xwstring navText( g_StringTableMgr( "ui", "IDS_NAV_KICK_PLAYER" ) );
+        navText += g_StringTableMgr( "ui", "IDS_NAV_BAN_PLAYER" );
+        navText += g_StringTableMgr( "ui", "IDS_NAV_CANCEL" );
         SetNavTextVisible( FALSE );
 
         m_PopUp->Configure( g_StringTableMgr( "ui", "IDS_KICK_PLAYER" ), 
             TRUE, 
             TRUE, 
-            FALSE, 
+            TRUE,
             g_StringTableMgr( "ui", "IDS_KICK_PLAYER_MSG" ),
             navText,
             &m_PopUpResult );
@@ -311,12 +312,12 @@ void dlg_kick_player::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         // kill any popups
         if( m_PopUp )
         {
-            if ( m_PopUpResult != DLG_POPUP_IDLE )
+            if( m_PopUpResult == DLG_POPUP_IDLE )
             {
                 ASSERT( g_UiMgr->GetTopmostDialog(m_UserID) == m_PopUp );
                 g_UiMgr->EndDialog( m_UserID, TRUE );
-                m_PopUp = NULL;
             }
+            m_PopUp = NULL;
         }
 
         // exit vote screen
@@ -328,13 +329,22 @@ void dlg_kick_player::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     {
         if ( m_PopUpResult != DLG_POPUP_IDLE )
         {
-            if ( m_PopUpResult == DLG_POPUP_YES )
+            if( (m_PopUpResult == DLG_POPUP_YES) || (m_PopUpResult == DLG_POPUP_MAYBE) )
             {
-                // TODO: kick the selected player here
-                // get the player index from the list
-                u32 index = m_pPlayerList->GetSelectedItemData(1);
-                m_State = DIALOG_STATE_SELECT;
-                g_NetworkMgr.KickPlayer( index );
+                const player_score& Player = GameMgr.GetScore().Player[m_SelectedPlayer];
+                if( Player.IsInGame && (Player.Identifier == m_SelectedIdentifier) )
+                {
+                    if( m_PopUpResult == DLG_POPUP_MAYBE )
+                        g_NetworkMgr.BanPlayer( m_SelectedPlayer );
+                    else
+                        g_NetworkMgr.KickPlayer( m_SelectedPlayer );
+
+                    m_State = DIALOG_STATE_SELECT;
+                }
+                else
+                {
+                    m_State = DIALOG_STATE_ACTIVE;
+                }
             }
             else
             {
@@ -437,7 +447,7 @@ void dlg_kick_player::RefreshPlayerList(void)
         }
 
         // select the first entry
-        if( (m_pPlayerList->GetItemCount() >= CurrentSelection ) && ( CurrentSelection != -1 ) )
+        if( (CurrentSelection >= 0) && (CurrentSelection < m_pPlayerList->GetItemCount()) )
         {
             m_pPlayerList->SetSelection( CurrentSelection );
         }

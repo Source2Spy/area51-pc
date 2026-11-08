@@ -8,7 +8,11 @@
 //  INCLUDES
 //==============================================================================
 
+#include "NetworkMgr/Replication/NetUpdate.hpp"
+
 #include "Render/PrimitiveDebug.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
+#include "Render/PipelinePrewarm.hpp"
 #include "Flag.hpp"
 #include "GameLib/RenderContext.hpp"
 #include "TemplateMgr/TemplateMgr.hpp"
@@ -16,13 +20,13 @@
 #include "Objects/Player/Player.hpp"
 #include "Objects/BaseProjectile.hpp"
 #include "Objects/HudObject.hpp"
-#include "NetworkMgr/logic_CTF.hpp"
+#include "NetworkMgr/Game/logic_CTF.hpp"
 #include "FlagBase.hpp"
 #include "Objects/ClothObject.hpp"
 
 #ifndef X_EDITOR
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/logic_Base.hpp"
+#include "NetworkMgr/Game/logic_Base.hpp"
 #endif
 
 //==============================================================================
@@ -39,6 +43,11 @@ static f32 FLAG_OBJECT_AIR_RESISTANCE = 0.25f;
 
 static struct flag_desc : public object_desc
 {
+    virtual xbool CollectRenderPipelineRequirements( render::PipelinePrewarmContext& Context ) const
+    {
+        return Context.QueueDynamic();
+    }
+
     flag_desc( void ) 
         :   object_desc( object::TYPE_FLAG, 
         "Flag",
@@ -131,6 +140,15 @@ flag::~flag( void )
     {
         m_FlagFX[ i ].KillInstance();
     }
+}
+
+//==============================================================================
+
+void flag::OnInit( void )
+{
+    netobj::OnInit();
+
+    m_FloorProperties.Init( 1.0f, 0.128f, GetGuid(), 10000.0f );
 }
 
 //==============================================================================
@@ -408,8 +426,8 @@ void flag::OnRender( void )
     Flags |= GetRenderMode();
 
     // Render rigid geometry and cloth geometry
-    m_ClothRender.RenderRigidGeometry( m_ClothSim, Flags );
-    m_ClothRender.RenderClothGeometry( m_ClothSim, GetVTexture(), Flags );
+    m_ClothRender.RenderRigidGeometry( m_ClothSim, m_FloorProperties.GetColor(), Flags );
+    m_ClothRender.RenderClothGeometry( m_ClothSim, m_FloorProperties.GetColor(), GetVTexture(), Flags );
 
 #ifdef X_EDITOR
 
@@ -551,7 +569,7 @@ void flag::OnAdvanceSimulation( f32 DeltaTime )
 
         NewPos.GetY() -= m_Velocity * DeltaTime;
 
-        g_CollisionMgr.CylinderSetup( GetGuid(), OldPos, NewPos, 10.0f, 50.0f );
+        g_CollisionMgr.CapsuleSetup( GetGuid(), OldPos, NewPos, 10.0f, 50.0f );
 
         g_CollisionMgr.SetMaxCollisions( 10 );
         //g_CollisionMgr.AddToIgnoreList( m_OriginGuid );
@@ -845,6 +863,8 @@ void flag::OnAdvanceSimulation( f32 DeltaTime )
 
 #endif // X_EDITOR
 
+    m_FloorProperties.Update( GetPosition(), DeltaTime );
+
     // Is cloth active?
     m_ActiveTimer -= DeltaTime;
     if( m_ActiveTimer <= 0.0f )
@@ -931,27 +951,6 @@ void flag::OnProjectileImpact( const object&  Projectile,
                                 CollPoint, 
                                 PunchDamageHole, 
                                 ManualImpactForce );
-}
-
-//==============================================================================
-
-u32 flag::GetRenderMode( void )
-{
-    u32 Mode = render::WIREFRAME;
-
-    if( GetAttrBits() & ATTR_EDITOR_PLACEMENT_OBJECT )
-    {
-        Mode = render::PULSED;
-    }
-    else if( GetAttrBits() & ATTR_EDITOR_SELECTED )
-    {
-        if( GetAttrBits() & ATTR_EDITOR_BLUE_PRINT )
-            Mode |= render::WIREFRAME2;
-        else
-            Mode |= render::WIREFRAME;
-    }
-
-    return( Mode );
 }
 
 //==============================================================================
@@ -1120,91 +1119,61 @@ void flag::net_Logic( f32 DeltaTime )
 
 //==============================================================================
 
-void flag::net_AcceptUpdate( const bitstream& BS )
+void flag::net_AcceptUpdate( const net_flag_update& Update )
 {
+    //
     // netobj::ACTIVATE_BIT
-    if( BS.ReadFlag() )
-    {
-        u32 TeamBits;
-        BS.ReadU32( TeamBits );
-        InitGeometry( TeamBits );
-    }
+    //
+    if( Update.Activate )
+        InitGeometry( Update.TeamBits );
 
+    //
     // TIMEOUT IMMINENT BIT
-    if( BS.ReadFlag() )
-    {
+    //
+    if( Update.TimeoutImminent )
         PlayEffect( FLAG_TIMEOUT );
-    }
 
+    //
     // CAPTURE BIT
-    if( BS.ReadFlag() )
-    {
+    //
+    if( Update.Capture )
         PlayEffect( FLAG_CAPTURE );
-    }
 
+    //
     // TELEPORT BIT
-    if( BS.ReadFlag() )
-    {
+    //
+    if( Update.Teleport )
         PlayEffect( FLAG_TELEPORT );
-    }
 
+    //
     // DIRTY_POSITION
-    if( BS.ReadFlag() )
+    //
+    if( Update.HasPosition )
     {
-        xbool Attached;
-        if( BS.ReadFlag( Attached ) )
+        if( Update.Attached )
         {
-            s32 Player;
-            BS.ReadS32( Player );
-            AttachToPlayer( Player );
+            AttachToPlayer( Update.Player );
         }
         else
         {
-            vector3 Position;
-            radian  Yaw;
-            s32     Zone1;
-            s32     Zone2;
-            xbool   bFalling;
-
-            BS.ReadVector( Position );
-            BS.ReadF32   ( Yaw      );
-            BS.ReadS32   ( Zone1    );
-            BS.ReadS32   ( Zone2    );
-
-            BS.ReadFlag  ( bFalling  );
-
-            SetYaw( Yaw );
-            SetPosition( Position, Zone1, Zone2 );
-
-            // This means it wasn't falling, but now it is.
-            if( bFalling && m_bIsSettled )
-            {
+            SetYaw( Update.Yaw );
+            SetPosition( Update.Position, Update.Zone1, Update.Zone2 );
+            if( Update.Falling && m_bIsSettled )
                 StartFall();
-            }
-
-            // The server can stop the fall anytime it wants to.
-            else if( !bFalling )
-            {
+            else if( !Update.Falling )
                 StopFall();
-            }
         }
     }
 
+    //
     // DIRTY_TIMEOUT
-    if( BS.ReadFlag() )
+    //
+    if( Update.HasTimeout )
     {
-        if( BS.ReadFlag() )
-        {
-            f32 TimeOutAge;
-            f32 CurrentAge;
-            BS.ReadF32( TimeOutAge );
-            BS.ReadF32( CurrentAge );
-            SetTimeOut( TimeOutAge, CurrentAge );
-        }
+        if( Update.Timeout )
+            SetTimeOut( Update.TimeoutAge, Update.CurrentAge );
         else
-        {
             ClearTimeOut();
-        }
     }
 }
 

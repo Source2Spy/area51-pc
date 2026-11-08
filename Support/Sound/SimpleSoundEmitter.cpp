@@ -250,7 +250,7 @@ void simple_sound_emitter::OnAdvanceSimulation ( f32 DeltaTime )
             }
 
             // Is the sound done playing.
-            if( (!g_AudioMgr.IsValidVoiceId( m_VoiceID )) )
+            if( (!g_AudioMgr.IsValidVoiceIdCached( m_VoiceID )) )
             {
                 if( m_Flags & DEACTIVATE )
                 {
@@ -261,7 +261,7 @@ void simple_sound_emitter::OnAdvanceSimulation ( f32 DeltaTime )
                     g_ObjMgr.DestroyObject( GetGuid() );
                 }
             }
-            else if( (m_Flags & UPDATE_POS) && g_AudioMgr.IsValidVoiceId( m_VoiceID ) )
+            else if( (m_Flags & UPDATE_POS) && g_AudioMgr.IsValidVoiceIdCached( m_VoiceID ) )
             {
                 g_AudioMgr.SetPosition( m_VoiceID, GetPosition(), GetZone1() );
             }
@@ -297,11 +297,11 @@ void simple_sound_emitter::OnAdvanceSimulation ( f32 DeltaTime )
             for( s32 i = m_pAsyncVoiceID.GetCount()-1; i >=0 ; i-- )
             {
                 // Is the sound done playing.
-                if( (!g_AudioMgr.IsValidVoiceId( m_pAsyncVoiceID[i] )) )
+                if( (!g_AudioMgr.IsValidVoiceIdCached( m_pAsyncVoiceID[i] )) )
                 {
                     m_pAsyncVoiceID.Delete( i );
                 }
-                else if( (m_Flags & UPDATE_POS) && g_AudioMgr.IsValidVoiceId( m_pAsyncVoiceID[i] ) )
+                else if( (m_Flags & UPDATE_POS) && g_AudioMgr.IsValidVoiceIdCached( m_pAsyncVoiceID[i] ) )
                 {
                     g_AudioMgr.SetPosition( m_pAsyncVoiceID[i], GetPosition(), GetZone1() );
                 }
@@ -309,7 +309,7 @@ void simple_sound_emitter::OnAdvanceSimulation ( f32 DeltaTime )
 
             // Are all the sounds done playing.
             if( (m_pAsyncVoiceID.GetCount() == 0) && 
-                (!g_AudioMgr.IsValidVoiceId( m_VoiceID )) )
+                (!g_AudioMgr.IsValidVoiceIdCached( m_VoiceID )) )
             {
                 if( m_Flags & DEACTIVATE )
                 {

@@ -7,6 +7,17 @@
   },
   "configurePresets": [
     {
+      "name": "shader-tools",
+      "displayName": "Host shader preparation tools",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "A51_BUILD_SELECTED_APPS": "OFF",
+        "A51_BUILD_SHADER_TOOL": "ON",
+        "A51_ENABLE_QT": "OFF",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
       "name": "windows-msvc-base",
       "hidden": true,
       "generator": "Visual Studio 17 2022",
@@ -112,6 +123,14 @@
     }
   ],
   "buildPresets": [
+    {
+      "name": "prepare-shaders",
+      "configurePreset": "shader-tools",
+      "configuration": "Release",
+      "targets": [
+        "a51_prepare_shaders"
+      ]
+    },
     {
       "name": "selected-apps",
       "hidden": true,

@@ -11,6 +11,7 @@
 
 #include "NetProjectile.hpp"
 #include "Objects/ParticleEmiter.hpp"
+#include "Characters/FloorProperties.hpp"
 
 //=========================================================================
 
@@ -39,6 +40,12 @@ static  const   object_desc&    GetObjectType       ( void );
 //=========================================================================
 
 virtual         xbool           GetDoCollisions     ( void );
+virtual         void            SetStart            ( const vector3& Position,
+                                                     const radian3& Orientation,
+                                                     const vector3& Velocity,
+                                                     s32      Zone1,
+                                                     s32      Zone2,
+                                                     f32      Gravity = 0.0f );
 virtual         bbox            GetLocalBBox        ( void ) const;
 virtual         void            OnAdvanceSimulation      ( f32 DeltaTime );
 virtual         void            OnRender            ( void );
@@ -69,6 +76,7 @@ protected:
 //  matrix4                             m_OldMovingPlatformL2W;
 
     rigid_inst                          m_RigidInst;        // Instance for rendering object.
+    floor_properties                    m_FloorProperties;
 //  rhandle<char>                       m_ProjectileFx;     // The energy projectile particle effect.
 //  guid                                m_FxGuid;           // Guid of the effect object.
 

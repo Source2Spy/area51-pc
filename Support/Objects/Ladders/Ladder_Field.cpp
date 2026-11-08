@@ -7,6 +7,7 @@
 #include "Entropy.hpp"
 #include "../MiscUtils/SimpleUtils.hpp"
 #include "CollisionMgr/PolyCache.hpp"
+#include "CollisionMgr/CollisionPrimatives.hpp"
 
 
 //=============================================================================
@@ -139,17 +140,17 @@ void ladder_field::OnColCheck( void )
     g_CollisionMgr.StartApply( GetGuid() ) ;
 
     // Is this a character?
-    if (g_CollisionMgr.GetDynamicPrimitive() == PRIMITIVE_DYNAMIC_CYLINDER)
+    if (g_CollisionMgr.GetDynamicPrimitive() == PRIMITIVE_DYNAMIC_CAPSULE)
     {
-        // Lookup cylinder info
-        const collision_mgr::dynamic_cylinder& Cylinder = g_CollisionMgr.GetDynamicCylinder() ;
+        // Use the character capsule dimensions.
+        const collision_mgr::dynamic_capsule& Capsule = g_CollisionMgr.GetDynamicCapsule() ;
         ComputeCollision(Collision, 
-                         (Cylinder.Radius*2.0f) + 0.2f, 
-                         Cylinder.TopStart.GetY() - Cylinder.BotEnd.GetY()) ;
+                         (Capsule.Radius*2.0f) + 0.2f,
+                         Capsule.Height) ;
 
         // Apply back of ladder collision if player is moving down only -
         // this stops the player from falling off ledges where the top of a ladder starts
-        f32 YVel = Cylinder.BotEnd.GetY() - Cylinder.BotStart.GetY() ;
+        f32 YVel = Capsule.AxisEndA.GetY() - Capsule.AxisStartA.GetY() ;
         if (YVel < 10.0f)
         {
             g_CollisionMgr.ApplyQuad(Collision.m_BackQuad.m_Pos[0],
@@ -332,44 +333,14 @@ bbox ladder_field::GetLocalBBox( void ) const
 
 xbool ladder_field::DoesCylinderIntersect( const vector3& Pos, f32 Height, f32 Radius ) const
 {
-    vector3 WorldSpheres [12] ;
-    vector3 LadderSpheres[12] ;
-    s32     nSpheres ;
-    s32     i ;
-    
-    // Compute cylinder info from physics
-    vector3 Bottom = Pos ;
-    vector3 Top    = Pos + vector3(0, Height, 0) ;
-
-    // Compute spheres of character in world space
-    nSpheres = collision_mgr::GetCylinderSpherePositions( Bottom, Top, Radius, WorldSpheres, 12 ) ;
-    if (nSpheres == 0)
-        return FALSE ;
-
-    // Compute world -> local matrix
-    matrix4 W2L = GetL2W() ;
-    W2L.InvertRT() ;
-
-    // Put spheres into local space of ladder
-    W2L.Transform(LadderSpheres, WorldSpheres, nSpheres) ;
-
-    // Compute local bbox of ladder for intersect test, and inflate by sphere radius
-    const vector3& D = m_Dimensions ;
-    bbox LocalBBox;
-    vector3 Min( -D.GetX()*0.5f, 0,   0  ) ;
-    vector3 Max(  D.GetX()*0.5f, D.GetY(), 10 ) ;
-    LocalBBox.Set( Min, Max );
-    LocalBBox.Inflate(Radius, Radius, Radius) ;
-
-    // If any spheres centers are inside of expanded bbox then character is inside ladder
-    for (i = 0 ; i < nSpheres ; i++)
-    {
-        // Is sphere in bbox?
-        if (LocalBBox.Intersect(LadderSpheres[i]))
-            return TRUE ;
-    }
-
-    return FALSE ;
+    matrix4 W2L = GetL2W();
+    W2L.InvertRT();
+    const vector3 A = W2L.Transform( Pos + vector3( 0.0f, Radius, 0.0f ) );
+    const vector3 B = W2L.Transform( Pos + vector3( 0.0f, Height - Radius, 0.0f ) );
+    const vector3& D = m_Dimensions;
+    bbox Bounds( vector3( -D.GetX() * 0.5f, 0.0f, 0.0f ),
+                 vector3( D.GetX() * 0.5f, D.GetY(), 10.0f ) );
+    return ComputeCapsuleAABBoxOverlap( A, B, Radius, Bounds );
 }
 
 //===========================================================================

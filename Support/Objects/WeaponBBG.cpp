@@ -8,7 +8,7 @@
 #include "Objects/Projector.hpp"
 #include "AudioMgr/AudioMgr.hpp"
 #include "Debris/debris_mgr.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "Player/Player.hpp"
 #include "Objects/DestructibleObj.hpp"
 #include "Objects/SuperDestructible.hpp"
@@ -16,6 +16,7 @@
 #include "Objects/Turret.hpp"
 #include "Characters/Character.hpp"
 #include "Render/PrimitiveBatch.hpp"
+#include "Render/PipelinePrewarm.hpp"
 
 #if !defined(X_EDITOR)
 #include "NetworkMgr/NetworkMgr.hpp"
@@ -43,8 +44,23 @@ tweak_handle BBG_BurnSecondsTweak ( "BBG_Secondary_BurnSeconds" );
 // OBJECT DESCRIPTION
 //=========================================================================
 
+static render::primitive_draw_desc BuildWeaponBBGMaterial( const texture* pTexture )
+{
+    return render::primitive_draw_desc( pTexture,
+                                       render::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                                       render::PRIMITIVE_BLEND_ADDITIVE,
+                                       render::PRIMITIVE_DEPTH_READ_ONLY,
+                                       render::PRIMITIVE_RASTER_SOLID_NO_CULL,
+                                       render::PRIMITIVE_SAMPLER_ANISOTROPIC_WRAP );
+}
+
 static struct weapon_bbg_desc : public object_desc
 {
+    virtual xbool CollectRenderPipelineRequirements( render::PipelinePrewarmContext& Context ) const
+    {
+        return Context.QueuePrimitive( BuildWeaponBBGMaterial( NULL ) );
+    }
+
 
     weapon_bbg_desc( void ) : object_desc( object::TYPE_WEAPON_BBG, 
         "BBG",
@@ -217,13 +233,7 @@ void weapon_bbg::OnRenderTransparent(void)
             xcolor BeamColor = m_LaserLockedOn ? g_BBG_LaserColor_Locked : g_BBG_LaserColor;
             BeamColor.A = (u8)BBG_Alpha;
 
-            const render::primitive_draw_desc BeamMaterial( pLaserTexture,
-                                                            render::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                                                            render::PRIMITIVE_BLEND_ADDITIVE,
-                                                            render::PRIMITIVE_DEPTH_READ_ONLY,
-                                                            render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                            render::PRIMITIVE_SAMPLER_ANISOTROPIC_WRAP,
-                                                            render::PRIMITIVE_LAYER_ADDITIVE );
+const render::primitive_draw_desc BeamMaterial = BuildWeaponBBGMaterial( pLaserTexture );
             render::PrimitiveBatch BeamBatch( BeamMaterial );
             BeamBatch.Reserve( m_LaserSegmentCount * 4, m_LaserSegmentCount * 6 );
 
@@ -247,13 +257,7 @@ void weapon_bbg::OnRenderTransparent(void)
 
         if( pFixupTexture )
         {
-            const render::primitive_draw_desc FixupMaterial( pFixupTexture,
-                                                             render::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                                                             render::PRIMITIVE_BLEND_ADDITIVE,
-                                                             render::PRIMITIVE_DEPTH_READ_ONLY,
-                                                             render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                             render::PRIMITIVE_SAMPLER_ANISOTROPIC_WRAP,
-                                                             render::PRIMITIVE_LAYER_ADDITIVE );
+const render::primitive_draw_desc FixupMaterial = BuildWeaponBBGMaterial( pFixupTexture );
             render::PrimitiveBatch FixupBatch( FixupMaterial );
             FixupBatch.Reserve( m_LaserSegmentCount * 4, m_LaserSegmentCount * 6 );
 
@@ -480,13 +484,13 @@ void weapon_bbg::OnEnumProp( prop_enum& PropEnumList )
     new_weapon::OnEnumProp( PropEnumList );    
 
     PropEnumList.PropEnumHeader  ( "BBG", "Bouncy Ball Gun Weapon", 0 );
-    PropEnumList.PropEnumExternal( "BBG\\Bullet Audio Package",   "Resource\0audiopkg", "The audio package associated with this weapon's bullets.", 0 );
+    PropEnumList.PropEnumExternal( "BBG\\Bullet Audio Package",   "Resource\0audiopkg\0", "The audio package associated with this weapon's bullets.", 0 );
 
-    PropEnumList.PropEnumExternal( "BBG\\Reload Effect",          "Resource\0fxo",      "The particle effect for the reload", 0 );
+    PropEnumList.PropEnumExternal( "BBG\\Reload Effect",          "Resource\0fxo\0",      "The particle effect for the reload", 0 );
 
-    PropEnumList.PropEnumExternal( "BBG\\Primary Fire Effect",    "Resource\0fxo",      "The particle effect for the primary fire", 0 );
-    PropEnumList.PropEnumExternal( "BBG\\Secondary Fire Effect",  "Resource\0fxo",      "The particle effect for the secondary fire", 0 );    
-    PropEnumList.PropEnumExternal( "BBG\\Wall Bounce Efect",      "Resource\0fxo",      "The particle effect for when primary projectile hits a wall", 0 );
+    PropEnumList.PropEnumExternal( "BBG\\Primary Fire Effect",    "Resource\0fxo\0",      "The particle effect for the primary fire", 0 );
+    PropEnumList.PropEnumExternal( "BBG\\Secondary Fire Effect",  "Resource\0fxo\0",      "The particle effect for the secondary fire", 0 );    
+    PropEnumList.PropEnumExternal( "BBG\\Wall Bounce Efect",      "Resource\0fxo\0",      "The particle effect for when primary projectile hits a wall", 0 );
 
     PropEnumList.PropEnumFloat   ( "BBG\\Reload Wait Time",           "How long to wait before the BBG starts reloading.", 0 );
     PropEnumList.PropEnumFloat   ( "BBG\\Secondary Fire Base Damage", "The minimum amount of damage the secondary fire will cause.", 0 );
@@ -697,6 +701,9 @@ xbool weapon_bbg::ShouldDrawReticle( void )
 //=========================================================================
 s32 weapon_bbg::IncrementZoom( void )
 {
+    if( m_ZoomStep == 0 )
+        m_LastAmmoBurnTime = (f32)g_ObjMgr.GetSimulationTimeSeconds();
+
     // let base weapon code go through its stuff.
     new_weapon::IncrementZoom();
 
@@ -998,7 +1005,7 @@ xbool weapon_bbg::FireWeaponProtected( const vector3& InitPos , const vector3& B
         pBullet->SetPainDegradation( PainDropDistTweak.GetF32(), PainDropScaleTweak.GetF32() );
         */
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        g_LightMgr.AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
         // Decrement count of bullets in current clip
         DecrementAmmo();
@@ -1083,7 +1090,7 @@ xbool weapon_bbg::FireNPCWeaponProtected ( const vector3& BaseVelocity , const v
             PainHandle );
 
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        g_LightMgr.AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
         // Play the sound associated with this actor's faction.
         object* pObj = g_ObjMgr.GetObjectByGuid( Owner );
@@ -1141,7 +1148,7 @@ xbool weapon_bbg::FireGhostPrimary( s32 iFirePoint, xbool , vector3& )
     }
 
     // add a muzzle light where the bullet was fired from (will fade out really quickly)
-    g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
     // Play the sound associated with this actor's faction.
     object* pObj = g_ObjMgr.GetObjectByGuid( m_ParentGuid );
@@ -1185,7 +1192,7 @@ xbool weapon_bbg::FireGhostSecondary( s32 iFirePoint )
     }
 
     // add a muzzle light where the bullet was fired from (will fade out really quickly)
-    g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
     // Play the sound associated with this actor's faction.
     object* pObj = g_ObjMgr.GetObjectByGuid( m_ParentGuid );

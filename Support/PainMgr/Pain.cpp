@@ -17,7 +17,7 @@
 // Too bad base class object can't handle it.
 #include "Objects/Actor/Actor.hpp"
 #include "Objects/Player/Player.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 
 //==============================================================================
 //==============================================================================
@@ -53,6 +53,7 @@ void pain::Clear( void )
 
 void pain::SetupDefaults( void )
 {
+    m_ImpactType            = IMPACT_DIRECT;
     m_OriginGuid            = 0;
     m_DirectHitGuid         = 0;
     m_CustomScalar          = 1.0f;
@@ -114,7 +115,11 @@ void pain::Setup( pain_handle PainHandle, guid OriginGuid, const vector3& Positi
     // Compute area of effect.  If PainProfile is not available
     // then it is reported through the logging system.
     const pain_profile* pPainProfile = PainHandle.GetPainProfile();
-    if( pPainProfile  ) m_PainBBox = pPainProfile->m_BBox;
+    if( pPainProfile )
+    {
+        m_PainBBox = pPainProfile->m_BBox;
+        m_ImpactType = pPainProfile->m_bSplash ? IMPACT_EXPLOSION : IMPACT_DIRECT;
+    }
     else                m_PainBBox = bbox(vector3(0,0,0),10.0f);
     m_PainBBox.Translate( m_Position );
 
@@ -156,6 +161,23 @@ void pain::SetDirectHitGuid( guid DirectHitGuid )
     ASSERT( m_bSetupCalled );
     m_DirectHitGuid = DirectHitGuid;
     m_bDirectHit    = ( DirectHitGuid != 0 );
+}
+
+//==============================================================================
+
+void pain::SetImpactType( impact_type Type )
+{
+    ASSERT( m_bSetupCalled );
+    ASSERT( (Type == IMPACT_DIRECT) || (Type == IMPACT_EXPLOSION) );
+    m_ImpactType = Type;
+}
+
+//==============================================================================
+
+xbool pain::IsExplosion( void ) const
+{
+    ASSERT( m_bSetupCalled );
+    return m_ImpactType == IMPACT_EXPLOSION;
 }
 
 //==============================================================================
@@ -471,10 +493,9 @@ xbool pain::ComputeDamageAndForce( health_handle HealthHandle, guid VictimGuid, 
     f32 ForceScalar;
 
     // Check if pain does splash damage or not
-    if( PainProfile.m_bSplash )
+    if( IsExplosion() )
     {
-        // Handle splash-based pain.
-        ASSERT( PainProfile.m_bSplash==TRUE );
+        // Handle splash-based pain, including explicit area-source overrides.
 
         // Compute falloff distance to decay pain by.
         vector3 PainVictimDelta = m_VictimPainPosition - m_Position;
@@ -502,7 +523,6 @@ xbool pain::ComputeDamageAndForce( health_handle HealthHandle, guid VictimGuid, 
     else
     {
         // Handle non-splash-based pain.
-        ASSERT( PainProfile.m_bSplash==FALSE );
 
         // If a direct hit was provided then this must match
 /*        if( m_DirectHitGuid && (m_DirectHitGuid != m_VictimGuid) )
@@ -664,13 +684,12 @@ xbool pain::ApplyToWorld( xbool bIgnoreOrigin )
     const pain_profile* pPainProfile = m_PainHandle.GetPainProfile();
     if( !pPainProfile ) 
         return FALSE;
-    const pain_profile& PainProfile = *pPainProfile;
 
     //
     // If ApplyToWorld() is called but this type of pain does not have splash
     // then apply the pain only to the DirectHitGuid if available.
     //
-    if( PainProfile.m_bSplash==FALSE )
+    if( !IsExplosion() )
     {
         if( m_DirectHitGuid )
         {

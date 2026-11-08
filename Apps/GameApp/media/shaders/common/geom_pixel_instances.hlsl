@@ -13,136 +13,127 @@
 //  FUNCTIONS
 //==============================================================================
 
-#if defined(GEOM_USE_RIGID_INSTANCE_DATA)
-
-uint GeomGetMaterialFlags( GEOM_PIXEL_INPUT input )
+uint GeomGetMaterialFlags( GEOM_PIXEL_INPUT Input )
 {
-    return MaterialFlags | RigidInstances[input.InstanceID].ShaderFlags;
-}
-
-//==============================================================================
-
-float GeomGetFadeAlpha( GEOM_PIXEL_INPUT input )
-{
-    return saturate( RigidInstances[input.InstanceID].FadeAlpha );
-}
-
-//==============================================================================
-
-uint GeomGetLightingIndex( GEOM_PIXEL_INPUT input )
-{
-    return RigidInstances[input.InstanceID].LightingIndex;
-}
-
-//==============================================================================
-
-#elif defined(GEOM_USE_SKIN_INSTANCE_DATA)
-
-uint GeomGetMaterialFlags( GEOM_PIXEL_INPUT input )
-{
-    return MaterialFlags | SkinInstances[input.InstanceID].ShaderFlags;
-}
-
-//==============================================================================
-
-float GeomGetFadeAlpha( GEOM_PIXEL_INPUT input )
-{
-    return saturate( SkinInstances[input.InstanceID].FadeAlphaPadding.x );
-}
-
-//==============================================================================
-
-uint GeomGetLightingIndex( GEOM_PIXEL_INPUT input )
-{
-    return SkinInstances[input.InstanceID].LightingIndex;
-}
-
+#if A51_SURFACE_INTERFACE & 64
+    return A51_RECIPE_FLAGS | (Input.DrawFlags & (GEOM_INST_FLAG_FILTER_LIGHT |
+        (A51_RECIPE_PROJECTION ? (GEOM_INST_FLAG_PROJ_LIGHT | GEOM_INST_FLAG_PROJ_SHADOW) : 0u)));
 #else
-    #error "Geometry shader must define GEOM_USE_RIGID_INSTANCE_DATA or GEOM_USE_SKIN_INSTANCE_DATA before including geom_pixel_instances.hlsl"
+    return A51_RECIPE_FLAGS;
+#endif
+}
+
+float GeomGetFadeAlpha( GEOM_PIXEL_INPUT Input )
+{
+    return saturate( Input.FadeAlpha );
+}
+
+uint GeomGetLightingIndex( GEOM_PIXEL_INPUT Input )
+{
+#if A51_SURFACE_INTERFACE & 128
+    return Input.LightingIndex;
+#else
+    return 0;
+#endif
+}
+
+//==============================================================================
+
+#if A51_RECIPE_LIGHTING
+uint GeomGetLightCount( GEOM_PIXEL_INPUT Input )
+{
+    return min( GeomAmbient[GeomGetLightingIndex( Input )].LightCount, (uint)MAX_GEOM_LIGHTS );
+}
+
+//==============================================================================
+
+float4 GeomGetLightVec( GEOM_PIXEL_INPUT Input, uint LightIndex )
+{
+    return GeomLighting[GeomGetLightingIndex( Input )].LightVec[LightIndex];
+}
+
+//==============================================================================
+
+float4 GeomGetLightCol( GEOM_PIXEL_INPUT Input, uint LightIndex )
+{
+    return GeomLighting[GeomGetLightingIndex( Input )].LightCol[LightIndex];
+}
+
+//==============================================================================
+
+float2 GeomGetLightRadial( GEOM_PIXEL_INPUT Input, uint LightIndex )
+{
+    return GeomLighting[GeomGetLightingIndex( Input )].LightRadial[LightIndex].xy;
+}
+
+//==============================================================================
+
+float4 GeomGetLightDir( GEOM_PIXEL_INPUT Input, uint LightIndex )
+{
+    return GeomLighting[GeomGetLightingIndex( Input )].LightDir[LightIndex];
+}
+
+//==============================================================================
+
+float4 GeomGetLightCone( GEOM_PIXEL_INPUT Input, uint LightIndex )
+{
+    return GeomLighting[GeomGetLightingIndex( Input )].LightCone[LightIndex];
+}
+
+//==============================================================================
+
+#if A51_RECIPE_COOKIES
+float4 GeomGetLightCookieU( GEOM_PIXEL_INPUT Input, uint LightIndex )
+{
+    return GeomProjectionLighting[GeomGetLightingIndex( Input )].LightCookieU[LightIndex];
+}
+
+//==============================================================================
+
+float4 GeomGetLightCookieV( GEOM_PIXEL_INPUT Input, uint LightIndex )
+{
+    return GeomProjectionLighting[GeomGetLightingIndex( Input )].LightCookieV[LightIndex];
+}
+
+//==============================================================================
+
+float4 GeomGetLightCookieAtlas( GEOM_PIXEL_INPUT Input, uint LightIndex )
+{
+    return GeomProjectionLighting[GeomGetLightingIndex( Input )].LightCookieAtlas[LightIndex];
+}
+
+//==============================================================================
+
+float4 GeomGetLightCookieTileBounds( GEOM_PIXEL_INPUT Input, uint LightIndex )
+{
+    return GeomProjectionLighting[GeomGetLightingIndex( Input )].LightCookieTileBounds[LightIndex];
+}
+
+//==============================================================================
+
+float4 GeomGetLightCookieInfo( GEOM_PIXEL_INPUT Input, uint LightIndex )
+{
+    return GeomProjectionLighting[GeomGetLightingIndex( Input )].LightCookieInfo[LightIndex];
+}
+
+//==============================================================================
+
+#endif
+
+#if A51_RECIPE_SHADOWS
+uint GeomGetLightShadowIndex( GEOM_PIXEL_INPUT Input, uint LightIndex )
+{
+    return GeomProjectionLighting[GeomGetLightingIndex( Input )].LightShadowIndex[LightIndex];
+}
 #endif
 
 //==============================================================================
 
-uint GeomGetLightCount( GEOM_PIXEL_INPUT input )
+#endif
+
+float4 GeomGetLightAmbCol( GEOM_PIXEL_INPUT Input )
 {
-    return min( GeomLighting[GeomGetLightingIndex( input )].LightCountPadding.x, (uint)MAX_GEOM_LIGHTS );
-}
-
-//==============================================================================
-
-float4 GeomGetLightVec( GEOM_PIXEL_INPUT input, uint lightIndex )
-{
-    return GeomLighting[GeomGetLightingIndex( input )].LightVec[lightIndex];
-}
-
-//==============================================================================
-
-float4 GeomGetLightCol( GEOM_PIXEL_INPUT input, uint lightIndex )
-{
-    return GeomLighting[GeomGetLightingIndex( input )].LightCol[lightIndex];
-}
-
-//==============================================================================
-
-float4 GeomGetLightDir( GEOM_PIXEL_INPUT input, uint lightIndex )
-{
-    return GeomLighting[GeomGetLightingIndex( input )].LightDir[lightIndex];
-}
-
-//==============================================================================
-
-float4 GeomGetLightCone( GEOM_PIXEL_INPUT input, uint lightIndex )
-{
-    return GeomLighting[GeomGetLightingIndex( input )].LightCone[lightIndex];
-}
-
-//==============================================================================
-
-float4 GeomGetLightCookieU( GEOM_PIXEL_INPUT input, uint lightIndex )
-{
-    return GeomLighting[GeomGetLightingIndex( input )].LightCookieU[lightIndex];
-}
-
-//==============================================================================
-
-float4 GeomGetLightCookieV( GEOM_PIXEL_INPUT input, uint lightIndex )
-{
-    return GeomLighting[GeomGetLightingIndex( input )].LightCookieV[lightIndex];
-}
-
-//==============================================================================
-
-float4 GeomGetLightCookieAtlas( GEOM_PIXEL_INPUT input, uint lightIndex )
-{
-    return GeomLighting[GeomGetLightingIndex( input )].LightCookieAtlas[lightIndex];
-}
-
-//==============================================================================
-
-uint GeomGetLightCookieLayer( GEOM_PIXEL_INPUT input, uint lightIndex )
-{
-    return GeomLighting[GeomGetLightingIndex( input )].LightCookieLayer[lightIndex];
-}
-
-//==============================================================================
-
-float GeomGetLightCookieMaxMip( GEOM_PIXEL_INPUT input, uint lightIndex )
-{
-    return GeomLighting[GeomGetLightingIndex( input )].LightCookieMaxMip[lightIndex];
-}
-
-//==============================================================================
-
-uint GeomGetLightShadowIndex( GEOM_PIXEL_INPUT input, uint lightIndex )
-{
-    return GeomLighting[GeomGetLightingIndex( input )].LightShadowIndex[lightIndex];
-}
-
-//==============================================================================
-
-float4 GeomGetLightAmbCol( GEOM_PIXEL_INPUT input )
-{
-    return GeomLighting[GeomGetLightingIndex( input )].LightAmbCol;
+    return GeomAmbient[GeomGetLightingIndex( Input )].LightAmbCol;
 }
 
 //==============================================================================

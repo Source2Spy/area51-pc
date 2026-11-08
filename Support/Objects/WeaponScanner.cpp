@@ -11,7 +11,7 @@
 #include "WeaponScanner.hpp"
 #include "Debris/debris_mgr.hpp"
 #include "Objects/Projector.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "Objects/Player/Player.hpp"
 #include "Objects/ParticleEmiter.hpp"
 #include "Objects/LoreObject.hpp"
@@ -21,10 +21,11 @@
 #include "HudObject.hpp"
 #include "hud_Scanner.hpp"
 #include "Render/PrimitiveBatch.hpp"
+#include "Render/PipelinePrewarm.hpp"
 
 #ifndef X_EDITOR
 #include "StateMgr/StateMgr.hpp"
-#include "NetworkMgr/MsgMgr.hpp"
+#include "NetworkMgr/Messages/MsgMgr.hpp"
 #endif
 
 
@@ -83,8 +84,43 @@ static VO_table_entry s_VOTable[] =
 // OBJECT DESCRIPTION
 //=========================================================================
 
+static render::primitive_draw_desc BuildScannerDebugMaterial( const texture* pTexture )
+{
+    return render::primitive_draw_desc( pTexture,
+                                       render::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                                       render::PRIMITIVE_BLEND_ALPHA,
+                                       render::PRIMITIVE_DEPTH_READ_ONLY,
+                                       render::PRIMITIVE_RASTER_SOLID_NO_CULL,
+                                       render::PRIMITIVE_SAMPLER_LINEAR_CLAMP );
+}
+
+static render::primitive_draw_desc BuildScannerEnclosureMaterial( const texture* pTexture )
+{
+    return render::primitive_draw_desc( pTexture,
+                                       render::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                                       render::PRIMITIVE_BLEND_ALPHA,
+                                       render::PRIMITIVE_DEPTH_READ_ONLY,
+                                       render::PRIMITIVE_RASTER_SOLID,
+                                       render::PRIMITIVE_SAMPLER_LINEAR_CLAMP );
+}
+
+static render::primitive_draw_desc BuildScannerLaserMaterial( const texture* pTexture )
+{
+    return render::primitive_draw_desc( pTexture,
+                                       render::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                                       render::PRIMITIVE_BLEND_ALPHA,
+                                       render::PRIMITIVE_DEPTH_READ_ONLY,
+                                       render::PRIMITIVE_RASTER_SOLID_NO_CULL,
+                                       render::PRIMITIVE_SAMPLER_ANISOTROPIC_WRAP );
+}
+
 static struct weapon_scanner_desc : public object_desc
 {
+    virtual xbool CollectRenderPipelineRequirements( render::PipelinePrewarmContext& Context ) const
+    {
+        return Context.QueuePrimitive( BuildScannerLaserMaterial( NULL ) );
+    }
+
 
     weapon_scanner_desc( void ) : object_desc( object::TYPE_WEAPON_SCANNER, 
                                         "Scanner",
@@ -245,7 +281,7 @@ xbool weapon_scanner::FireNPCWeaponProtected( const vector3& BaseVelocity , cons
         //radian3 TargetRot(TargetVector.GetPitch(), TargetVector.GetYaw(), 0.0f );
 
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
         // Play the sound associated with this actor's faction.
         object* pObj = g_ObjMgr.GetObjectByGuid( Owner );
@@ -381,7 +417,7 @@ xbool weapon_scanner::FireWeaponProtected( const vector3& InitPos , const vector
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
         (void)InitPos;
 
-        //g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        //render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
         return TRUE;
     }
@@ -715,7 +751,7 @@ xbool weapon_scanner::FireSecondaryProtected( const vector3& InitPos , const vec
         FireBullet( InitPos, InitRot, BaseVelocity, Owner, TRUE );
  
         // add a muzzle light where the bullet was fired from (will fade out really quickly)
-        g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
         // decrement count of bullets in current clip
         DecrementAmmo();
@@ -1148,13 +1184,7 @@ void weapon_scanner::DrawEnclosures( void )
     if( VertexCount == 0 )
         return;
 
-    const render::primitive_draw_desc Material( NULL,
-                                                render::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                                                render::PRIMITIVE_BLEND_ALPHA,
-                                                render::PRIMITIVE_DEPTH_READ_ONLY,
-                                                render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                render::PRIMITIVE_LAYER_TRANSPARENT );
+const render::primitive_draw_desc Material = BuildScannerDebugMaterial( NULL );
     matrix4 Identity;
     Identity.Identity();
     render::SubmitPrimitives( Material, Identity, Vertices, VertexCount, Indices, VertexCount );
@@ -1170,13 +1200,7 @@ void weapon_scanner::TESTEnclosures( void )
         render::primitive_vertex( m_BBoxVerts[ScanTestPoly[2]], vector2( 0.0f, 0.0f ), g_ScanEnc_Color )
     };
     const u16 Indices[3] = { 0, 1, 2 };
-    const render::primitive_draw_desc Material( NULL,
-                                                render::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                                                render::PRIMITIVE_BLEND_ALPHA,
-                                                render::PRIMITIVE_DEPTH_READ_WRITE,
-                                                render::PRIMITIVE_RASTER_SOLID,
-                                                render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                render::PRIMITIVE_LAYER_TRANSPARENT );
+const render::primitive_draw_desc Material = BuildScannerEnclosureMaterial( NULL );
     matrix4 Identity;
     Identity.Identity();
     render::SubmitPrimitives( Material, Identity, Vertices, 3, Indices, 3 );
@@ -1365,13 +1389,7 @@ void weapon_scanner::DrawScanningLaser( void )
     if( !pView || !pLaserTexture )
         return;
 
-    const render::primitive_draw_desc LaserMaterial( pLaserTexture,
-                                                     render::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                                                     render::PRIMITIVE_BLEND_ALPHA,
-                                                     render::PRIMITIVE_DEPTH_READ_ONLY,
-                                                     render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                     render::PRIMITIVE_SAMPLER_ANISOTROPIC_WRAP,
-                                                     render::PRIMITIVE_LAYER_TRANSPARENT );
+const render::primitive_draw_desc LaserMaterial = BuildScannerLaserMaterial( pLaserTexture );
     render::PrimitiveBatch LaserBatch( LaserMaterial );
     LaserBatch.Reserve( 8, 12 );
 
@@ -1421,13 +1439,7 @@ void weapon_scanner::DrawScanningLaser( void )
         const collision_mgr::collision& Collision = g_CollisionMgr.m_Collisions[0];
         const vector3 Center = Collision.Point + Collision.Plane.Normal * 0.5f;
 
-        const render::primitive_draw_desc FixupMaterial( pFixupTexture,
-                                                         render::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                                                         render::PRIMITIVE_BLEND_ALPHA,
-                                                         render::PRIMITIVE_DEPTH_READ_ONLY,
-                                                         render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                         render::PRIMITIVE_SAMPLER_ANISOTROPIC_WRAP,
-                                                         render::PRIMITIVE_LAYER_TRANSPARENT );
+const render::primitive_draw_desc FixupMaterial = BuildScannerLaserMaterial( pFixupTexture );
         render::PrimitiveBatch FixupBatch( FixupMaterial );
         FixupBatch.AddPlaneAlignedQuad( Center,
                                         Collision.Plane.Normal,

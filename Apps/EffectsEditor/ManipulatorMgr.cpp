@@ -48,7 +48,6 @@ void CManipulatorMgr::Render( const view& View )
     if( !eng_Begin( "Manipulators" ) )
         return;
 
-    VERIFY( render::BeginPrimitiveRender() );
 
     // Iterate through manipulators rendering
     POSITION Pos = m_Manipulators.GetHeadPosition();
@@ -62,8 +61,6 @@ void CManipulatorMgr::Render( const view& View )
         m_Manipulators.GetNext( Pos );
     }
 
-    render::EndPrimitiveRender();
-    render::ExecuteForwardRender();
     eng_End();
 }
 

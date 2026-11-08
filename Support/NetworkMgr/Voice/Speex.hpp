@@ -34,9 +34,9 @@ struct SPEEX8
     void*         encode_state;
     void*         decode_state;
     spx_int16_t   encode_in[ SPEEX8_SAMPLES_PER_FRAME ];
-    int           encode_in_samples;
+    s32           encode_in_samples;
     unsigned char decode_in[ SPEEX8_DECODE_BUFFER_BYTES ];
-    int           decode_in_bytes;
+    s32           decode_in_bytes;
     SpeexBits     encode_bits;
     SpeexBits     decode_bits;
 };

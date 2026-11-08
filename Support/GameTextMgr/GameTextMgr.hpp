@@ -36,13 +36,13 @@ public:
     
     struct message_container
     {
-        xwchar* pMainString;
-        xwchar* pSubTitleString;
-        xwchar* pSoundDescString;
+        xwstring    MainString;
+        xwstring    SubTitleString;
+        xwstring    SoundDescString;
 
-        s32     SoundID;
-        guid    Guid;
-        u8      State;
+        s32         SoundID;
+        guid        Guid;
+        u8          State;
     };
 
 private:

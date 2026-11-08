@@ -27,14 +27,16 @@ public:
     skin_geom*          GetSkinGeom         ( void ) const;
     const char*         GetSkinGeomName     ( void ) const;
     
-    virtual void        SetUpSkinGeom       ( const char* fileName);
+    virtual void        SetUpSkinGeom       ( const char* FileName);
 
     void                Render              ( const matrix4* pL2W,
                                               const matrix4* pBone,
                                               s32            nBone,
                                               u32            Flags,
                                               u64            LODMask,
-                                              const xcolor&  Ambient = xcolor(64,64,64,255) );
+                                              const xcolor&  Ambient = xcolor(64,64,64,255),
+                                              render::RenderContributionPolicy ContributionPolicy =
+                                                  render::RENDER_CONTRIBUTION_DEFAULT );
 
     void                RenderDistortion    ( const matrix4* pL2W,
                                               const matrix4* pBone,

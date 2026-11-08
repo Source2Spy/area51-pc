@@ -13,7 +13,7 @@
 #include "Objects/Pickup.hpp"
 #include "Objects/WeaponMutation.hpp"
 #include "PerceptionMgr/PerceptionMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "GameLib/DebugCheats.hpp"
 
 //=========================================================================
@@ -86,9 +86,6 @@ void player::SetCurrentStrain( void )
         // Finish necessary initializations.
         m_fMinWalkSpeed *= m_fMinWalkSpeed;
         m_fMinRunSpeed *= m_fMinRunSpeed;
-
-        // Setup the physics
-        m_Physics.CopyValues( m_Physics );
 
         //
         // NOTE: Make sure that the CurrentStrain is set before we go set the weapons up  for this strain!!!

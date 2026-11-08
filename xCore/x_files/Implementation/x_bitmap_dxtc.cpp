@@ -395,11 +395,7 @@ xbitmap UnpackImage( const xbitmap& Source )
     
     // Check if it's a DXT format
     xbitmap::format srcFormat = Source.GetFormat();
-    if( srcFormat != xbitmap::FMT_DXT1 && 
-        srcFormat != xbitmap::FMT_DXT2 && 
-        srcFormat != xbitmap::FMT_DXT3 && 
-        srcFormat != xbitmap::FMT_DXT4 && 
-        srcFormat != xbitmap::FMT_DXT5 )
+    if( !Source.IsDXT() )
     {
         return Source; // Not a DXT format, return as-is
     }

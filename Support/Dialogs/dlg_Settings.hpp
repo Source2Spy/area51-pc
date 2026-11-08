@@ -25,6 +25,7 @@ enum settings_controls
     IDC_SETTINGS_HEADSET,
     IDC_SETTINGS_GRAPHICS,
     IDC_SETTINGS_DISPLAY,
+    IDC_SETTINGS_UI,
     IDC_SETTINGS_LANGUAGE,
     IDC_SETTINGS_ACCEPT,
 };
@@ -72,6 +73,7 @@ private:
     ui_button*          m_pHeadset;
     ui_button*          m_pGraphics;
     ui_button*          m_pDisplay;
+    ui_button*          m_pUI;
     ui_button*          m_pLanguage;
     ui_button*          m_pAccept;
 

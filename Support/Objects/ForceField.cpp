@@ -8,12 +8,14 @@
 // INCLUDES
 //=========================================================================
 #include "ForceField.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "AudioMgr/AudioMgr.hpp"
 #include "x_profile.hpp"
-#include "NetworkMgr/NetObjMgr.hpp"
+#include "NetworkMgr/Replication/NetObjMgr.hpp"
 #include "Player/Player.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "Render/PrimitiveBatch.hpp"
+#include "Render/PipelinePrewarm.hpp"
 #include "GameLib/RigidGeomCollision.hpp"
 #include "CollisionMgr/PolyCache.hpp"
 
@@ -41,8 +43,23 @@ rhandle<texture>            force_field::m_ForceCloudTexture;
     object::ATTR_BLOCKS_PAIN_LOS | \
     object::ATTR_BLOCKS_SMALL_DEBRIS)
 
+static render::primitive_draw_desc BuildForceFieldMaterial( const texture* pTexture )
+{
+    return render::primitive_draw_desc( pTexture,
+                                       render::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                                       render::PRIMITIVE_BLEND_ALPHA,
+                                       render::PRIMITIVE_DEPTH_READ_ONLY,
+                                       render::PRIMITIVE_RASTER_SOLID_NO_CULL,
+                                       render::PRIMITIVE_SAMPLER_ANISOTROPIC_WRAP );
+}
+
 static struct force_field_desc : public object_desc
 {
+    virtual xbool CollectRenderPipelineRequirements( render::PipelinePrewarmContext& Context ) const
+    {
+        return Context.QueuePrimitive( BuildForceFieldMaterial( NULL ) );
+    }
+
     force_field_desc( void ) : object_desc( 
         object::TYPE_FORCE_FIELD, 
         "Force Field",
@@ -466,13 +483,7 @@ void force_field::OnRenderTransparent( void )
     const texture* pForceTexture = m_ForceTexture.GetPointer();
     if( pForceTexture )
     {
-        const render::primitive_draw_desc Material( pForceTexture,
-                                                    render::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                                                    render::PRIMITIVE_BLEND_ALPHA,
-                                                    render::PRIMITIVE_DEPTH_READ_ONLY,
-                                                    render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                    render::PRIMITIVE_SAMPLER_ANISOTROPIC_WRAP,
-                                                    render::PRIMITIVE_LAYER_TRANSPARENT );
+const render::primitive_draw_desc Material = BuildForceFieldMaterial( pForceTexture );
         render::PrimitiveBatch Batch( Material );
         Batch.Reserve( nCells * 4, nCells * 6 );
 
@@ -544,13 +555,7 @@ void force_field::OnRenderTransparent( void )
     const texture* pCloudTexture = m_ForceCloudTexture.GetPointer();
     if( pCloudTexture )
     {
-        const render::primitive_draw_desc Material( pCloudTexture,
-                                                    render::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                                                    render::PRIMITIVE_BLEND_ALPHA,
-                                                    render::PRIMITIVE_DEPTH_READ_ONLY,
-                                                    render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                    render::PRIMITIVE_SAMPLER_ANISOTROPIC_WRAP,
-                                                    render::PRIMITIVE_LAYER_TRANSPARENT );
+const render::primitive_draw_desc Material = BuildForceFieldMaterial( pCloudTexture );
         render::PrimitiveBatch Batch( Material );
         Batch.Reserve( nCells * 4, nCells * 6 );
 
@@ -831,8 +836,8 @@ void force_field::OnEnumProp( prop_enum& List )
         PROP_TYPE_DONT_EXPORT | 
         PROP_TYPE_DONT_SAVE_GAME;
 
-    List.PropEnumExternal( "ForceField\\MainGraphic", "Resource\0xbmp",     "Resource Animation File", Flags );
-    List.PropEnumExternal( "ForceField\\ScanGraphic", "Resource\0xbmp",     "Resource Animation File", Flags );
+    List.PropEnumExternal( "ForceField\\MainGraphic", "Resource\0xbmp\0",     "Resource Animation File", Flags );
+    List.PropEnumExternal( "ForceField\\ScanGraphic", "Resource\0xbmp\0",     "Resource Animation File", Flags );
 
 }
 

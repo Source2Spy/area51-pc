@@ -19,12 +19,8 @@
 #include "ResourceMgr/ResourceMgr.hpp"
 #include "Parsing/TextIn.hpp"
 #include "StateMgr/MapList.hpp"
-#include "NetworkMgr/GameMgr.hpp"
-#ifdef CONFIG_VIEWER
-#include "../../Apps/ArtistViewer/Config.hpp"
-#else
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "../../Apps/GameApp/Config.hpp"    
-#endif
 #include "Configuration/GameConfig.hpp"
 
 
@@ -53,18 +49,6 @@ ui_manager::dialog_tem ResumeGameDialog =
     &ResumeGameControls[0],
     0
 };
-
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
 
 //=========================================================================
 //  Registration function
@@ -144,7 +128,7 @@ xbool dlg_resume_game::Create( s32                        UserID,
     if( !(CONFIG_IS_AUTOSERVER || CONFIG_IS_AUTOCLIENT) )
     {
         // clear in-use controller flags
-        for( int i=0; i<MAX_LOCAL_PLAYERS; i++)
+        for( s32 i=0; i<MAX_LOCAL_PLAYERS; i++)
         {
             g_StateMgr.SetControllerRequested(i, FALSE);
         }
@@ -236,13 +220,30 @@ void dlg_resume_game::OnNotify( ui_notification const& Event )
     {
         if (Event.m_Type == ui_notification_type::ListAccepted)
         {
+            s32 Selection = m_pCheckpointList->GetSelection();
+            if( Selection < 0 || Selection >= m_pCheckpointList->GetItemCount() )
+            {
+                x_DebugMsg( "Resume campaign: selected checkpoint is out of range.\n" );
+                return;
+            }
+
             // Get the checkpoint data
             const level_check_points* pCheckpoint = (level_check_points*)m_pCheckpointList->GetSelectedItemData(0);
             s32 CheckpointIndex = m_pCheckpointList->GetSelectedItemData(1);
 
+            if( !pCheckpoint )
+            {
+                x_DebugMsg( "Resume campaign: selected checkpoint has no data.\n" );
+                return;
+            }
+
             // Set the level name
-            map_entry*  pMapEntry = (map_entry*)g_MapList.Find( pCheckpoint->MapID, GAME_CAMPAIGN );
-            ASSERT( pMapEntry->GetMapID() );
+            const map_entry* pMapEntry = g_MapList.Find( pCheckpoint->MapID, GAME_CAMPAIGN );
+            if( !pMapEntry )
+            {
+                x_DebugMsg( "Resume campaign: checkpoint references missing map ID %d.\n", pCheckpoint->MapID );
+                return;
+            }
 
             g_PendingConfig.SetLevelID( pCheckpoint->MapID );
             s32 Index = 0;
@@ -394,13 +395,24 @@ void dlg_resume_game::FillCheckpointList( void )
         const map_entry* pMapEntry = g_MapList.Find( Checkpoint.MapID, GAME_CAMPAIGN );
         // We *MUST* have that level present to show the details of that checkpoint. We
         // get the name of the level from this mapentry.
-        ASSERT( pMapEntry );
+        if( !pMapEntry )
+        {
+            x_DebugMsg( "Resume campaign: skipping checkpoint for missing map ID %d.\n", Checkpoint.MapID );
+            continue;
+        }
+
+        xwstring MapName;
+        if( !DecodeFontText( pMapEntry->GetDisplayName(), MapName ) )
+        {
+            x_DebugMsg( "Resume campaign: skipping map ID %d with invalid UTF-8 name.\n", Checkpoint.MapID );
+            continue;
+        }
 
         // First add the "mapname" checkpoint
         if( Checkpoint.CheckPoints[0].bIsValid )
         {
             xwstring CheckpointName;
-            CheckpointName += xwstring(pMapEntry->GetDisplayName());
+            CheckpointName += MapName;
             m_pCheckpointList->AddItem( CheckpointName, (uaddr)&Checkpoint, 0 );
         }
 
@@ -436,7 +448,11 @@ void dlg_resume_game::FillCheckpointList( void )
         }
     }
 
-    ASSERTS( m_pCheckpointList->GetItemCount() > 0, "No maps are present!" );
+    if( m_pCheckpointList->GetItemCount() == 0 )
+    {
+        x_DebugMsg( "Resume campaign: no valid campaign checkpoints are available.\n" );
+        return;
+    }
 
     // Now we sort it using the checkpoint data as the sort key
     x_qsort( &m_pCheckpointList->GetItem(0), m_pCheckpointList->GetItemCount(), checkpoint_sort_compare() );

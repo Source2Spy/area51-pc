@@ -43,13 +43,6 @@ enum hud_element
 
 class player_hud 
 {
-    enum icon
-    {
-        HUD_NOTIFICATION_NONE,
-        HUD_NOTIFICATION_FRIEND_REQ,
-        HUD_NOTIFICATION_GAME_INVITE,
-    };
-
 public:
                         player_hud              ( void );
     void                OnRender                ( void );
@@ -74,7 +67,7 @@ public:
 
     f32                 m_HowTextTimer;
     s32                 m_HowLastMode;
-    u8                  m_HowTextAlpha;
+    f32                 m_HowTextAlpha;
 
     s32                 m_Type;
 
@@ -82,20 +75,12 @@ public:
     rhandle<texture>    m_HowLocalBMP;
     rhandle<texture>    m_HowGlobalBMP;
     rhandle<texture>    m_WhoBMP;
-    rhandle<texture>    m_FriendReqBMP;
-    rhandle<texture>    m_GameInviteBMP;
     rhandle<texture>    m_AutoSave;
 
-    icon                m_NotificationIcon;
-    xbool               m_ReceivedFriendReq;
-    xbool               m_ReceivedGameInvite;
     xbool               m_AutoSaveing;
 
-    s32                 m_InvitationAlpha;
     s32                 m_AutoSaveingAlpha;
-    s32                 m_InvitationState;
     s32                 m_AutoSaveState;
-    f32                 m_InvitationHoldTime;
     f32                 m_AutoSaveHoldTime;
 
 

@@ -82,6 +82,18 @@ inline s32 xbitmap::GetMipDataSize( s32 Mip ) const
     else
     {
         ASSERT( Mip <= m_NMips );
+
+        if( IsCompressed() )
+        {
+            // Round both dimensions up: an edge block still occupies a full block.
+            const format Format = GetFormat();
+            const s32    BW     = GetBlockWidth( Format );
+            const s32    BH     = GetBlockHeight( Format );
+
+            return ( ( GetWidth( Mip ) + BW - 1 ) / BW ) *
+                   ( ( GetHeight( Mip ) + BH - 1 ) / BH ) * GetBlockSize( Format );
+        }
+
         return( (m_Data.pMip[Mip].Width * 
                  m_Data.pMip[Mip].Height * 
                  m_FormatInfo[ m_Format ].BPP) >> 3 );

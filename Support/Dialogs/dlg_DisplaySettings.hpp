@@ -21,6 +21,7 @@
 class ui_button;
 class dlg_popup;
 class ui_combo;
+class ui_slider;
 class ui_text;
 
 //==============================================================================
@@ -64,16 +65,16 @@ protected:
     ui_combo*           m_pResolution;
     ui_combo*           m_pPresentMode;
     ui_combo*           m_pFrameLimit;
-    ui_combo*           m_pUIScale;
-    ui_combo*           m_pHUDScale;
+    ui_slider*          m_pBrightness;
+    ui_slider*          m_pContrast;
     ui_button*          m_pButtonApply;
 
     ui_text*            m_pDisplayModeText;
     ui_text*            m_pResolutionText;
     ui_text*            m_pPresentModeText;
     ui_text*            m_pFrameLimitText;
-    ui_text*            m_pUIScaleText;
-    ui_text*            m_pHUDScaleText;
+    ui_text*            m_pBrightnessText;
+    ui_text*            m_pContrastText;
 
     s32                 m_CurrHL;
     xbool               m_bRenderBlackout;

@@ -9,29 +9,113 @@
 #ifndef A51_FOG_FUNCTIONS_HLSL
 #define A51_FOG_FUNCTIONS_HLSL
 
-//==============================================================================
-//  FUNCTIONS
-//==============================================================================
+static const uint A51_FOG_MODE_NONE = 0u;
+static const uint A51_FOG_MODE_COLOR = 1u;
+static const uint A51_FOG_MODE_EMISSION = 2u;
 
-float A51ComputePolynomialFogAlpha( float linearDepth, float nearZ, float farZ, float fogStart, float4 fogCoeff )
+float EvaluatePolynomialFogAlpha( float LinearDepth, float4 Depth, float4 FogCoeff, float4 Prepared )
 {
-    const float viewZ     = nearZ + linearDepth * max( farZ - nearZ, 1e-5f );
-    const float q         = farZ / max( farZ - nearZ, 1e-5f );
-    const float xboxZ     = viewZ * q - nearZ * q;
-    const float startZ2   = fogStart * fogStart;
-    const float startZ3   = startZ2 * fogStart;
-    const float startAlpha = fogCoeff.x + fogCoeff.y * fogStart + fogCoeff.z * startZ2 + fogCoeff.w * startZ3;
+    const float ViewZ = Depth.x + LinearDepth * Depth.y;
+    const float XboxZ = ViewZ * Prepared.x - Prepared.y;
 
-    if( xboxZ <= fogStart )
+    if( XboxZ <= Depth.z )
     {
         return 0.0f;
     }
 
-    const float z2        = xboxZ * xboxZ;
-    const float z3        = z2 * xboxZ;
-    const float rawAlpha  = fogCoeff.x + fogCoeff.y * xboxZ + fogCoeff.z * z2 + fogCoeff.w * z3;
-    return saturate( ( rawAlpha - startAlpha ) / max( 1.0f - startAlpha, 1e-5f ) );
+    const float Z2        = XboxZ * XboxZ;
+    const float Z3        = Z2 * XboxZ;
+    const float RawAlpha  = FogCoeff.x + FogCoeff.y * XboxZ + FogCoeff.z * Z2 + FogCoeff.w * Z3;
+    return saturate( ( RawAlpha - Prepared.z ) * Prepared.w );
+}
+
+//==============================================================================
+
+float4 SampleFog( float LinearDepth )
+{
+    float4 Fog = FogPalette.SampleLevel( samFogPalette, float2( saturate( LinearDepth ), 0.5f ), 0.0f );
+    Fog.a = saturate( Fog.a * 2.0f );
+    return Fog;
+}
+
+//==============================================================================
+
+float4 GetFogSample( float LinearDepth )
+{
+    float4 Fog;
+    if( FogDepth.w > 0.5f )
+    {
+        Fog = float4( FogColor.rgb,
+                      EvaluatePolynomialFogAlpha( LinearDepth, FogDepth, FogPolynomial, FogPrepared ) );
+    }
+    else
+    {
+        Fog = SampleFog( LinearDepth );
+    }
+
+    return XboxFogEnabled != 0u ? Fog.gbar : Fog;
+}
+
+//==============================================================================
+
+float GetFogAlpha( float LinearDepth )
+{
+    return GetFogSample( LinearDepth ).a;
+}
+
+//==============================================================================
+
+float4 ApplyFogToColor( float4 Color, float LinearDepth )
+{
+    if( SceneFogMode != A51_FOG_MODE_COLOR )
+    {
+        return Color;
+    }
+
+    const float4 Fog = GetFogSample( LinearDepth );
+    Color.rgb = lerp( Color.rgb, Fog.rgb, Fog.a );
+    return Color;
+}
+
+//==============================================================================
+
+float4 ApplyFogToIntensity( float4 Color, float LinearDepth )
+{
+    if( SceneFogMode != A51_FOG_MODE_COLOR )
+    {
+        return Color;
+    }
+
+    Color.rgb = lerp( Color.rgb, 0.5f, GetFogAlpha( LinearDepth ) );
+    return Color;
+}
+
+//==============================================================================
+
+float4 ApplyFogToEmission( float4 Color, float LinearDepth )
+{
+    if( BloomFogMode != A51_FOG_MODE_EMISSION )
+    {
+        return Color;
+    }
+
+    Color.rgb *= 1.0f - GetFogAlpha( LinearDepth );
+    return Color;
+}
+
+//==============================================================================
+
+float4 ApplySceneFogToEmission( float4 Color, float LinearDepth )
+{
+    if( SceneFogMode != A51_FOG_MODE_COLOR )
+    {
+        return Color;
+    }
+
+    Color.rgb *= 1.0f - GetFogAlpha( LinearDepth );
+    return Color;
 }
 
 //==============================================================================
 #endif // A51_FOG_FUNCTIONS_HLSL
+//==============================================================================

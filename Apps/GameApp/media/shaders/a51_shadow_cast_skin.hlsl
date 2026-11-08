@@ -17,6 +17,7 @@
 //==============================================================================
 
 #include "common/shader_bindings.hlsl"
+#include "a51_shader_contract.hlsl"
 
 //==============================================================================
 //  RESOURCES
@@ -24,8 +25,7 @@
 
 A51_CBUFFER_ATTR(0, 0) cbuffer cbShadowCast A51_CBUFFER_BIND(0, 0)
 {
-    float4x4 ShadowViewProjection;
-    uint4    ShadowCastPadding;
+    A51_ABI_FIELDS_ShadowCastData
 };
 
 A51_STORAGE_BUFFER_ATTR(0, 0)
@@ -46,29 +46,27 @@ struct VS_INPUT
 
 //------------------------------------------------------------------------------
 
-struct VS_OUTPUT
-{
-    float4 Position : SV_POSITION;
-    float2 UV       : TEXCOORD0;
-};
+#define VS_OUTPUT A51_SHADOW_PIXEL_INPUT
 
 //==============================================================================
 //  SHADERS
 //==============================================================================
 
-VS_OUTPUT VSMain( VS_INPUT input )
+VS_OUTPUT VSMain( VS_INPUT Input )
 {
-    VS_OUTPUT output;
-    int   index1  = (int)input.PosIndex.w;
-    int   index2  = (int)input.NormIndex.w;
-    float weight1 = input.UVWeights.z;
-    float weight2 = input.UVWeights.w;
+    VS_OUTPUT Output;
+    int   Index1  = (int)Input.PosIndex.w;
+    int   Index2  = (int)Input.NormIndex.w;
+    float Weight1 = Input.UVWeights.z;
+    float Weight2 = Input.UVWeights.w;
 
-    float3 pos1 = mul( ShadowSkinBones[input.BoneBase + index1], float4( input.PosIndex.xyz, 1.0f ) ).xyz;
-    float3 pos2 = mul( ShadowSkinBones[input.BoneBase + index2], float4( input.PosIndex.xyz, 1.0f ) ).xyz;
-    float3 skinnedPos = pos1 * weight1 + pos2 * weight2;
+    float3 Pos1 = mul( ShadowSkinBones[Input.BoneBase + Index1], float4( Input.PosIndex.xyz, 1.0f ) ).xyz;
+    float3 Pos2 = mul( ShadowSkinBones[Input.BoneBase + Index2], float4( Input.PosIndex.xyz, 1.0f ) ).xyz;
+    float3 SkinnedPos = Pos1 * Weight1 + Pos2 * Weight2;
 
-    output.Position = mul( ShadowViewProjection, float4( skinnedPos, 1.0f ) );
-    output.UV       = input.UVWeights.xy;
-    return output;
+    Output.Position = mul( ShadowViewProjection, float4( SkinnedPos - ShadowOrigin.xyz, 1.0f ) );
+#if A51_SHADOW_MASKED
+    Output.UV       = Input.UVWeights.xy;
+#endif
+    return Output;
 }

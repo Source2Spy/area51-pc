@@ -21,13 +21,8 @@
 
 #include "Headset.hpp"
 
-#define USE_SPEEX
 
-#if defined(USE_SPEEX)
 #include "Speex.hpp"
-#else
-#include "lpc10.hpp"
-#endif
 
 //==============================================================================
 //  DEFINES
@@ -37,13 +32,8 @@ static const s32 WINDOWS_VOICE_FRAME_COUNT  = 1;
 static const s32 WINDOWS_VOICE_BUFFER_COUNT = 4;
 static const s32 WINDOWS_VOICE_RETRY_TIME   = 1;
 
-#if defined(USE_SPEEX)
 static const s32 WINDOWS_VOICE_ENCODE_BYTES = SPEEX8_BYTES_PER_EFRAME * WINDOWS_VOICE_FRAME_COUNT;
 static const s32 WINDOWS_VOICE_DECODE_BYTES = SPEEX8_SAMPLES_PER_FRAME * WINDOWS_VOICE_FRAME_COUNT * sizeof( s16 );
-#else
-static const s32 WINDOWS_VOICE_ENCODE_BYTES = LPC10_BYTES_PER_EFRAME * WINDOWS_VOICE_FRAME_COUNT;
-static const s32 WINDOWS_VOICE_DECODE_BYTES = LPC10_SAMPLES_PER_FRAME * WINDOWS_VOICE_FRAME_COUNT * sizeof( s16 );
-#endif
 static const s32 WINDOWS_VOICE_FIFO_BYTES   = 256;
 
 //------------------------------------------------------------------------------
@@ -70,6 +60,8 @@ struct windows_voice_state
     xbool           m_PlaybackPrepared[ WINDOWS_VOICE_BUFFER_COUNT ];
     volatile LONG   m_CaptureState [ WINDOWS_VOICE_BUFFER_COUNT ];
     volatile LONG   m_PlaybackState[ WINDOWS_VOICE_BUFFER_COUNT ];
+    u32             m_CaptureGeneration[ WINDOWS_VOICE_BUFFER_COUNT ];
+    s32             m_NextCaptureBuffer;
     volatile LONG   m_ShuttingDown;
     f32             m_RetryTime;
 };
@@ -233,7 +225,9 @@ void CloseWindowsAudio( windows_voice_state* pState )
     {
         InterlockedExchange( &pState->m_CaptureState [ i ], BUFFER_FREE );
         InterlockedExchange( &pState->m_PlaybackState[ i ], BUFFER_FREE );
+        pState->m_CaptureGeneration[ i ] = 0;
     }
+    pState->m_NextCaptureBuffer = 0;
 }
 
 //==============================================================================
@@ -331,23 +325,6 @@ xbool OpenWindowsAudio( windows_voice_state* pState )
 //==============================================================================
 
 static 
-void SetWindowsOutputVolume( windows_voice_state* pState, f32 Volume )
-{
-    if( (pState == NULL) || (pState->m_Output == NULL) )
-    {
-        return;
-    }
-
-    Volume = MAX( 0.0f, MIN( 1.0f, Volume ) );
-    WORD ChannelVolume = static_cast<WORD>( Volume * 65535.0f );
-    DWORD DeviceVolume = static_cast<DWORD>( ChannelVolume ) |
-                          (static_cast<DWORD>( ChannelVolume ) << 16);
-    waveOutSetVolume( pState->m_Output, DeviceVolume );
-}
-
-//==============================================================================
-
-static 
 void CopyAndScaleCaptureSamples( const byte* pSource,
                                         s32         SourceBytes,
                                         s16*        pDestination,
@@ -385,6 +362,7 @@ void headset::Init( xbool EnableHardware )
     m_HardwareEnabled       = EnableHardware;
     m_ActiveHeadset         = -1;
     m_IsTalking             = FALSE;
+    m_TalkingGeneration     = 0;
     m_TalkingRequested      = FALSE;
     m_LoopbackEnabled       = FALSE;
     m_VoiceBanned           = FALSE;
@@ -394,7 +372,6 @@ void headset::Init( xbool EnableHardware )
     m_HeadsetMask           = 0;
     m_HeadsetVolume         = 1.0f;
     m_MicrophoneSensitivity = 1.0f;
-    m_VolumeChanged         = TRUE;
     m_pWindowsState         = NULL;
 
     byte* pBuffer = new byte[ m_DecodeBlockSize +
@@ -410,7 +387,6 @@ void headset::Init( xbool EnableHardware )
     pBuffer += WINDOWS_VOICE_FIFO_BYTES;
     m_WriteFifo.Init( pBuffer, WINDOWS_VOICE_FIFO_BYTES );
 
-#if defined(USE_SPEEX)
     if( !SpeexInit() )
     {
         LOG_WARNING( "headset::Init", "Unable to initialize the Speex voice codec." );
@@ -419,9 +395,6 @@ void headset::Init( xbool EnableHardware )
         m_VoiceAudible    = FALSE;
         return;
     }
-#else
-    LPC10Init();
-#endif
 
     windows_voice_state* pState = new windows_voice_state;
     x_memset( pState, 0, sizeof( windows_voice_state ) );
@@ -439,7 +412,6 @@ void headset::Init( xbool EnableHardware )
             m_HeadsetMask  = 1;
             m_ActiveHeadset = 0;
             UpdateTalkingState();
-            SetWindowsOutputVolume( pState, m_HeadsetVolume );
         }
         else
         {
@@ -472,11 +444,7 @@ void headset::Kill( void )
     m_pDecodeBuffer = NULL;
     m_pEncodeBuffer = NULL;
 
-#if defined(USE_SPEEX)
     SpeexKill();
-#else
-    LPC10Kill();
-#endif
 }
 
 //==============================================================================
@@ -500,7 +468,6 @@ void headset::PeriodicUpdate( f32 DeltaTime )
                 m_HeadsetMask   = 1;
                 m_ActiveHeadset = 0;
                 UpdateTalkingState();
-                SetWindowsOutputVolume( pState, m_HeadsetVolume );
             }
             else
             {
@@ -515,20 +482,15 @@ void headset::PeriodicUpdate( f32 DeltaTime )
         return;
     }
 
-    if( m_VolumeChanged )
-    {
-        SetWindowsOutputVolume( pState, m_HeadsetVolume );
-        m_VolumeChanged = FALSE;
-    }
-
     for( s32 i = 0; i < WINDOWS_VOICE_BUFFER_COUNT; i++ )
     {
-        if( InterlockedCompareExchange( &pState->m_CaptureState[ i ], BUFFER_PROCESSING, BUFFER_READY ) != BUFFER_READY )
+        s32 BufferIndex = pState->m_NextCaptureBuffer;
+        if( InterlockedCompareExchange( &pState->m_CaptureState[ BufferIndex ], BUFFER_PROCESSING, BUFFER_READY ) != BUFFER_READY )
         {
-            continue;
+            break;
         }
 
-        WAVEHDR& Header = pState->m_CaptureHeaders[ i ];
+        WAVEHDR& Header = pState->m_CaptureHeaders[ BufferIndex ];
         CopyAndScaleCaptureSamples( reinterpret_cast<const byte*>( Header.lpData ),
                                      static_cast<s32>( Header.dwBytesRecorded ),
                                      reinterpret_cast<s16*>( m_pDecodeBuffer ),
@@ -536,19 +498,13 @@ void headset::PeriodicUpdate( f32 DeltaTime )
 
         s32 EncodedSize = m_EncodeBlockSize;
         xbool Encoded = FALSE;
-        if( m_IsTalking && m_VoiceEnabled && !m_VoiceBanned )
+        if( m_IsTalking && m_VoiceEnabled && !m_VoiceBanned &&
+            (pState->m_CaptureGeneration[ BufferIndex ] == m_TalkingGeneration) )
         {
-#if defined(USE_SPEEX)
             Encoded = SpeexEncode( reinterpret_cast<s16*>( m_pDecodeBuffer ),
                                    m_DecodeBlockSize,
                                    m_pEncodeBuffer,
                                    &EncodedSize );
-#else
-            Encoded = LPC10Encode( reinterpret_cast<s16*>( m_pDecodeBuffer ),
-                                   m_DecodeBlockSize,
-                                   m_pEncodeBuffer,
-                                   &EncodedSize );
-#endif
             Encoded = Encoded && (EncodedSize == m_EncodeBlockSize);
         }
 
@@ -562,7 +518,8 @@ void headset::PeriodicUpdate( f32 DeltaTime )
         }
 
         Header.dwBytesRecorded = 0;
-        InterlockedExchange( &pState->m_CaptureState[ i ], BUFFER_QUEUED );
+        pState->m_CaptureGeneration[ BufferIndex ] = m_TalkingGeneration;
+        InterlockedExchange( &pState->m_CaptureState[ BufferIndex ], BUFFER_QUEUED );
 
         MMRESULT Result = waveInAddBuffer( pState->m_Input, &Header, sizeof( WAVEHDR ) );
         if( Result != MMSYSERR_NOERROR )
@@ -576,6 +533,7 @@ void headset::PeriodicUpdate( f32 DeltaTime )
             pState->m_RetryTime = WINDOWS_VOICE_RETRY_TIME;
             return;
         }
+        pState->m_NextCaptureBuffer = (BufferIndex + 1) % WINDOWS_VOICE_BUFFER_COUNT;
     }
 }
 
@@ -627,21 +585,21 @@ void headset::Update( f32 DeltaTime )
         x_memset( Header.lpData, 0, WINDOWS_VOICE_DECODE_BYTES );
 
         s32 DecodedSize = m_DecodeBlockSize;
-#if defined(USE_SPEEX)
         if( !SpeexDecode( m_pEncodeBuffer,
                           m_EncodeBlockSize,
                           reinterpret_cast<s16*>( Header.lpData ),
                           &DecodedSize ) ||
-#else
-        if( !LPC10Decode( m_pEncodeBuffer,
-                          m_EncodeBlockSize,
-                          reinterpret_cast<s16*>( Header.lpData ),
-                          &DecodedSize ) ||
-#endif
             (DecodedSize != m_DecodeBlockSize) )
         {
             x_memset( Header.lpData, 0, WINDOWS_VOICE_DECODE_BYTES );
             DecodedSize = m_DecodeBlockSize;
+        }
+
+        s16* pSamples = reinterpret_cast<s16*>( Header.lpData );
+        s32 SampleCount = DecodedSize / sizeof( s16 );
+        for( s32 i = 0; i < SampleCount; i++ )
+        {
+            pSamples[ i ] = static_cast<s16>( pSamples[ i ] * m_HeadsetVolume );
         }
 
         Header.dwBufferLength = DecodedSize;
@@ -674,11 +632,7 @@ void headset::SetLoopback( xbool IsEnabled )
 
 void headset::ResetEncoder( void )
 {
-#if defined(USE_SPEEX)
     SpeexReset();
-#else
-    LPC10Reset();
-#endif
 }
 
 //==============================================================================
@@ -686,10 +640,6 @@ void headset::ResetEncoder( void )
 void headset::SetSpeakerVolume( f32 SpeakerVolume )
 {
     m_HeadsetVolume = MAX( 0.0f, MIN( 1.0f, SpeakerVolume ) );
-    m_VolumeChanged = TRUE;
-
-    windows_voice_state* pState = reinterpret_cast<windows_voice_state*>( m_pWindowsState );
-    SetWindowsOutputVolume( pState, m_HeadsetVolume );
 }
 
 //==============================================================================

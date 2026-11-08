@@ -19,8 +19,6 @@
 //=========================================================================
 //  Main Menu Dialog
 //=========================================================================
-static const s32 FrY = 220;     // Friends Y
-static const s32 IcY = FrY + 9; // Friends Invite Icons Y
 
 ui_manager::control_tem PauseMPControls[] = 
 {
@@ -29,13 +27,6 @@ ui_manager::control_tem PauseMPControls[] =
     { IDC_PAUSE_MP_SCORE,       "IDS_PAUSE_MENU_SCORE",     "button",   60, 100, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
     { IDC_PAUSE_MP_OPTIONS,     "IDS_PAUSE_MENU_OPTIONS",   "button",   60, 140, 120, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
     { IDC_PAUSE_MP_SETTINGS,    "IDS_PAUSE_MENU_SETTINGS",  "button",   60, 180, 120, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
-#ifdef TARGET_XBOX
-    { IDC_PAUSE_MP_FRIENDS,     "IDS_PAUSE_MENU_FRIENDS",   "button",   60, FrY, 120, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
-#endif
-#if defined( TARGET_XBOX )
-    { IDC_PAUSE_MP_FRIEND_INV,  "IDS_NULL",                         "bitmap",   34, IcY,  26, 26, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_PAUSE_MP_GAME_INV,    "IDS_NULL",                         "bitmap",  182, IcY,  26, 26, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-#endif
 };
 
 
@@ -47,18 +38,6 @@ ui_manager::dialog_tem PauseMPDialog =
     &PauseMPControls[0],
     0
 };
-
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
 
 //=========================================================================
 //  Registration function
@@ -86,10 +65,6 @@ ui_win* dlg_pause_mp_factory( s32 UserID, ui_manager* pManager, ui_manager::dial
 //=========================================================================
 
 dlg_pause_mp::dlg_pause_mp( void )
-#if defined( TARGET_XBOX )
-    : m_pFriendInvite   ( NULL ),
-      m_pGameInvite     ( NULL )
-#endif
 {
 }
 
@@ -124,9 +99,6 @@ xbool dlg_pause_mp::Create( s32                        UserID,
     m_pButtonScore         = (ui_button*)  FindChildByID( IDC_PAUSE_MP_SCORE    );
     m_pButtonOptions    = (ui_button*)  FindChildByID( IDC_PAUSE_MP_OPTIONS  );
     m_pButtonSettings   = (ui_button*)  FindChildByID( IDC_PAUSE_MP_SETTINGS );
-#ifdef TARGET_XBOX
-    m_pButtonFriends    = (ui_button*)  FindChildByID( IDC_PAUSE_MP_FRIENDS  );
-#endif
 
     s32 iControl = g_StateMgr.GetCurrentControl();
     if( (iControl == -1) || (GotoControl(iControl)==NULL) )
@@ -147,26 +119,7 @@ xbool dlg_pause_mp::Create( s32                        UserID,
     m_pButtonScore   ->SetFlag(ui_win::WF_VISIBLE, FALSE);    
     m_pButtonOptions ->SetFlag(ui_win::WF_VISIBLE, FALSE);    
     m_pButtonSettings->SetFlag(ui_win::WF_VISIBLE, FALSE);    
-#ifdef TARGET_XBOX
-    m_pButtonFriends ->SetFlag(ui_win::WF_VISIBLE, FALSE);    
-#endif
 
-#if defined( TARGET_XBOX )
-    m_pFriendInvite     = (ui_bitmap*)  FindChildByID( IDC_PAUSE_MP_FRIEND_INV  );
-    m_pGameInvite       = (ui_bitmap*)  FindChildByID( IDC_PAUSE_MP_GAME_INV    );
-
-    if ( m_pFriendInvite )
-    {
-        m_pFriendInvite->SetFlag(ui_win::WF_VISIBLE, FALSE);
-        m_pFriendInvite->SetBitmap( g_UiMgr->FindBitmap( "icon_friend_req_rcvd" ) );
-    }
-    if ( m_pGameInvite )
-    {
-        m_pGameInvite->SetFlag(ui_win::WF_VISIBLE, FALSE);
-        m_pGameInvite->SetBitmap( g_UiMgr->FindBitmap( "icon_invite_rcvd"     ) );
-
-    }
-#endif
 
 
     // set up nav text
@@ -311,14 +264,6 @@ void dlg_pause_mp::OnAccept( ui_win* pWin )
             m_CurrentControl = IDC_PAUSE_MP_SETTINGS;
             m_State = DIALOG_STATE_SELECT;
         }
-#ifdef TARGET_XBOX
-        else if( pWin == (ui_win*)m_pButtonFriends )
-        {
-            g_AudioMgr.Play("Select_Norm");
-            m_CurrentControl = IDC_PAUSE_MP_FRIENDS;
-            m_State = DIALOG_STATE_SELECT;
-        }
-#endif
     }
 }
 
@@ -341,35 +286,6 @@ void dlg_pause_mp::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     //
     // Figure out if we have invitations to be friends or join games
     //
-#if defined( TARGET_XBOX )
-    xbool HaveFriendRequest     = FALSE;
-    xbool HaveGameInvitation    = FALSE;
-
-    if( g_MatchMgr.GetAuthStatus() == AUTH_STAT_CONNECTED )
-    {
-        s32 i;
-        const s32 nBuddies = g_MatchMgr.GetBuddyCount();
-        for ( i = 0; i < nBuddies; ++i )
-        {
-            buddy_info Buddy = g_MatchMgr.GetBuddy( i );
-            if ( Buddy.Flags & USER_REQUEST_RECEIVED )
-            {
-                HaveFriendRequest = TRUE;
-            }
-
-            if ( Buddy.Flags & USER_HAS_INVITE )
-            {
-                HaveGameInvitation = TRUE;
-            }
-
-            if ( HaveGameInvitation && HaveFriendRequest )
-            {
-                // No need to search further, we're rendering both
-                break;
-            }
-        }
-    }
-#endif // TARGET_XBOX
 
     // scale window if necessary
     if( g_UiMgr->IsScreenScaling() )
@@ -381,18 +297,7 @@ void dlg_pause_mp::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             m_pButtonScore   ->SetFlag(ui_win::WF_VISIBLE, TRUE);    
             m_pButtonOptions ->SetFlag(ui_win::WF_VISIBLE, TRUE);    
             m_pButtonSettings->SetFlag(ui_win::WF_VISIBLE, TRUE);    
-#ifdef TARGET_XBOX
-            m_pButtonFriends ->SetFlag(ui_win::WF_VISIBLE, TRUE);    
-
-            // disable friends list if we're not connected to Live.
-            if( g_MatchMgr.GetAuthStatus() != AUTH_STAT_CONNECTED )
-                m_pButtonFriends->SetFlag(ui_win::WF_DISABLED, TRUE);
-#endif
     
-#if defined( TARGET_XBOX )
-            m_pFriendInvite     ->SetFlag(ui_win::WF_VISIBLE, HaveFriendRequest     );
-            m_pGameInvite       ->SetFlag(ui_win::WF_VISIBLE, HaveGameInvitation    );
-#endif
 
             s32 iControl = g_StateMgr.GetCurrentControl();
             if( (iControl == -1) || (GotoControl( iControl )==NULL) )
@@ -416,13 +321,6 @@ void dlg_pause_mp::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             }
         }
     }
-#if defined( TARGET_XBOX )
-    else
-    {
-        m_pFriendInvite     ->SetFlag(ui_win::WF_VISIBLE, HaveFriendRequest     );
-        m_pGameInvite       ->SetFlag(ui_win::WF_VISIBLE, HaveGameInvitation    );
-    }
-#endif
 
     // check popup dialog
     if ( m_PopUp )
@@ -468,13 +366,6 @@ void dlg_pause_mp::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         highLight = 3;
         g_UiMgr->SetScreenHighlight( m_pButtonSettings->GetPosition() );
     }
-#ifdef TARGET_XBOX
-    else if( m_pButtonFriends->IsFocused() )
-    {
-        highLight = 4;
-        g_UiMgr->SetScreenHighlight( m_pButtonFriends->GetPosition() );
-    }
-#endif
 
     if( highLight != m_CurrHL )
     {

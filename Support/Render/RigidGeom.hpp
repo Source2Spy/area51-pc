@@ -8,14 +8,14 @@
 #define RIGID_GEOM_HPP
 
 //=========================================================================
-// INCLUDES
+//  INCLUDES
 //=========================================================================
 
 #include "geom.hpp"
 #include "CollisionVolume.hpp"
 
 //=========================================================================
-// RIGID GEOM CLASS
+//  RIGID GEOM CLASS
 //=========================================================================
 
 struct rigid_geom : public geom
@@ -40,7 +40,7 @@ struct rigid_geom : public geom
     rigid_geom  ( void );
     ~rigid_geom ( void );
 
-    collision_data m_collision;
+    collision_data m_Collision;
     s32            m_nSections;
     section*       m_pSection;
     s32            m_nIndices;
@@ -50,9 +50,10 @@ struct rigid_geom : public geom
 
     //-------------------------------------------------------------------------
 
-    xbool GetGeoTri ( s32 triKey, vector3& v0, vector3& v1, vector3& v2 ) const;
+    xbool GetGeoTri ( s32 TriKey, vector3& v0, vector3& v1, vector3& v2 ) const;
 };
 
 //=========================================================================
+
 #endif // RIGID_GEOM_HPP
 //=========================================================================

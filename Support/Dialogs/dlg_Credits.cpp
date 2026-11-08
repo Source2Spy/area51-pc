@@ -10,7 +10,7 @@
 
 //==========================================================================
 // INCLUDE
-//==========================================================================
+//=========================================================================
 #include "Entropy.hpp"
 
 #include "UI/ui_manager.hpp"
@@ -42,16 +42,16 @@ Sweep Sweeps[2] =
     {0.0f  ,5.0f            ,    0.0f,255.0f}
 };
 
-//==========================================================================
+//=========================================================================
 // DEFINES
-//==========================================================================
+//=========================================================================
 #define DEFAULT_LINE_TIME       (8.0f)
 #define FADE_BOUNDS_OFFSETS     (80)
 #define FADE_MIN_START          (0.5f)
 #define FADE_MAX_START          (2.5f)
-//==========================================================================
+//=========================================================================
 // GLOBAL
-//==========================================================================
+//=========================================================================
 enum controls
 {
     IDC_CREDIT_STRING_1,
@@ -64,17 +64,15 @@ ui_manager::control_tem CreditsControls[] =
 
 ui_manager::dialog_tem CreditsDialog =
 {
-        "IDS_CREIDTS_SCREEN",
+        "IDS_CREDITS",
         1, 9,
         sizeof(CreditsControls)/sizeof(ui_manager::control_tem),
         &CreditsControls[0],
         0
 };
 
-//==========================================================================
+//=========================================================================
 // FUNTIONS
-//==========================================================================
-
 //=========================================================================
 //  Registration function
 //=========================================================================
@@ -130,8 +128,7 @@ xbool dlg_credits::Create( s32                        UserID,
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
     // Load Credits String Table
-    //g_StringTableMgr.LoadTable( "credits", xfs("%s\\%s", g_RscMgr.GetRootDirectory(), "ENG_Credits_strings.stringbin" ) );
-    g_StringTableMgr.LoadTable( "credits", "ENG_Credits_strings.stringbin" );
+    VERIFY( g_StringTableMgr.LoadTable( "credits", "ENG_CREDITS_STRINGS.string" ) );
 
     // init
     m_LineIndex = 0;
@@ -182,7 +179,7 @@ void dlg_credits::Render( s32 ox, s32 oy )
                              m_CreditLines[index].m_RenderFlags,                            
                              m_CreditLines[index].m_Color, 
                              m_CreditLines[index].m_String,
-                             (void*)m_CreditLines[index].m_CustomRenderStruct);
+                             m_CreditLines[index].m_CustomRenderStruct.GetPtr());
     }
 
     // finally render all the normal dialog stuff
@@ -314,7 +311,11 @@ void dlg_credits::InitCreditLines( void )
         m_CreditLines[index].m_Color = xcolor(255,255,255,255);
         x_strcpy( m_CreditLines[index].m_Font, "large" );
         m_CreditLines[index].m_Rect = irect(0,0,0,0);
-        m_CreditLines[index].m_String[0] = 0;
+        m_CreditLines[index].m_String.Clear();
+        m_CreditLines[index].m_CustomRenderStruct.Clear();
+        m_CreditLines[index].m_FadeDelay.Clear();
+        m_CreditLines[index].m_SweepTime.Clear();
+        m_CreditLines[index].m_CharCount = 0;
         m_CreditLines[index].m_RenderFlags = 0;
         m_CreditLines[index].m_StringLength= 0;
     }
@@ -326,60 +327,71 @@ xbool dlg_credits::BuildPage( void )
 {
     InitCreditLines();
 
-    s32   CurrentLine = 0;
-    char  LookupID[32];
-    
-    // Build first ID to find.
-    x_sprintf(LookupID, "IDS_CREDIT_LINE_%03i",m_LineIndex);
+    s32 CurrentLine = 0;
 
-    // Check for end of FILE.
     if( m_CreditsDone )
-        return( TRUE );
-    
-    // Loop untill new page is found.
-    while( 
-            CheckLine( g_StringTableMgr( "credits", LookupID )) != CREDITS_NEW_PAGE && 
-            CheckLine( g_StringTableMgr( "credits", LookupID )) != CREDITS_DONE
-         )
     {
-        // Build lines    
-        x_wstrcpy(m_CreditLines[CurrentLine].m_String, g_StringTableMgr("credits",LookupID));
+        return( TRUE );
+    }
 
-        
-        m_CreditLines[CurrentLine].m_CharCount = x_wstrlen( m_CreditLines[CurrentLine].m_String );
-        for( s32 i = 0 ; i < m_CreditLines[CurrentLine].m_CharCount ; i++ )
+    while( TRUE )
+    {
+        const xwstring* pText = g_StringTableMgr.FindString( "credits", xfs( "IDS_CREDIT_LINE_%03d", m_LineIndex ) );
+
+        if( !pText )
         {
-            m_CreditLines[CurrentLine].m_CustomRenderStruct[i].m_State  = ui_font::s_no_render;
-            m_CreditLines[CurrentLine].m_CustomRenderStruct[i].m_Value  = 0.0f;
-            m_CreditLines[CurrentLine].m_CustomRenderStruct[i].m_Frame  = 0;
-            m_CreditLines[CurrentLine].m_FadeDelay[i]                   = x_frand(FADE_MIN_START,FADE_MAX_START);
-            m_CreditLines[CurrentLine].m_SweepTime[i]                   = 0.0f;
+            m_PageLineCount = 0;
+            m_CreditsDone = TRUE;
+            x_throw( "Missing credits line or end marker" );
+            return TRUE;
         }
 
-        // Setup Line Types
-        if( CheckLine(g_StringTableMgr( "credits", LookupID )) == CREDITS_TITLE_CODE )
+        xwstring Text = *pText;
+        s32 Type = CheckLine( Text );
+
+        if( Type == CREDITS_NEW_PAGE || Type == CREDITS_DONE )
         {
-            x_strcpy( m_CreditLines[CurrentLine].m_Font, "loadscr" );
-            m_CreditLines[CurrentLine].m_Type = LINE_TYPE_TITLE;
-            m_CreditLines[CurrentLine].m_RenderFlags = (ui_font::h_center|ui_font::v_center);
-        }
-        else
-        {
-            //m_CreditLines[CurrentLine].m_MoveDelay = (0.25f * CurrentLine+1);
-            m_CreditLines[CurrentLine].m_RenderFlags = (ui_font::h_center|ui_font::v_center);
+            m_CreditsDone = Type == CREDITS_DONE;
+            break;
         }
 
-        // done.. next line.
-        x_sprintf(LookupID, "IDS_CREDIT_LINE_%03i",++m_LineIndex);
+        if( CurrentLine >= MAX_CREDIT_LINES_PER_PAGE )
+        {
+            m_PageLineCount = 0;
+            m_CreditsDone = TRUE;
+            x_throw( "Credits page exceeds its line limit" );
+            return TRUE;
+        }
+
+        CreditLine& Line = m_CreditLines[CurrentLine];
+        Line.m_String = Text;
+        Line.m_CharCount = Line.m_String.GetLength();
+        Line.m_CustomRenderStruct.SetCount( Line.m_CharCount );
+        Line.m_FadeDelay.SetCount( Line.m_CharCount );
+        Line.m_SweepTime.SetCount( Line.m_CharCount );
+
+        for( s32 i = 0; i < Line.m_CharCount; i++ )
+        {
+            Line.m_CustomRenderStruct[i].m_State = ui_font::s_no_render;
+            Line.m_CustomRenderStruct[i].m_Value = 0.0f;
+            Line.m_CustomRenderStruct[i].m_Frame = 0;
+            Line.m_FadeDelay[i]                  = x_frand( FADE_MIN_START, FADE_MAX_START );
+            Line.m_SweepTime[i]                  = 0.0f;
+        }
+
+        if( Type == CREDITS_TITLE_CODE )
+        {
+            x_strcpy( Line.m_Font, "loadscr" );
+            Line.m_Type = LINE_TYPE_TITLE;
+        }
+
+        Line.m_RenderFlags = ui_font::h_center | ui_font::v_center;
+        m_LineIndex++;
         CurrentLine++;
     }
 
-    // Is this the last page?
-    if ( CheckLine( g_StringTableMgr( "credits", LookupID )) == CREDITS_DONE )
-        m_CreditsDone = TRUE;
-
     // Set number of Lines this page.
-    ASSERT( CurrentLine < MAX_CREDIT_LINES_PER_PAGE );
+    ASSERT( CurrentLine <= MAX_CREDIT_LINES_PER_PAGE );
     m_PageLineCount = CurrentLine;
 
     // Given number of lines.. build the rects for rendering.
@@ -421,35 +433,45 @@ xbool dlg_credits::BuildPage( void )
 
 //=========================================================================
 
-s32 dlg_credits::CheckLine( const xwchar* pString )
+s32 dlg_credits::CheckLine( xwstring& String )
 {
-    // This function checks for Credit specific codes in the string that 
-    // only apply to the credit screen.
+    const xwchar* pString = String;
+
     while( *pString )
     {
+        const xwchar* pStart = pString;
         xwchar c = *pString++;
 
-        if( c == 0xAB ) // '�'
+        if( c == '{' && x_wstrncmp( pString, xwstring( "Input:" ), 6 ) == 0 )
         {
-            s32 ButtonCode = g_UiMgr->LookUpButtonCode( pString,
-                                                        0,
-                                                        g_Input.GetCurrentInputDevice(),
-                                                        g_Input.GetCurrentInputPlatform() );
-            if( ButtonCode != -1 )
+            pString += 6;
+            xwstring Token;
+
+            while( *pString && *pString != '}' )
             {
-                // for the start button, double it... 
-                if( ButtonCode == NEW_CREDIT_PAGE)
-                {
-                    return( CREDITS_NEW_PAGE );
-                }
-                else if ( ButtonCode == CREDIT_TITLE_LINE )
-                {
-                    return( CREDITS_TITLE_CODE );
-                }
-                else if ( ButtonCode == CREDIT_END )
-                {
-                    return( CREDITS_DONE );
-                }
+                Token += *pString++;
+            }
+
+            if( !*pString )
+            {
+                x_throw( "Unterminated credits marker" );
+                return CREDITS_DONE;
+            }
+
+            if( x_wstrcmp( Token, xwstring( "NEWPAGE" ) ) == 0 )
+            {
+                return CREDITS_NEW_PAGE;
+            }
+
+            if( x_wstrcmp( Token, xwstring( "TITLE" ) ) == 0 )
+            {
+                String.Delete( (s32)(pStart - (const xwchar*)String), (s32)(pString - pStart + 1) );
+                return CREDITS_TITLE_CODE;
+            }
+
+            if( x_wstrcmp( Token, xwstring( "CREDITEND" ) ) == 0 )
+            {
+                return CREDITS_DONE;
             }
         }
     }

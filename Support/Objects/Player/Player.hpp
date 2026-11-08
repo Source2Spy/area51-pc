@@ -36,8 +36,8 @@
 
 #include "Trigger/Actions/lock_player_view.hpp"
 
-#include "NetworkMgr/NetObj.hpp"
-#include "NetworkMgr/Blender.hpp"
+#include "NetworkMgr/Replication/NetObj.hpp"
+#include "NetworkMgr/Replication/Blender.hpp"
 
 //=========================================================================
 // Defines
@@ -395,9 +395,11 @@ public:
             void            ParseOnPainForEffects( const pain& Pain );
     virtual void            InitZoneTracking    ( void );
     virtual void            UpdateZoneTrack     ( void );
+            vector3         GetZoneTrackingPosition ( void );
             void            ResetFallStateAfterDiscontinuity( void );
     zone_mgr::zone_id       GetPlayerObjectZone ( void ) const;
     zone_mgr::zone_id       GetPlayerViewZone   ( void ) const;
+    const zone_mgr::tracker& GetPlayerViewZoneTracker ( void ) const { return m_RenderViewZoneTracker; }
     void                    ShakeView           ( f32 Time, f32 Amount = 1.0f, f32 Speed = 1.0f );
     xbool                   InvalidSound        ( void );
     f32                     GetAimDegradation   ( void ){ return m_AimDegradation; };
@@ -617,6 +619,7 @@ protected:
     virtual void        OnAdvanceSimulation              ( f32 DeltaTime );
             void        UpdateMultiplayerDeath           ( void );
             void        UpdateWeaponVisibility           ( void );
+            void        UpdateFirstPersonArmsVisibility  ( void );
             void        UpdateJBGLoreUnlock              ( void );
             void        UpdatePlayerView                 ( f32 DeltaTime );
             void        SetCinemaActive                  ( xbool Active );
@@ -626,7 +629,7 @@ protected:
             PlayerViewSample BuildDeathViewSample        ( void ) const;
             void        ApplyViewSample                  ( view& View,
                                                            const PlayerViewSample& Sample );
-            void        UpdateFallState                  ( xbool WasFlung );
+            void        UpdateFallState                  ( xbool HadLaunchResponse );
             void        UpdateCurrentGrenade             ( void );
             void        UpdateGhostLoco                  ( f32 DeltaTime );
             void        UpdateArmsAnimation              ( new_weapon* pWeapon,
@@ -1069,7 +1072,6 @@ public:
             bbox                    GetLocalBBox            ( void ) const;
             bbox                    GetColBBox              ( void );
     virtual vector3                 GetVelocity             ( void ) const;          
-    virtual void                    ScaleVelocity           ( const vector3& PlaneNormal, f32 PerpScale, f32 ParaScale );
 
             xbool                   IsCinemaRunning         ( void ) const { return m_CinemaController.IsActive(); }
 
@@ -1121,6 +1123,7 @@ protected:
                             m_AnimationDispatcher;           // Typed transition policy
     PlayerInventory         m_InventoryInteraction;          // Weapon/use intent policy
     PlayerStatus            m_Status;                        // Per-player lifecycle and status timers
+    PlayerStepView          m_StepView;
     PlayerView              m_ViewController;                // Simulation/presentation view policy
     PlayerViewSequence      m_LockedView;                    // Trigger-driven first-person view sequence
     PlayerDeathCamera       m_DeathCamera;                   // Player-owned death presentation camera
@@ -1129,8 +1132,8 @@ protected:
     zone_mgr::tracker       m_RenderViewZoneTracker;         // Tracks only the final rendered view position
     guid                    m_RenderViewZoneSourceGuid;
     xbool                   m_RenderViewZoneInitialized;
-    xbool                   m_RenderViewZoneUsesCameraSeed;
-    xbool                   m_RebaseRenderViewZone;
+    PlayerViewMode          m_RenderViewZoneMode;
+    u32                     m_RenderViewZoneSeedRevision;
     xbool                   m_bApplyingTeleport;
     radian                  m_PitchRate;                    // How fast pitch is changing, positive or negative, radians/second
     radian                  m_YawRate;                      // How fast yaw   is changing, positive or negative, radians/second
@@ -1198,7 +1201,6 @@ protected:
     f32                     m_fShakeFreqScalar;
     f32                     m_fShakeMaxPitch;
     f32                     m_fShakeMaxYaw;
-    f32                     m_PeakLandVelocity;             // The maximum vertival velocity the player reached while landing.
     xbool                   m_bJumpStarted;                 // TRUE when a jump has started this frame.
 
     guid                    m_LoreObjectGuids[MAX_LORE_ITEMS];      // The lore objects for this level
@@ -1522,7 +1524,7 @@ inline
 vector3 player::GetVelocity( void ) const
 {
     // Use physics
-    return m_Physics.GetVelocity();
+    return m_Physics.GetContactVelocity();
 }
 
 //=========================================================================
@@ -1562,7 +1564,7 @@ f32 player::GetCollisionRadius( void )
 inline
 void player::AddImpulse( vector3& rImpulse )
 {
-    m_Physics.AddVelocity( rImpulse );
+    m_Physics.ApplyImpulse( rImpulse );
 }
 
 //===========================================================================

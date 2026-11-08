@@ -11,6 +11,7 @@
 
 #include "NetProjectile.hpp"
 #include "Objects/ParticleEmiter.hpp"
+#include "Characters/FloorProperties.hpp"
 #include "Decals/DecalPackage.hpp"
 //=========================================================================
 
@@ -88,6 +89,7 @@ protected:
     xbool                               m_bBroadcastAlert;
 
     rigid_inst                          m_RigidInst;        // Instance for rendering object.
+    floor_properties                    m_FloorProperties;
     rhandle<char>                       m_ProjectileFx;     // The energy projectile particle effect.
     guid                                m_FxGuid;           // Guid of the effect object.
     rhandle<decal_package>              m_hDecalPackage;

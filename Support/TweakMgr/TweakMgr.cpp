@@ -16,10 +16,11 @@
 
 #include "x_files.hpp"
 #include "TweakMgr.hpp"
-#include "Parsing/tokenizer.hpp"
+#include "Parsing/TextIn.hpp"
+#include "Auxiliary/MiscUtils/dictionary.hpp"
 
 #ifndef X_EDITOR
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #endif
 
 //==============================================================================
@@ -230,96 +231,119 @@ void LoadAudioTweakFile( const char* pDirectory )
 }
 #endif // X_RETAIL
 
-//=============================================================================
+//==============================================================================
+//  STORAGE
+//==============================================================================
+
+static xbool s_TweaksLoaded = FALSE;
+
+//==============================================================================
+//  HELPER FUNCTIONS
+//==============================================================================
+
+static xbool ReportTweakError( text_in& Input, const char* pMessage )
+{
+    if( !Input.HasError() )
+    {
+        x_DebugMsg( "%s(%d) : error : %s\n", Input.GetFileName(), Input.GetLineNumber(), pMessage );
+    }
+
+    return FALSE;
+}
+
+//==============================================================================
+//  FUNCTIONS
+//==============================================================================
+
 xbool LoadTweaks( const char* pDirectory )
 {
-    s32 i;
-    xarray<tweak_data_block> TweakDataArray;
-    tweak_data_block         TweakData;
-
     xtimer Time;
-
     Time.Start();
 
 #ifndef X_RETAIL
     LoadAudioTweakFile( pDirectory );
-#endif //X_RETAIL
+#endif
 
-    // Open the file for reading
-    token_stream TOK;
+    const char* pFileName = "Tweak_General.tweak";
 
 #ifndef X_EDITOR
     if( GameMgr.IsGameMultiplayer() )
     {
-        if( !TOK.OpenFile( xfs("%s\\Tweak_MP_General.txt",pDirectory) ) )
-            return FALSE;
+        pFileName = "Tweak_MP_General.tweak";
     }
-    else
 #endif
+
+    text_in Input;
+
+    if( !Input.OpenFile( xfs( "%s\\%s", pDirectory, pFileName ) ) )
     {
-        if( !TOK.OpenFile( xfs("%s\\Tweak_General.txt",pDirectory) ) )
-            return FALSE;
+        return ReportTweakError( Input, "Unable to open tweak file" );
     }
 
-    TweakDataArray.SetCapacity( 911 );
-    
-    // Loop through all the tweaks and add them to the array
-    while( TOK.IsEOF() == FALSE )
+    s32 Version = 0;
+
+    if( !Input.ReadHeader() || x_strcmp( Input.GetHeaderName(), "TweakTable" ) ||
+        Input.GetFieldCount() != 1 || !Input.ReadFields() ||
+        !Input.GetS32( "Version", Version ) || Version != 1 )
     {
-        TOK.ReadString();
-
-        // If this is a blank line then skip to next line
-        if( x_stricmp(TOK.String(),"")==0 )
-        {
-            TOK.SkipToNextLine();
-            continue;
-        }
-
-        // Load the tweak_data_block with its name
-        char CopyOfName[64];
-        x_strcpy(CopyOfName,TOK.String());
-        TweakData.SetName( TOK.String() );
-
-        // Confirm there are no duplicate tweaks
-        {
-            for( i=0; i<TweakDataArray.GetCount(); i++ )
-            {
-                if( TweakData.GetDataID() == TweakDataArray[i].GetDataID() )
-                    break;
-            }
-            if( i!=TweakDataArray.GetCount() )
-            {
-                ASSERTS(FALSE,"Tweak duplicate!\n");
-                TOK.SkipToNextLine();
-                continue;
-            }
-        }
-
-        // Fill out the pain profile data
-        TweakData.m_Value   = TOK.ReadF32FromString();
-
-    //  LOG_MESSAGE("LoadTweaks","NewTweak (%s) (%8.2f)",CopyOfName, TweakData.m_Value);
-
-        // Add profile to the array
-        TweakDataArray.Append( TweakData );
-
-        // Fast forward to next line
-        TOK.SkipToNextLine();
+        return ReportTweakError( Input, "Expected TweakTable version 1" );
     }
 
-    TOK.CloseFile();
+    if( !Input.ReadHeader() || x_strcmp( Input.GetHeaderName(), "Tweaks" ) ||
+        Input.GetFieldCount() != 2 || Input.GetHeaderCount() <= 0 )
+    {
+        return ReportTweakError( Input, "Invalid Tweaks table" );
+    }
 
-    // Allocate final array of tweaks
-    tweak_data_block* pTW = new tweak_data_block[ TweakDataArray.GetCount() ];
-    for( i=0; i<TweakDataArray.GetCount(); i++ )
-        pTW[i] = TweakDataArray[i];
+    s32 Count = Input.GetHeaderCount();
+    xarray<tweak_data_block> Tweaks;
+    dictionary Names;
+    Tweaks.SetCapacity( Count );
 
-    LOG_MESSAGE( "LoadTweaks","Tweak array size: %d elements",TweakDataArray.GetCount() );
-    LOG_MESSAGE( "LoadTweaks","End. Took %2.02f seconds.", Time.ReadSec() );
+    for( s32 I = 0; I < Count; I++ )
+    {
+        xstring          Name;
+        tweak_data_block Tweak;
 
-    // Hand off to the data vault.  ..."Keep them out of trouble!"...
-    g_DataVault.AddDataBlocks("TWDATA",pTW,TweakDataArray.GetCount(),sizeof(tweak_data_block));
+        if( !Input.ReadFields() || !Input.GetString( "Name", Name ) ||
+            !Input.GetF32( "Value", Tweak.m_Value ) )
+        {
+            return ReportTweakError( Input, "Invalid tweak entry" );
+        }
 
+        if( Name.IsEmpty() )
+        {
+            return ReportTweakError( Input, "Empty tweak name" );
+        }
+
+        Name.MakeUpper();
+
+        if( Names.Find( Name ) >= 0 )
+        {
+            return ReportTweakError( Input, xfs( "Duplicate tweak '%s'", (const char*)Name ) );
+        }
+
+        Names.Add( Name );
+        Tweak.SetName( Name );
+        Tweaks.Append() = Tweak;
+    }
+
+    if( Input.ReadHeader() || Input.HasError() || !Input.IsEOF() )
+    {
+        return ReportTweakError( Input, "Unexpected data after tweak table" );
+    }
+
+    tweak_data_block* pTweaks = new tweak_data_block[Count];
+
+    for( s32 I = 0; I < Count; I++ )
+    {
+        pTweaks[I] = Tweaks[I];
+    }
+
+    g_DataVault.AddDataBlocks( "TWDATA", pTweaks, Count, sizeof(tweak_data_block) );
+    s_TweaksLoaded = TRUE;
+
+    LOG_MESSAGE( "LoadTweaks", "Loaded %d entries in %2.02f seconds.", Count, Time.ReadSec() );
     return TRUE;
 }
 
@@ -327,8 +351,14 @@ xbool LoadTweaks( const char* pDirectory )
 
 void UnloadTweaks( void )
 {
+    if( !s_TweaksLoaded )
+    {
+        return;
+    }
+
     tweak_data_block* pTW  = (tweak_data_block*)g_DataVault.DelDataBlocks("TWDATA");
     delete[] pTW;
+    s_TweaksLoaded = FALSE;
 }
 
 //==============================================================================

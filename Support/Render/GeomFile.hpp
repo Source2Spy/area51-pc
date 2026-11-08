@@ -43,8 +43,10 @@ public:
     static xbool SaveSkin  ( X_FILE* pFile, skin_geom const& Geom, xstring& Error );
     static xbool SaveRigid ( char const* pFileName, rigid_geom const& Geom, xstring& Error );
     static xbool SaveSkin  ( char const* pFileName, skin_geom const& Geom, xstring& Error );
+    static xbool EncodeSkin( skin_geom const& Geom, xarray<u8>& Bytes, xstring& Error );
 };
 
 //=========================================================================
+
 #endif // GEOM_FILE_HPP
 //=========================================================================

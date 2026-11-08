@@ -1,11 +1,12 @@
 #include "Obj_mgr/obj_mgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "ProjectileBullett.hpp"
 #include "WeaponSMP.hpp"
 #include "Objects/ParticleEmiter.hpp"
 #include "Objects/Projector.hpp"
 #include "AudioMgr/AudioMgr.hpp"
 #include "Debris/debris_mgr.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "Objects/Player/Player.hpp"
 
 //=========================================================================
@@ -184,7 +185,7 @@ xbool weapon_smp::FireWeaponProtected( const vector3& InitPos , const vector3& B
 //        BP->SetDamageAmount( g_MultiplayerPainTweaks.m_SMPDamage );
  
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
         // Decrement count of bullets in current clip
         DecrementAmmo();
@@ -220,9 +221,9 @@ xbool weapon_smp::FireNPCWeaponProtected ( const vector3& BaseVelocity , const v
     BP = CreateBullet( GetLogicalName(), InitPos, TargetRot, BaseVelocity, Owner, PainHandle, AMMO_PRIMARY, bHitLiving );
 
     //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
-    if( g_AudioMgr.IsValidVoiceId( m_LoopVoiceId ) )
+    if( g_AudioMgr.IsValidVoiceIdCached( m_LoopVoiceId ) )
     {
         g_AudioMgr.Release( m_LoopVoiceId, g_SMPReleaseTime );
         m_LoopVoiceId = 0;

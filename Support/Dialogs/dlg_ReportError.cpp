@@ -16,7 +16,7 @@
 #include "StateMgr/StateMgr.hpp"
 #include "StringMgr/StringMgr.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/MatchMgr.hpp"
+#include "NetworkMgr/Match/MatchMgr.hpp"
 #include "AudioMgr/AudioMgr.hpp"
 
 //=========================================================================
@@ -30,18 +30,6 @@ ui_manager::dialog_tem ReportErrorDialog =
     NULL,
     0
 };
-
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
 
 //=========================================================================
 //  Registration function
@@ -238,8 +226,6 @@ void dlg_report_error::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
             const char* pTitle = "IDS_NETWORK_POPUP";
             const char* pLabel = NULL;
-            xbool ShowCancelAction = TRUE;
-            m_CanTroubleshoot = FALSE;
 
             switch( g_ActiveConfig.GetExitReason() )
             {
@@ -268,7 +254,6 @@ void dlg_report_error::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             {
                 pTitle = "IDS_LOAD_CAMPAIGN_MENU";
                 pLabel = "IDS_CAMPAIGN_INVALID_MISSION";
-                ShowCancelAction = FALSE;
             }
             break;
             case GAME_EXIT_SERVER_FULL:         pLabel = "IDS_ONLINE_LOGIN_SERVER_FULL";        break;
@@ -279,31 +264,10 @@ void dlg_report_error::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             case GAME_EXIT_SESSION_ENDED:       pLabel = "IDS_ONLINE_SESSION_ENDED";            break;
             default:                            ASSERT( FALSE );                                break;
             }
-            if( m_CanTroubleshoot )
-            {
-                xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_NETWORK_TROUBLESHOOTER" ));
-                navText += g_StringTableMgr( "ui", "IDS_NAV_CANCEL" );
-
-                m_PopUp->Configure( r,
-                    g_StringTableMgr( "ui", pTitle ),
-                    TRUE, 
-                    TRUE, 
-                    FALSE, 
-                    g_StringTableMgr( "ui", pLabel ),
-                    navText,
-                    &m_PopUpResult );
-            }
-            else
-            {
-                m_PopUp->Configure( r,
-                    g_StringTableMgr( "ui", pTitle ),
-                    TRUE, 
-                    ShowCancelAction,
-                    FALSE, 
-                    g_StringTableMgr( "ui", pLabel ),
-                    g_StringTableMgr( "ui", "IDS_NAV_OK" ),
-                    &m_PopUpResult );
-            }
+            m_PopUp->ConfigureMessage( r,
+                                       g_StringTableMgr( "ui", pTitle ),
+                                       g_StringTableMgr( "ui", pLabel ),
+                                       &m_PopUpResult );
             g_UiMgr->SetScreenOn(TRUE);
         }
     }
@@ -311,15 +275,8 @@ void dlg_report_error::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     {
         if( m_PopUpResult != DLG_POPUP_IDLE )
         {
-            if( (m_PopUpResult == DLG_POPUP_YES) && m_CanTroubleshoot )
-            {
-                g_StateMgr.Reboot( REBOOT_MANAGE );
-            }
-            else
-            {
-                m_State = DIALOG_STATE_BACK;
-                g_UiMgr->EndDialog( g_UiUserID, TRUE );
-            }
+            m_State = DIALOG_STATE_BACK;
+            g_UiMgr->EndDialog( g_UiUserID, TRUE );
         }
     }
 

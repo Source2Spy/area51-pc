@@ -8,6 +8,8 @@
 //  INCLUDES
 //==============================================================================
 
+#include "NetworkMgr/Replication/NetUpdate.hpp"
+
 #include "FlagBase.hpp"
 #include "GameLib/RenderContext.hpp"
 #include "TemplateMgr/TemplateMgr.hpp"
@@ -15,7 +17,7 @@
 
 #ifndef X_EDITOR
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/logic_Base.hpp"
+#include "NetworkMgr/Game/logic_Base.hpp"
 #endif
 
 //==============================================================================
@@ -127,34 +129,20 @@ bbox flag_base::GetLocalBBox( void ) const
 #ifndef X_EDITOR
 //==============================================================================
 
-void flag_base::net_AcceptUpdate( const bitstream& BS )
+void flag_base::net_AcceptUpdate( const net_flag_base_update& Update )
 {
+    //
     // netobj::ACTIVATE_BIT
-    if( BS.ReadFlag() )
+    //
+    if( Update.Activate )
     {
-        vector3 Position;
-        radian3 Orientation;
-        s32     Zone1;
-        s32     Zone2;
-        s32     Circuit;
-
-        Orientation.Zero();
-
-        BS.ReadVector( Position );
-        BS.ReadF32( Orientation.Yaw );
-        BS.ReadRangedS32( Zone1, 0, 255 );
-        BS.ReadRangedS32( Zone2, 0, 255 );
-        BS.ReadRangedS32( Circuit, 0, 3 );
-
-        SetZone1( Zone1 );
-        SetZone2( Zone2 );
-        
+        SetZone1( Update.Zone1 );
+        SetZone2( Update.Zone2 );
         matrix4 L2W;
         L2W.Identity();
-        L2W.SetRotation( Orientation );
-        L2W.SetTranslation( Position );
-
-        Init( Circuit, L2W );
+        L2W.SetRotation( Update.Orientation );
+        L2W.SetTranslation( Update.Position );
+        Init( Update.Circuit, L2W );
     }
 }
 

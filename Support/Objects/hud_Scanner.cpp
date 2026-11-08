@@ -18,7 +18,7 @@
 #include "Corpse.hpp"
 #include "StringMgr/StringMgr.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/MsgMgr.hpp"
+#include "NetworkMgr/Messages/MsgMgr.hpp"
 
 #ifndef X_EDITOR
 #include "../../Apps/GameApp/Config.hpp"
@@ -80,12 +80,12 @@ hud_scanner::hud_scanner ( void )
         m_Bar.m_OuterColor = g_HudColor;
         m_Bar.m_bFlip      = FALSE;
     }
-    //m_InnerBmp.SetName( PRELOAD_FILE( "HUD_health_bar.xbmp" ) );
-    //m_OuterBmp.SetName( PRELOAD_FILE( "HUD_health_bar_outline.xbmp" ) );
-    //m_OuterBmpFlipped.SetName( PRELOAD_FILE( "HUD_health_bar_outline02.xbmp" ) );
+    //m_InnerBmp.SetName( PRELOAD_FILE( "HUD/GENERAL/HUD_HEALTH_BAR.XBMP" ) );
+    //m_OuterBmp.SetName( PRELOAD_FILE( "HUD/GENERAL/HUD_HEALTH_BAR_OUTLINE.XBMP" ) );
+    //m_OuterBmpFlipped.SetName( PRELOAD_FILE( "HUD/GENERAL/HUD_HEALTH_BAR_OUTLINE02.XBMP" ) );
 
-    m_ScannerBarBmp.SetName(PRELOAD_FILE("HUD_Campaign_scan.xbmp"));
-    m_ScannerBmpAlpha = 0;
+    m_ScannerBarBmp.SetName(PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_SCAN.XBMP"));
+    m_ScannerBmpAlpha = 0.0f;
     m_ScanPeakUpdateTime = 0.0f;
     m_ScanPeak = 0;
     m_ScanPeakUpdate = TRUE;
@@ -655,14 +655,10 @@ f32 g_GeigerBGSize  = 6.0f;
 
 void hud_scanner::RenderGeiger( player* pPlayer )
 {
-    // If player dosent have the scanner then dont render the 
-    // Geiger.
-    if( !pPlayer->GetInventory2().HasItem(INVEN_WEAPON_SCANNER) || pPlayer->IsMutated() )
-    {
-        return;
-    }
+    (void)pPlayer;
 
-    if( !m_LoreDetected )
+    // Keep rendering the last reading until the fade-out has finished.
+    if( !m_LoreDetected && (m_ScannerBmpAlpha == 0) )
         return;
 
     // Draw Scanner Boarder
@@ -680,11 +676,17 @@ void hud_scanner::RenderGeiger( player* pPlayer )
     Pos.X = m_XPos+HUD_SCANNER_X;
     Pos.Y = m_YPos+HUD_SCANNER_Y;
     static xcolor HUD_LORE_PIC_COLOR = g_HudColor;
-    HUD_LORE_PIC_COLOR.A = m_ScannerBmpAlpha;
+    HUD_LORE_PIC_COLOR.A = (u8)m_ScannerBmpAlpha;
     g_UIRenderer.DrawImage( *pTexture, Pos, WH,
                             vector2( 0.0f, 0.0f ), vector2( 1.0f, 1.0f ),
-                            HUD_LORE_PIC_COLOR, 0.0f, UI_BLEND_ALPHA, UI_SAMPLER_LINEAR_CLAMP );
+                            HUD_LORE_PIC_COLOR, 0.0f, UI_BLEND_ALPHA, UI_SAMPLER_POINT_CLAMP );
 
+    if( m_LoreDetected )
+    {
+        const f32 Proximity = 1.0f - (m_LoreDistance / m_LoreMaxDistance);
+        m_LoreBarAmount = (s32)x_clamp( Proximity * (g_GeigerSize + x_frand( -2.0f, 2.0f )),
+                                      0.0f, g_GeigerSize );
+    }
     RenderLoreBar( m_LoreBarAmount );
 }
 
@@ -705,19 +707,17 @@ void hud_scanner::RenderLoreBar( s32 AmountPercent )
     // Render Bar
     R.Set( 
         WorkingX, 
-        Y, 
+        Y-BarLength,
         WorkingX+HUD_S_W, 
-        Y-BarLength
+        Y
         );
 
     static xcolor HUD_LORE_BAR = xcolor(80, 150, 150, 30);
     static xcolor HUD_LORE_BAR_HIGH = xcolor(200, 80, 80, 200);
     xcolor bar = Interpolate(HUD_LORE_BAR, HUD_LORE_BAR_HIGH, AmountPercent / g_GeigerSize);
+    bar.A = (u8)(bar.A * (m_ScannerBmpAlpha / 255.0f));
     g_UIRenderer.DrawGradientRect( R, bar, bar, bar, bar );
 
-    // Track the highest recent reading and periodically re-arm the peak.
-    // The old render path performed both updates here; keeping only the
-    // simulation timer made the marker stale forever.
     if( Y - BarLength < m_ScanPeak )
         m_ScanPeak = Y - BarLength;
 
@@ -730,12 +730,14 @@ void hud_scanner::RenderLoreBar( s32 AmountPercent )
     // Render Peak
     R.Set(
         WorkingX,
-        m_ScanPeak,
+        m_ScanPeak-2,
         WorkingX+HUD_S_W,
-        m_ScanPeak-2
+        m_ScanPeak
         );
 
-    g_UIRenderer.DrawRect( R, g_HudColor );
+    xcolor PeakColor = g_HudColor;
+    PeakColor.A = (u8)(PeakColor.A * (m_ScannerBmpAlpha / 255.0f));
+    g_UIRenderer.DrawRect( R, PeakColor );
     
 }
 //==============================================================================
@@ -868,7 +870,6 @@ void hud_scanner::RenderBar( void )
 
 void hud_scanner::OnAdvanceSimulation( player* pPlayer, f32 DeltaTime )
 {
-    // Keep the scan overlay and its peak marker on a real simulation timer.
     m_ScanPeakUpdateTime -= DeltaTime;
     if( m_ScanPeakUpdateTime <= 0.0f )
     {
@@ -893,8 +894,22 @@ void hud_scanner::OnAdvanceSimulation( player* pPlayer, f32 DeltaTime )
     if( m_LoreDetected && !WasDetected )
         g_AudioMgr.Play( "Scanner_HUD_Appear", TRUE );
 
-    m_LoreDistance = ClosestDistance;
-    m_LoreMaxDistance = MaxDistance;
+    if( m_LoreDetected )
+    {
+        m_LoreDistance = ClosestDistance;
+        m_LoreMaxDistance = MaxDistance;
+    }
+
+    const f32 FadeDelta = 960.0f * DeltaTime;
+    if( m_LoreDetected )
+        m_ScannerBmpAlpha = MIN( m_ScannerBmpAlpha + FadeDelta, 255.0f );
+    else
+        m_ScannerBmpAlpha = MAX( m_ScannerBmpAlpha - FadeDelta, 0.0f );
+
+    if( !m_LoreDetected && (m_ScannerBmpAlpha == 0) )
+    {
+        m_LoreBarAmount = 0;
+    }
 }
 
 //==============================================================================

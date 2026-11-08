@@ -33,11 +33,10 @@ enum
     RENDER_FLAG_CLAMP_SAMPLER           = ( 1u << 14 ),
 };
 
-//---------------------------------------------------------------------------
+//-------------------------------------------------------------------------
 
 struct MaterialTypePolicy
 {
-    u32 ShaderFeatures;
     u32 RenderFlags;
     u8  RenderOrder;
     u8  SortPriority;
@@ -49,56 +48,16 @@ struct MaterialTypePolicy
 
 static MaterialTypePolicy const MaterialTypePolicies[Material_NumTypes] =
 {
-    { 0, 0, MATERIAL_RENDER_ORDER_OPAQUE, 1 }, // Material_Not_Used
-    { 0, 0, MATERIAL_RENDER_ORDER_OPAQUE, 2 }, // Material_Diff
-    {
-        MATERIAL_SHADER_ALPHA_BLEND | MATERIAL_SHADER_ALPHA_TEST,
-        RENDER_FLAG_ALPHA | RENDER_FLAG_FORWARD | RENDER_FLAG_USES_SHADOW_ALPHA,
-        MATERIAL_RENDER_ORDER_ALPHA,
-        5
-    }, // Material_Alpha
-    {
-        MATERIAL_SHADER_DIFF_PERPIXEL_ENV,
-        0,
-        MATERIAL_RENDER_ORDER_OPAQUE,
-        2
-    }, // Material_Diff_PerPixelEnv
-    {
-        MATERIAL_SHADER_DIFF_PERPIXEL_ILLUM,
-        0,
-        MATERIAL_RENDER_ORDER_GLOWING,
-        3
-    }, // Material_Diff_PerPixelIllum
-    {
-        MATERIAL_SHADER_ALPHA_BLEND | MATERIAL_SHADER_ALPHA_PERPOLY_ENV,
-        RENDER_FLAG_ALPHA | RENDER_FLAG_FORWARD,
-        MATERIAL_RENDER_ORDER_ALPHA,
-        5
-    }, // Material_Alpha_PerPolyEnv
-    {
-        MATERIAL_SHADER_ALPHA_BLEND | MATERIAL_SHADER_ALPHA_PERPIXEL_ILLUM,
-        RENDER_FLAG_ALPHA | RENDER_FLAG_FORWARD,
-        MATERIAL_RENDER_ORDER_ALPHA_GLOWING,
-        4
-    }, // Material_Alpha_PerPixelIllum
-    {
-        MATERIAL_SHADER_ALPHA_BLEND | MATERIAL_SHADER_ALPHA_PERPOLY_ILLUM,
-        RENDER_FLAG_ALPHA | RENDER_FLAG_FORWARD,
-        MATERIAL_RENDER_ORDER_ALPHA_GLOWING,
-        4
-    }, // Material_Alpha_PerPolyIllum
-    {
-        MATERIAL_SHADER_ALPHA_BLEND | MATERIAL_SHADER_DISTORTION,
-        RENDER_FLAG_ALPHA | RENDER_FLAG_DISTORTION,
-        MATERIAL_RENDER_ORDER_DISTORTION,
-        6
-    }, // Material_Distortion
-    {
-        MATERIAL_SHADER_ALPHA_BLEND | MATERIAL_SHADER_DISTORTION_PERPOLY_ENV,
-        RENDER_FLAG_ALPHA | RENDER_FLAG_DISTORTION | RENDER_FLAG_DISTORTION_PERPOLY_ENV,
-        MATERIAL_RENDER_ORDER_DISTORTION,
-        6
-    }, // Material_Distortion_PerPolyEnv
+    { 0, MATERIAL_RENDER_ORDER_OPAQUE, 1 },
+    { 0, MATERIAL_RENDER_ORDER_OPAQUE, 2 },
+    { RENDER_FLAG_ALPHA | RENDER_FLAG_FORWARD | RENDER_FLAG_USES_SHADOW_ALPHA, MATERIAL_RENDER_ORDER_ALPHA, 5 },
+    { 0, MATERIAL_RENDER_ORDER_OPAQUE, 2 },
+    { 0, MATERIAL_RENDER_ORDER_GLOWING, 3 },
+    { RENDER_FLAG_ALPHA | RENDER_FLAG_FORWARD, MATERIAL_RENDER_ORDER_ALPHA, 5 },
+    { RENDER_FLAG_ALPHA | RENDER_FLAG_FORWARD, MATERIAL_RENDER_ORDER_ALPHA_GLOWING, 4 },
+    { RENDER_FLAG_ALPHA | RENDER_FLAG_FORWARD, MATERIAL_RENDER_ORDER_ALPHA_GLOWING, 4 },
+    { RENDER_FLAG_ALPHA | RENDER_FLAG_DISTORTION, MATERIAL_RENDER_ORDER_DISTORTION, 6 },
+    { RENDER_FLAG_ALPHA | RENDER_FLAG_DISTORTION | RENDER_FLAG_DISTORTION_PERPOLY_ENV, MATERIAL_RENDER_ORDER_DISTORTION, 6 },
 };
 
 static_assert( ( sizeof( MaterialTypePolicies ) / sizeof( MaterialTypePolicies[0] ) ) == Material_NumTypes,
@@ -108,7 +67,7 @@ static_assert( ( sizeof( MaterialTypePolicies ) / sizeof( MaterialTypePolicies[0
 //  HELPER FUNCTIONS
 //=========================================================================
 
-static 
+static
 xbool HasRenderFlag( u32 Flags, u32 Flag )
 {
     return ( ( Flags & Flag ) != 0 );
@@ -134,15 +93,15 @@ material::uvanim::uvanim( void )
 
 material::material( void )
     : m_Type( Material_Not_Used )
-    , m_detailScale( 1.0f )
-    , m_fixedAlpha( 0.0f )
+    , m_DetailScale( 1.0f )
+    , m_FixedAlpha( 0.0f )
     , m_Flags( 0 )
-    , m_diffuseMap()
-    , m_environmentMap()
-    , m_detailMap()
-    , m_uvAnim()
-    , m_refCount( 0 )
-    , m_renderData()
+    , m_DiffuseMap()
+    , m_EnvironmentMap()
+    , m_DetailMap()
+    , m_UVAnim()
+    , m_RefCount( 0 )
+    , m_RenderData()
 {
     Finalize();
 }
@@ -157,26 +116,29 @@ material::~material( void )
 
 void material::Finalize( void )
 {
-    ASSERT( ( m_Type >= Material_Not_Used ) && ( m_Type < Material_NumTypes ) );
+    m_Desc = render::MaterialDesc();
+    if( m_Type < Material_Not_Used || m_Type >= Material_NumTypes )
+    {
+        x_DebugMsg( "Material: invalid surface type %d\n", m_Type );
+        ASSERTS( FALSE, "Invalid material type" );
+        return;
+    }
 
-    s32 const TypeIndex = ( ( m_Type >= Material_Not_Used ) && ( m_Type < Material_NumTypes ) )
-                              ? static_cast<s32>( m_Type )
-                              : static_cast<s32>( Material_Not_Used );
+    s32 const TypeIndex = static_cast<s32>( m_Type );
 
     MaterialTypePolicy const& Policy = MaterialTypePolicies[TypeIndex];
 
-    m_renderData.ShaderFeatures   = Policy.ShaderFeatures;
-    m_renderData.Flags            = Policy.RenderFlags;
-    m_renderData.BlendMode        = MATERIAL_BLEND_OPAQUE;
-    m_renderData.RenderOrder      = Policy.RenderOrder;
-    m_renderData.SortPriority     = Policy.SortPriority;
-    m_renderData.AlphaRef         = 0.0f;
-    m_renderData.DetailScale      = ( m_detailScale > 0.0f ) ? m_detailScale : 1.0f;
-    m_renderData.FixedAlpha       = m_fixedAlpha;
-    m_renderData.CubeMapIntensity = 1.0f;
+    m_RenderData.Flags            = Policy.RenderFlags;
+    m_RenderData.BlendMode        = MATERIAL_BLEND_OPAQUE;
+    m_RenderData.RenderOrder      = Policy.RenderOrder;
+    m_RenderData.SortPriority     = Policy.SortPriority;
+    m_RenderData.AlphaRef         = 0.0f;
+    m_RenderData.DetailScale      = ( m_DetailScale > 0.0f ) ? m_DetailScale : 1.0f;
+    m_RenderData.FixedAlpha       = m_FixedAlpha;
+    m_RenderData.CubeMapIntensity = 1.0f;
 
-    xbool const IsAlpha      = HasRenderFlag( m_renderData.Flags, RENDER_FLAG_ALPHA );
-    xbool const IsDistortion = HasRenderFlag( m_renderData.Flags, RENDER_FLAG_DISTORTION );
+    xbool const IsAlpha      = HasRenderFlag( m_RenderData.Flags, RENDER_FLAG_ALPHA );
+    xbool const IsDistortion = HasRenderFlag( m_RenderData.Flags, RENDER_FLAG_DISTORTION );
     xbool const ForceZFill   = ( ( m_Flags & MATERIAL_FLAG_FORCE_ZFILL ) != 0 );
     xbool const PunchThru    = ( ( m_Flags & MATERIAL_FLAG_IS_PUNCH_THRU ) != 0 );
     xbool const DoubleSided  = ( ( m_Flags & MATERIAL_FLAG_DOUBLE_SIDED ) != 0 );
@@ -186,134 +148,112 @@ void material::Finalize( void )
 
     if( ForceZFill )
     {
-        m_renderData.Flags |= RENDER_FLAG_FORCE_Z_FILL;
+        m_RenderData.Flags |= RENDER_FLAG_FORCE_Z_FILL;
     }
 
     if( PunchThru )
     {
-        m_renderData.Flags |= RENDER_FLAG_PUNCH_THRU | RENDER_FLAG_USES_SHADOW_ALPHA;
+        m_RenderData.Flags |= RENDER_FLAG_PUNCH_THRU | RENDER_FLAG_USES_SHADOW_ALPHA;
     }
 
     if( IsPostEffect )
     {
-        m_renderData.Flags |= RENDER_FLAG_POST_EFFECT_BLEND;
+        m_RenderData.Flags |= RENDER_FLAG_POST_EFFECT_BLEND;
     }
 
-    if( m_Flags & MATERIAL_FLAG_HAS_DETAIL_MAP )
+    xbool const EnvironmentRecipe = m_Type == Material_Diff_PerPixelEnv ||
+                                    m_Type == Material_Alpha_PerPolyEnv ||
+                                    m_Type == Material_Distortion_PerPolyEnv;
+    xbool const DeclaresEnvironment = ( m_Flags & ( MATERIAL_FLAG_HAS_ENV_MAP | MATERIAL_FLAG_ENV_CUBE_MAP ) ) != 0;
+    if( EnvironmentRecipe && !DeclaresEnvironment )
     {
-        m_renderData.ShaderFeatures |= MATERIAL_SHADER_DETAIL;
+        x_DebugMsg( "Material: environment recipe %d has no declared environment resource\n", m_Type );
+        ASSERTS( FALSE, "Environment recipe requires a declared texture or cubemap" );
+        return;
+    }
+    if( Additive && Subtractive )
+    {
+        x_DebugMsg( "Material: additive and subtractive flags cannot be combined\n" );
+        ASSERTS( FALSE, "Conflicting material blend modes" );
+        return;
+    }
+    if( EnvironmentRecipe && ( m_Flags & MATERIAL_FLAG_ENV_VIEW_SPACE ) && ( m_Flags & MATERIAL_FLAG_ENV_WORLD_SPACE ) )
+    {
+        x_DebugMsg( "Material: environment cannot use both view and world coordinates\n" );
+        ASSERTS( FALSE, "Conflicting environment coordinate modes" );
+        return;
     }
 
-    // Preserve the current shader contract. Missing environment resources
-    // are bound to the renderer fallback.
-    m_renderData.ShaderFeatures |= MATERIAL_SHADER_ENVIRONMENT;
-
-    if( m_Flags & MATERIAL_FLAG_ENV_CUBE_MAP )
+    if( EnvironmentRecipe && ( m_Flags & MATERIAL_FLAG_ENV_CUBE_MAP ) )
     {
-        m_renderData.ShaderFeatures |= MATERIAL_SHADER_ENV_CUBEMAP;
-        m_renderData.Flags |= RENDER_FLAG_ENV_CUBEMAP;
+        m_RenderData.Flags |= RENDER_FLAG_ENV_CUBEMAP;
     }
 
-    if( m_Flags & MATERIAL_FLAG_ENV_VIEW_SPACE )
-    {
-        m_renderData.ShaderFeatures |= MATERIAL_SHADER_ENV_VIEWSPACE;
-    }
-
-    if( m_Flags & MATERIAL_FLAG_ENV_WORLD_SPACE )
-    {
-        m_renderData.ShaderFeatures |= MATERIAL_SHADER_ENV_WORLDSPACE;
-    }
-
-    if( PunchThru )
-    {
-        m_renderData.ShaderFeatures |= MATERIAL_SHADER_ALPHA_TEST;
-    }
-
-    if( DoubleSided )
-    {
-        m_renderData.ShaderFeatures |= MATERIAL_SHADER_TWO_SIDED;
-    }
-
-    if( Additive )
-    {
-        m_renderData.ShaderFeatures |= MATERIAL_SHADER_ADDITIVE;
-    }
-    else if( Subtractive )
-    {
-        m_renderData.ShaderFeatures |= MATERIAL_SHADER_SUBTRACTIVE;
-    }
-
-    if( m_Flags & MATERIAL_FLAG_ILLUM_USES_DIFFUSE )
-    {
-        m_renderData.ShaderFeatures |= MATERIAL_SHADER_ILLUM_USE_DIFFUSE;
-    }
-
-    if( m_renderData.ShaderFeatures & MATERIAL_SHADER_ALPHA_TEST )
-    {
-        m_renderData.AlphaRef = PunchThru ? 0.5f : ( 4.0f / 255.0f );
-    }
+    m_Desc = render::ResolveMaterialDescription( static_cast<material_type>(m_Type), m_Flags );
+    if( m_Desc.AlphaTest )
+        m_RenderData.AlphaRef = PunchThru ? 0.5f : ( 4.0f / 255.0f );
 
     if( IsDistortion )
     {
-        m_renderData.BlendMode = MATERIAL_BLEND_DISTORTION;
-        m_renderData.Flags |= RENDER_FLAG_CLAMP_SAMPLER;
+        m_RenderData.BlendMode = MATERIAL_BLEND_DISTORTION;
+        m_RenderData.Flags |= RENDER_FLAG_CLAMP_SAMPLER;
     }
-    else if( HasRenderFlag( m_renderData.Flags, RENDER_FLAG_FORWARD ) )
+    else if( HasRenderFlag( m_RenderData.Flags, RENDER_FLAG_FORWARD ) )
     {
         if( Additive )
         {
-            m_renderData.BlendMode = MATERIAL_BLEND_ADDITIVE;
+            m_RenderData.BlendMode = MATERIAL_BLEND_ADDITIVE;
         }
         else if( Subtractive )
         {
-            m_renderData.BlendMode = MATERIAL_BLEND_SUBTRACTIVE;
+            m_RenderData.BlendMode = MATERIAL_BLEND_SUBTRACTIVE;
         }
         else
         {
-            m_renderData.BlendMode = MATERIAL_BLEND_ALPHA;
+            m_RenderData.BlendMode = MATERIAL_BLEND_ALPHA;
         }
     }
 
-    if( HasRenderFlag( m_renderData.Flags, RENDER_FLAG_FORWARD ) && !IsPostEffect )
+    if( HasRenderFlag( m_RenderData.Flags, RENDER_FLAG_FORWARD ) && !IsPostEffect )
     {
-        m_renderData.Flags |= RENDER_FLAG_DEPTH_SORTED;
+        m_RenderData.Flags |= RENDER_FLAG_DEPTH_SORTED;
     }
 
     if( !IsAlpha || ( ForceZFill && !Subtractive ) )
     {
-        m_renderData.Flags |= RENDER_FLAG_RECEIVES_PROJECTION;
+        m_RenderData.Flags |= RENDER_FLAG_RECEIVES_PROJECTION;
     }
 
     if( ( !IsAlpha || ForceZFill ) && !PunchThru )
     {
-        m_renderData.Flags |= RENDER_FLAG_RECEIVES_SHADOW;
+        m_RenderData.Flags |= RENDER_FLAG_RECEIVES_SHADOW;
     }
 
-    xbool const EnablesBlend = ( m_renderData.BlendMode == MATERIAL_BLEND_ALPHA ) ||
-                               ( m_renderData.BlendMode == MATERIAL_BLEND_ADDITIVE ) ||
-                               ( m_renderData.BlendMode == MATERIAL_BLEND_SUBTRACTIVE );
+    xbool const EnablesBlend = ( m_RenderData.BlendMode == MATERIAL_BLEND_ALPHA ) ||
+                               ( m_RenderData.BlendMode == MATERIAL_BLEND_ADDITIVE ) ||
+                               ( m_RenderData.BlendMode == MATERIAL_BLEND_SUBTRACTIVE );
 
     if( !( ( IsAlpha || EnablesBlend ) && !ForceZFill && !IsDistortion ) )
     {
-        m_renderData.Flags |= RENDER_FLAG_DEPTH_WRITE;
+        m_RenderData.Flags |= RENDER_FLAG_DEPTH_WRITE;
     }
 
     if( !DoubleSided && !( IsAlpha && !IsDistortion ) )
     {
-        m_renderData.Flags |= RENDER_FLAG_CULL_BACK;
+        m_RenderData.Flags |= RENDER_FLAG_CULL_BACK;
     }
 
-    if( HasRenderFlag( m_renderData.Flags, RENDER_FLAG_ENV_CUBEMAP ) )
+    if( HasRenderFlag( m_RenderData.Flags, RENDER_FLAG_ENV_CUBEMAP ) )
     {
-        if( HasRenderFlag( m_renderData.Flags, RENDER_FLAG_DISTORTION_PERPOLY_ENV ) ||
+        if( HasRenderFlag( m_RenderData.Flags, RENDER_FLAG_DISTORTION_PERPOLY_ENV ) ||
             ( m_Type == Material_Alpha_PerPolyEnv ) )
         {
-            m_renderData.CubeMapIntensity = 1.0f;
+            m_RenderData.CubeMapIntensity = 1.0f;
         }
         else
         {
             f32 const DefaultCubeMapIntensity = 0.35f;
-            f32       CubeMapIntensity        = m_fixedAlpha;
+            f32       CubeMapIntensity        = m_FixedAlpha;
 
             if( CubeMapIntensity <= 0.0f )
             {
@@ -330,26 +270,28 @@ void material::Finalize( void )
                 CubeMapIntensity = 1.0f;
             }
 
-            m_renderData.CubeMapIntensity = CubeMapIntensity;
+            m_RenderData.CubeMapIntensity = CubeMapIntensity;
         }
     }
+
+
 }
 
 //=========================================================================
 
 xbool material::operator==( material const& Rhs ) const
 {
-    if( m_diffuseMap.GetIndex() != Rhs.m_diffuseMap.GetIndex() )
+    if( m_DiffuseMap.GetIndex() != Rhs.m_DiffuseMap.GetIndex() )
     {
         return FALSE;
     }
 
-    if( m_environmentMap.GetIndex() != Rhs.m_environmentMap.GetIndex() )
+    if( m_EnvironmentMap.GetIndex() != Rhs.m_EnvironmentMap.GetIndex() )
     {
         return FALSE;
     }
 
-    if( m_detailMap.GetIndex() != Rhs.m_detailMap.GetIndex() )
+    if( m_DetailMap.GetIndex() != Rhs.m_DetailMap.GetIndex() )
     {
         return FALSE;
     }
@@ -359,12 +301,12 @@ xbool material::operator==( material const& Rhs ) const
         return FALSE;
     }
 
-    if( m_detailScale != Rhs.m_detailScale )
+    if( m_DetailScale != Rhs.m_DetailScale )
     {
         return FALSE;
     }
 
-    if( m_fixedAlpha != Rhs.m_fixedAlpha )
+    if( m_FixedAlpha != Rhs.m_FixedAlpha )
     {
         return FALSE;
     }
@@ -375,27 +317,27 @@ xbool material::operator==( material const& Rhs ) const
     }
 
     // Mutable animation state is not part of material identity.
-    if( m_uvAnim.iKey != Rhs.m_uvAnim.iKey )
+    if( m_UVAnim.iKey != Rhs.m_UVAnim.iKey )
     {
         return FALSE;
     }
 
-    if( m_uvAnim.Type != Rhs.m_uvAnim.Type )
+    if( m_UVAnim.Type != Rhs.m_UVAnim.Type )
     {
         return FALSE;
     }
 
-    if( m_uvAnim.nFrames != Rhs.m_uvAnim.nFrames )
+    if( m_UVAnim.nFrames != Rhs.m_UVAnim.nFrames )
     {
         return FALSE;
     }
 
-    if( m_uvAnim.FPS != Rhs.m_uvAnim.FPS )
+    if( m_UVAnim.FPS != Rhs.m_UVAnim.FPS )
     {
         return FALSE;
     }
 
-    if( m_uvAnim.StartFrame != Rhs.m_uvAnim.StartFrame )
+    if( m_UVAnim.StartFrame != Rhs.m_UVAnim.StartFrame )
     {
         return FALSE;
     }
@@ -407,103 +349,103 @@ xbool material::operator==( material const& Rhs ) const
 
 xbool material::IsAlpha( void ) const
 {
-    return HasRenderFlag( m_renderData.Flags, RENDER_FLAG_ALPHA );
+    return HasRenderFlag( m_RenderData.Flags, RENDER_FLAG_ALPHA );
 }
 
 //=========================================================================
 
 xbool material::IsDistortion( void ) const
 {
-    return HasRenderFlag( m_renderData.Flags, RENDER_FLAG_DISTORTION );
+    return HasRenderFlag( m_RenderData.Flags, RENDER_FLAG_DISTORTION );
 }
 
 //=========================================================================
 
 xbool material::IsDistortionPerPolyEnv( void ) const
 {
-    return HasRenderFlag( m_renderData.Flags, RENDER_FLAG_DISTORTION_PERPOLY_ENV );
+    return HasRenderFlag( m_RenderData.Flags, RENDER_FLAG_DISTORTION_PERPOLY_ENV );
 }
 
 //=========================================================================
 
 xbool material::ForcesZFill( void ) const
 {
-    return HasRenderFlag( m_renderData.Flags, RENDER_FLAG_FORCE_Z_FILL );
+    return HasRenderFlag( m_RenderData.Flags, RENDER_FLAG_FORCE_Z_FILL );
 }
 
 //=========================================================================
 
 xbool material::IsPunchThrough( void ) const
 {
-    return HasRenderFlag( m_renderData.Flags, RENDER_FLAG_PUNCH_THRU );
+    return HasRenderFlag( m_RenderData.Flags, RENDER_FLAG_PUNCH_THRU );
 }
 
 //=========================================================================
 
 xbool material::UsesCubeMap( void ) const
 {
-    return HasRenderFlag( m_renderData.Flags, RENDER_FLAG_ENV_CUBEMAP );
+    return HasRenderFlag( m_RenderData.Flags, RENDER_FLAG_ENV_CUBEMAP );
 }
 
 //=========================================================================
 
 xbool material::RequiresForwardPass( void ) const
 {
-    return HasRenderFlag( m_renderData.Flags, RENDER_FLAG_FORWARD );
+    return HasRenderFlag( m_RenderData.Flags, RENDER_FLAG_FORWARD );
 }
 
 //=========================================================================
 
 xbool material::RequiresDepthSort( void ) const
 {
-    return HasRenderFlag( m_renderData.Flags, RENDER_FLAG_DEPTH_SORTED );
+    return HasRenderFlag( m_RenderData.Flags, RENDER_FLAG_DEPTH_SORTED );
 }
 
 //=========================================================================
 
 xbool material::IsPostEffectBlend( void ) const
 {
-    return HasRenderFlag( m_renderData.Flags, RENDER_FLAG_POST_EFFECT_BLEND );
+    return HasRenderFlag( m_RenderData.Flags, RENDER_FLAG_POST_EFFECT_BLEND );
 }
 
 //=========================================================================
 
 xbool material::ReceivesProjection( void ) const
 {
-    return HasRenderFlag( m_renderData.Flags, RENDER_FLAG_RECEIVES_PROJECTION );
+    return HasRenderFlag( m_RenderData.Flags, RENDER_FLAG_RECEIVES_PROJECTION );
 }
 
 //=========================================================================
 
 xbool material::ReceivesShadow( void ) const
 {
-    return HasRenderFlag( m_renderData.Flags, RENDER_FLAG_RECEIVES_SHADOW );
+    return HasRenderFlag( m_RenderData.Flags, RENDER_FLAG_RECEIVES_SHADOW );
 }
 
 //=========================================================================
 
 xbool material::UsesShadowAlpha( void ) const
 {
-    return HasRenderFlag( m_renderData.Flags, RENDER_FLAG_USES_SHADOW_ALPHA );
+    return HasRenderFlag( m_RenderData.Flags, RENDER_FLAG_USES_SHADOW_ALPHA );
 }
 
 //=========================================================================
 
 xbool material::WritesDepth( void ) const
 {
-    return HasRenderFlag( m_renderData.Flags, RENDER_FLAG_DEPTH_WRITE );
+    return HasRenderFlag( m_RenderData.Flags, RENDER_FLAG_DEPTH_WRITE );
 }
 
 //=========================================================================
 
 xbool material::CullsBackFaces( void ) const
 {
-    return HasRenderFlag( m_renderData.Flags, RENDER_FLAG_CULL_BACK );
+    return HasRenderFlag( m_RenderData.Flags, RENDER_FLAG_CULL_BACK );
 }
 
 //=========================================================================
 
 xbool material::ClampsSampler( void ) const
 {
-    return HasRenderFlag( m_renderData.Flags, RENDER_FLAG_CLAMP_SAMPLER );
+    return HasRenderFlag( m_RenderData.Flags, RENDER_FLAG_CLAMP_SAMPLER );
 }

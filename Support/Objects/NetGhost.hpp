@@ -25,7 +25,7 @@
 #include "Objects/Actor/Actor.hpp"
 #include "Objects/Render/SkinInst.hpp"
 #include "Objects/NewWeapon.hpp"
-#include "NetworkMgr/Blender.hpp"
+#include "NetworkMgr/Replication/Blender.hpp"
                                 
 //==============================================================================
 //  DEFINES

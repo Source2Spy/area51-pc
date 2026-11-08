@@ -13,15 +13,6 @@
 #include "x_log.hpp"
 
 //==============================================================================
-//  DEFINES
-//==============================================================================
-
-#if (!defined(X_RETAIL) || defined(X_QA)) && defined(TARGET_PS2)
-#define ENABLE_AUDIO_DEBUG
-extern void AudioDebug( const char* pString );
-#endif
-
-//==============================================================================
 //  IMPLEMENTATION
 //==============================================================================
 
@@ -194,7 +185,9 @@ xbool audio_package_registry::LoadPackageStrings( const char* pFilename, const c
 
         // Unload the package.
         if( bNeedToUnload )
+        {
             UnloadPackage( pFilename );
+        }
 
         // Its all good!
         return TRUE;
@@ -228,7 +221,9 @@ void audio_package_registry::UnloadAllPackages( void )
 #else
     // who put this code here?
     while (m_Link.pNext->pPackage)
+    {
         UnloadPackage(m_Link.pNext->pPackage->m_Filename);
+    }
 #endif
 }
 
@@ -248,7 +243,9 @@ void audio_package_registry::GetLoadedPackages( xarray<xstring>& Packages )
         char* p = &pLink->pPackage->m_Filename[ i ];
 
         while( (i--) && (*(p-1) != '\\') && (*(p-1) != '/') )
+        {
             p--;
+        }
 
         // Put it in the list
         Packages.Append( (xstring)p );
@@ -282,9 +279,6 @@ void audio_package_registry::DisplayPackages( void )
 
     while( pLink->pPackage )
     {
-#ifdef ENABLE_AUDIO_DEBUG
-        AudioDebug( (const char*)xfs("%s\n", pLink->pPackage->m_Filename ) );
-#endif // ENABLE_AUDIO_DEBUG
         x_DebugMsg( (const char*)xfs("%s\n", pLink->pPackage->m_Filename ) );
         // Walk the list.
         pLink = pLink->pNext;
@@ -307,7 +301,9 @@ s32 audio_package_registry::GetPackageARAM( const char* pName )
         char* p = &pLink->pPackage->m_Filename[ i ];
 
         while( (i--) && (*(p-1) != '\\') && (*(p-1) != '/') )
+        {
             p--;
+        }
 
         if( x_stricmp( pName, p ) == 0 )
         {
@@ -356,6 +352,7 @@ audio_package* audio_package_registry::FindPackageByName( const char* pFilename 
 char* audio_package_registry::GetMusicType( const char* pFilename )
 {
     audio_package* pPackage = FindPackageByName( pFilename );
+
     if( pPackage )
     {
         return pPackage->GetMusicType();
@@ -371,6 +368,7 @@ char* audio_package_registry::GetMusicType( const char* pFilename )
 s32 audio_package_registry::GetMusicIntensity( const char* pFilename, music_intensity* &Intensity )
 {
     audio_package* pPackage = FindPackageByName( pFilename );
+
     if( pPackage )
     {
         return pPackage->GetMusicIntensity( Intensity );
@@ -396,6 +394,8 @@ void audio_package_registry::ReMergeIdentifierTables( void )
 
 static s32 s_nMerges = 0;
 
+//==============================================================================
+
 void audio_package_registry::MergeIdentifierTables( void )
 {
     X_PROFILE_SCOPE_CATEGORY( "Context", "audio_mgr::MergeIdentifierTables");
@@ -413,6 +413,7 @@ void audio_package_registry::MergeIdentifierTables( void )
     // Calculate the size of the table
     pLink = m_Link.pNext;
     s32 TotalIdentifiers = 0;
+
     while( pLink->pPackage )
     {
         // If the package is loaded
@@ -439,6 +440,7 @@ void audio_package_registry::MergeIdentifierTables( void )
     while( pPackages.GetCount() )
     {
         i = 0;
+
         for( s32 j=1 ; j<pPackages.GetCount() ; j++ )
         {
             char* pSmallest;
@@ -456,6 +458,7 @@ void audio_package_registry::MergeIdentifierTables( void )
             pCurrent  = pPackages[ j ]->m_IdentifierStringTable + CurrentOffset;
 
             Result = x_strcmp( pCurrent, pSmallest );
+
             if( Result < 0 )
             {
                 // It's smaller!
@@ -471,12 +474,14 @@ void audio_package_registry::MergeIdentifierTables( void )
         // Merge 'em
         m_pIdentifiers.Append() = &pPackages[ i ]->m_IdentifierTable[ PackageIndices[ i ] ];
         PackageIndices[ i ]++;
+
         if( PackageIndices[ i ] >= pPackages[ i ]->m_Header.nIdentifiers )
         {
             pPackages.Delete( i );
             PackageIndices.Delete( i );
         }
     }
+
     s_nMerges++;
 }
 
@@ -511,7 +516,9 @@ u16* audio_package_registry::FindDescriptorByName( const char* pName, audio_pack
     if( Right < 0 )
     {
         if( pPackageResult )
+        {
             *pPackageResult = NULL;
+        }
         return NULL;
     }
 
@@ -536,7 +543,9 @@ u16* audio_package_registry::FindDescriptorByName( const char* pName, audio_pack
             if( Right == Left )
             {
                 if( pPackageResult )
+                {
                     *pPackageResult = NULL;
+                }
                 return NULL;
             }
             else if (Right == Mid )
@@ -546,13 +555,16 @@ u16* audio_package_registry::FindDescriptorByName( const char* pName, audio_pack
 
             Right = Mid;
         }
+
         // Bigger?
         else if( Result > 0 )
         {
             if( Left == Right )
             {
                 if( pPackageResult )
+                {
                     *pPackageResult = NULL;
+                }
                 return NULL;
             }
             else if (Left == Mid )
@@ -562,12 +574,16 @@ u16* audio_package_registry::FindDescriptorByName( const char* pName, audio_pack
 
             Left = Mid;
         }
+
         // Oooh! Found it!
         else
         {
             DescriptorName = pString;
+
             if( pPackageResult )
+            {
                 *pPackageResult = pPackage;
+            }
             return( (u16*)pPackage->m_DescriptorTable[ pIdentifier->Index ] );
         }
     }

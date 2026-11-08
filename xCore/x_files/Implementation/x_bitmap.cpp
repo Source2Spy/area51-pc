@@ -189,6 +189,20 @@ const xbitmap::format_info xbitmap::m_FormatInfo[ xbitmap::FMT_END_OF_LIST ] =
 {   FMT_DXT5,         FMT_STR("DXT5"),         FALSE,    8,  -1,  B_NULL,      M_NULL       },
 
 {   FMT_A8,           FMT_STR("A8"),           FALSE,    8,  -1,  B_A_8,       M_A_8        },
+{   FMT_ASTC_4X4,     FMT_STR("ASTC_4x4"),     FALSE,    0,  -1,  B_A_8,       M_A_8        },
+{   FMT_ASTC_5X4,     FMT_STR("ASTC_5x4"),     FALSE,    0,  -1,  B_A_8,       M_A_8        },
+{   FMT_ASTC_5X5,     FMT_STR("ASTC_5x5"),     FALSE,    0,  -1,  B_A_8,       M_A_8        },
+{   FMT_ASTC_6X5,     FMT_STR("ASTC_6x5"),     FALSE,    0,  -1,  B_A_8,       M_A_8        },
+{   FMT_ASTC_6X6,     FMT_STR("ASTC_6x6"),     FALSE,    0,  -1,  B_A_8,       M_A_8        },
+{   FMT_ASTC_8X5,     FMT_STR("ASTC_8x5"),     FALSE,    0,  -1,  B_A_8,       M_A_8        },
+{   FMT_ASTC_8X6,     FMT_STR("ASTC_8x6"),     FALSE,    0,  -1,  B_A_8,       M_A_8        },
+{   FMT_ASTC_8X8,     FMT_STR("ASTC_8x8"),     FALSE,    0,  -1,  B_A_8,       M_A_8        },
+{   FMT_ASTC_10X5,    FMT_STR("ASTC_10x5"),    FALSE,    0,  -1,  B_A_8,       M_A_8        },
+{   FMT_ASTC_10X6,    FMT_STR("ASTC_10x6"),    FALSE,    0,  -1,  B_A_8,       M_A_8        },
+{   FMT_ASTC_10X8,    FMT_STR("ASTC_10x8"),    FALSE,    0,  -1,  B_A_8,       M_A_8        },
+{   FMT_ASTC_10X10,   FMT_STR("ASTC_10x10"),   FALSE,    0,  -1,  B_A_8,       M_A_8        },
+{   FMT_ASTC_12X10,   FMT_STR("ASTC_12x10"),   FALSE,    0,  -1,  B_A_8,       M_A_8        },
+{   FMT_ASTC_12X12,   FMT_STR("ASTC_12x12"),   FALSE,    0,  -1,  B_A_8,       M_A_8        },
 };
 
 //==============================================================================
@@ -678,18 +692,17 @@ static xcolor ReadDXTCPixel( const xbitmap* pBmp,s32 X,s32 Y,s32 Mip )
 
 xcolor xbitmap::GetPixelColor( s32 X, s32 Y, s32 Mip ) const
 {
+    if( IsASTC() )
+    {
+        ASSERTS( FALSE, "ASTC textures do not support CPU pixel access." );
+        return xcolor( 0, 0, 0, 0 );
+    }
+
     byte* pPixel;
     
     // Handle DXT formats
-    switch( m_Format )
-    {
-        case FMT_DXT1:
-        case FMT_DXT2:
-        case FMT_DXT3:
-        case FMT_DXT4:
-        case FMT_DXT5:
-            return ReadDXTCPixel( this,X,Y,Mip );
-    }
+    if( IsDXT() )
+        return ReadDXTCPixel( this, X, Y, Mip );
 
     const xbitmap::format_info& Format = m_FormatInfo[m_Format];
 
@@ -1154,7 +1167,42 @@ void xbitmap::Setup( format    Format,
 
     Kill();
 
-    if( !nMips )
+    const xbool bASTC = ( Format >= FMT_ASTC_4X4 ) && ( Format <= FMT_ASTC_12X12 );
+    const s32   BW    = GetBlockWidth( Format );
+    const s32   BH    = GetBlockHeight( Format );
+
+    if( bASTC )
+    {
+        ASSERT( ( nMips >= 0 ) && ( nMips <= 14 ) );
+        ASSERT( PhysicalWidth == Width );
+
+        // Clamp the requested mip count at 1x1 while keeping both dimensions valid.
+        s32 w      = Width;
+        s32 h      = Height;
+        s32 Levels = 0;
+
+        while( ( Levels < nMips ) && ( ( w > 1 ) || ( h > 1 ) ) )
+        {
+            w = MAX( 1, w / 2 );
+            h = MAX( 1, h / 2 );
+            Levels++;
+        }
+        nMips = Levels;
+
+        // ASTC stores complete 16-byte blocks, including partially covered edge
+        // blocks. Align the optional mip table before the first level's payload.
+        m_DataSize = nMips ? ALIGN_32( sizeof( mip ) * ( nMips + 1 ) ) : 0;
+        w = Width;
+        h = Height;
+
+        for( s32 i = 0; i <= nMips; i++ )
+        {
+            m_DataSize += ( ( w + BW - 1 ) / BW ) * ( ( h + BH - 1 ) / BH ) * 16;
+            w = MAX( 1, w / 2 );
+            h = MAX( 1, h / 2 );
+        }
+    }
+    else if( !nMips )
     {
         m_DataSize = (Width * Height * m_FormatInfo[Format].BPP) >> 3;
     }
@@ -1207,7 +1255,12 @@ void xbitmap::Setup( format    Format,
 
     if( nMips )
     {
-        u32  iOff = (uaddr)(m_Data.pMip+nMips+1)-(uaddr)(m_Data.pMip);
+        u32 iOff = (uaddr)(m_Data.pMip+nMips+1)-(uaddr)(m_Data.pMip);
+
+        // Match the payload alignment included in the ASTC allocation above.
+        if( bASTC )
+            iOff = ALIGN_32( iOff );
+
         mip* pMip = m_Data.pMip;
         s32  h    = Height;
         s32  w    = Width;
@@ -1215,11 +1268,13 @@ void xbitmap::Setup( format    Format,
             for( s32 j=0;j<=nMips;j++ )
             {
                 pMip[j].Offset = iOff;
-                iOff += (w*h*m_FormatInfo[Format].BPP) >> 3;
+                iOff += bASTC
+                    ? ( ( w + BW - 1 ) / BW ) * ( ( h + BH - 1 ) / BH ) * 16
+                    : ( w * h * m_FormatInfo[Format].BPP ) >> 3;
                 pMip[j].Height = h;
                 pMip[j].Width  = w;
-                w >>= 1;
-                h >>= 1;
+                w = bASTC ? MAX( 1, w / 2 ) : w / 2;
+                h = bASTC ? MAX( 1, h / 2 ) : h / 2;
             }
         }
     }
@@ -1370,7 +1425,7 @@ void xbitmap::Unflip4BitNibbles( void )
 //
 //==============================================================================
  
-#if defined( TARGET_DESKTOP ) || defined( CONFIG_VIEWER )
+#if defined( TARGET_DESKTOP )
 
 void xbitmap::GCNPackTileRGBA8( u32 x, u32 y, u8* dstPtr, s32 Mip )
 {
@@ -1937,3 +1992,69 @@ void xbitmap::GCNSwizzleDXT1  ( void )
 #endif
 
 //==============================================================================
+//  COMPRESSED FORMATS AND BLOCK DIMENSIONS
+//==============================================================================
+
+xbool xbitmap::IsDXT( void ) const
+{
+    return ( m_Format >= FMT_DXT1 ) && ( m_Format <= FMT_DXT5 );
+}
+
+//==============================================================================
+
+xbool xbitmap::IsASTC( void ) const
+{
+    return ( m_Format >= FMT_ASTC_4X4 ) && ( m_Format <= FMT_ASTC_12X12 );
+}
+
+//==============================================================================
+
+xbool xbitmap::IsSRGB( void ) const
+{
+    return ( m_flags & FLAG_SRGB ) != 0;
+}
+
+//==============================================================================
+
+xbool xbitmap::IsCompressed( void ) const
+{
+    return IsDXT() || IsASTC();
+}
+
+//==============================================================================
+
+s32 xbitmap::GetBlockWidth( format Format )
+{
+    static const s32 Widths[] = { 4, 5, 5, 6, 6, 8, 8, 8, 10, 10, 10, 10, 12, 12 };
+
+    // ASTC entries follow the contiguous format enum order.
+    if( ( Format >= FMT_ASTC_4X4 ) && ( Format <= FMT_ASTC_12X12 ) )
+        return Widths[Format - FMT_ASTC_4X4];
+
+    return ( ( Format >= FMT_DXT1 ) && ( Format <= FMT_DXT5 ) ) ? 4 : 1;
+}
+
+//==============================================================================
+
+s32 xbitmap::GetBlockHeight( format Format )
+{
+    static const s32 Heights[] = { 4, 4, 5, 5, 6, 5, 6, 8, 5, 6, 8, 10, 10, 12 };
+
+    if( ( Format >= FMT_ASTC_4X4 ) && ( Format <= FMT_ASTC_12X12 ) )
+        return Heights[Format - FMT_ASTC_4X4];
+
+    return ( ( Format >= FMT_DXT1 ) && ( Format <= FMT_DXT5 ) ) ? 4 : 1;
+}
+
+//==============================================================================
+
+s32 xbitmap::GetBlockSize( format Format )
+{
+    if( ( Format >= FMT_ASTC_4X4 ) && ( Format <= FMT_ASTC_12X12 ) )
+        return 16;
+
+    if( ( Format >= FMT_DXT1 ) && ( Format <= FMT_DXT5 ) )
+        return ( Format == FMT_DXT1 ) ? 8 : 16;
+
+    return 0;
+}

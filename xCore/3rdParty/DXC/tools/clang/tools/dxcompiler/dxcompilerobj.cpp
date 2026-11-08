@@ -58,6 +58,7 @@
 #include "dxcversion.inc"
 #include <algorithm>
 #include <cfloat>
+#include <set>
 
 // SPIRV change starts
 #ifdef ENABLE_SPIRV_CODEGEN
@@ -80,6 +81,110 @@ using namespace llvm;
 using namespace clang;
 using namespace hlsl;
 using std::string;
+
+namespace {
+
+bool ParsedSemanticDefineLess(const ParsedSemanticDefine &left,
+                              const ParsedSemanticDefine &right) {
+  return left.Name < right.Name;
+}
+
+} // namespace
+
+// The optional libclang component used to provide this helper.  The compiler
+// consumes semantic defines directly, so keep the compiler-side collection
+// here instead of making dxcompiler depend on the removed indexing library.
+ParsedSemanticDefineList hlsl::CollectSemanticDefinesParsedByCompiler(
+    CompilerInstance &compiler, DxcLangExtensionsHelper *helper) {
+  ParsedSemanticDefineList parsedDefines;
+  if (!helper)
+    return parsedDefines;
+
+  const llvm::SmallVector<std::string, 2> &defines =
+      helper->GetSemanticDefines();
+  if (defines.empty())
+    return parsedDefines;
+
+  const llvm::SmallVector<std::string, 2> &defineExclusions =
+      helper->GetSemanticDefineExclusions();
+  const llvm::SetVector<std::string> &nonOptDefines =
+      helper->GetNonOptSemanticDefines();
+
+  std::set<std::string> overriddenMacroSemDefs;
+  std::vector<std::pair<const IdentifierInfo *, MacroInfo *>> macros;
+  Preprocessor &pp = compiler.getPreprocessor();
+  Preprocessor::macro_iterator end = pp.macro_end();
+
+  for (Preprocessor::macro_iterator i = pp.macro_begin(); i != end; ++i) {
+    if (!i->second.getLatest()->isDefined())
+      continue;
+
+    MacroInfo *macro = i->second.getLatest()->getMacroInfo();
+    if (macro->isFunctionLike())
+      continue;
+
+    const IdentifierInfo *identifier = i->first;
+    bool excluded = false;
+    for (const std::string &exclusion : defineExclusions) {
+      if (IsMacroMatch(identifier->getName(), exclusion)) {
+        excluded = true;
+        break;
+      }
+    }
+    if (excluded)
+      continue;
+
+    for (const std::string &define : defines) {
+      if (!IsMacroMatch(identifier->getName(), define))
+        continue;
+
+      const std::string name = identifier->getName().str();
+      if (!compiler.getCodeGenOpts().HLSLOverrideSemDefs.empty()) {
+        auto overrideIt = compiler.getCodeGenOpts().HLSLOverrideSemDefs.find(name);
+        if (overrideIt != compiler.getCodeGenOpts().HLSLOverrideSemDefs.end()) {
+          overriddenMacroSemDefs.insert(name);
+          parsedDefines.emplace_back(ParsedSemanticDefine{
+              name, overrideIt->second, 0});
+          continue;
+        }
+      }
+
+      if (!compiler.getCodeGenOpts().HLSLIgnoreSemDefs.empty() &&
+          compiler.getCodeGenOpts().HLSLIgnoreSemDefs.find(name) !=
+              compiler.getCodeGenOpts().HLSLIgnoreSemDefs.end())
+        continue;
+
+      if (compiler.getCodeGenOpts().HLSLIgnoreOptSemDefs &&
+          !nonOptDefines.count(name))
+        continue;
+
+      macros.emplace_back(identifier, macro);
+    }
+  }
+
+  for (const auto &overrideDef : compiler.getCodeGenOpts().HLSLOverrideSemDefs) {
+    if (overriddenMacroSemDefs.find(overrideDef.first) ==
+        overriddenMacroSemDefs.end()) {
+      parsedDefines.emplace_back(ParsedSemanticDefine{
+          overrideDef.first, overrideDef.second, 0});
+    }
+  }
+
+  if (!macros.empty()) {
+    MacroExpander expander(pp);
+    for (const auto &macro : macros) {
+      std::string expandedValue;
+      expander.ExpandMacro(macro.second, &expandedValue);
+      parsedDefines.emplace_back(ParsedSemanticDefine{
+          macro.first->getName(), expandedValue,
+          macro.second->getDefinitionLoc().getRawEncoding()});
+    }
+  }
+
+  std::stable_sort(parsedDefines.begin(), parsedDefines.end(),
+                   ParsedSemanticDefineLess);
+  return parsedDefines;
+}
 
 static bool ShouldBeCopiedIntoPDB(UINT32 FourCC) {
   switch (FourCC) {

@@ -12,60 +12,56 @@
 
 #include "common/material_flags.hlsl"
 #include "common/shader_bindings.hlsl"
-
-#if defined(A51_SHADER_BINDING_SDL) && defined(A51_SHADER_STAGE_PIXEL)
-    #define A51_GEOM_LIGHTING_BINDING 5
-    #define A51_GEOM_SHADOW_MATRICES_BINDING 6
-    #define A51_GEOM_SHADOW_DATA_BINDING 7
+#define A51_FOG_PALETTE_SDL_BINDING 5
+#define A51_DECAL_LIT (A51_DECAL_BLEND == 0 || A51_DECAL_BLEND == 2)
+#define A51_RECIPE_PROJECTION A51_DECAL_LIT
+#define A51_RECIPE_FLAGS 0
+#ifndef A51_DECAL_BLEND
+#error "Decal shaders require an offline recipe"
 #endif
-
+#if A51_DECAL_FOG
+#include "common/fog_constants.hlsl"
+#include "common/fog_functions.hlsl"
+#endif
+#if A51_DECAL_LIT
+#define A51_GEOM_LIGHTING_BINDING 6
+#define A51_GEOM_LIGHT_PROJECTION_BINDING 9
+#define A51_GEOM_AMBIENT_BINDING 10
+#define A51_GEOM_SHADOW_MATRICES_BINDING 7
+#define A51_GEOM_SHADOW_DATA_BINDING 8
+#define A51_GEOM_SURFACE_ONLY 1
 #include "common/lighting_constants.hlsl"
 #include "common/proj_buffers.hlsl"
+#if A51_RECIPE_SHADOWS
 #include "common/shadow_buffers.hlsl"
+#endif
+#endif
 
 //==============================================================================
 //  RESOURCES
 //==============================================================================
 
-A51_CBUFFER_ATTR(0, 0) cbuffer cbDecalDraw A51_CBUFFER_BIND(0, 0)
-{
-    float4x4 WorldToClip;
-    float4   CameraPosition;
-    float4   GeometricNormal;
-    float4   EnvParams;
-    uint     LightingIndex;
-    uint     DecalFlags;
-    uint     DecalBlendMode;
-    uint     DecalOutputMode;
-};
+#include "common/decal_frame_constants.hlsl"
 
 //------------------------------------------------------------------------------
 
-#if defined(A51_SHADER_BINDING_SDL)
-    A51_SAMPLED_TEXTURE_ATTR(0, 0) Texture2D txDecal A51_SAMPLED_TEXTURE_BIND(0, 0);
-    A51_SAMPLED_TEXTURE_ATTR(3, 1) TextureCube txEnvironmentCube A51_SAMPLED_TEXTURE_BIND(3, 1);
-    A51_SAMPLED_TEXTURE_ATTR(20, 2) Texture2D<float4> txFaceShadowAtlas A51_SAMPLED_TEXTURE_BIND(20, 2);
-    A51_SAMPLED_TEXTURE_ATTR(4, 3) Texture2DArray<float> txProjectionAtlas A51_SAMPLED_TEXTURE_BIND(4, 3);
-    A51_SAMPLED_TEXTURE_ATTR(29, 4) Texture2D<float> txFaceShadowDepthAtlas A51_SAMPLED_TEXTURE_BIND(29, 4);
-    
-    A51_SAMPLER_ATTR(0, 0) SamplerState samDecal A51_SAMPLER_BIND(0, 0);
-    A51_SAMPLER_ATTR(3, 1) SamplerState samEnvironmentCube A51_SAMPLER_BIND(3, 1);
-    A51_SAMPLER_ATTR(20, 2) SamplerState samFaceShadow A51_SAMPLER_BIND(20, 2);
-    A51_SAMPLER_ATTR(4, 3) SamplerState samProjectionAtlas A51_SAMPLER_BIND(4, 3);
-    A51_SAMPLER_ATTR(9, 4) SamplerState samFaceShadowDepth A51_SAMPLER_BIND(9, 4);
-#else
-    A51_SAMPLED_TEXTURE_ATTR(0, 0) Texture2D txDecal A51_SAMPLED_TEXTURE_BIND(0, 0);
-    A51_SAMPLED_TEXTURE_ATTR(3, 3) TextureCube txEnvironmentCube A51_SAMPLED_TEXTURE_BIND(3, 3);
-    A51_SAMPLED_TEXTURE_ATTR(20, 4) Texture2D<float4> txFaceShadowAtlas A51_SAMPLED_TEXTURE_BIND(20, 4);
-    A51_SAMPLED_TEXTURE_ATTR(4, 6) Texture2DArray<float> txProjectionAtlas A51_SAMPLED_TEXTURE_BIND(4, 6);
-    A51_SAMPLED_TEXTURE_ATTR(29, 7) Texture2D<float> txFaceShadowDepthAtlas A51_SAMPLED_TEXTURE_BIND(29, 7);
-    
-    A51_SAMPLER_ATTR(0, 0) SamplerState samLinear A51_SAMPLER_BIND(0, 0);
-    A51_SAMPLER_ATTR(4, 4) SamplerState samProjectionAtlas A51_SAMPLER_BIND(4, 4);
-    A51_SAMPLER_ATTR(8, 8) SamplerState samFaceShadow A51_SAMPLER_BIND(8, 8);
-    A51_SAMPLER_ATTR(9, 9) SamplerState samFaceShadowDepth A51_SAMPLER_BIND(9, 9);
-    #define samDecal samLinear
-    #define samEnvironmentCube samLinear
+A51_SAMPLED_TEXTURE_ATTR(0, 0) Texture2D txDecal A51_SAMPLED_TEXTURE_BIND(0, 0);
+A51_SAMPLER_ATTR(0, 0) SamplerState samDecal A51_SAMPLER_BIND(0, 0);
+#if A51_DECAL_ENV
+A51_SAMPLED_TEXTURE_ATTR(3, 1) TextureCube txEnvironmentCube A51_SAMPLED_TEXTURE_BIND(3, 1);
+A51_SAMPLER_ATTR(3, 1) SamplerState samEnvironmentCube A51_SAMPLER_BIND(3, 1);
+#endif
+#if A51_DECAL_LIT
+#if A51_RECIPE_SHADOWS
+A51_SAMPLED_TEXTURE_ATTR(20, 2) Texture2D<float4> txFaceShadowAtlas A51_SAMPLED_TEXTURE_BIND(20, 2);
+#endif
+A51_SAMPLED_TEXTURE_ATTR(4, 3) Texture2DArray<float> txProjectionAtlas A51_SAMPLED_TEXTURE_BIND(4, 3);
+#if A51_RECIPE_SHADOWS
+A51_SAMPLED_TEXTURE_ATTR(29, 4) Texture2D<float> txFaceShadowDepthAtlas A51_SAMPLED_TEXTURE_BIND(29, 4);
+A51_SAMPLER_ATTR(20, 2) SamplerState samFaceShadow A51_SAMPLER_BIND(20, 2);
+A51_SAMPLER_ATTR(9, 4) SamplerState samFaceShadowDepth A51_SAMPLER_BIND(9, 4);
+#endif
+A51_SAMPLER_ATTR(4, 3) SamplerState samProjectionAtlas A51_SAMPLER_BIND(4, 3);
 #endif
 
 //==============================================================================
@@ -74,121 +70,133 @@ A51_CBUFFER_ATTR(0, 0) cbuffer cbDecalDraw A51_CBUFFER_BIND(0, 0)
 
 struct VS_INPUT
 {
-    float3 Position : TEXCOORD0;
-    float4 Color    : TEXCOORD1;
-    float2 UV       : TEXCOORD2;
+    float3 Position      : TEXCOORD0;
+    float4 Color         : TEXCOORD1;
+    float2 UV            : TEXCOORD2;
+    float3 Normal        : TEXCOORD3;
+    uint   LightingIndex : TEXCOORD4;
 };
 
 //------------------------------------------------------------------------------
 
-struct GEOM_PIXEL_INPUT
-{
-    float4 Position   : SV_POSITION;
-    float4 Color      : COLOR0;
-    float2 UV         : TEXCOORD0;
-    float3 WorldPos   : TEXCOORD1;
-    float3 Normal     : TEXCOORD2;
-    float3 ViewVector : TEXCOORD3;
-};
+#define GEOM_PIXEL_INPUT A51_DECAL_PIXEL_INPUT
 
+#if A51_DECAL_LIT
 //==============================================================================
 //  FUNCTIONS
 //==============================================================================
 
-uint GeomGetMaterialFlags( GEOM_PIXEL_INPUT input )
+uint GeomGetMaterialFlags( GEOM_PIXEL_INPUT Input )
 {
-    return INSTANCE_FLAG_RECEIVE_LOCAL_SHADOW | INSTANCE_FLAG_PROJ_LIGHT | INSTANCE_FLAG_PROJ_SHADOW;
+    return (A51_RECIPE_SHADOWS ? GEOM_INST_FLAG_RECEIVE_LOCAL_SHADOW : 0u) |
+        GEOM_INST_FLAG_PROJ_LIGHT | GEOM_INST_FLAG_PROJ_SHADOW;
 }
 
 //==============================================================================
 
-uint GeomGetLightingIndex( GEOM_PIXEL_INPUT input )
+uint GeomGetLightingIndex( GEOM_PIXEL_INPUT Input )
 {
-    return LightingIndex;
+    return Input.LightingIndex;
 }
 
 //==============================================================================
 
-uint GeomGetLightCount( GEOM_PIXEL_INPUT input )
+#if A51_RECIPE_LIGHTING
+uint GeomGetLightCount( GEOM_PIXEL_INPUT Input )
 {
-    return min( GeomLighting[GeomGetLightingIndex( input )].LightCountPadding.x, (uint)MAX_GEOM_LIGHTS );
+    return min( GeomAmbient[GeomGetLightingIndex( Input )].LightCount, (uint)MAX_GEOM_LIGHTS );
 }
 
 //==============================================================================
 
-float4 GeomGetLightVec( GEOM_PIXEL_INPUT input, uint lightIndex )
+float4 GeomGetLightVec( GEOM_PIXEL_INPUT Input, uint LightIndex )
 {
-    return GeomLighting[GeomGetLightingIndex( input )].LightVec[lightIndex];
+    return GeomLighting[GeomGetLightingIndex( Input )].LightVec[LightIndex];
 }
 
 //==============================================================================
 
-float4 GeomGetLightCol( GEOM_PIXEL_INPUT input, uint lightIndex )
+float4 GeomGetLightCol( GEOM_PIXEL_INPUT Input, uint LightIndex )
 {
-    return GeomLighting[GeomGetLightingIndex( input )].LightCol[lightIndex];
+    return GeomLighting[GeomGetLightingIndex( Input )].LightCol[LightIndex];
 }
 
 //==============================================================================
 
-float4 GeomGetLightDir( GEOM_PIXEL_INPUT input, uint lightIndex )
+float2 GeomGetLightRadial( GEOM_PIXEL_INPUT Input, uint LightIndex )
 {
-    return GeomLighting[GeomGetLightingIndex( input )].LightDir[lightIndex];
+    return GeomLighting[GeomGetLightingIndex( Input )].LightRadial[LightIndex].xy;
 }
 
 //==============================================================================
 
-float4 GeomGetLightCone( GEOM_PIXEL_INPUT input, uint lightIndex )
+float4 GeomGetLightDir( GEOM_PIXEL_INPUT Input, uint LightIndex )
 {
-    return GeomLighting[GeomGetLightingIndex( input )].LightCone[lightIndex];
+    return GeomLighting[GeomGetLightingIndex( Input )].LightDir[LightIndex];
 }
 
 //==============================================================================
 
-float4 GeomGetLightCookieU( GEOM_PIXEL_INPUT input, uint lightIndex )
+float4 GeomGetLightCone( GEOM_PIXEL_INPUT Input, uint LightIndex )
 {
-    return GeomLighting[GeomGetLightingIndex( input )].LightCookieU[lightIndex];
+    return GeomLighting[GeomGetLightingIndex( Input )].LightCone[LightIndex];
 }
 
 //==============================================================================
 
-float4 GeomGetLightCookieV( GEOM_PIXEL_INPUT input, uint lightIndex )
+#if A51_RECIPE_COOKIES
+float4 GeomGetLightCookieU( GEOM_PIXEL_INPUT Input, uint LightIndex )
 {
-    return GeomLighting[GeomGetLightingIndex( input )].LightCookieV[lightIndex];
+    return GeomProjectionLighting[GeomGetLightingIndex( Input )].LightCookieU[LightIndex];
 }
 
 //==============================================================================
 
-float4 GeomGetLightCookieAtlas( GEOM_PIXEL_INPUT input, uint lightIndex )
+float4 GeomGetLightCookieV( GEOM_PIXEL_INPUT Input, uint LightIndex )
 {
-    return GeomLighting[GeomGetLightingIndex( input )].LightCookieAtlas[lightIndex];
+    return GeomProjectionLighting[GeomGetLightingIndex( Input )].LightCookieV[LightIndex];
 }
 
 //==============================================================================
 
-uint GeomGetLightCookieLayer( GEOM_PIXEL_INPUT input, uint lightIndex )
+float4 GeomGetLightCookieAtlas( GEOM_PIXEL_INPUT Input, uint LightIndex )
 {
-    return GeomLighting[GeomGetLightingIndex( input )].LightCookieLayer[lightIndex];
+    return GeomProjectionLighting[GeomGetLightingIndex( Input )].LightCookieAtlas[LightIndex];
 }
 
 //==============================================================================
 
-float GeomGetLightCookieMaxMip( GEOM_PIXEL_INPUT input, uint lightIndex )
+float4 GeomGetLightCookieTileBounds( GEOM_PIXEL_INPUT Input, uint LightIndex )
 {
-    return GeomLighting[GeomGetLightingIndex( input )].LightCookieMaxMip[lightIndex];
+    return GeomProjectionLighting[GeomGetLightingIndex( Input )].LightCookieTileBounds[LightIndex];
 }
 
 //==============================================================================
 
-uint GeomGetLightShadowIndex( GEOM_PIXEL_INPUT input, uint lightIndex )
+float4 GeomGetLightCookieInfo( GEOM_PIXEL_INPUT Input, uint LightIndex )
 {
-    return GeomLighting[GeomGetLightingIndex( input )].LightShadowIndex[lightIndex];
+    return GeomProjectionLighting[GeomGetLightingIndex( Input )].LightCookieInfo[LightIndex];
 }
 
 //==============================================================================
 
-float4 GeomGetLightAmbCol( GEOM_PIXEL_INPUT input )
+#endif
+
+#if A51_RECIPE_SHADOWS
+uint GeomGetLightShadowIndex( GEOM_PIXEL_INPUT Input, uint LightIndex )
 {
-    return GeomLighting[GeomGetLightingIndex( input )].LightAmbCol;
+    return GeomProjectionLighting[GeomGetLightingIndex( Input )].LightShadowIndex[LightIndex];
+}
+
+//==============================================================================
+
+#endif
+
+#endif
+
+float4 GeomGetLightAmbCol( GEOM_PIXEL_INPUT Input )
+{
+    return GeomAmbient[GeomGetLightingIndex( Input )].LightAmbCol;
 }
 
 #define GEOM_HAS_VERTEX_COLOR 0
@@ -196,92 +204,138 @@ float4 GeomGetLightAmbCol( GEOM_PIXEL_INPUT input )
 //------------------------------------------------------------------------------
 
 #include "common/geom_pixel_lighting.hlsl"
+#if A51_RECIPE_SHADOWS
 #include "common/geom_local_shadow_maps.hlsl"
+#endif
+#endif
 
 //==============================================================================
 //  SHADERS
 //==============================================================================
 
-GEOM_PIXEL_INPUT VSMain( VS_INPUT input )
+GEOM_PIXEL_INPUT VSMain( VS_INPUT Input )
 {
-    GEOM_PIXEL_INPUT output;
-    output.Position = mul( WorldToClip, float4( input.Position, 1.0f ) );
-    output.Color = input.Color.bgra;
-    output.UV = input.UV;
-    output.WorldPos = input.Position;
-    output.Normal = GeometricNormal.xyz;
-    output.ViewVector = input.Position - CameraPosition.xyz;
-    return output;
+    GEOM_PIXEL_INPUT Output;
+    Output.Position = mul( WorldToClip, float4( Input.Position, 1.0f ) );
+    Output.Color = Input.Color.bgra;
+    Output.UV = Input.UV;
+    #if A51_DECAL_LIT
+    Output.LightingIndex = Input.LightingIndex;
+    Output.WorldPos = Input.Position;
+    Output.Normal = Input.Normal;
+    #endif
+    #if A51_DECAL_ENV
+    Output.ViewVector = Input.Position - CameraPosition.xyz;
+    #endif
+    #if A51_DECAL_FOG
+    Output.ViewDepth = mul( WorldToView, float4( Input.Position, 1.0f ) ).z;
+    #endif
+    return Output;
 }
 
 //==============================================================================
 
-float4 PSMain( GEOM_PIXEL_INPUT input ) : SV_Target0
+float4 PSMain( GEOM_PIXEL_INPUT Input ) : SV_Target0
 {
+    static const uint DECAL_BLEND_ALPHA = 0u;
     static const uint DECAL_BLEND_ADDITIVE = 1u;
+    static const uint DECAL_BLEND_SUBTRACTIVE = 2u;
     static const uint DECAL_BLEND_INTENSITY = 3u;
+    static const uint DECAL_DRAW_FLAG_GLOW = 1u;
     static const uint DECAL_DRAW_FLAG_ENV_MAPPED = 2u;
-    static const uint DECAL_OUTPUT_GLOW = 1u;
 
-    float4 textureSample = txDecal.Sample( samDecal, input.UV );
-    float4 surface = textureSample * input.Color;
-    if( DecalOutputMode == DECAL_OUTPUT_GLOW )
-    {
-        float glowMask = surface.a > 0.0f ? 1.0f : 0.0f;
-        return float4( surface.rgb * surface.a, glowMask );
-    }
+    float4 TextureSample = txDecal.Sample( samDecal, Input.UV );
+    float4 Surface = TextureSample * Input.Color;
 
-    float3 geometricNormal = cross( ddx( input.WorldPos ), ddy( input.WorldPos ) );
-    float normalLengthSquared = dot( geometricNormal, geometricNormal );
-    if( normalLengthSquared > 1e-12f )
+    const bool IsIntensity = A51_DECAL_BLEND == DECAL_BLEND_INTENSITY;
+    const bool IsAdditive = A51_DECAL_BLEND == DECAL_BLEND_ADDITIVE;
+
+    #if A51_DECAL_LIT
+    GeomWorldGradients Gradients;
+    Gradients.Dx = ddx( Input.WorldPos );
+    Gradients.Dy = ddy( Input.WorldPos );
+#if A51_RECIPE_LIGHTING
+    float3 GeometricNormal = cross( Gradients.Dx, Gradients.Dy );
+    float NormalLengthSquared = dot( GeometricNormal, GeometricNormal );
+    if( NormalLengthSquared > 1e-12f )
     {
-        geometricNormal *= rsqrt( normalLengthSquared );
-        if( dot( geometricNormal, GeometricNormal.xyz ) < 0.0f )
+        GeometricNormal *= rsqrt( NormalLengthSquared );
+        if( dot( GeometricNormal, Input.Normal ) < 0.0f )
         {
-            geometricNormal = -geometricNormal;
+            GeometricNormal = -GeometricNormal;
         }
     }
     else
     {
-        geometricNormal = normalize( GeometricNormal.xyz );
+        GeometricNormal = normalize( Input.Normal );
     }
-    input.Normal = geometricNormal;
+    Input.Normal = GeometricNormal;
 
-    const bool isIntensity = DecalBlendMode == DECAL_BLEND_INTENSITY;
-    const bool isAdditive = DecalBlendMode == DECAL_BLEND_ADDITIVE;
+#endif
 
-    if( isIntensity )
+    if( !IsIntensity && !IsAdditive )
     {
-        surface = textureSample;
+#if A51_RECIPE_LIGHTING
+        GeomLightingResult Lighting =
+            GeomComputeLighting( Input, GeomGetMaterialFlags( Input ), Surface.a, GeometricNormal, Gradients );
+        Surface.rgb *= Lighting.Diffuse;
+        Surface.rgb += Lighting.Specular;
+#else
+        Surface.rgb *= GeomGetLightAmbCol( Input ).rgb;
+#endif
+        Surface.rgb = ApplyProjLights( Surface.rgb, Input.WorldPos, Gradients );
+        Surface.rgb = ApplyProjShadows( Surface.rgb, Input.WorldPos, Gradients );
     }
-    else if( !isAdditive )
-    {
-        GeomLightingResult lighting =
-            GeomComputeLighting( input, GeomGetMaterialFlags( input ), surface.a, geometricNormal );
-        surface.rgb *= lighting.Diffuse;
-        surface.rgb += lighting.Specular;
-        surface.rgb = ApplyProjLights( surface.rgb, input.WorldPos );
-        surface.rgb = ApplyProjShadows( surface.rgb, input.WorldPos );
-    }
 
-    if( ( DecalFlags & DECAL_DRAW_FLAG_ENV_MAPPED ) != 0u )
+    #endif
+    #if A51_DECAL_ENV
+    if( ( A51_DECAL_ENV ? DECAL_DRAW_FLAG_ENV_MAPPED : 0u ) != 0u )
     {
-        float3 cubeDirection = normalize( input.ViewVector );
-        float3 environment = txEnvironmentCube.Sample( samEnvironmentCube, cubeDirection ).rgb;
-        float envBlend = saturate( textureSample.a * EnvParams.w );
-        if( isAdditive )
+        float3 CubeDirection = normalize( Input.ViewVector );
+        float3 Environment = txEnvironmentCube.Sample( samEnvironmentCube, CubeDirection ).rgb;
+        float EnvBlend = saturate( TextureSample.a * EnvParams.w );
+        if( IsAdditive )
         {
-            surface.rgb += environment * envBlend;
+            Surface.rgb += Environment * EnvBlend;
         }
         else
         {
-            surface.rgb = lerp( surface.rgb, environment, envBlend );
+            Surface.rgb = lerp( Surface.rgb, Environment, EnvBlend );
         }
     }
 
-    if( !isIntensity )
+    #endif
+    if( IsIntensity )
     {
-        surface.rgb = saturate( surface.rgb );
+        // Intensity textures encode the multiplier in RGB; vertex alpha carries the fade.
+        Surface.rgb = lerp( 0.5f, Surface.rgb, saturate(Input.Color.a) );
     }
-    return surface;
+    else
+    {
+        Surface.rgb = saturate( Surface.rgb );
+    }
+
+    #if A51_DECAL_FOG
+    const float LinearDepth = saturate( ( Input.ViewDepth - FogDepth.x ) /
+                                        max( FogDepth.y - FogDepth.x, 1e-5f ) );
+    float4 Color = IsIntensity ? ApplyFogToIntensity( Surface, LinearDepth ) : ApplyFogToColor( Surface, LinearDepth );
+    #else
+    float4 Color = Surface;
+    #endif
+    const bool NeedsPremultipliedColor = ( A51_DECAL_BLEND == DECAL_BLEND_ALPHA ) ||
+                                         ( A51_DECAL_BLEND == DECAL_BLEND_ADDITIVE ) ||
+                                         ( A51_DECAL_BLEND == DECAL_BLEND_SUBTRACTIVE );
+    if( NeedsPremultipliedColor )
+    {
+        Color.rgb *= Surface.a;
+    }
+    Color.a = ( A51_DECAL_BLEND == DECAL_BLEND_ALPHA ) ? Surface.a
+                  : ( ( A51_DECAL_GLOW ? DECAL_DRAW_FLAG_GLOW : 0u ) != 0u )
+#if A51_DECAL_FOG
+                        ? ApplyFogToEmission( Surface, LinearDepth ).a
+#else
+                        ? Surface.a
+#endif
+                        : 0.0f;
+    return Color;
 }

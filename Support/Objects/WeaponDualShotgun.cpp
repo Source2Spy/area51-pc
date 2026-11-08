@@ -3,7 +3,7 @@
 #include "WeaponDualShotgun.hpp"
 #include "Debris/debris_mgr.hpp"
 #include "Objects/Projector.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "Objects/Player/Player.hpp"
 #include "Objects/ParticleEmiter.hpp"
 
@@ -329,7 +329,7 @@ xbool weapon_dual_shotgun::FireWeaponProtected( const vector3& InitPos , const v
         HandleSweeperCone( InitPos, BaseVelocity, InitRot, PainHandle, Angle, Dist );
 
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
         //decrement count of bullets in current clip
         DecrementAmmo();
@@ -404,7 +404,7 @@ xbool weapon_dual_shotgun::FireSecondaryProtected( const vector3& InitPos , cons
         HandleSweeperCone( InitPos, BaseVelocity, InitRot, PainHandle, Angle, Dist );
 
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
         // decrement count of bullets in current clip
         DecrementAmmo(AMMO_PRIMARY, PelletMultiplier);
@@ -439,7 +439,7 @@ xbool weapon_dual_shotgun::FireNPCWeaponProtected ( const vector3& BaseVelocity 
     pain_handle PainHandle;
     GetPainHandle( PainHandle, Owner, TRUE );
 
-    for (int i = 0; i < s_Num_Pellets; i++)
+    for (s32 i = 0; i < s_Num_Pellets; i++)
     {     
         //pick a random point on a small box that is located 5 cm. away.
         f32 rx = x_frand(-.3f , .3f );
@@ -456,7 +456,7 @@ xbool weapon_dual_shotgun::FireNPCWeaponProtected ( const vector3& BaseVelocity 
     }
     
     //add a muzzle light where the bullet was fired from (will fade out really quickly)
-    g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
     // Play the sound associated with this actor's faction.
     object* pObj = g_ObjMgr.GetObjectByGuid( Owner );

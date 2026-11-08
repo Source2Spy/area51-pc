@@ -6,11 +6,11 @@
 #include "InputMgr/GamePad.hpp"
 #include "Debris/debris_mgr.hpp"
 #include "Objects/Projector.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "Objects/ParticleEmiter.hpp"
 
 #ifndef X_EDITOR
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #endif
 
 //=========================================================================
@@ -382,7 +382,7 @@ xbool weapon_sniper_rifle::FireWeaponProtected( const vector3& InitPos , const v
 //            pBullet->SetDamageAmount( g_MultiplayerPainTweaks.m_SniperDamage );
 
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
         // decrement count of bullets in current clip
         DecrementAmmo();
@@ -433,7 +433,7 @@ xbool weapon_sniper_rifle::FireNPCWeaponProtected ( const vector3& InheritedVelo
     pBullet = CreateBullet( GetLogicalName(), InitPos, TargetRot, InheritedVelocity, Owner, PainHandle, AMMO_PRIMARY, isHit );
      
     //add a muzzle light where the bullet was fired from (will fade out really quickly)
-    g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
      
     // Play the sound associated with this actor's faction.
     object* pObj = g_ObjMgr.GetObjectByGuid( Owner );
@@ -493,7 +493,7 @@ s32 weapon_sniper_rifle::IncrementZoom( void )
         Player.SetStickSensitivity( s_SecondZoomStick ); 
 
         // Release the current zoom sound, if any, play the next zoom sound.
-        if( g_AudioMgr.IsValidVoiceId( m_SniperZoomSound ) )
+        if( g_AudioMgr.IsValidVoiceIdCached( m_SniperZoomSound ) )
             g_AudioMgr.Release( m_SniperZoomSound, 0.0f );
         m_SniperZoomSound = g_AudioMgr.Play( "SNI_Zoom_x2" );
 
@@ -524,7 +524,7 @@ s32 weapon_sniper_rifle::IncrementZoom( void )
             Player.SetStickSensitivity( s_TenthZoomStick ); 
 
             // Release the current zoom sound, if any, play the next zoom sound.
-            if( g_AudioMgr.IsValidVoiceId( m_SniperZoomSound ) )
+            if( g_AudioMgr.IsValidVoiceIdCached( m_SniperZoomSound ) )
                 g_AudioMgr.Release( m_SniperZoomSound, 0.0f );
             m_SniperZoomSound = g_AudioMgr.Play( "SNI_Zoom_x10" );
 
@@ -557,7 +557,7 @@ void weapon_sniper_rifle::ClearZoom( void )
     m_ViewClickDimension = 0.0f;
 
     // Release the current zoom sound, if any
-    if( g_AudioMgr.IsValidVoiceId( m_SniperZoomSound ) )
+    if( g_AudioMgr.IsValidVoiceIdCached( m_SniperZoomSound ) )
     {
         g_AudioMgr.Release( m_SniperZoomSound, 0.0f );
     }

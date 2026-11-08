@@ -79,14 +79,6 @@ ui_manager::dialog_tem SecretsMenuDialog =
 };
 
 //=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
 //  Data
 //=========================================================================
 
@@ -151,9 +143,9 @@ xbool dlg_secrets_menu::Create( s32                        UserID,
     s_Scaled = FALSE;
 
     // load bitmaps
-    m_SecretsIconID[SECRET_TYPE_VIDEO]   = g_UiMgr->LoadBitmap( "SecretsVideo",  "UI_LoreVideo.xbmp"   );  // TODO: get some new bitmaps  
-    m_SecretsIconID[SECRET_TYPE_CHEAT]   = g_UiMgr->LoadBitmap( "SecretsCheat",  "UI_LoreAudio.xbmp"   );  // for the secrets icons
-    m_SecretsIconID[SECRET_TYPE_UNKNOWN] = g_UiMgr->LoadBitmap( "SecretsNull",   "UI_LoreUnknown.xbmp" );
+    m_SecretsIconID[SECRET_TYPE_VIDEO]   = g_UiMgr->LoadBitmap( "SecretsVideo",  "LORE/INTERFACE/UI_LOREVIDEO.XBMP"   );  // TODO: get some new bitmaps
+    m_SecretsIconID[SECRET_TYPE_CHEAT]   = g_UiMgr->LoadBitmap( "SecretsCheat",  "VARIANTS/COMMON/LORE/INTERFACE/UI_LOREAUDIO.XBMP"   );  // for the secrets icons
+    m_SecretsIconID[SECRET_TYPE_UNKNOWN] = g_UiMgr->LoadBitmap( "SecretsNull",   "VARIANTS/COMMON/LORE/INTERFACE/UI_LOREUNKNOWN.XBMP" );
 
     // set up nav text 
     xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_BACK" ));
@@ -796,7 +788,7 @@ void dlg_secrets_menu::InitIconScaling ( xbool ScaleDown )
             m_NumItems = 1;
             m_CurrItem = 0;
             x_strcpy( m_FileName, PreEntry->FileName );
-            m_StillBitmapID = g_UiMgr->LoadBitmap( "Still", xfs( "%s.xbmp", m_FileName ) );
+            m_StillBitmapID = g_UiMgr->LoadBitmap( "Still", xfs( "LORE/SECRETS/%s.xbmp", m_FileName ) );
         }
     }
 
@@ -994,13 +986,16 @@ void dlg_secrets_menu::PopulateSecretsDetails( xbool bVaultDetails )
 
         m_pSecretsLine1->SetLabel( m_pSecretsSelect->GetSelectedItemLabel() );
 
-        // TODO: Ctetrick - This may be an issue in localized versions!! The colons should align.
-        if( VaultIdx == 4 )
-            m_pSecretsLine2->SetLabel( xwstring(xfs("%s : %d/%d", (const char*)xstring(g_StringTableMgr("ui", "IDS_UNLOCKED")), Count, 1)) );
-        else
-            m_pSecretsLine2->SetLabel( xwstring(xfs("%s : %d/%d", (const char*)xstring(g_StringTableMgr("ui", "IDS_UNLOCKED")), Count, 5)) );
+        // TODO: Align separators across locales.
+        xwstring UnlockedCount( g_StringTableMgr( "ui", "IDS_UNLOCKED" ) );
+        UnlockedCount += xwstring( " : " );
+        UnlockedCount += xwstring( xfs( "%d/%d", Count, (VaultIdx == 4) ? 1 : 5 ) );
+        m_pSecretsLine2->SetLabel( UnlockedCount );
 
-        m_pSecretsLine3->SetLabel( xwstring(xfs("%s  : %d/21", (const char*)xstring(g_StringTableMgr("ui", "IDS_OVERALL")), Profile.GetNumSecretsUnlocked())) );
+        xwstring OverallCount( g_StringTableMgr( "ui", "IDS_OVERALL" ) );
+        OverallCount += xwstring( "  : " );
+        OverallCount += xwstring( xfs( "%d/21", Profile.GetNumSecretsUnlocked() ) );
+        m_pSecretsLine3->SetLabel( OverallCount );
 
         xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_CYCLE_VAULT" ));
         navText += g_StringTableMgr( "ui", "IDS_NAV_BACK" );

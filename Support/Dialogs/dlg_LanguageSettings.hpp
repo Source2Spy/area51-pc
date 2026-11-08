@@ -54,9 +54,9 @@ public:
     void                EnableBlackout        ( void ) { m_bRenderBlackout = TRUE; }
 
 private:
-    static void         PopulateLanguageCombo ( ui_combo* pCombo, x_language Language );
+    static void         PopulateLanguageCombo ( ui_combo* pCombo, x_language Language, xbool bIncludeTextOnly );
     static x_language   GetSelectedLanguage   ( ui_combo* pCombo );
-    void                ApplySettings        ( global_settings& Settings );
+    xbool               ApplySettings        ( global_settings& Settings );
     void                BeginSave            ( void );
     void                OpenSavePopup        ( void );
     void                RestoreSettings      ( void );

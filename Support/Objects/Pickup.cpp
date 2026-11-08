@@ -8,6 +8,8 @@
 //  INCLUDES
 //==============================================================================
 
+#include "NetworkMgr/Replication/NetUpdate.hpp"
+
 #include "Render/PrimitiveDebug.hpp"
 #include "Pickup.hpp"
 #include "CollisionMgr/CollisionMgr.hpp"
@@ -15,7 +17,7 @@
 #include "Inventory/Inventory2.hpp"
 #include "Objects/Player/Player.hpp"
 #include "../Support/NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 
 //=========================================================================
 
@@ -27,6 +29,12 @@
 
 #define FADEIN_TIME  1.0f
 #define FADEOUT_TIME 0.4f
+
+enum
+{
+    PICKUP_V_MESH_BODY_MASK = 0x1,
+    PICKUP_V_MESH_GLOW_MASK = 0x2,
+};
 
 //=========================================================================
 
@@ -81,10 +89,6 @@ const object_desc& pickup::GetTypeDesc( void ) const
 {
     return s_PickupDesc;
 }
-
-//==============================================================================
-
-//==============================================================================
 
 //==============================================================================
 
@@ -232,8 +236,8 @@ void pickup::OnEnumProp( prop_enum&  rPropList )
     rPropList.PropEnumEnum  ( "Pickup\\Item"  , inventory2::GetEnumString(), "The type of this pickup.", 0 );
     rPropList.PropEnumFloat ( "Pickup\\Amount", "The amount in this pickup.", 0 );
 
-    rPropList.PropEnumExternal( "Pickup\\FxFile" ,       "Resource\0fxo",     "File of particle type" , PROP_TYPE_MUST_ENUM);
-    rPropList.PropEnumExternal( "Pickup\\Audio Package", "Resource\0audiopkg","The audio package associated with this pickup object.", 0 );
+    rPropList.PropEnumExternal( "Pickup\\FxFile" ,       "Resource\0fxo\0",     "File of particle type" , PROP_TYPE_MUST_ENUM);
+    rPropList.PropEnumExternal( "Pickup\\Audio Package", "Resource\0audiopkg\0","The audio package associated with this pickup object.", 0 );
 
     rPropList.PropEnumInt( "Pickup\\MinPlayers", "What's the min number of players this pickup will spawn for?", 0 );
     rPropList.PropEnumInt( "Pickup\\MaxPlayers", "What's the max number of players this pickup will spawn for?", 0 );
@@ -386,6 +390,18 @@ xbool pickup::ShouldHidePickup( void )
 
 //==============================================================================
 
+const matrix4& pickup::GetPickupRenderL2W( void ) const
+{
+#ifndef X_EDITOR
+    if( m_bSpins && GameMgr.IsGameMultiplayer() )
+        return m_GeomL2W;
+#endif
+
+    return GetL2W();
+}
+
+//==============================================================================
+
 void pickup::OnRender ( void )
 {
     X_PROFILE_SCOPE_CATEGORY( "Context", "pickup::OnRender" );
@@ -400,10 +416,10 @@ void pickup::OnRender ( void )
         // will have two vmeshes. The first one is the normal pickup geometry and
         // the second one is a glowy outer shell that makes the pickup easier to
         // see in a fast-paced multiplayer game.
-        u32 VMeshMask = 0x1;
+        u32 VMeshMask = PICKUP_V_MESH_BODY_MASK;
 #ifndef X_EDITOR
         if( GameMgr.IsGameMultiplayer() && (m_Inst.GetAlpha() == 255) )
-            VMeshMask = 0x3;
+            VMeshMask = PICKUP_V_MESH_BODY_MASK | PICKUP_V_MESH_GLOW_MASK;
 #endif
         m_Inst.SetVMeshMask( VMeshMask );
 
@@ -416,7 +432,7 @@ void pickup::OnRender ( void )
             return;
         }
 
-        m_Inst.Render( &GetL2W(), Flags | GetRenderMode() );        
+        m_Inst.Render( &GetPickupRenderL2W(), Flags | GetRenderMode(), m_FloorProperties.GetColor() );
 #else  
         // don't render, hidden
         if( ShouldHidePickup() )
@@ -424,7 +440,7 @@ void pickup::OnRender ( void )
             return;
         }
 
-        m_Inst.Render( (m_bSpins && GameMgr.IsGameMultiplayer()) ? &m_GeomL2W : &GetL2W(), Flags | GetRenderMode() );
+        m_Inst.Render( &GetPickupRenderL2W(), Flags | GetRenderMode(), m_FloorProperties.GetColor() );
 #endif
 
     }
@@ -438,9 +454,21 @@ void pickup::OnRender ( void )
 
 //==============================================================================
 
+void pickup::OnRenderShadowCast( u64 ProjMask )
+{
+    if( ShouldHidePickup() )
+        return;
+
+    u32 const Flags = NeedsClipping() ? render::CLIPPED : 0;
+    m_Inst.RenderShadowCast( &GetPickupRenderL2W(), Flags, ProjMask, PICKUP_V_MESH_BODY_MASK );
+}
+
+//==============================================================================
+
 void pickup::OnInit(void)
 {
     net_proj::OnInit();
+    m_FloorProperties.Init( 1.0f, 0.128f, GetGuid() );
 }
 
 //==============================================================================
@@ -584,6 +612,8 @@ void pickup::OnAdvanceSimulation  ( f32 DeltaTime )
         OnMove( Position );            
     }
 
+
+    m_FloorProperties.Update( GetPosition(), DeltaTime );
 
     // No local logic for clients
 #ifndef X_EDITOR
@@ -822,7 +852,7 @@ void pickup::SetupRigidGeom( const char* pGeomName /* = NULL */ )
 #ifndef X_EDITOR
 //------------------------------------------------------------------------------
 
-void pickup::net_AcceptUpdate( const bitstream& BS )
+void pickup::net_AcceptUpdate( const net_pickup_update& Update )
 
 {
     if( g_NetworkMgr.IsClient() )
@@ -830,26 +860,20 @@ void pickup::net_AcceptUpdate( const bitstream& BS )
         m_bTakeable = TRUE;
     }
     
-    if( BS.ReadFlag() )
+    if( Update.HasItem )
     {
-        s32 Int;
-        BS.ReadRangedS32( Int, INVEN_NULL, INVEN_GLOVES );
-        m_Item = (inven_item)Int;
-        BS.ReadVariableLenS32( Int );
-        m_Amount = (f32)Int;
-
-        BS.ReadFlag( m_bSpins );
+        m_Item = (inven_item)Update.Item;
+        m_Amount = (f32)Update.Amount;
+        m_bSpins = Update.Spins;
 
         SetupRigidGeom();
     }
 
     // DIRTY_STATE
-    if( BS.ReadFlag() )
+    if( Update.HasState )
     {
         ASSERT( g_NetworkMgr.IsClient() );
-        s32 NewState;
-        BS.ReadRangedS32( NewState, STATE_FIRST, STATE_LAST );
-        m_State = (state)NewState;
+        m_State = (state)Update.State;
 
         // Fade in
         if( (m_State == STATE_RESPAWNING) || (m_State == STATE_IDLE) )
@@ -863,10 +887,10 @@ void pickup::net_AcceptUpdate( const bitstream& BS )
     }
 
     // DIRTY_REQUEST
-    if( BS.ReadFlag() )
+    if( Update.HasRequest )
     {
         ASSERT( g_NetworkMgr.IsServer() );
-        BS.ReadRangedS32( m_PlayerIndex, 0, 31 );
+        m_PlayerIndex = Update.RequestPlayer;
     //  LOG_MESSAGE( "pickup::net_AcceptUpdate", "Requested By:%d", m_PlayerIndex );
 
         // A request has come in from a client player for this pickup.
@@ -889,9 +913,8 @@ void pickup::net_AcceptUpdate( const bitstream& BS )
             m_bTakeable = FALSE;
 
             object* pObject = NetObjMgr.GetObjFromSlot( m_PlayerIndex );
-            if( pObject )
+            if( pObject && pObject->IsKindOf( actor::GetRTTI() ) )
             {
-                ASSERT( pObject->IsKindOf( actor::GetRTTI() ) );
                 actor& Actor = *((actor*)pObject);
 
                 m_NetDirtyBits |= DIRTY_ASSIGN;
@@ -911,10 +934,10 @@ void pickup::net_AcceptUpdate( const bitstream& BS )
     }
 
     // DIRTY_ASSIGN
-    if( BS.ReadFlag() )
+    if( Update.HasAssign )
     {
         ASSERT( g_NetworkMgr.IsClient() );
-        BS.ReadRangedS32( m_PlayerIndex, 0, 31 );
+        m_PlayerIndex = Update.AssignPlayer;
 
         /*
         LOG_MESSAGE( "pickup::net_AcceptUpdate",
@@ -927,9 +950,9 @@ void pickup::net_AcceptUpdate( const bitstream& BS )
         if( g_NetworkMgr.IsLocal( m_PlayerIndex ) )
         {
             object* pObject = NetObjMgr.GetObjFromSlot( m_PlayerIndex );
-            if( (GameMgr.GetScore().Player[m_PlayerIndex].IsInGame) && pObject )
+            if( (GameMgr.GetScore().Player[m_PlayerIndex].IsInGame) && pObject &&
+                pObject->IsKindOf( player::GetRTTI() ) )
             {
-                ASSERT( pObject->IsKindOf( player::GetRTTI() ) );
                 player& Player = *((player*)pObject);
                 Player.TakePickup( *this );
 
@@ -949,9 +972,9 @@ void pickup::net_AcceptUpdate( const bitstream& BS )
     }
 
     // Ancestor class.
-    if( BS.ReadFlag() )
+    if( Update.HasProjectile )
     {
-        net_proj::net_AcceptUpdate( BS );
+        net_proj::net_AcceptUpdate( Update );
     }
 }
 

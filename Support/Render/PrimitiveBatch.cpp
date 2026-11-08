@@ -1,142 +1,169 @@
-//=============================================================================
+//=========================================================================
 //
 //  PrimitiveBatch.cpp
 //
-//=============================================================================
+//=========================================================================
 
 #include "PrimitiveBatch.hpp"
 
+#include "Pipeline/RenderPipeline.hpp"
+#include "Backend/FrameStorage.hpp"
 #include "e_Engine.hpp"
 #include "x_debug.hpp"
 
-//=============================================================================
+//=========================================================================
 //  HELPER FUNCTIONS
-//=============================================================================
+//=========================================================================
 
-static 
+static
+u32 PackPrimitiveColor( xcolor const& Color )
+{
+    return (static_cast<u32>(Color.A) << 24) | (static_cast<u32>(Color.R) << 16) |
+           (static_cast<u32>(Color.G) << 8) | static_cast<u32>(Color.B);
+}
+
+//=========================================================================
+
+static
 xcolor ColorFromPackedRGBA( u32 color )
 {
     return xcolor( static_cast<u8>( color & 0xff ), static_cast<u8>( ( color >> 8 ) & 0xff ),
                    static_cast<u8>( ( color >> 16 ) & 0xff ), static_cast<u8>( ( color >> 24 ) & 0xff ) );
 }
 
-//=============================================================================
+//=========================================================================
 
-static 
+static
+xbool PrepareSpriteScratch( xarray<render::primitive_sprite_instance>& Sprites, s32 Count )
+{
+    s32 const Maximum = render::FrameStorage::MAX_STREAM_BYTES / sizeof(render::primitive_sprite_instance);
+    if( Count <= 0 || Count > Maximum )
+        return FALSE;
+    Sprites.SetCount( 0 );
+    if( Sprites.GetCapacity() < Count )
+    {
+        s32 Capacity = MAX(Sprites.GetCapacity(), 256);
+        while( Capacity < Count )
+            Capacity = Capacity > Maximum / 2 ? Maximum : Capacity * 2;
+        Sprites.SetCapacity( Capacity );
+    }
+    return TRUE;
+}
+
+//=========================================================================
+
+static
 xbool AppendQuad( render::primitive_vertex* pVertices,
-                  s32                       maxVertices,
-                  s32&                      vertexCount,
+                  s32                       MaxVertices,
+                  s32&                      VertexCount,
                   u16*                      pIndices,
-                  s32                       maxIndices,
-                  s32&                      indexCount,
+                  s32                       MaxIndices,
+                  s32&                      IndexCount,
                   vector3 const*            pPositions,
                   vector2 const*            pUVs,
                   xcolor const&             color )
 {
     if( !pVertices || !pIndices || !pPositions || !pUVs ||
-        ((vertexCount + 4) > maxVertices) || ((indexCount + 6) > maxIndices) )
+        ((VertexCount + 4) > MaxVertices) || ((IndexCount + 6) > MaxIndices) )
     {
         return FALSE;
     }
 
-    const u16 baseVertex = (u16)vertexCount;
+    const u16 BaseVertex = (u16)VertexCount;
     for( s32 i = 0; i < 4; ++i )
-        pVertices[vertexCount++] = render::primitive_vertex( pPositions[i], pUVs[i], color );
+        pVertices[VertexCount++] = render::primitive_vertex( pPositions[i], pUVs[i], color );
 
-    const u16 quadIndices[6] = { 0, 1, 2, 2, 3, 0 };
+    const u16 QuadIndices[6] = { 0, 1, 2, 2, 3, 0 };
     for( s32 i = 0; i < 6; ++i )
-        pIndices[indexCount++] = (u16)(baseVertex + quadIndices[i]);
+        pIndices[IndexCount++] = (u16)(BaseVertex + QuadIndices[i]);
 
     return TRUE;
 }
 
-//=============================================================================
+//=========================================================================
 //  IMPLEMENTATION
-//=============================================================================
+//=========================================================================
 
 render::primitive_vertex::primitive_vertex( void )
     : Position( 0.0f, 0.0f, 0.0f ), Color( 0xffffffffu ), UV( 0.0f, 0.0f )
 {
 }
 
-//=============================================================================
+//=========================================================================
 
 render::primitive_vertex::primitive_vertex( vector3 const& position, vector2 const& uV, xcolor const& color )
-    : Position( position ), Color( ( static_cast<u32>( color.A ) << 24 ) | ( static_cast<u32>( color.R ) << 16 ) |
-                                  ( static_cast<u32>( color.G ) << 8 ) | static_cast<u32>( color.B ) ),
+    : Position( position ), Color( PackPrimitiveColor( color ) ),
       UV( uV )
 {
 }
 
-//=============================================================================
+//=========================================================================
 
 render::primitive_draw_desc::primitive_draw_desc( void )
     : pTexture( NULL ), Topology( PRIMITIVE_TOPOLOGY_TRIANGLE_LIST ), Blend( PRIMITIVE_BLEND_OPAQUE ),
       Depth( PRIMITIVE_DEPTH_READ_WRITE ), Raster( PRIMITIVE_RASTER_SOLID ),
-      Sampler( PRIMITIVE_SAMPLER_LINEAR_WRAP ), Output( PRIMITIVE_OUTPUT_COLOR ), Layer( PRIMITIVE_LAYER_SURFACE ),
-      DistortionScale( 12.0f )
+      Sampler( PRIMITIVE_SAMPLER_LINEAR_WRAP ), Output( PRIMITIVE_OUTPUT_COLOR ), DistortionScale( 12.0f )
 {
 }
 
-//=============================================================================
+//=========================================================================
 
 render::primitive_draw_desc::primitive_draw_desc( texture const* pDrawTexture, primitive_topology topology,
                                                   primitive_blend_mode blend, primitive_depth_mode depth,
                                                   primitive_raster_mode raster, primitive_sampler_mode sampler,
-                                                  primitive_render_layer renderLayer, primitive_output_mode outputMode,
-                                                  f32 distortionScalePixels )
+                                                  primitive_output_mode OutputMode,
+                                                  f32 DistortionScalePixels )
     : pTexture( pDrawTexture ), Topology( topology ), Blend( blend ), Depth( depth ), Raster( raster ),
-      Sampler( sampler ), Output( outputMode ), Layer( renderLayer ), DistortionScale( distortionScalePixels )
+      Sampler( sampler ), Output( OutputMode ), DistortionScale( DistortionScalePixels )
 {
     ASSERT( ( Topology >= PRIMITIVE_TOPOLOGY_TRIANGLE_LIST ) && ( Topology < PRIMITIVE_TOPOLOGY_COUNT ) );
     ASSERT( ( Blend >= PRIMITIVE_BLEND_OPAQUE ) && ( Blend < PRIMITIVE_BLEND_COUNT ) );
     ASSERT( ( Depth >= PRIMITIVE_DEPTH_DISABLED ) && ( Depth < PRIMITIVE_DEPTH_COUNT ) );
     ASSERT( ( Raster >= PRIMITIVE_RASTER_SOLID ) && ( Raster < PRIMITIVE_RASTER_COUNT ) );
     ASSERT( ( Sampler >= PRIMITIVE_SAMPLER_LINEAR_WRAP ) && ( Sampler < PRIMITIVE_SAMPLER_COUNT ) );
-    ASSERT( ( Layer >= PRIMITIVE_LAYER_SURFACE ) && ( Layer < PRIMITIVE_LAYER_COUNT ) );
     ASSERT( ( Output >= PRIMITIVE_OUTPUT_COLOR ) && ( Output < PRIMITIVE_OUTPUT_COUNT ) );
-    ASSERT( ( Output == PRIMITIVE_OUTPUT_DISTORTION ) == ( Layer == PRIMITIVE_LAYER_DISTORTION ) );
 }
 
-//=============================================================================
+//=========================================================================
 
 render::PrimitiveBatch::PrimitiveBatch( primitive_draw_desc const& desc )
-    : m_desc( desc ), m_vertices(), m_indices()
+    : m_Desc( desc ), m_Vertices(), m_Indices()
 {
 }
 
-//=============================================================================
+//=========================================================================
 
 void render::PrimitiveBatch::Reserve( s32 nVertices, s32 nIndices )
 {
-    if ( ( nVertices > m_vertices.GetCapacity() ) && ( nVertices <= MAX_PRIMITIVE_VERTICES ) )
+    if ( ( nVertices > m_Vertices.GetCapacity() ) && ( nVertices <= MAX_PRIMITIVE_VERTICES ) )
     {
-        m_vertices.SetCapacity( nVertices );
+        m_Vertices.SetCapacity( nVertices );
     }
 
-    if ( nIndices > m_indices.GetCapacity() )
+    if ( nIndices > m_Indices.GetCapacity() )
     {
-        m_indices.SetCapacity( nIndices );
+        m_Indices.SetCapacity( nIndices );
     }
 }
 
-//=============================================================================
+//=========================================================================
 
 void render::PrimitiveBatch::Clear( void )
 {
-    m_vertices.SetCount( 0 );
-    m_indices.SetCount( 0 );
+    m_Vertices.SetCount( 0 );
+    m_Indices.SetCount( 0 );
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::PrimitiveBatch::CanAppend( s32 nVertices, s32 nIndices ) const
 {
     return ( nVertices > 0 ) && ( nIndices > 0 ) &&
-           ( ( m_vertices.GetCount() + nVertices ) <= MAX_PRIMITIVE_VERTICES );
+           ( nVertices <= ( MAX_PRIMITIVE_VERTICES - m_Vertices.GetCount() ) ) &&
+           ( nIndices <= ( 0x7fffffff - m_Indices.GetCount() ) );
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::PrimitiveBatch::AppendIndexed( primitive_vertex const* pVertices, s32 nVertices, u16 const* pIndices,
                                              s32 nIndices )
@@ -154,26 +181,26 @@ xbool render::PrimitiveBatch::AppendIndexed( primitive_vertex const* pVertices, 
         }
     }
 
-    u16 const baseVertex = static_cast<u16>( m_vertices.GetCount() );
+    u16 const BaseVertex = static_cast<u16>( m_Vertices.GetCount() );
     for ( s32 i = 0; i < nVertices; ++i )
     {
-        m_vertices.Append() = pVertices[i];
+        m_Vertices.Append() = pVertices[i];
     }
 
     for ( s32 i = 0; i < nIndices; ++i )
     {
-        m_indices.Append() = static_cast<u16>( baseVertex + pIndices[i] );
+        m_Indices.Append() = static_cast<u16>( BaseVertex + pIndices[i] );
     }
 
     return TRUE;
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::PrimitiveBatch::AddTriangle( primitive_vertex const& vertex0, primitive_vertex const& vertex1,
                                            primitive_vertex const& vertex2 )
 {
-    if ( m_desc.Topology != PRIMITIVE_TOPOLOGY_TRIANGLE_LIST )
+    if ( m_Desc.Topology != PRIMITIVE_TOPOLOGY_TRIANGLE_LIST )
     {
         return FALSE;
     }
@@ -183,11 +210,11 @@ xbool render::PrimitiveBatch::AddTriangle( primitive_vertex const& vertex0, prim
     return AppendIndexed( vertices, 3, indices, 3 );
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::PrimitiveBatch::AddLine( primitive_vertex const& vertex0, primitive_vertex const& vertex1 )
 {
-    if ( m_desc.Topology != PRIMITIVE_TOPOLOGY_LINE_LIST )
+    if ( m_Desc.Topology != PRIMITIVE_TOPOLOGY_LINE_LIST )
     {
         return FALSE;
     }
@@ -197,7 +224,7 @@ xbool render::PrimitiveBatch::AddLine( primitive_vertex const& vertex0, primitiv
     return AppendIndexed( vertices, 2, indices, 2 );
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::PrimitiveBatch::AddLine( vector3 const& position0, vector3 const& position1, xcolor const& color0,
                                        xcolor const& color1 )
@@ -206,11 +233,11 @@ xbool render::PrimitiveBatch::AddLine( vector3 const& position0, vector3 const& 
                     primitive_vertex( position1, vector2( 0.0f, 0.0f ), color1 ) );
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::PrimitiveBatch::AddQuad( vector3 const* pPositions, vector2 const* pUVs, xcolor const* pColors )
 {
-    if ( ( m_desc.Topology != PRIMITIVE_TOPOLOGY_TRIANGLE_LIST ) || !pPositions || !pUVs || !pColors )
+    if ( ( m_Desc.Topology != PRIMITIVE_TOPOLOGY_TRIANGLE_LIST ) || !pPositions || !pUVs || !pColors )
     {
         return FALSE;
     }
@@ -224,12 +251,12 @@ xbool render::PrimitiveBatch::AddQuad( vector3 const* pPositions, vector2 const*
     return AppendIndexed( vertices, 4, indices, 6 );
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::PrimitiveBatch::AddTriangleStripQuad( vector3 const* pPositions, vector2 const* pUVs,
                                                     xcolor const* pColors )
 {
-    if ( ( m_desc.Topology != PRIMITIVE_TOPOLOGY_TRIANGLE_LIST ) || !pPositions || !pUVs || !pColors )
+    if ( ( m_Desc.Topology != PRIMITIVE_TOPOLOGY_TRIANGLE_LIST ) || !pPositions || !pUVs || !pColors )
     {
         return FALSE;
     }
@@ -243,10 +270,10 @@ xbool render::PrimitiveBatch::AddTriangleStripQuad( vector3 const* pPositions, v
     return AppendIndexed( vertices, 4, indices, 6 );
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::PrimitiveBatch::AddViewOrientedQuad( vector3 const& position0, vector3 const& position1,
-                                                   vector3 const& viewPosition, vector2 const& uV0, vector2 const& uV1,
+                                                   vector3 const& ViewPosition, vector2 const& uV0, vector2 const& uV1,
                                                    xcolor const& color0, xcolor const& color1, f32 radius0,
                                                    f32 radius1 )
 {
@@ -256,7 +283,7 @@ xbool render::PrimitiveBatch::AddViewOrientedQuad( vector3 const& position0, vec
         return FALSE;
     }
 
-    vector3 cross = direction.Cross( viewPosition - position0 );
+    vector3 cross = direction.Cross( ViewPosition - position0 );
     if ( !cross.SafeNormalize() )
     {
         return FALSE;
@@ -271,10 +298,10 @@ xbool render::PrimitiveBatch::AddViewOrientedQuad( vector3 const& position0, vec
     return AddQuad( positions, uVs, colors );
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::PrimitiveBatch::AddViewOrientedStrand( vector3 const* pPositions, s32 nPositions,
-                                                     vector3 const& viewPosition, vector2 const& uV0,
+                                                     vector3 const& ViewPosition, vector2 const& uV0,
                                                      vector2 const& uV1, xcolor const& color0, xcolor const& color1,
                                                      f32 radius )
 {
@@ -287,10 +314,10 @@ xbool render::PrimitiveBatch::AddViewOrientedStrand( vector3 const* pPositions, 
     {
         f32 const t0 = static_cast<f32>( i - 1 ) / static_cast<f32>( nPositions - 1 );
         f32 const t1 = static_cast<f32>( i ) / static_cast<f32>( nPositions - 1 );
-        vector2 const strandUV0( uV0.X + ( uV1.X - uV0.X ) * t0, uV0.Y );
-        vector2 const strandUV1( uV0.X + ( uV1.X - uV0.X ) * t1, uV1.Y );
+        vector2 const StrandUV0( uV0.X + ( uV1.X - uV0.X ) * t0, uV0.Y );
+        vector2 const StrandUV1( uV0.X + ( uV1.X - uV0.X ) * t1, uV1.Y );
 
-        if ( !AddViewOrientedQuad( pPositions[i - 1], pPositions[i], viewPosition, strandUV0, strandUV1, color0,
+        if ( !AddViewOrientedQuad( pPositions[i - 1], pPositions[i], ViewPosition, StrandUV0, StrandUV1, color0,
                                    color1, radius, radius ) )
         {
             return FALSE;
@@ -300,79 +327,99 @@ xbool render::PrimitiveBatch::AddViewOrientedStrand( vector3 const* pPositions, 
     return TRUE;
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::PrimitiveBatch::AddPlaneAlignedQuad( vector3 const& center, vector3 const& normal, f32 radius,
                                                    xcolor const& color )
 {
-    vector3 unitNormal = normal;
-    if ( !unitNormal.SafeNormalize() || ( radius <= 0.0f ) )
+    vector3 UnitNormal = normal;
+    if ( !UnitNormal.SafeNormalize() || ( radius <= 0.0f ) )
     {
         return FALSE;
     }
 
-    vector3 axisA;
-    vector3 axisB;
-    if ( x_abs( unitNormal.GetY() ) < 0.001f )
+    vector3 AxisA;
+    vector3 AxisB;
+    if ( x_abs( UnitNormal.GetY() ) < 0.001f )
     {
-        axisA = unitNormal.Cross( vector3( 0.0f, 1.0f, 0.0f ) );
-        axisB = unitNormal.Cross( axisA );
-        if ( !axisA.SafeNormalize() || !axisB.SafeNormalize() )
+        AxisA = UnitNormal.Cross( vector3( 0.0f, 1.0f, 0.0f ) );
+        AxisB = UnitNormal.Cross( AxisA );
+        if ( !AxisA.SafeNormalize() || !AxisB.SafeNormalize() )
         {
             return FALSE;
         }
     }
     else
     {
-        plane orientationPlane( unitNormal, 0.0f );
-        orientationPlane.GetOrthoVectors( axisA, axisB );
+        plane OrientationPlane( UnitNormal, 0.0f );
+        OrientationPlane.GetOrthoVectors( AxisA, AxisB );
     }
 
-    axisA *= radius;
-    axisB *= radius;
-    vector3 const positions[4] = { center + axisA + axisB, center + axisA - axisB, center - axisA - axisB,
-                                   center - axisA + axisB };
+    AxisA *= radius;
+    AxisB *= radius;
+    vector3 const positions[4] = { center + AxisA + AxisB, center + AxisA - AxisB, center - AxisA - AxisB,
+                                   center - AxisA + AxisB };
     vector2 const uVs[4] = { vector2( 0.0f, 0.0f ), vector2( 1.0f, 0.0f ), vector2( 1.0f, 1.0f ),
                              vector2( 0.0f, 1.0f ) };
     xcolor const colors[4] = { color, color, color, color };
     return AddQuad( positions, uVs, colors );
 }
 
-//=============================================================================
+//=========================================================================
 
-xbool render::PrimitiveBatch::Submit( matrix4 const& localToWorld ) const
+xbool render::PrimitiveBatch::Submit( matrix4 const& LocalToWorld ) const
 {
-    if ( ( m_vertices.GetCount() == 0 ) || ( m_indices.GetCount() == 0 ) )
+    if ( ( m_Vertices.GetCount() == 0 ) || ( m_Indices.GetCount() == 0 ) )
     {
         return TRUE;
     }
 
-    return SubmitPrimitives( m_desc, localToWorld, m_vertices.GetPtr(), m_vertices.GetCount(), m_indices.GetPtr(),
-                             m_indices.GetCount() );
+    return SubmitPrimitives( m_Desc, LocalToWorld, m_Vertices.GetPtr(), m_Vertices.GetCount(), m_Indices.GetPtr(),
+                             m_Indices.GetCount() );
 }
 
-//=============================================================================
+//=========================================================================
+
+xbool render::PrimitiveBatch::TrySubmit( matrix4 const& LocalToWorld ) const
+{
+    if( m_Vertices.GetCount() == 0 || m_Indices.GetCount() == 0 )
+    {
+        return TRUE;
+    }
+
+    const view* pView = eng_GetView();
+    PrimitiveEncoder& Encoder = GetRenderPipeline().GetPrimitiveEncoder();
+    if( !pView || !Encoder.IsSubmissionActive() )
+    {
+        return FALSE;
+    }
+
+    return Encoder.SubmitPrimitives( m_Desc, LocalToWorld, *pView, m_Vertices.GetPtr(), m_Vertices.GetCount(),
+                                     m_Indices.GetPtr(), m_Indices.GetCount() );
+}
+
+//=========================================================================
 
 render::primitive_draw_desc const& render::PrimitiveBatch::GetDesc( void ) const
 {
-    return m_desc;
+    return m_Desc;
 }
 
-//=============================================================================
+//=========================================================================
 
 s32 render::PrimitiveBatch::GetVertexCount( void ) const
 {
-    return m_vertices.GetCount();
+    return m_Vertices.GetCount();
 }
 
-//=============================================================================
+//=========================================================================
 
 s32 render::PrimitiveBatch::GetIndexCount( void ) const
 {
-    return m_indices.GetCount();
+    return m_Indices.GetCount();
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::SubmitPrimitiveSprite( primitive_draw_desc const& desc, vector3 const& position, vector2 const& size,
                                      vector2 const& uV0, vector2 const& uV1, xcolor const& color, radian rotation )
@@ -396,29 +443,29 @@ xbool render::SubmitPrimitiveSprite( primitive_draw_desc const& desc, vector3 co
     f32 cosine;
     x_sincos( -rotation, sine, cosine );
 
-    f32 const     halfWidth = size.X * 0.5f;
-    f32 const     halfHeight = size.Y * 0.5f;
-    vector3 const v0( cosine * halfWidth - sine * halfHeight, sine * halfWidth + cosine * halfHeight, 0.0f );
-    vector3 const v1( cosine * halfWidth + sine * halfHeight, sine * halfWidth - cosine * halfHeight, 0.0f );
-    vector3 const positions[4] = { center + v0, center + v1, center - v0, center - v1 };
-    vector2 const uVs[4] = { vector2( uV0.X, uV0.Y ), vector2( uV0.X, uV1.Y ), vector2( uV1.X, uV1.Y ),
-                             vector2( uV1.X, uV0.Y ) };
-    primitive_vertex vertices[4];
-    u16 indices[6];
-    s32 vertexCount = 0;
-    s32 indexCount = 0;
-    return (desc.Topology == PRIMITIVE_TOPOLOGY_TRIANGLE_LIST) &&
-           AppendQuad( vertices, 4, vertexCount, indices, 6, indexCount, positions, uVs, color ) &&
-           SubmitPrimitives( desc, pView->GetV2W(), vertices, vertexCount, indices, indexCount );
+    f32 const     HalfWidth = size.X * 0.5f;
+    f32 const     HalfHeight = size.Y * 0.5f;
+    primitive_sprite_instance Sprite;
+    Sprite.Position = center;
+    Sprite.Color = PackPrimitiveColor( color );
+    Sprite.Right.Set( -cosine * HalfWidth, -sine * HalfWidth, 0.0f );
+    Sprite.Up.Set( sine * HalfHeight, -cosine * HalfHeight, 0.0f );
+    Sprite.UVRect[0] = uV0.X;
+    Sprite.UVRect[1] = uV0.Y;
+    Sprite.UVRect[2] = uV1.X;
+    Sprite.UVRect[3] = uV1.Y;
+    return GetRenderPipeline().GetBackend().GetPrimitiveEncoder().SubmitSprites( desc, *pView, &Sprite, 1 );
 }
 
-//=============================================================================
+//=========================================================================
 
-xbool render::SubmitPrimitiveBillboards( primitive_draw_desc const& desc, s32 nSprites, f32 uniformScale,
+xbool render::SubmitPrimitiveBillboards( primitive_draw_desc const& desc, s32 nSprites, f32 UniformScale,
                                          matrix4 const* pLocalToWorld, vector4 const* pPositions,
-                                         vector2 const* pRotScales, u32 const* pColors )
+                                         vector2 const* pRotScales, u32 const* pColors,
+                                         s32 const* pSpriteIndices )
 {
-    if ( ( nSprites <= 0 ) || !pPositions || !pRotScales || !pColors )
+    if ( ( nSprites <= 0 ) || !x_isvalid( UniformScale ) || !pPositions || !pRotScales || !pColors ||
+         ( pLocalToWorld && !pLocalToWorld->IsValid() ) )
     {
         return FALSE;
     }
@@ -429,77 +476,48 @@ xbool render::SubmitPrimitiveBillboards( primitive_draw_desc const& desc, s32 nS
         return FALSE;
     }
 
-    matrix4 localToView = pView->GetW2V();
+    matrix4 LocalToView = pView->GetW2V();
     if ( pLocalToWorld )
     {
-        localToView = localToView * ( *pLocalToWorld );
+        LocalToView = LocalToView * ( *pLocalToWorld );
     }
 
-    enum
-    {
-        MAX_SPRITES_PER_BATCH = 256,
-        MAX_VERTICES_PER_BATCH = MAX_SPRITES_PER_BATCH * 4,
-        MAX_INDICES_PER_BATCH = MAX_SPRITES_PER_BATCH * 6
-    };
     if( desc.Topology != PRIMITIVE_TOPOLOGY_TRIANGLE_LIST )
         return FALSE;
 
-    primitive_vertex vertices[MAX_VERTICES_PER_BATCH];
-    u16 indices[MAX_INDICES_PER_BATCH];
-
-    s32 const maxSpritesPerBatch = MAX_SPRITES_PER_BATCH;
-    for ( s32 firstSprite = 0; firstSprite < nSprites; firstSprite += maxSpritesPerBatch )
+    xarray<primitive_sprite_instance>& Sprites = GetRenderPipeline().GetPrimitiveStorage().GetSpriteScratch();
+    if( !PrepareSpriteScratch( Sprites, nSprites ) )
+        return FALSE;
+    for ( s32 i = 0; i < nSprites; ++i )
     {
-        s32 const endSprite = MIN( firstSprite + maxSpritesPerBatch, nSprites );
-        s32 vertexCount = 0;
-        s32 indexCount = 0;
-
-        for ( s32 i = firstSprite; i < endSprite; ++i )
-        {
-            if ( ( pPositions[i].GetIW() & 0x8000 ) == 0x8000 )
-            {
-                continue;
-            }
-
-            vector3 const center =
-                localToView * vector3( pPositions[i].GetX(), pPositions[i].GetY(), pPositions[i].GetZ() );
-            f32 sine;
-            f32 cosine;
-            x_sincos( -pRotScales[i].X, sine, cosine );
-
-            f32 const     scale = pRotScales[i].Y * uniformScale;
-            vector3 const v0( ( cosine - sine ) * scale, ( sine + cosine ) * scale, 0.0f );
-            vector3 const v1( ( cosine + sine ) * scale, ( sine - cosine ) * scale, 0.0f );
-            vector3 const positions[4] = { center + v0, center + v1, center - v0, center - v1 };
-            vector2 const uVs[4] = { vector2( 0.0f, 0.0f ), vector2( 0.0f, 1.0f ), vector2( 1.0f, 1.0f ),
-                                     vector2( 1.0f, 0.0f ) };
-            xcolor const color = ColorFromPackedRGBA( pColors[i] );
-            if ( !AppendQuad( vertices, MAX_VERTICES_PER_BATCH, vertexCount,
-                              indices, MAX_INDICES_PER_BATCH, indexCount,
-                              positions, uVs, color ) )
-            {
-                return FALSE;
-            }
-        }
-
-        if ( (vertexCount > 0) &&
-             !SubmitPrimitives( desc, pView->GetV2W(), vertices, vertexCount, indices, indexCount ) )
-        {
-            return FALSE;
-        }
+        s32 const SpriteIndex = pSpriteIndices ? pSpriteIndices[i] : i;
+        if ( ( pPositions[SpriteIndex].GetIW() & 0x8000 ) != 0 )
+            continue;
+        primitive_sprite_instance& Sprite = Sprites.Append();
+        Sprite.Position = LocalToView * vector3( pPositions[SpriteIndex].GetX(),
+                                                pPositions[SpriteIndex].GetY(), pPositions[SpriteIndex].GetZ() );
+        f32 Sine, Cosine;
+        x_sincos( -pRotScales[SpriteIndex].X, Sine, Cosine );
+        f32 const Scale = pRotScales[SpriteIndex].Y * UniformScale;
+        Sprite.Right.Set( -Cosine * Scale, -Sine * Scale, 0.0f );
+        Sprite.Up.Set( Sine * Scale, -Cosine * Scale, 0.0f );
+        Sprite.Color = PackPrimitiveColor( ColorFromPackedRGBA(pColors[SpriteIndex]) );
+        Sprite.UVRect[0] = Sprite.UVRect[1] = 0.0f;
+        Sprite.UVRect[2] = Sprite.UVRect[3] = 1.0f;
     }
-
-    return TRUE;
+    return Sprites.GetCount() == 0 ||
+        GetRenderPipeline().GetBackend().GetPrimitiveEncoder().SubmitSprites( desc, *pView, Sprites.GetPtr(), Sprites.GetCount() );
 }
 
-//=============================================================================
+//=========================================================================
 
-xbool render::SubmitPrimitiveVelocityBillboards( primitive_draw_desc const& desc, s32 nSprites, f32 uniformScale,
+xbool render::SubmitPrimitiveVelocityBillboards( primitive_draw_desc const& desc, s32 nSprites, f32 UniformScale,
                                                  matrix4 const* pLocalToWorld, matrix4 const* pVelocityMatrix,
                                                  vector4 const* pPositions,
-                                                 vector4 const* pVelocities, u32 const* pColors )
+                                                 vector4 const* pVelocities, u32 const* pColors,
+                                                 s32 const* pSpriteIndices )
 {
-    if ( ( nSprites <= 0 ) || !x_isvalid( uniformScale ) || !pPositions || !pVelocities || !pColors ||
+    if ( ( nSprites <= 0 ) || !x_isvalid( UniformScale ) || !pPositions || !pVelocities || !pColors ||
          ( pLocalToWorld && !pLocalToWorld->IsValid() ) ||
          ( pVelocityMatrix && !pVelocityMatrix->IsValid() ) )
     {
@@ -512,84 +530,53 @@ xbool render::SubmitPrimitiveVelocityBillboards( primitive_draw_desc const& desc
         return FALSE;
     }
 
-    matrix4 localToWorld;
+    matrix4 LocalToWorld;
     if ( pLocalToWorld )
     {
-        localToWorld = *pLocalToWorld;
+        LocalToWorld = *pLocalToWorld;
     }
     else
     {
-        localToWorld.Identity();
+        LocalToWorld.Identity();
     }
 
-    matrix4 velocityToWorld = localToWorld;
-    velocityToWorld.ClearTranslation();
+    matrix4 VelocityToWorld = LocalToWorld;
+    VelocityToWorld.ClearTranslation();
     if ( pVelocityMatrix )
     {
-        velocityToWorld = velocityToWorld * ( *pVelocityMatrix );
+        VelocityToWorld = VelocityToWorld * ( *pVelocityMatrix );
     }
-    vector3 const viewDirection = pView->GetViewZ();
-    matrix4 identity;
-    identity.Identity();
-
-    enum
-    {
-        MAX_SPRITES_PER_BATCH = 256,
-        MAX_VERTICES_PER_BATCH = MAX_SPRITES_PER_BATCH * 4,
-        MAX_INDICES_PER_BATCH = MAX_SPRITES_PER_BATCH * 6
-    };
-    if( desc.Topology != PRIMITIVE_TOPOLOGY_TRIANGLE_LIST )
+    vector3 const ViewDirection = pView->GetViewZ();
+    matrix4 WorldToView = pView->GetW2V();
+    matrix4 DirectionToView = WorldToView;
+    DirectionToView.ClearTranslation();
+    if( desc.Topology != PRIMITIVE_TOPOLOGY_TRIANGLE_LIST ||
+        static_cast<u64>( nSprites ) * sizeof( primitive_sprite_instance ) > render::FrameStorage::MAX_STREAM_BYTES )
         return FALSE;
 
-    primitive_vertex vertices[MAX_VERTICES_PER_BATCH];
-    u16 indices[MAX_INDICES_PER_BATCH];
-
-    s32 const maxSpritesPerBatch = MAX_SPRITES_PER_BATCH;
-    for ( s32 firstSprite = 0; firstSprite < nSprites; firstSprite += maxSpritesPerBatch )
+    xarray<primitive_sprite_instance>& Sprites = GetRenderPipeline().GetPrimitiveStorage().GetSpriteScratch();
+    if( !PrepareSpriteScratch( Sprites, nSprites ) )
+        return FALSE;
+    for ( s32 i = 0; i < nSprites; ++i )
     {
-        s32 const endSprite = MIN( firstSprite + maxSpritesPerBatch, nSprites );
-        s32 vertexCount = 0;
-        s32 indexCount = 0;
-
-        for ( s32 i = firstSprite; i < endSprite; ++i )
-        {
-            if ( ( pPositions[i].GetIW() & 0x8000 ) == 0x8000 )
-            {
-                continue;
-            }
-
-            vector3 const center =
-                localToWorld * vector3( pPositions[i].GetX(), pPositions[i].GetY(), pPositions[i].GetZ() );
-            vector3 right( pVelocities[i].GetX(), pVelocities[i].GetY(), pVelocities[i].GetZ() );
-            right = velocityToWorld * right;
-            if ( !right.SafeNormalize() )
-            {
-                continue;
-            }
-
-            vector3 up = viewDirection.Cross( right );
-            f32 const scale = pVelocities[i].GetW() * uniformScale;
-            right *= scale;
-            up *= scale;
-            vector3 const positions[4] = { center + right - up, center - right - up, center - right + up,
-                                           center + right + up };
-            vector2 const uVs[4] = { vector2( 1.0f, 0.0f ), vector2( 0.0f, 0.0f ), vector2( 0.0f, 1.0f ),
-                                     vector2( 1.0f, 1.0f ) };
-            xcolor const color = ColorFromPackedRGBA( pColors[i] );
-            if ( !AppendQuad( vertices, MAX_VERTICES_PER_BATCH, vertexCount,
-                              indices, MAX_INDICES_PER_BATCH, indexCount,
-                              positions, uVs, color ) )
-            {
-                return FALSE;
-            }
-        }
-
-        if ( (vertexCount > 0) &&
-             !SubmitPrimitives( desc, identity, vertices, vertexCount, indices, indexCount ) )
-        {
-            return FALSE;
-        }
+        s32 const SpriteIndex = pSpriteIndices ? pSpriteIndices[i] : i;
+        if ( ( pPositions[SpriteIndex].GetIW() & 0x8000 ) != 0 )
+            continue;
+        vector3 Right( pVelocities[SpriteIndex].GetX(), pVelocities[SpriteIndex].GetY(), pVelocities[SpriteIndex].GetZ() );
+        Right = VelocityToWorld * Right;
+        if( !Right.SafeNormalize() )
+            continue;
+        vector3 Up = ViewDirection.Cross( Right );
+        f32 const Scale = pVelocities[SpriteIndex].GetW() * UniformScale;
+        primitive_sprite_instance& Sprite = Sprites.Append();
+        Sprite.Position = WorldToView * ( LocalToWorld * vector3( pPositions[SpriteIndex].GetX(),
+            pPositions[SpriteIndex].GetY(), pPositions[SpriteIndex].GetZ() ) );
+        Sprite.Right = DirectionToView * ( Right * Scale );
+        Sprite.Up = DirectionToView * ( Up * Scale );
+        Sprite.Color = PackPrimitiveColor( ColorFromPackedRGBA(pColors[SpriteIndex]) );
+        Sprite.UVRect[0] = Sprite.UVRect[1] = 0.0f;
+        Sprite.UVRect[2] = Sprite.UVRect[3] = 1.0f;
     }
-
-    return TRUE;
+    return Sprites.GetCount() == 0 ||
+        GetRenderPipeline().GetBackend().GetPrimitiveEncoder().SubmitSprites( desc, *pView, Sprites.GetPtr(), Sprites.GetCount() );
 }

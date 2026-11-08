@@ -347,8 +347,8 @@ void xthread::InitIdle( void* pUserStack, s32 StackSize )
 void xthread::Init( x_thread_entry_fn* pEntry, const char* pName, s32 StackSize, s32 Priority, s32 argc, char** argv )
 {
     // Stack has to be allocated before we lock the thread handler system
-#ifdef TARGET_DESKTOP
-    // The desktop backend owns the native thread stack, so this allocation is
+#if defined( TARGET_DESKTOP ) || defined( TARGET_MOBILE )
+    // The native backend owns the thread stack, so this allocation is
     // only the per-thread formatting buffer.
     u32 StringSize          = X_KILOBYTE(32);
     m_pStack                = x_malloc( StringSize );

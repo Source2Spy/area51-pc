@@ -8,9 +8,9 @@
 #include "Render/Editor/EditorIcons.hpp"
 #include "../MiscUtils/SimpleUtils.hpp"
 #include "EventMgr/EventMgr.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
+#include "Render/Render.hpp"
 #include "PlaySurface.hpp"
-#include "GameLib/RenderContext.hpp"
 
 //=========================================================================
 // OBJECT DESCRIPTION
@@ -68,8 +68,6 @@ const object_desc& pip::GetObjectType( void )
 // FUNCTIONS
 //=========================================================================
 
-//=========================================================================
-
 pip::pip( void )
 {
     m_Width         = 256;
@@ -82,6 +80,7 @@ pip::pip( void )
 
     m_EarGuid       = 0 ;
     m_EarID         = 0 ;
+    m_LastRenderFrameSerial = ~(u64)0;
 }
 
 //=============================================================================
@@ -94,7 +93,7 @@ void pip::OnEnumProp( prop_enum& List )
     // Add properties
     m_RenderInst.OnEnumProp(List);
 
-    List.PropEnumExternal( "RenderInst\\AnimFile", "Resource\0anim", "Resource Animation File", PROP_TYPE_MUST_ENUM );
+    List.PropEnumExternal( "RenderInst\\AnimFile", "Resource\0anim\0", "Resource Animation File", PROP_TYPE_MUST_ENUM );
     List.PropEnumHeader("Pip",                  "Properties for the picture-in-picture object.", 0 );
     List.PropEnumEnum  ("Pip\\Type",            "HUD\0WORLD\0", "Type of pip. HUD = Hud overlay type. WORLD = In world object.", PROP_TYPE_MUST_ENUM);
     List.PropEnumGuid  ("Pip\\CameraGuid",      "Guid of the camera to view from.", PROP_TYPE_EXPOSE);
@@ -182,6 +181,7 @@ void pip::OnInit( void )
 {
     // Initialize animation
     m_AnimPlayer.SetAnimGroup(m_hAnimGroup);
+    m_LastRenderFrameSerial = ~(u64)0;
 
     // Create the PIP render target.
     m_Width  = 256;
@@ -200,6 +200,7 @@ void pip::OnInit( void )
 
 void pip::OnKill( void )
 {
+    g_AudioMgr.CancelRequest( m_pEarRequest );
     // Turn off pip texture
     ActivatePipTexture(FALSE);
 
@@ -215,13 +216,6 @@ void pip::OnKill( void )
 }
 
 //=========================================================================
-
-static vector3 PIP_OBJECT_POS(100,80,400);
-static f32     PIP_OBJECT_YAW = 0;
-
-//static vector3 PIP_LIGHT_POS (0,0,0);
-//static f32     PIP_LIGHT_RADIUS = 200.0f;
-//static f32     PIP_LIGHT_INTENSITY = 0.5f;
 
 void pip::OnRender( void )
 {
@@ -241,20 +235,12 @@ void pip::OnRender( void )
 
     // Clear all of z buffer
     render::SetDepthRect( Viewport, 1.0f );
-
     // Compute L2W to be infront of view
     matrix4 L2W;
     L2W.Identity();
-    L2W.RotateY(PIP_OBJECT_YAW);
-    L2W.SetTranslation(PIP_OBJECT_POS);
+    L2W.RotateY(0);
+    L2W.SetTranslation(vector3(100, 80, 400));
     L2W = pView->GetV2W() * L2W;
-
-    // Put light at camera
-    //g_LightMgr.AddDynamicLight(pView->GetV2W() * PIP_LIGHT_POS,     // Pos
-                               //XCOLOR_WHITE,                        // Color
-                               //PIP_LIGHT_RADIUS,                    // Radius
-                               //PIP_LIGHT_INTENSITY,                 // Intensity
-                               //TRUE);                              // bCharOnly
 
     // Render geometry?
     geom* pGeom = m_RenderInst.GetGeom();
@@ -341,6 +327,10 @@ void pip::OnActivate( xbool bFlag )
 
 void pip::RenderView( void )
 {
+    u64 const FrameSerial = eng_GetCurrentFrameSerial();
+    if( m_LastRenderFrameSerial == FrameSerial )
+        return;
+
     // Get camera
     object_ptr<camera> pCamera(m_CameraGuid);
     if (pCamera)
@@ -350,7 +340,23 @@ void pip::RenderView( void )
 
         if( !m_RenderTarget.bValid )
         {
-            return;
+            if( !m_RenderTarget.Create( m_Width, m_Height ) )
+                return;
+            ActivatePipTexture( TRUE );
+        }
+
+        f32 const RenderScale = render::GetRenderPipeline().GetRenderScale();
+        u32 const SceneWidth = MAX( 1u, static_cast<u32>( x_ceil( static_cast<f32>( m_Width ) * RenderScale ) ) );
+        u32 const SceneHeight = MAX( 1u, static_cast<u32>( x_ceil( static_cast<f32>( m_Height ) * RenderScale ) ) );
+        if( (m_RenderTarget.DepthTarget.Desc.Width != SceneWidth) ||
+            (m_RenderTarget.DepthTarget.Desc.Height != SceneHeight) )
+        {
+            ActivatePipTexture( FALSE );
+            if( !m_RenderTarget.Create( m_Width, m_Height ) )
+            {
+                return;
+            }
+            ActivatePipTexture( TRUE );
         }
 
         Viewport.l = 0;
@@ -358,12 +364,17 @@ void pip::RenderView( void )
         Viewport.r = m_Width;
         Viewport.b = m_Height;
 
-        if( !g_RenderContext.BeginPipRender( &m_RenderTarget ) )
-        {
-            return;
-        }
-        pCamera->RenderView( Viewport );
-        g_RenderContext.EndPipRender();
+        m_LastRenderFrameSerial = FrameSerial;
+        render::RenderScopeDesc Scope;
+        Scope.pColorTarget = &m_RenderTarget.ColorTarget;
+        Scope.pDepthTarget = &m_RenderTarget.DepthTarget;
+        Scope.Purpose = render::RENDER_VIEW_SCENE_CAPTURE;
+        Scope.ScopeId = m_RenderTarget.ScopeId;
+        Scope.SampleCount = 1;
+        Scope.EnableShadows = FALSE;
+        Scope.EnableTemporalHistory = FALSE;
+        Scope.EnablePostProcessing = FALSE;
+        pCamera->RenderView( Viewport, Scope );
     }
 }
 
@@ -405,7 +416,7 @@ void pip::AddTextureRefs( object* pObject )
     material& Material = render::GetMaterial(pRenderInst->GetInst(), iSubMesh);
 
     // Lookup texture handle
-    texture::handle hTexture = Material.m_diffuseMap;
+    texture::handle hTexture = Material.m_DiffuseMap;
 
     // Lookup texture
     texture* pTexture = hTexture.GetPointer();
@@ -550,6 +561,7 @@ void pip::SetupState( state State )
             break;
 
         case STATE_EXIT:
+            g_AudioMgr.CancelRequest( m_pEarRequest );
             g_AudioMgr.DestroyEar(m_EarID) ;
             m_EarID = 0 ;
             // Start animation
@@ -597,6 +609,7 @@ void pip::UpdateEar( void )
     // Nothing to do if inactive
     if( m_State == STATE_INACTIVE )
     {
+        g_AudioMgr.CancelRequest( m_pEarRequest );
         // Destroy ear?
         if (m_EarID)
         {
@@ -615,7 +628,16 @@ void pip::UpdateEar( void )
         {
             // Create if pip is entering or active
             if( ( m_State == STATE_ENTER ) || ( m_State == STATE_ACTIVE ) )
-                m_EarID = g_AudioMgr.CreateEar();
+            {
+                if( !m_pEarRequest )
+                {
+                    matrix4 W2V = pCamera->GetL2W();
+                    W2V.InvertRT();
+                    m_pEarRequest = g_AudioMgr.RequestCreateEar( W2V, pCamera->GetPosition(),
+                                                               pCamera->GetZone1(), pCamera->GetPipEarVolume() );
+                }
+                g_AudioMgr.PollCreateEar( m_pEarRequest, m_EarID );
+            }
         }
 
         // Update ear?

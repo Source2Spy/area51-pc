@@ -48,7 +48,7 @@ xbool RigidGeom_GetTriangle( const rigid_geom*          pRigidGeom,
     if( pRigidGeom==NULL )
         return FALSE;
 
-    ASSERT( pRigidGeom->m_collision.nHighClusters );
+    ASSERT( pRigidGeom->m_Collision.nHighClusters );
     
     xbool bUseHighPoly;
     s32 iCluster;
@@ -56,16 +56,16 @@ xbool RigidGeom_GetTriangle( const rigid_geom*          pRigidGeom,
 
     RigidGeom_GetPrimKey(Key,bUseHighPoly,iCluster,iTriangle);
         
-    if( !IN_RANGE( 0, iCluster, pRigidGeom->m_collision.nHighClusters-1 ) )
+    if( !IN_RANGE( 0, iCluster, pRigidGeom->m_Collision.nHighClusters-1 ) )
         return( FALSE );
 
     {
-        collision_data::high_cluster& Cluster = pRigidGeom->m_collision.pHighCluster [iCluster];
+        collision_data::high_cluster& Cluster = pRigidGeom->m_Collision.pHighCluster [iCluster];
         const rigid_geom::section& Section = pRigidGeom->m_pSection[Cluster.iSection];
         if( !IN_RANGE( 0, iTriangle, Cluster.nTris-1 ) )
             return( FALSE );
 
-        s32 Index = pRigidGeom->m_collision.pHighIndexToVert0[ Cluster.iOffset + iTriangle ];
+        s32 Index = pRigidGeom->m_Collision.pHighIndexToVert0[ Cluster.iOffset + iTriangle ];
 
         // We have arrived.  Fill out the information.
 
@@ -88,8 +88,8 @@ xbool RigidGeom_GetColDetails(const rigid_geom*     pRigidGeom,
                               object::detail_tri&   Tri )
 {
     ASSERT( pRigidGeom );
-    ASSERT( pRigidGeom->m_collision.nHighClusters );
-    const collision_data& Coll = pRigidGeom->m_collision;
+    ASSERT( pRigidGeom->m_Collision.nHighClusters );
+    const collision_data& Coll = pRigidGeom->m_Collision;
 
     xbool   bUseHighPoly;
     s32     iCluster;
@@ -305,9 +305,9 @@ void RigidGeom_RayVsPCHiPoly(      guid        Guid,
 
     // Which collision resolution to use?
     ASSERT( g_CollisionMgr.IsUsingHighPoly() );
-    ASSERT( RigidGeom.m_collision.nHighClusters );
+    ASSERT( RigidGeom.m_Collision.nHighClusters );
 
-    const collision_data& Coll = RigidGeom.m_collision;
+    const collision_data& Coll = RigidGeom.m_Collision;
 
     // For every bone...
     s32 iCurrentBone = -1;
@@ -632,7 +632,7 @@ void RigidGeom_ApplyCollision(       guid        Guid,
     //
     // Did we compile high poly collision?
     //
-    if( RigidGeom.m_collision.nHighClusters == 0 )
+    if( RigidGeom.m_Collision.nHighClusters == 0 )
     {
         return;
     }
@@ -654,8 +654,8 @@ void RigidGeom_ApplyCollision(       guid        Guid,
     // Which collision resolution to use?
     if( g_CollisionMgr.IsUsingHighPoly() )
     {
-        ASSERT( RigidGeom.m_collision.nHighClusters );
-        const collision_data& Coll = RigidGeom.m_collision;
+        ASSERT( RigidGeom.m_Collision.nHighClusters );
+        const collision_data& Coll = RigidGeom.m_Collision;
 
         // For every bone...
         for( i = 0; i < RigidGeom.m_nBones; i++ )
@@ -747,9 +747,9 @@ void RigidGeom_RenderCollision( const matrix4*  pBone,
 
     if( bRenderHigh )
     {
-        if( pRigidGeom->m_collision.nHighClusters )
+        if( pRigidGeom->m_Collision.nHighClusters )
         {
-            const collision_data& Coll = pRigidGeom->m_collision;
+            const collision_data& Coll = pRigidGeom->m_Collision;
 
             for( i = 0; i < Coll.nHighClusters; i++ )
             {      
@@ -770,9 +770,9 @@ void RigidGeom_RenderCollision( const matrix4*  pBone,
     }
     else
     {
-        if( pRigidGeom->m_collision.nLowClusters )
+        if( pRigidGeom->m_Collision.nLowClusters )
         {
-            const collision_data& Coll = pRigidGeom->m_collision;
+            const collision_data& Coll = pRigidGeom->m_Collision;
 
             xrandom R;
             R.srand( ((u32)(uaddr)(pRigidGeom)) & 0x0000FFFF );
@@ -786,8 +786,7 @@ void RigidGeom_RenderCollision( const matrix4*  pBone,
                                                             render::PRIMITIVE_BLEND_OPAQUE,
                                                             render::PRIMITIVE_DEPTH_READ_ONLY,
                                                             render::PRIMITIVE_RASTER_COLLISION_BIASED,
-                                                            render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                            render::PRIMITIVE_LAYER_SURFACE );
+                                                            render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
                 render::PrimitiveBatch Batch( Material );
 
                 xcolor CC = xcolor( R.irand( LO_COLOR, HI_COLOR ),
@@ -828,7 +827,7 @@ void RigidGeom_RenderCollision( const matrix4*  pBone,
         }
         else
         {
-            bbox BBox = pRigidGeom->m_collision.BBox;
+            bbox BBox = pRigidGeom->m_Collision.BBox;
             BBox.Transform( *pBone );
             render::debug::Box( BBox, XCOLOR_YELLOW );
         }
@@ -845,10 +844,10 @@ void RigidGeom_GatherToPolyCache(       guid        Guid,
                                const rigid_geom* pRigidGeom )
 {
     (void)BBox;
-    if( (pRigidGeom==NULL) || (pRigidGeom->m_collision.nLowClusters==0) )
+    if( (pRigidGeom==NULL) || (pRigidGeom->m_Collision.nLowClusters==0) )
         return;
 
-    g_PolyCache.GatherCluster( pRigidGeom->m_collision, pL2W, MeshMask, Guid );
+    g_PolyCache.GatherCluster( pRigidGeom->m_Collision, pL2W, MeshMask, Guid );
 }
 
 //==============================================================================

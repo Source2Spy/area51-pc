@@ -254,7 +254,9 @@ void audio_descriptor_runtime::DecodeParameters( uncompressed_parameters* pParam
 
         // User data specified?
         if( GET_USER_DATA_BIT( Bits ) )
+        {
             pParams->UserData = (u32)*pDescriptor++;
+        }
 
         // Replay delay specified?
         if( GET_REPLAY_DELAY_BIT( Bits ) )
@@ -283,49 +285,77 @@ void audio_descriptor_runtime::DecodeParameters( uncompressed_parameters* pParam
 
         // Pan specified?
         if( GET_PAN_2D_BIT( Bits ) )
+        {
             pParams->Pan2d = S8BIT_TO_FLOAT1( (*pDescriptorBytes++) );
+        }
 
         // Priority specified?
         if( GET_PRIORITY_BIT( Bits ) )
+        {
             pParams->Priority = (u32)(*pDescriptorBytes++);
+        }
 
         // Effect send specified? Default is 1.0 since this is multiplied.
         if( GET_EFFECT_SEND_BIT( Bits ) )
+        {
             pParams->EffectSend = U8BIT_TO_FLOAT1( (*pDescriptorBytes++) );
+        }
         else
+        {
             pParams->EffectSend = 1.0f;
+        }
 
         // Near falloff specified? Default is 1.0 since this is multiplied.
         if( GET_NEAR_FALLOFF_BIT( Bits ) )
+        {
             pParams->NearFalloff = U8BIT_TO_FLOAT10( (*pDescriptorBytes++) );
+        }
         else
+        {
             pParams->NearFalloff = 1.0f;
+        }
 
         // Far falloff specified? Default is 1.0 since this is multiplied.
         if( GET_FAR_FALLOFF_BIT( Bits ) )
+        {
             pParams->FarFalloff = U8BIT_TO_FLOAT10( (*pDescriptorBytes++) );
+        }
         else
+        {
             pParams->FarFalloff = 1.0f;
+        }
 
         // Rolloff curve specified?
         if( GET_ROLLOFF_METHOD_BIT( Bits ) )
+        {
             pParams->RolloffCurve = (u32)(*pDescriptorBytes++);
+        }
 
         // Near diffuse specified? Default is 1.0 since this is multiplied.
         if( GET_NEAR_DIFFUSE_BIT( Bits ) )
+        {
             pParams->NearDiffuse = U8BIT_TO_FLOAT10( (*pDescriptorBytes++) );
+        }
         else
+        {
             pParams->NearDiffuse = 1.0f;
+        }
 
         // Far diffuse specified? Default is 1.0 since this is multiplied.
         if( GET_FAR_DIFFUSE_BIT( Bits ) )
+        {
             pParams->FarDiffuse = U8BIT_TO_FLOAT10( (*pDescriptorBytes++) );
+        }
         else
+        {
             pParams->FarDiffuse = 1.0f;
+        }
 
         // Play percent specified?
         if( GET_PLAY_PERCENT_BIT( Bits ) )
+        {
             pParams->PlayPercent = (u32)(*pDescriptorBytes++);
+        }
     }
     else
     {
@@ -355,13 +385,19 @@ void audio_descriptor_runtime::DecodeParameters( uncompressed_parameters* pParam
             if( x_stricmp( AudioTweakData[i].Desc, s_pTweakDescriptor ) == 0 )
             {
                 if( AudioTweakData[i].fVolume )
+                {
                     pParams->Volume = AudioTweakData[i].fVolume;
+                }
 
                 if( AudioTweakData[i].fNearClip )
+                {
                     pParams->NearFalloff = AudioTweakData[i].fNearClip;
+                }
 
                 if( AudioTweakData[i].fFarClip)
+                {
                     pParams->FarFalloff = AudioTweakData[i].fFarClip;
+                }
 
                 return;
             }
@@ -384,11 +420,15 @@ s32 audio_descriptor_runtime::AppendHot( u32 Index, f32 DeltaTime, u16* pDescrip
     ASSERT( pPackage->m_SampleIndices[ HOT ] );
     ASSERT( Index < (u32)pPackage->m_Header.nSampleIndices[ HOT ] );
     if( Index >= (u32)pPackage->m_Header.nSampleIndices[ HOT ] || !pPackage->m_SampleIndices[ HOT ] )
+    {
         return 0;
+    }
     nChannels = (s32)(pPackage->m_SampleIndices[ HOT ][ Index+1 ] - pPackage->m_SampleIndices[ HOT ][ Index ]);
     ASSERT( (nChannels > 0) && (nChannels <= 2 ) );
     if( (nChannels <=0) || (nChannels > 2) )
+    {
         return 0;
+    }
 
     // Acquire an element for each channel.
     for( i=0 ; i<nChannels ; i++ )
@@ -396,8 +436,12 @@ s32 audio_descriptor_runtime::AppendHot( u32 Index, f32 DeltaTime, u16* pDescrip
         if( (pElements[ i ] = Runtime().Voices.AcquireElement()) == NULL)
         {
             for( s32 j=0 ; j<i ; j++ )
+            {
                 if( pElements[ j ] )
+                {
                     Runtime().Voices.ReleaseElement( pElements[ j ], FALSE );
+                }
+            }
 
             return 0;
         }
@@ -439,9 +483,13 @@ s32 audio_descriptor_runtime::AppendHot( u32 Index, f32 DeltaTime, u16* pDescrip
             {
                 // If pan was specified, then it cannot be changed.
                 if( pElement->Params.Bits & PAN_2D )
+                {
                     pElement->IsPanChangeable = FALSE;
+                }
                 else
+                {
                     pElement->IsPanChangeable = TRUE;
+                }
                 break;
             }
 
@@ -450,9 +498,13 @@ s32 audio_descriptor_runtime::AppendHot( u32 Index, f32 DeltaTime, u16* pDescrip
                 // Can't modify pan on stereo sample.
                 pElement->IsPanChangeable = FALSE;
                 if( i == 0 )
+                {
                     pElement->Params.Pan2d = -1.0f;
+                }
                 else
+                {
                     pElement->Params.Pan2d =  1.0f;
+                }
             }
         }
 
@@ -480,11 +532,15 @@ s32 audio_descriptor_runtime::AppendCold( u32 Index, f32 DeltaTime, u16* pDescri
     ASSERT( pPackage->m_SampleIndices[ COLD ] );
     ASSERT( Index < (u32)pPackage->m_Header.nSampleIndices[ COLD ] );
     if( Index >= (u32)pPackage->m_Header.nSampleIndices[ COLD ] || !pPackage->m_SampleIndices[ COLD ] )
+    {
         return 0;
+    }
     nChannels = (s32)(pPackage->m_SampleIndices[ COLD ][ Index+1 ] - pPackage->m_SampleIndices[ COLD ][ Index ]);
     ASSERT( (nChannels > 0) && (nChannels <= 2 ) );
     if( (nChannels <=0) || (nChannels > 2) )
+    {
         return 0;
+    }
 
     // Acquire an element for each channel.
     for( i=0 ; i<nChannels ; i++ )
@@ -492,8 +548,12 @@ s32 audio_descriptor_runtime::AppendCold( u32 Index, f32 DeltaTime, u16* pDescri
         if( (pElements[ i ] = Runtime().Voices.AcquireElement()) == NULL)
         {
             for( s32 j=0 ; j<i ; j++ )
+            {
                 if( pElements[ j ] )
+                {
                     Runtime().Voices.ReleaseElement( pElements[ j ], FALSE );
+                }
+            }
 
             return 0;
         }
@@ -535,9 +595,13 @@ s32 audio_descriptor_runtime::AppendCold( u32 Index, f32 DeltaTime, u16* pDescri
             {
                 // If pan was specified, then it cannot be changed.
                 if( pElement->Params.Bits & PAN_2D )
+                {
                     pElement->IsPanChangeable = FALSE;
+                }
                 else
+                {
                     pElement->IsPanChangeable = TRUE;
+                }
                 break;
             }
 
@@ -546,9 +610,13 @@ s32 audio_descriptor_runtime::AppendCold( u32 Index, f32 DeltaTime, u16* pDescri
                 // Can't modify pan on stereo sample.
                 pElement->IsPanChangeable = FALSE;
                 if( i == 0 )
+                {
                     pElement->Params.Pan2d = -1.0f;
+                }
                 else
+                {
                     pElement->Params.Pan2d =  1.0f;
+                }
             }
         }
 
@@ -594,14 +662,20 @@ public:
                         switch( Type )
                         {
                             case HOT_INDEX:
+                            {
                                 return m_Runtime.AppendHot( Index, BaseTime, pDescriptor, m_pVoice, m_pPackage );
+                            }
 
                             case COLD_INDEX:
+                            {
                                 return m_Runtime.AppendCold( Index, BaseTime, pDescriptor, m_pVoice, m_pPackage );
+                            }
 
                             default:
+                            {
                                 ASSERT( 0 );
                                 return 0;
+                            }
                         }
                     }
 
@@ -647,7 +721,9 @@ public:
                         f32 EndTime = BaseTime + m_Runtime.GetSampleLengthSeconds( Type, Index, m_pPackage );
 
                         if( EndTime > m_Length )
+                        {
                             m_Length = EndTime;
+                        }
 
                         return 0;
                     }
@@ -663,19 +739,25 @@ private:
 
 //==============================================================================
 
-static u32 GetElementParameterWords( u16* pDescriptor )
+static
+u32 GetElementParameterWords( u16* pDescriptor )
 {
     u32 ElementIndex = (u32)(*pDescriptor);
 
     if( GET_INDEX_HAS_PARAMS( ElementIndex ) )
+    {
         return (*(pDescriptor+2)) >> 1;
+    }
     else
+    {
         return 0;
+    }
 }
 
 //==============================================================================
 
-static u16* SkipElementDescriptor( u16* pDescriptor )
+static
+u16* SkipElementDescriptor( u16* pDescriptor )
 {
     return pDescriptor + 2 + GetElementParameterWords( pDescriptor );
 }
@@ -721,7 +803,9 @@ s32 audio_descriptor_runtime::WalkComplex( f32 BaseTime, u16* pDescriptor, audio
 
         Result += ChildResult;
         if( Visitor.ShouldStop( Result ) )
+        {
             return Result;
+        }
 
         pDescriptor = SkipElementDescriptor( pDescriptor );
     }
@@ -747,7 +831,9 @@ s32 audio_descriptor_runtime::WalkRandomList( f32 BaseTime, u16* pDescriptor, au
         {
             Result += WalkElement( BaseTime, pDescriptor, pPackage, Visitor, RecursionDepth );
             if( Visitor.ShouldStop( Result ) )
+            {
                 return Result;
+            }
 
             pDescriptor = SkipElementDescriptor( pDescriptor );
         }
@@ -767,17 +853,23 @@ s32 audio_descriptor_runtime::WalkRandomList( f32 BaseTime, u16* pDescriptor, au
         // Construct the used bitfield (data is not 64-bit aligned).
         pUsedWords = pUsedWordBuffer;
         for( i=0, UsedBits=0, Shift=0 ; i<4 ; i++, Shift+=16 )
+        {
             UsedBits |= (((u64)(*pUsedWords++)) << Shift);
+        }
 
         // Have we used em all? If so, start fresh.
         if( UsedBits == (((u64)1<<ElementCount)-1) )
+        {
             UsedBits = 0;
+        }
 
         // Now construct the random list.
         for( i=0, nToPickFrom=0 ; i<ElementCount ; i++ )
         {
             if( (UsedBits & ((u64)1<<i)) == 0 )
+            {
                 RandomList[ nToPickFrom++ ] = i;
+            }
         }
 
         // Pick one.
@@ -789,11 +881,15 @@ s32 audio_descriptor_runtime::WalkRandomList( f32 BaseTime, u16* pDescriptor, au
         // Update the used bits.
         pUsedWords = pUsedWordBuffer;
         for( i=0, Shift=0 ; i<4 ; i++, Shift+=16 )
+        {
             *pUsedWords++ = (u16)((UsedBits >> Shift) & 0xffff);
+        }
 
         pDescriptor += 4;
         while( Choice-- )
+        {
             pDescriptor = SkipElementDescriptor( pDescriptor );
+        }
 
         return WalkElement( BaseTime, pDescriptor, pPackage, Visitor, RecursionDepth );
     }
@@ -815,7 +911,9 @@ s32 audio_descriptor_runtime::WalkWeightedList( f32 BaseTime, u16* pDescriptor, 
         {
             Result += WalkElement( BaseTime, pDescriptor, pPackage, Visitor, RecursionDepth );
             if( Visitor.ShouldStop( Result ) )
+            {
                 return Result;
+            }
 
             pDescriptor = SkipElementDescriptor( pDescriptor );
         }
@@ -830,17 +928,23 @@ s32 audio_descriptor_runtime::WalkWeightedList( f32 BaseTime, u16* pDescriptor, 
         while( Choice < ElementCount )
         {
             if( Weight <= *pWeights++ )
+            {
                 break;
+            }
             Choice++;
         }
 
         ASSERT( Choice < ElementCount );
         if( Choice >= ElementCount )
+        {
             return 0;
+        }
 
         pDescriptor += ElementCount;
         while( Choice-- )
+        {
             pDescriptor = SkipElementDescriptor( pDescriptor );
+        }
 
         return WalkElement( BaseTime, pDescriptor, pPackage, Visitor, RecursionDepth );
     }
@@ -856,7 +960,9 @@ s32 audio_descriptor_runtime::WalkDescriptor( f32 BaseTime, u16* pDescriptor, au
     s32 Result          = 0;
 
     if( GET_DESCRIPTOR_HAS_PARAMS( DescriptorIndex ) )
+    {
         ParameterSize = *(pDescriptor+1) >> 1;
+    }
 
     if( ++RecursionDepth > MAX_DESCRIPTOR_RECURSION_DEPTH )
     {
@@ -869,25 +975,35 @@ s32 audio_descriptor_runtime::WalkDescriptor( f32 BaseTime, u16* pDescriptor, au
         switch( DescriptorType )
         {
             case SIMPLE:
+            {
                 Result = WalkSimple( BaseTime, pDescriptor, pPackage, Visitor, RecursionDepth );
                 break;
+            }
 
             case COMPLEX:
+            {
                 Result = WalkComplex( BaseTime, pDescriptor, pPackage, Visitor, RecursionDepth );
                 break;
+            }
 
             case RANDOM_LIST:
+            {
                 Result = WalkRandomList( BaseTime, pDescriptor, pPackage, Visitor, RecursionDepth );
                 break;
+            }
 
             case WEIGHTED_LIST:
+            {
                 Result = WalkWeightedList( BaseTime, pDescriptor, pPackage, Visitor, RecursionDepth );
                 break;
+            }
 
             default:
+            {
                 ASSERT( 0 );
                 Result = 0;
                 break;
+            }
         }
     }
 
@@ -942,34 +1058,46 @@ f32 audio_descriptor_runtime::GetSampleLengthSeconds( index_type Type, u32 Index
 
     ASSERT( pPackage );
     if( !pPackage )
+    {
         return 0.0f;
+    }
 
     switch( Type )
     {
         case HOT_INDEX:
+        {
             Temperature = HOT;
             pSamples    = pPackage->m_HotSamples;
             break;
+        }
 
         case COLD_INDEX:
+        {
             Temperature = COLD;
             pSamples    = pPackage->m_ColdSamples;
             break;
+        }
 
         default:
+        {
             ASSERT( 0 );
             return 0.0f;
+        }
     }
 
     ASSERT( pPackage->m_SampleIndices[ Temperature ] );
     ASSERT( Index < (u32)pPackage->m_Header.nSampleIndices[ Temperature ] );
     if( (Index >= (u32)pPackage->m_Header.nSampleIndices[ Temperature ]) || !pPackage->m_SampleIndices[ Temperature ] || !pSamples )
+    {
         return 0.0f;
+    }
 
     s32 nChannels = (s32)(pPackage->m_SampleIndices[ Temperature ][ Index+1 ] - pPackage->m_SampleIndices[ Temperature ][ Index ]);
     ASSERT( (nChannels > 0) && (nChannels <= 2 ) );
     if( (nChannels <= 0) || (nChannels > 2) )
+    {
         return 0.0f;
+    }
 
     u32            SampleIndex = (u32)pPackage->m_SampleIndices[ Temperature ][ Index ];
     byte*          pBase       = (byte*)pSamples + (SampleIndex * sizeof(sample_header));
@@ -977,7 +1105,9 @@ f32 audio_descriptor_runtime::GetSampleLengthSeconds( index_type Type, u32 Index
 
     ASSERT( pSample->SampleRate > 0 );
     if( pSample->SampleRate <= 0 )
+    {
         return 0.0f;
+    }
 
     return (f32)pSample->nSamples / (f32)pSample->SampleRate;
 }
@@ -1124,9 +1254,13 @@ s32 audio_descriptor_runtime::GetPriority( const char* pIdentifier )
 
     // Decode the parameters.
     if( GetVoiceParameters( pIdentifier, Params ) )
+    {
         return Params.Priority;
+    }
     else
+    {
         return 0;
+    }
 }
 
 //==============================================================================
@@ -1137,9 +1271,13 @@ f32 audio_descriptor_runtime::GetFarFalloff( const char* pIdentifier )
 
     // Decode the parameters.
     if( GetVoiceParameters( pIdentifier, Params ) )
+    {
         return Params.FarFalloff;
+    }
     else
+    {
         return 0.0f;
+    }
 }
 
 //==============================================================================
@@ -1150,9 +1288,13 @@ f32 audio_descriptor_runtime::GetNearFalloff( const char* pIdentifier )
 
     // Decode the parameters.
     if( GetVoiceParameters( pIdentifier, Params ) )
+    {
         return Params.NearFalloff;
+    }
     else
+    {
         return 0.0f;
+    }
 }
 
 //==============================================================================

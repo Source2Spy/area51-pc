@@ -141,15 +141,14 @@ void character_death_state::OnAdvance( f32 DeltaTime )
             //if we collide or are no longer falling
             ASSERT( pLoco );
             if (pLoco->m_Physics.GetNavCollided() || 
-                !(pLoco->m_Physics.GetFallMode() ||
-                  pLoco->m_Physics.GetJumpMode()) ||
+                !pLoco->m_Physics.IsAirborne() ||
                 m_TimeInState >= k_MaxTimeExplodFalling )
             {
                 // Create corpse
                 corpse* pCorpse = CreateAndInitCorpse(); 
                 if( pCorpse )
                 {
-                    vector3 Distance = pLoco->m_Physics.GetVelocity();
+                    vector3 Distance = pLoco->m_Physics.GetMotionVelocity();
                     Distance.Normalize();
                     pCorpse->GetPhysicsInst().ApplyVectorForce(Distance, 100.0f);                
                 }

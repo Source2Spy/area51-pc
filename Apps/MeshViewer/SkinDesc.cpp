@@ -94,7 +94,7 @@ void skingeom_rsc_desc::OnGetCompilerRules( xstring& CompilerRules )
     CompilerRules.Clear();
 
     // Name of the compiler
-    CompilerRules += "GeomCompiler.exe ";
+    CompilerRules += "GeomTool.exe ";
 
     // Verbose
     if( IsVerbose() )

@@ -20,7 +20,7 @@
 #include "Objects/PlaySurface.hpp"
 #include "Objects/ProxyPlaySurface.hpp"
 #include "Objects/ForceField.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "Player/Player.hpp"
 
 xbool IsGameMultiplayer( void )

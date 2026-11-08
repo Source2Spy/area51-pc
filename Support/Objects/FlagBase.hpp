@@ -12,7 +12,7 @@
 //==============================================================================
 
 #include "Obj_mgr/obj_mgr.hpp"
-#include "NetworkMgr/NetObj.hpp"
+#include "NetworkMgr/Replication/NetObj.hpp"
 #include "Objects/Circuit.hpp"
 #include "Objects/TeamProp.hpp"
 #include "Objects/AnimSurface.hpp"
@@ -21,6 +21,8 @@
 //==============================================================================
 //  TYPES
 //==============================================================================
+
+struct net_flag_base_update;
 
 class flag_base : public netobj
 {
@@ -52,7 +54,7 @@ virtual         s32             GetMaterial         ( void ) const;
 //rtual         void            net_Activate        ( void );
 //rtual         void            net_Deactivate      ( void );
                 
-virtual         void            net_AcceptUpdate    ( const bitstream& BitStream );
+virtual         void            net_AcceptUpdate    ( const net_flag_base_update& Update );
 virtual         void            net_ProvideUpdate   (       bitstream& BitStream, 
                                                             u32&       DirtyBits );
 

@@ -35,8 +35,9 @@ ui_manager::control_tem SettingsControls[] =
     { IDC_SETTINGS_HEADSET,  "IDS_OPTIONS_HEADSET_TEST",      "button", 40,  75, 240, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
     { IDC_SETTINGS_GRAPHICS, "IDS_OPTIONS_GRAPHICS_SETTINGS", "button", 40, 110, 240, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
     { IDC_SETTINGS_DISPLAY,  "IDS_OPTIONS_DISPLAY_SETTINGS",  "button", 40, 145, 240, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_SETTINGS_LANGUAGE, "IDS_OPTIONS_LANGUAGE_SETTINGS", "button", 40, 180, 240, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_SETTINGS_ACCEPT,   "IDS_PROFILE_OPTIONS_ACCEPT",    "button", 40, 285, 240, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_SETTINGS_UI,       "IDS_OPTIONS_UI_SETTINGS",        "button", 40, 180, 240, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_SETTINGS_LANGUAGE, "IDS_OPTIONS_LANGUAGE_SETTINGS", "button", 40, 215, 240, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_SETTINGS_ACCEPT,   "IDS_PROFILE_OPTIONS_ACCEPT",    "button", 40, 285, 240, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE },
 };
 
 //------------------------------------------------------------------------------
@@ -44,7 +45,7 @@ ui_manager::control_tem SettingsControls[] =
 ui_manager::dialog_tem SettingsDialog =
 {
     "IDS_SETTINGS",
-    1, 6,
+    1, 7,
     sizeof(SettingsControls) / sizeof(ui_manager::control_tem),
     &SettingsControls[0],
     0
@@ -96,6 +97,7 @@ xbool dlg_settings::Create( s32 UserID, ui_manager* pManager, ui_manager::dialog
     m_pHeadset  = (ui_button*)FindChildByID( IDC_SETTINGS_HEADSET );
     m_pGraphics = (ui_button*)FindChildByID( IDC_SETTINGS_GRAPHICS );
     m_pDisplay  = (ui_button*)FindChildByID( IDC_SETTINGS_DISPLAY );
+    m_pUI         = (ui_button*)FindChildByID( IDC_SETTINGS_UI );
     m_pLanguage = (ui_button*)FindChildByID( IDC_SETTINGS_LANGUAGE );
     m_pAccept   = (ui_button*)FindChildByID( IDC_SETTINGS_ACCEPT );
 
@@ -110,8 +112,8 @@ xbool dlg_settings::Create( s32 UserID, ui_manager* pManager, ui_manager::dialog
         m_CurrentControl = CurrentControl;
     }
 
-    ui_button* pButtons[] = { m_pAudio, m_pHeadset, m_pGraphics, m_pDisplay, m_pLanguage, m_pAccept };
-    for( s32 i = 0; i < 6; i++ )
+    ui_button* pButtons[] = { m_pAudio, m_pHeadset, m_pGraphics, m_pDisplay, m_pUI, m_pLanguage, m_pAccept };
+    for( s32 i = 0; i < 7; i++ )
     {
         pButtons[i]->SetFlag( ui_win::WF_BUTTON_LEFT, TRUE );
         pButtons[i]->SetFlag( ui_win::WF_VISIBLE, FALSE );
@@ -176,9 +178,9 @@ void dlg_settings::OnAccept( ui_win* pWin )
         return;
     }
 
-    ui_button* pMenus[] = { m_pAudio, m_pHeadset, m_pGraphics, m_pDisplay, m_pLanguage };
-    s32 const Controls[] = { IDC_SETTINGS_AUDIO, IDC_SETTINGS_HEADSET, IDC_SETTINGS_GRAPHICS, IDC_SETTINGS_DISPLAY, IDC_SETTINGS_LANGUAGE };
-    for( s32 i = 0; i < 5; i++ )
+    ui_button* pMenus[] = { m_pAudio, m_pHeadset, m_pGraphics, m_pDisplay, m_pUI, m_pLanguage };
+    s32 const Controls[] = { IDC_SETTINGS_AUDIO, IDC_SETTINGS_HEADSET, IDC_SETTINGS_GRAPHICS, IDC_SETTINGS_DISPLAY, IDC_SETTINGS_UI, IDC_SETTINGS_LANGUAGE };
+    for( s32 i = 0; i < 6; i++ )
     {
         if( pWin == (ui_win*)pMenus[i] )
         {
@@ -292,8 +294,8 @@ void dlg_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( g_UiMgr->IsScreenScaling() && (UpdateScreenScaling( DeltaTime ) == FALSE) )
     {
-        ui_button* pButtons[] = { m_pAudio, m_pHeadset, m_pGraphics, m_pDisplay, m_pLanguage, m_pAccept };
-        for( s32 i = 0; i < 6; i++ )
+        ui_button* pButtons[] = { m_pAudio, m_pHeadset, m_pGraphics, m_pDisplay, m_pUI, m_pLanguage, m_pAccept };
+        for( s32 i = 0; i < 7; i++ )
         {
             pButtons[i]->SetFlag( ui_win::WF_VISIBLE, TRUE );
         }
@@ -329,8 +331,8 @@ void dlg_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     g_UiMgr->UpdateGlowBar( DeltaTime );
 
-    ui_button* pButtons[] = { m_pAudio, m_pHeadset, m_pGraphics, m_pDisplay, m_pLanguage, m_pAccept };
-    for( s32 i = 0; i < 6; i++ )
+    ui_button* pButtons[] = { m_pAudio, m_pHeadset, m_pGraphics, m_pDisplay, m_pUI, m_pLanguage, m_pAccept };
+    for( s32 i = 0; i < 7; i++ )
     {
         if( pButtons[i]->IsFocused() )
         {

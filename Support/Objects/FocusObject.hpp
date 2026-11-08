@@ -131,11 +131,6 @@ protected:
     static rhandle<texture>     m_Bracket;
     circleFocus                 m_CircleFocusObj[3];
     xbool                       m_bLocked;
-    f32                         m_CircleFocusColorAlpha;
-    xbool                       m_CircleFocusFadeIN;
-    xbool                       m_CircleFocusFadeOUT;
-    f32                         m_CircleFocusFadeStep;
-    s32                         m_CircleFocusFadeStepIndex;
 
 //=========================================================================
 };

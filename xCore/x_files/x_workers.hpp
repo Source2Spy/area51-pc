@@ -24,7 +24,7 @@
 #define X_WORKERS_MAX_SERVICES      8
 
 #ifndef X_WORKERS_DEFAULT_WORKERS
-#define X_WORKERS_DEFAULT_WORKERS   4
+#define X_WORKERS_DEFAULT_WORKERS   8
 #endif
 
 // Keep worker diagnostics out of the default runtime surface.

@@ -167,8 +167,7 @@ void RenderLitSolidBox( const bbox&    BBox,
                                                 IsTransparent ? render::PRIMITIVE_BLEND_ALPHA : render::PRIMITIVE_BLEND_OPAQUE,
                                                 render::PRIMITIVE_DEPTH_READ_ONLY,
                                                 render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                IsTransparent ? render::PRIMITIVE_LAYER_TRANSPARENT : render::PRIMITIVE_LAYER_SURFACE );
+                                                render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
     render::PrimitiveBatch Batch( Material );
     Batch.Reserve( 36, 36 );
     AddLitQuad( Batch, P[0], P[2], P[6], P[4], LightDir, LightDirI, LightAmbI, LightColor ) ; // F

@@ -50,8 +50,18 @@ public:
     void            SetNavPos           ( const irect& r );
 
 protected:
+    enum highlight_state
+    {
+        HS_NONE,
+        HS_HOVERED,
+        HS_SELECTED,
+        HS_ACTIVE,
+        HS_PRESSED,
+    };
+
     xbool              ShouldRenderHighlight( void ) const;
     visual_state        GetVisualState      ( xbool Active ) const;
+    void                RenderHighlightRect ( const irect& Bounds, highlight_state State ) const;
 
     irect               m_NavPos;
 };

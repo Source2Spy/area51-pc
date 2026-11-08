@@ -148,8 +148,7 @@ void occluder_mgr::RenderAllOccluders( void )
                                                     render::PRIMITIVE_BLEND_ALPHA,
                                                     render::PRIMITIVE_DEPTH_READ_ONLY,
                                                     render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                    render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                    render::PRIMITIVE_LAYER_TRANSPARENT );
+                                                    render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
     render::PrimitiveBatch FillBatch( FillMaterial );
     for( i=0; i<m_nOccluders; i++ )
     {
@@ -173,8 +172,7 @@ void occluder_mgr::RenderAllOccluders( void )
                                                     render::PRIMITIVE_BLEND_ALPHA,
                                                     render::PRIMITIVE_DEPTH_DISABLED,
                                                     render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                    render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                    render::PRIMITIVE_LAYER_TRANSPARENT );
+                                                    render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
     render::PrimitiveBatch LineBatch( LineMaterial );
     for( i=0; i<m_nOccluders; i++ )
     {
@@ -209,8 +207,7 @@ void occluder_mgr::RenderUsableOccluders( void )
                                                     render::PRIMITIVE_BLEND_ALPHA,
                                                     render::PRIMITIVE_DEPTH_READ_ONLY,
                                                     render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                    render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                    render::PRIMITIVE_LAYER_TRANSPARENT );
+                                                    render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
     render::PrimitiveBatch FillBatch( FillMaterial );
     for( i=0; i<m_nUsableOccluders; i++ )
     {
@@ -234,8 +231,7 @@ void occluder_mgr::RenderUsableOccluders( void )
                                                     render::PRIMITIVE_BLEND_ALPHA,
                                                     render::PRIMITIVE_DEPTH_DISABLED,
                                                     render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                    render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                    render::PRIMITIVE_LAYER_TRANSPARENT );
+                                                    render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
     render::PrimitiveBatch LineBatch( LineMaterial );
     for( i=0; i<m_nUsableOccluders; i++ )
     {

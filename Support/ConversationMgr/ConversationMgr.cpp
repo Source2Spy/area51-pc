@@ -153,7 +153,7 @@ u32 conversation_mgr::PlayHotVoice( const char* pDescriptor, const vector3& Posi
 
 xbool conversation_mgr::IsActive( u32 VoiceID )
 {
-    return g_AudioMgr.IsValidVoiceId( VoiceID );
+    return g_AudioMgr.IsValidVoiceIdCached( VoiceID );
 }
 
 //==============================================================================
@@ -181,7 +181,7 @@ void conversation_mgr::SetFalloff( u32 VoiceID, f32 NearScale, f32 FarScale )
 
 f32 conversation_mgr::GetVolume( u32 VoiceID )
 {
-    return g_AudioMgr.GetVolume( VoiceID );
+    return g_AudioMgr.GetVolumeCached( VoiceID );
 }
 
 //==============================================================================
@@ -195,14 +195,14 @@ void conversation_mgr::SetVolume( u32 VoiceID, f32 Volume )
 
 xbool conversation_mgr::IsPlaying( u32 VoiceID )
 {
-    return g_AudioMgr.IsValidVoiceId( VoiceID );
+    return g_AudioMgr.IsValidVoiceIdCached( VoiceID );
 }
 
 //==============================================================================
 
 xbool conversation_mgr::IsReadyToPlay( u32 VoiceID )
 {
-    return g_AudioMgr.IsVoiceReady( VoiceID );
+    return g_AudioMgr.IsVoiceReadyCached( VoiceID );
 }
 
 //==============================================================================

@@ -80,10 +80,7 @@ void hud_mutant_vision::OnRender( player* pPlayer )
     eng_SetView( OverlayView );
 
     // render it!
-    VERIFY( render::BeginPrimitiveRender() );
     m_OverlayHandle.Render( );
-    render::EndPrimitiveRender();
-    render::ExecuteForwardRender();
 
     // restore the original view
     eng_SetView( OrigView );
@@ -130,7 +127,7 @@ xbool hud_mutant_vision::OnProperty( prop_query& rPropQuery )
 void hud_mutant_vision::OnEnumProp( prop_enum& List )
 {
     List.PropEnumHeader  ( "MutantVision", "Properties for the mutant vision HUD elements", 0 );
-    List.PropEnumExternal( "MutantVision\\OverlayFX" , "Resource\0fxo", "Particle for the overlay effect" , PROP_TYPE_MUST_ENUM );
+    List.PropEnumExternal( "MutantVision\\OverlayFX" , "Resource\0fxo\0", "Particle for the overlay effect" , PROP_TYPE_MUST_ENUM );
 }
 
 //==============================================================================

@@ -31,15 +31,12 @@ enum profile_options_controls
     IDC_PROFILE_OPTIONS_CONTROLS,
     IDC_PROFILE_OPTIONS_AVATAR,
     IDC_PROFILE_OPTIONS_DIFFICULTY,
-    IDC_PROFILE_ONLINE_STATUS,
     IDC_PROFILE_OPTIONS_AUTOSAVE,
     IDC_PROFILE_OPTIONS_ACCEPT,
 
     IDC_PROFILE_DIFFICULTY_BBOX,
     IDC_PROFILE_DIFFICULTY_SELECT,
 
-    IDC_PROFILE_STATUS_BBOX,
-    IDC_PROFILE_STATUS_SELECT,
 
     IDC_PROFILE_AUTOSAVE_BBOX,
     IDC_PROFILE_AUTOSAVE_SELECT,
@@ -100,16 +97,13 @@ protected:
     ui_button*            m_pButtonControls;
     ui_button*          m_pButtonAvatar;
     ui_button*          m_pButtonDifficulty;
-    ui_button*          m_pButtonOnlineStatus;
     ui_button*          m_pButtonAutosave;
     ui_button*          m_pButtonCreate;
 
     ui_blankbox*        m_pDifficultyBBox;
-    ui_blankbox*        m_pOnlineStatusBBox;
     ui_blankbox*        m_pAutosaveBBox;
 
     ui_combo*           m_pDifficultySelect;
-    ui_combo*           m_pOnlineStatusSelect;
     ui_combo*           m_pAutosaveSelect;
 
 
@@ -121,10 +115,6 @@ protected:
     s32                 m_PopUpType;
     s32                 m_PopUpResult;
     player_profile      m_OriginalProfile;
-
-#ifdef TARGET_XBOX
-    s32                 m_BlocksRequired;
-#endif
 };
 
 //==============================================================================

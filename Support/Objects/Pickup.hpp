@@ -23,6 +23,7 @@
 //nclude "Hud\Focus_Inst.hpp"
 #include "Inventory/Inventory2.hpp"
 #include "NetProjectile.hpp"
+#include "Characters/FloorProperties.hpp"
 
 //=========================================================================
 // CLASS
@@ -32,8 +33,11 @@ class actor;
 
 //=========================================================================
 
+struct net_pickup_update;
+
 class pickup : public net_proj
 {
+    friend struct net_pickup_update;
 protected:
     enum state
     {
@@ -79,6 +83,7 @@ virtual         void            OnEnumProp          ( prop_enum& rList );
 virtual         xbool           OnProperty          ( prop_query& rPropQuery );
 
 virtual         void            OnRender            ( void );
+virtual         void            OnRenderShadowCast  ( u64 ProjMask );
 virtual         void            OnColCheck          ( void );   
                 rigid_inst&     GetRigidInst        ( void ) { return( m_Inst ); }
      
@@ -94,7 +99,7 @@ static  const   object_desc&    GetObjectType       ( void );
                 f32             GetAmount           ( void ) const { return m_Amount; }
 
 #ifndef X_EDITOR
-virtual         void            net_AcceptUpdate    ( const bitstream& BS );
+virtual         void            net_AcceptUpdate    ( const net_pickup_update& Update );
 virtual         void            net_ProvideUpdate   (       bitstream& BS, u32& DirtyBits );
 virtual         u32             net_GetUpdateMask   ( s32 TargetClient ) const;
 #endif
@@ -112,6 +117,7 @@ virtual         void            OnColNotify         ( object& Object );
                 void            ProcessTake         ( actor& Actor );
                 void            SetupRigidGeom      ( const char* pGeomName = NULL );
                 xbool           ShouldHidePickup    ( void );
+const   matrix4&                GetPickupRenderL2W  ( void ) const;
 
                 const char*     GetSound            ( void );
                 
@@ -127,6 +133,7 @@ protected:
                 f32             m_DecayTime;            // Time until pickup decays
                 f32             m_Timer;                // Timer for next respawn
                 rigid_inst      m_Inst;                 // Render Instance
+                floor_properties m_FloorProperties;     // Floor lighting
                 rhandle<char>   m_hAudioPackage;        // Audio resource
                 rhandle<char>   m_hParticleEffect;      // Effect resource
                 guid            m_FXGuid;               // FX

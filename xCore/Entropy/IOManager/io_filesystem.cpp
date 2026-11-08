@@ -16,6 +16,15 @@
 #include "Device_Host/io_device_host.hpp"
 #include "x_log.hpp"
 
+#if defined( TARGET_DESKTOP ) || defined( TARGET_MOBILE )
+#include <filesystem>
+#if defined( TARGET_WINDOWS )
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
+#endif
+
 //==============================================================================
 //  DEFINES
 //==============================================================================
@@ -73,7 +82,9 @@ static xbool io_path_chars_equal( char Left, char Right )
 {
 #if defined( TARGET_POSIX )
     if( ((Left == '\\') || (Left == '/')) && ((Right == '\\') || (Right == '/')) )
+    {
         return TRUE;
+    }
 
     return x_tolower( (s32)(unsigned char)Left ) == x_tolower( (s32)(unsigned char)Right );
 #else
@@ -103,7 +114,9 @@ static void io_clean_path( char* pClean, const char* pFilename )
 
     // Skip any leading \ or /
     while( *pSource == '\\' || *pSource == '/' )
+    {
         pSource++;
+    }
 
     while( *pSource )
     {
@@ -113,7 +126,9 @@ static void io_clean_path( char* pClean, const char* pFilename )
             pSource++;
 
             while( *pSource && ((*pSource == '\\') || (*pSource == '/')) )
+            {
                 pSource++;
+            }
         }
         else
         {
@@ -141,7 +156,9 @@ static void io_clean_host_path( char* pClean, const char* pFilename )
             pSource++;
 
             while( *pSource && ((*pSource == '\\') || (*pSource == '/')) )
+            {
                 pSource++;
+            }
         }
         else
         {
@@ -181,9 +198,13 @@ static s32 io_read_sync( io_device_file* pFile, void* Buffer, s32 Offset, s32 Le
 
     // Success?
     if( Request.GetStatus() == io_request::COMPLETED )
+    {
         return Length;
+    }
     else
+    {
         return 0;
+    }
 }
 
 //==============================================================================
@@ -257,22 +278,30 @@ static s32 io_seek( X_FILE* pFile, s32 Offset, s32 Origin )
 
         switch( Origin )
         {
-            case X_SEEK_SET: 
+            case X_SEEK_SET:
+            {
                 Position = Offset;   
                 break;
+            }
 
-            case X_SEEK_CUR: 
+            case X_SEEK_CUR:
+            {
                 Position += Offset; 
                 break;
+            }
 
-            case X_SEEK_END: 
+            case X_SEEK_END:
+            {
                 Position = Length + Offset;
                 break;
+            }
 
             default:
+            {
                 ASSERT( 0 );
                 Result = -1;
                 break;
+            }
         }
 
         if( Position < 0 )
@@ -783,7 +812,9 @@ xbool io_fs::UnmountFileSystem( const char* pPathName )
     {
         // Match?
         if( x_stricmp( m_DFS[i].PathName, pPathName ) == 0 )
+        {
             break;
+        }
     }
     
     // Find it?
@@ -1054,7 +1085,9 @@ xbool io_fs::CompareFile( const char* pPathName, io_device_file* &DeviceFile, u3
     while( *p2 )
     {
         if( !io_path_chars_equal( *p1++, *p2++ ) )
+        {
             return FALSE;
+        }
     }
 
     // Compare the filename (part 1)...
@@ -1062,7 +1095,9 @@ xbool io_fs::CompareFile( const char* pPathName, io_device_file* &DeviceFile, u3
     while( *p2 )
     {
         if( !io_path_chars_equal( *p1++, *p2++ ) )
+        {
             return FALSE;
+        }
     }
 
     // Compare the filename (part 2)...
@@ -1070,7 +1105,9 @@ xbool io_fs::CompareFile( const char* pPathName, io_device_file* &DeviceFile, u3
     while( *p2 )
     {
         if( !io_path_chars_equal( *p1++, *p2++ ) )
+        {
             return FALSE;
+        }
     }
 
     // Compare the extension...
@@ -1078,12 +1115,16 @@ xbool io_fs::CompareFile( const char* pPathName, io_device_file* &DeviceFile, u3
     while( *p2 )
     {
         if( !io_path_chars_equal( *p1++, *p2++ ) )
+        {
             return FALSE;
+        }
     }
 
     // Make sure terminating 0 matches...
     if( *p1 != *p2 )
+    {
         return FALSE;
+    }
 
     // Emulated DFS: open the host file directly.
     if( m_DFS[SubFile].bEmulated )
@@ -1134,7 +1175,9 @@ xbool io_fs::CompareFile( const char* pPathName, io_device_file* &DeviceFile, u3
 
                 // Now make the offset relative to the start of the file.
                 if( i>0 )
+                {
                     Offset -= pSubFile[i-1].Offset;
+                }
             }
 
             // Woot!
@@ -1165,7 +1208,9 @@ xbool io_fs::SearchDFS( const char* pPathName, io_device_file* &DeviceFile, u32 
 
     // If it is an empty dfs - dont search.
     if( nFiles == 0 )
+    {
         return FALSE;
+    }
 
     // Search thru 'em all!
     while( (iMinus >= 0) || (iPlus < nFiles) )
@@ -1254,7 +1299,9 @@ xbool io_fs::FindFile( const char* pPathName, io_device_file* &DeviceFile, u32 &
                 // Is it there?
                 Result = SearchDFS( pCleanFilename, DeviceFile, Offset, Length, i, 0, pRAM );
                 if( Result )
+                {
                     m_CurrentDFS = i;
+                }
             }
         }
     }
@@ -1291,6 +1338,121 @@ void io_fs::EnableChecksum( void* pOpenFile, xbool bEnable )
 
 //==============================================================================
 
+#if defined( TARGET_DESKTOP ) || defined( TARGET_MOBILE )
+
+X_FILE* io_fs::OpenHostFile( const char* pPathName, const char* pMode )
+{
+    if( !s_Initialized || !pPathName || !pPathName[0] || !pMode )
+    {
+        return NULL;
+    }
+
+    const xbool Read = x_strcmp( pMode, "rb" ) == 0;
+    const xbool Write = x_strcmp( pMode, "wb" ) == 0;
+    const xbool Absolute = pPathName[0] == '/' || pPathName[0] == '\\' ||
+                           ( pPathName[1] == ':' && ( pPathName[2] == '/' || pPathName[2] == '\\' ) );
+    if( !( Read || Write ) || !Absolute )
+    {
+        return NULL;
+    }
+
+    m_Mutex.Enter();
+    if( !m_FreeFiles )
+    {
+        m_Mutex.Exit();
+        return NULL;
+    }
+
+    X_FILE* pNative = old_Open( pPathName, pMode );
+    io_open_file* pFile = NULL;
+    if( pNative )
+    {
+        pFile = AcquireFile();
+        pFile->bRead           = Read;
+        pFile->bWrite          = Write;
+        pFile->bAppend         = FALSE;
+        pFile->PassThrough     = pNative;
+        pFile->pDeviceFile     = NULL;
+        pFile->pRAM            = NULL;
+        pFile->Offset          = 0;
+        pFile->Length          = old_Length( pNative );
+        pFile->Position        = 0;
+        pFile->Mode            = Read ? io_device::READ : io_device::WRITE;
+        pFile->pNext           = NULL;
+        pFile->bEnableChecksum = FALSE;
+#ifdef IO_RETAIN_FILENAME
+        x_strncpy( pFile->Filename, pPathName, sizeof( pFile->Filename ) );
+        pFile->Filename[sizeof( pFile->Filename ) - 1] = 0;
+#endif
+    }
+
+    m_Mutex.Exit();
+    return reinterpret_cast<X_FILE*>( pFile );
+}
+
+//==============================================================================
+
+xbool io_fs::WriteHostFileAtomic( const char* pPathName, const void* pData, s32 Bytes )
+{
+    if( !s_Initialized || !pPathName || !pPathName[0] || ( Bytes < 0 ) || ( Bytes && !pData ) )
+    {
+        return FALSE;
+    }
+
+    const std::filesystem::path Path( pPathName );
+    if( !Path.is_absolute() )
+    {
+        return FALSE;
+    }
+
+    std::error_code Error;
+    std::filesystem::create_directories( Path.parent_path(), Error );
+    if( Error )
+    {
+        return FALSE;
+    }
+
+#if defined( TARGET_WINDOWS )
+    const u32 ProcessId = static_cast<u32>( GetCurrentProcessId() );
+#else
+    const u32 ProcessId = static_cast<u32>( getpid() );
+#endif
+    const xstring TempPath = xstring( xfs( "%s.%u.%d.%llu.tmp", pPathName, ProcessId, x_GetThreadID(),
+                                         static_cast<unsigned long long>( x_GetTime() ) ) );
+    X_FILE* pFile = OpenHostFile( TempPath, "wb" );
+    if( !pFile )
+    {
+        return FALSE;
+    }
+
+    const xbool Written = ( x_fwrite( pData, 1, Bytes, pFile ) == Bytes );
+    const xbool Flushed = x_fflush( pFile ) == 0;
+    x_fclose( pFile );
+
+    if( Written && Flushed )
+    {
+#if defined( TARGET_WINDOWS )
+        if( MoveFileExA( TempPath, pPathName, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH ) )
+        {
+            return TRUE;
+        }
+#else
+        std::filesystem::rename( static_cast<const char*>( TempPath ), Path, Error );
+        if( !Error )
+        {
+            return TRUE;
+        }
+#endif
+    }
+
+    std::filesystem::remove( static_cast<const char*>( TempPath ), Error );
+    return FALSE;
+}
+
+#endif // TARGET_DESKTOP || TARGET_MOBILE
+
+//==============================================================================
+
 io_open_file* io_fs::Open( const char* pPathName, const char* pMode )
 {
     io_open_file* pOpenFile       = NULL;
@@ -1304,7 +1466,9 @@ io_open_file* io_fs::Open( const char* pPathName, const char* pMode )
     s32           OpenFlags       = 0;
 
     if( !s_Initialized )
+    {
         return NULL;
+    }
 
     // Acquire the mutex.
     m_Mutex.Enter();
@@ -1435,9 +1599,6 @@ io_open_file* io_fs::Open( const char* pPathName, const char* pMode )
 #endif // IO_FS_PASS_OPEN_SUCCESS
         }
 
-#if !defined(TARGET_DVD) && ( defined(TARGET_PS2) || defined(TARGET_XBOX) )
-        g_IoMgr.SetDevicePathPrefix( temp, Device );
-#endif
     }
 #endif //ENABLE_PASSTHROUGH
     if( pOpenFile )
@@ -1761,7 +1922,9 @@ const char* io_fs::GetFileName( const X_FILE* pFile )
     ASSERTS( s_Initialized, "Rob's file system is not initialized" );
 
     if (NULL == pFile)
+    {
         return "-No File Handle-";
+    }
 #ifdef IO_RETAIN_FILENAME
     return ((io_open_file*)pFile)->Filename;
 #else
@@ -1786,13 +1949,17 @@ s32 io_fs::GetFileSystemIndex( const char* pPathName )
     {
         // Match?
         if( x_stricmp( m_DFS[i].PathName, pPathName ) == 0 )
+        {
             break;
+        }
     }
 
     m_Mutex.Exit();
 
     if( i==m_DFS.GetCount() )
+    {
         return -1;
+    }
 
     return i;
 }
@@ -1802,7 +1969,9 @@ s32 io_fs::GetFileSystemIndex( const char* pPathName )
 s32 io_fs::GetNFilesInFileSystem( s32 iFileSystem )
 {
     if( iFileSystem == -1 )
+    {
         return 0;
+    }
 
     ASSERT( (iFileSystem>=0) && (iFileSystem<m_DFS.GetCount()) );
 
@@ -1827,4 +1996,54 @@ void io_fs::GetFileNameInFileSystem( s32 iFileSystem, s32 iFile, char* pFileName
     ASSERT( (iFile>=0) && (iFile<m_DFS[iFileSystem].pHeader->nFiles) );
 
     dfs_BuildFileName( m_DFS[iFileSystem].pHeader, iFile, pFileName );
+}
+
+//==============================================================================
+
+xbool io_fs::OwnsFile( const X_FILE* pFile ) const
+{
+    const uaddr Address = reinterpret_cast<uaddr>(pFile);
+    const uaddr Base = reinterpret_cast<uaddr>(m_Files);
+    return s_Initialized && Address >= Base && Address < Base+sizeof(m_Files) &&
+           ((Address-Base) % sizeof(io_open_file)) == 0;
+}
+
+//==============================================================================
+
+xbool io_fs::ReadAsync( io_open_file* pFile, io_request& Request, byte* pBuffer, u32 Offset, u32 Size )
+{
+    if( !OwnsFile(reinterpret_cast<X_FILE*>(pFile)) || !pBuffer || !Size || !pFile->bRead ||
+        Offset > static_cast<u32>(pFile->Length) || Size > static_cast<u32>(pFile->Length)-Offset ||
+        static_cast<u64>(pFile->Offset)+Offset+Size > 0x7fffffffull )
+    {
+        return FALSE;
+    }
+    if( pFile->bEnableChecksum && ((Offset | Size | pFile->Offset) & 0x7fff) )
+    {
+        return FALSE;
+    }
+    Request.SetRequest(pFile, pBuffer, pFile->Offset+Offset, Size, io_request::MEDIUM_PRIORITY,
+                       TRUE, 0, 0, io_request::READ_OP);
+    if( pFile->pRAM )
+    {
+        x_memcpy(pBuffer, static_cast<byte*>(pFile->pRAM)+pFile->Offset+Offset, Size);
+        Request.m_Status = io_request::COMPLETED;
+        Request.ReleaseSemaphore();
+        return TRUE;
+    }
+    if( pFile->PassThrough )
+    {
+        m_Mutex.Enter();
+        const xbool Read = old_Seek(pFile->PassThrough, pFile->Offset+Offset, X_SEEK_SET) == 0 &&
+                           old_Read(pFile->PassThrough, pBuffer, Size) == static_cast<s32>(Size);
+        m_Mutex.Exit();
+        Request.m_Status = Read ? io_request::COMPLETED : io_request::FAILED;
+        Request.ReleaseSemaphore();
+        return TRUE;
+    }
+    if( !pFile->pDeviceFile )
+    {
+        return FALSE;
+    }
+    return g_IoMgr.QueueRequest(&Request) >= 0;
 }

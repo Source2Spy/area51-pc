@@ -455,6 +455,24 @@ void input_action_map::AddBinding( s32                     ActionID,
 
 //==============================================================================
 
+void input_action_map::RemoveBindings( s32 ActionID, input_device Device )
+{
+    for( s32 Platform = 0; Platform < INPUT_PLATFORM_COUNT; Platform++ )
+    {
+        for( s32 i = m_Bindings[Platform].GetCount() - 1; i >= 0; i-- )
+        {
+            const binding& Binding = m_Bindings[Platform][i];
+            if( (Binding.ActionID == ActionID) &&
+                (input_system::GetGadgetDevice( Binding.GadgetID ) == Device) )
+            {
+                m_Bindings[Platform].Delete( i );
+            }
+        }
+    }
+}
+
+//==============================================================================
+
 void input_action_map::SetActiveContext( u32 ContextMask )
 {
     ASSERT( ContextMask != 0 );

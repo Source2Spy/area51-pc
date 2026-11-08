@@ -147,7 +147,7 @@ void marker_object::OnEnumProp( prop_enum& List )
     
     // Add animation info
     List.PropEnumHeader  ( "Anim",          "Preview animation info", PROP_TYPE_DONT_EXPORT );
-    List.PropEnumExternal( "Anim\\Group",   "Resource\0animexternal", "Select the animation and animation group.", PROP_TYPE_MUST_ENUM | PROP_TYPE_EXTERNAL | PROP_TYPE_DONT_EXPORT );
+    List.PropEnumExternal( "Anim\\Group",   "Resource\0animexternal\0", "Select the animation and animation group.", PROP_TYPE_MUST_ENUM | PROP_TYPE_EXTERNAL | PROP_TYPE_DONT_EXPORT );
     List.PropEnumString  ( "Anim\\Name",    "Name of animation to display", PROP_TYPE_DONT_EXPORT );
     List.PropEnumInt     ( "Anim\\Frame",   "Frame to display", PROP_TYPE_DONT_EXPORT );
     List.PropEnumBool    ( "Anim\\Animate", "Animate or show static frame", PROP_TYPE_MUST_ENUM | PROP_TYPE_DONT_EXPORT );

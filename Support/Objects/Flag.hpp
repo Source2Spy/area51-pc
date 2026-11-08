@@ -12,10 +12,11 @@
 //==============================================================================
 
 #include "Obj_mgr/obj_mgr.hpp"
-#include "NetworkMgr/NetObj.hpp"
+#include "NetworkMgr/Replication/NetObj.hpp"
 #include "Objects/Render/RigidInst.hpp"
 #include "Objects/Cloth.hpp"
 #include "Objects/Render/ClothInst.hpp"
+#include "Characters/FloorProperties.hpp"
 #include "FX/fx_Mgr.hpp"
 
 
@@ -54,6 +55,8 @@ enum RenderAs
     FRIEND_TO_TEAM_OMEGA  = 5,
 };
 
+struct net_flag_update;
+
 class flag : public netobj
 {
 public:
@@ -89,6 +92,7 @@ public:
 
                     s32             GetVTexture         ( void );
 
+    virtual         void            OnInit              ( void );
     virtual         void            OnRender            ( void );
     virtual         void            OnRenderShadowCast  ( u64 ProjMask );
     virtual         void            OnAdvanceSimulation      ( f32 DeltaTime );
@@ -109,7 +113,7 @@ public:
     //rtual         void            net_Activate        ( void );
     //rtual         void            net_Deactivate      ( void );
 
-    virtual         void            net_AcceptUpdate    ( const bitstream& BitStream );
+    virtual         void            net_AcceptUpdate    ( const net_flag_update& Update );
     virtual         void            net_ProvideUpdate   (       bitstream& BitStream, 
         u32&       DirtyBits );
 
@@ -163,7 +167,6 @@ protected:
     //------------------------------------------------------------------------------
 public:
 
-            u32             GetRenderMode       ( void );
             virtual         void            OnProjectileImpact  ( const object&  Projectile,
     const   vector3& Velocity,
             u32      CollPrimKey, 
@@ -175,9 +178,10 @@ public:
             virtual         void            OnTransform         ( const matrix4& L2W    );
             void            InitCloth           ( void );
 
-            cloth           m_ClothSim;
-            cloth_inst      m_ClothRender;
-            f32             m_ActiveTimer;  // If >0, cloth is updated.
+            floor_properties    m_FloorProperties;
+            cloth               m_ClothSim;
+            cloth_inst          m_ClothRender;
+            f32                 m_ActiveTimer;  // If >0, cloth is updated.
 };
 
 //==============================================================================

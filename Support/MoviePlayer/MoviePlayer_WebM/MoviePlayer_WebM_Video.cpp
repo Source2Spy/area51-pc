@@ -10,8 +10,6 @@
 //  PLATFORM CHECK
 //==============================================================================
 
-// Let it be only for PC, for now...
-
 #include "x_target.hpp"
 
 #if !defined( TARGET_DESKTOP ) && !defined( TARGET_MOBILE )
@@ -26,14 +24,6 @@
 #include "x_memory.hpp"
 
 #include "MoviePlayer_WebM_Private.hpp"
-
-//==============================================================================
-// DEFINES
-//==============================================================================
-
-#ifndef VPX_IMG_FMT_IYUV
-#define VPX_IMG_FMT_IYUV VPX_IMG_FMT_I420
-#endif
 
 using namespace movie_webm;
 
@@ -74,6 +64,10 @@ video_decoder::~video_decoder(void)
 
 xbool video_decoder::Initialize(const player_config& Config)
 {
+    if ((Config.Width <= 0) || (Config.Width > 8192) ||
+        (Config.Height <= 0) || (Config.Height > 8192))
+        return FALSE;
+
     m_Width      = Config.Width;
     m_Height     = Config.Height;
     m_FramePitch = m_Width * 4;
@@ -149,63 +143,67 @@ void video_decoder::DestroyCodec(void)
 
 //==============================================================================
 
-xbool video_decoder::DecodeSample(const sample& Sample, mkvparser::IMkvReader* pReader)
+decode_status video_decoder::DecodeSample(const sample& Sample, mkvparser::IMkvReader* pReader, xbool ConvertImage)
 {
     ASSERT(m_bCodecInitialized);
     ASSERT(Sample.pBlock);
     ASSERT(pReader);        
     
     if (!m_bCodecInitialized || !Sample.pBlock || !pReader)
-        return FALSE;
+        return DECODE_ERROR;
 
     const mkvparser::Block* pBlock = Sample.pBlock;
-    const s32 frameCount = pBlock->GetFrameCount();
+    xbool hasImage = FALSE;
+    if ((Sample.FrameIndex < 0) || (Sample.FrameIndex >= pBlock->GetFrameCount()))
+        return DECODE_ERROR;
 
-    for (s32 frameIndex = 0; frameIndex < frameCount; ++frameIndex)
+    const mkvparser::Block::Frame& Frame = pBlock->GetFrame(Sample.FrameIndex);
+    const s32 frameSize = (s32)Frame.len;
+
+    if ((Frame.len <= 0) || (Frame.len > INT_MAX - INT_MAX / 4 - 4096))
+        return DECODE_ERROR;
+
+    if (frameSize > m_CompressedBuffer.GetCapacity())
     {
-        const mkvparser::Block::Frame& Frame = pBlock->GetFrame(frameIndex);
-        const s32 frameSize = (s32)Frame.len;
-
-        if (frameSize <= 0)
-            continue;
-
-        if (frameSize > m_CompressedBuffer.GetCapacity())
-        {
-            const s32 newCapacity = frameSize + (frameSize / 4) + 4096;
-            m_CompressedBuffer.SetCapacity(newCapacity);
-        }
-
-        m_CompressedBuffer.SetCount(frameSize);
-        if (Frame.Read(pReader, m_CompressedBuffer.GetPtr()) < 0)
-        {
-            x_DebugMsg("MoviePlayer_WebM: Failed to read video frame.\n");
-            continue;
-        }
-
-        const vpx_codec_err_t Err = vpx_codec_decode(&m_CodecCtx, m_CompressedBuffer.GetPtr(), frameSize, NULL, 0);
-        if (Err != VPX_CODEC_OK)
-        {
-            x_DebugMsg("MoviePlayer_WebM: vpx decode error (%s)\n", vpx_codec_err_to_string(Err));
-            return FALSE;
-        }
-
-        vpx_codec_iter_t Iter = NULL;
-        const vpx_image_t* pImage = vpx_codec_get_frame(&m_CodecCtx, &Iter);
-        if (!pImage)
-            continue;
-
-        if (!ConvertFrame(*pImage))
-            return FALSE;
+        const s32 newCapacity = frameSize + (frameSize / 4) + 4096;
+        m_CompressedBuffer.SetCapacity(newCapacity);
     }
 
-    return TRUE;
+    m_CompressedBuffer.SetCount(frameSize);
+    if (Frame.Read(pReader, m_CompressedBuffer.GetPtr()) < 0)
+    {
+        x_DebugMsg("MoviePlayer_WebM: Failed to read video frame.\n");
+        return DECODE_ERROR;
+    }
+
+    const vpx_codec_err_t Err = vpx_codec_decode(&m_CodecCtx, m_CompressedBuffer.GetPtr(), frameSize, NULL, 0);
+    if (Err != VPX_CODEC_OK)
+    {
+        x_DebugMsg("MoviePlayer_WebM: vpx decode error %d (%s): %s\n",
+                   (s32)Err, vpx_codec_err_to_string(Err),
+                   vpx_codec_error_detail(&m_CodecCtx) ? vpx_codec_error_detail(&m_CodecCtx) : "");
+        return DECODE_ERROR;
+    }
+
+    vpx_codec_iter_t Iter = NULL;
+    const vpx_image_t* pImage;
+    while ((pImage = vpx_codec_get_frame(&m_CodecCtx, &Iter)) != NULL)
+    {
+        hasImage = TRUE;
+        if (ConvertImage && !ConvertFrame(*pImage))
+            return DECODE_ERROR;
+    }
+
+    if (!hasImage)
+        return DECODE_EMPTY;
+    return ConvertImage ? DECODE_FRAME : DECODE_DISCARDED;
 }
 
 //==============================================================================
 
 xbool video_decoder::ConvertFrame(const vpx_image_t& Image)
 {
-    if ((Image.fmt != VPX_IMG_FMT_I420) && (Image.fmt != VPX_IMG_FMT_IYUV))
+    if (Image.fmt != VPX_IMG_FMT_I420)
     {
         x_DebugMsg("MoviePlayer_WebM: Unsupported VPX image format %d\n", Image.fmt);
         return FALSE;

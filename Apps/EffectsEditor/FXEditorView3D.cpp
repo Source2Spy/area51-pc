@@ -4,6 +4,7 @@
 #include "Render/PrimitiveDebug.hpp"
 #include "stdafx.h"
 #include "FXEditorView3D.h"
+#include "Render/Render.hpp"
 
 #include "parted.h"
 #include "PartEdDoc.h"
@@ -99,21 +100,15 @@ void CFXEditorView3D::OnDraw(CDC* pDC)
     {
         return;
     }
+    render::BeginFrame();
 
-    rtarget_backbuffer_pass_desc PassDesc;
-    PassDesc.bUseDepth = FALSE;
-    if( !rtarget_BeginBackBufferPass( PassDesc ) )
-    {
-        eng_ResetAfterException();
-        return;
-    }
-    rtarget_EndPass();
-
+    xbool sceneActive = FALSE;
     {
         if( eng_Begin( "FX_EditorView3D" ) )
         {
-            VERIFY( render::BeginPrimitiveRender() );
-            render::BeginNormalRender();
+            sceneActive = render::BeginRenderScope();
+            if ( sceneActive )
+            {
 
             if( m_ShowBackground )
             {
@@ -143,9 +138,8 @@ void CFXEditorView3D::OnDraw(CDC* pDC)
 
             /************************************************************************************************/
 
-            render::EndNormalRender();
-            render::EndPrimitiveRender();
-            render::ExecuteForwardRender();
+                sceneActive = render::SubmitRenderScope();
+            }
             eng_End();
         }
 
@@ -156,6 +150,12 @@ void CFXEditorView3D::OnDraw(CDC* pDC)
     {
         g_ManipulatorMgr.Render( m_View );
     }
+
+    if( sceneActive && !render::EndRenderScope() )
+        return;
+
+    if( !render::EndFrame( FALSE ) )
+        return;
 
     if( !eng_EndFrame() )
     {

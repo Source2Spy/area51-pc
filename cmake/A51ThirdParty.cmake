@@ -23,6 +23,25 @@ set( BUILD_SHARED_LIBS OFF CACHE BOOL
 set( BUILD_TESTING OFF CACHE BOOL
     "Disable bundled third-party tests" FORCE )
 
+set( ZSTD_BUILD_STATIC ON CACHE BOOL "Build bundled ZSTD static library" FORCE )
+set( ZSTD_BUILD_SHARED OFF CACHE BOOL "Build bundled ZSTD shared library" FORCE )
+set( ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "Build bundled ZSTD programs" FORCE )
+set( ZSTD_BUILD_TESTS OFF CACHE BOOL "Build bundled ZSTD tests" FORCE )
+set( ZSTD_BUILD_CONTRIB OFF CACHE BOOL "Build bundled ZSTD contrib programs" FORCE )
+set( ZSTD_BUILD_COMPRESSION ON CACHE BOOL "Build ZSTD compression" FORCE )
+set( ZSTD_BUILD_DECOMPRESSION ON CACHE BOOL "Build ZSTD decompression" FORCE )
+set( ZSTD_BUILD_DICTBUILDER OFF CACHE BOOL "Build ZSTD dictionary training" FORCE )
+set( ZSTD_BUILD_DEPRECATED OFF CACHE BOOL "Build deprecated ZSTD API" FORCE )
+set( ZSTD_LEGACY_SUPPORT OFF CACHE BOOL "Build legacy ZSTD decoders" FORCE )
+set( ZSTD_MULTITHREAD_SUPPORT OFF CACHE BOOL "Build ZSTD compression workers" FORCE )
+add_subdirectory( "${A51_THIRDPARTY_ROOT}/ZSTD/build/cmake"
+    "${CMAKE_BINARY_DIR}/thirdparty/ZSTD" EXCLUDE_FROM_ALL )
+set_target_properties( libzstd_static PROPERTIES POSITION_INDEPENDENT_CODE ON )
+
+if( A51_SHADER_TOOLS_ONLY )
+    return()
+endif()
+
 # SDL
 if( A51_TARGET_PLATFORM STREQUAL "Android" )
     # SDLActivity loads libSDL3.so before the application library.
@@ -50,6 +69,15 @@ if( A51_TARGET_PLATFORM STREQUAL "Android" )
 else()
     add_library( a51::SDL3 ALIAS SDL3-static )
 endif()
+
+# Monocypher
+add_library( a51_monocypher STATIC
+    "${A51_THIRDPARTY_ROOT}/Monocypher/monocypher.c"
+    "${A51_THIRDPARTY_ROOT}/Monocypher/monocypher-ed25519.c" )
+target_include_directories( a51_monocypher PUBLIC
+    "${A51_THIRDPARTY_ROOT}/Monocypher" )
+set_target_properties( a51_monocypher PROPERTIES POSITION_INDEPENDENT_CODE ON )
+add_library( a51::monocypher ALIAS a51_monocypher )
 
 # Xiph libraries
 set( INSTALL_DOCS OFF CACHE BOOL "Install bundled third-party docs" FORCE )
@@ -140,3 +168,22 @@ target_include_directories( webm PUBLIC
 add_library( a51::webm ALIAS webm )
 
 message( STATUS "Using bundled SDL3, Ogg, Opus, Vorbis, WebM and native CMake libvpx." )
+
+# Font libraries
+set( FT_DISABLE_ZLIB ON CACHE BOOL "Disable external zlib" FORCE )
+set( FT_DISABLE_BZIP2 ON CACHE BOOL "Disable bzip2" FORCE )
+set( FT_DISABLE_PNG ON CACHE BOOL "Disable PNG glyphs" FORCE )
+set( FT_DISABLE_HARFBUZZ ON CACHE BOOL "Avoid a FreeType/HarfBuzz build cycle" FORCE )
+set( FT_DISABLE_BROTLI ON CACHE BOOL "Disable WOFF2" FORCE )
+add_subdirectory( "${A51_THIRDPARTY_ROOT}/Freetype" "${CMAKE_BINARY_DIR}/thirdparty/Freetype" EXCLUDE_FROM_ALL )
+add_library( a51::freetype ALIAS freetype )
+set( HB_HAVE_FREETYPE ON CACHE BOOL "FreeType font functions" FORCE )
+set( HB_HAVE_ICU OFF CACHE BOOL "Use HarfBuzz Unicode data" FORCE )
+set( HB_BUILD_SUBSET OFF CACHE BOOL "Disable font subsetting" FORCE )
+set( HB_BUILD_RASTER OFF CACHE BOOL "Use FreeType rasterization" FORCE )
+set( HB_BUILD_VECTOR OFF CACHE BOOL "Disable vector backend" FORCE )
+set( HB_BUILD_GPU OFF CACHE BOOL "Disable GPU backend" FORCE )
+set( HB_BUILD_UTILS OFF CACHE BOOL "Disable command line tools" FORCE )
+add_subdirectory( "${A51_THIRDPARTY_ROOT}/Harfbuzz" "${CMAKE_BINARY_DIR}/thirdparty/Harfbuzz" EXCLUDE_FROM_ALL )
+add_library( a51::harfbuzz ALIAS harfbuzz )
+add_subdirectory( "${A51_THIRDPARTY_ROOT}/ICU" "${CMAKE_BINARY_DIR}/thirdparty/ICU" EXCLUDE_FROM_ALL )

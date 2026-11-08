@@ -342,6 +342,8 @@ typedef s32 compare_fn( const void* pItem1, const void* pItem2 );
 //
 //==============================================================================
                                   
+const char* x_getenv( const char* pName );
+
 void x_qsort    ( const void*     pBase,          // Address of first item in array.
                   s32             NItems,         // Number of items in array.
                   s32             ItemSize,       // Size of one item.

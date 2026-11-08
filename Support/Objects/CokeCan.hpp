@@ -6,13 +6,13 @@
 //=========================================================================
 
 #include "Obj_mgr/obj_mgr.hpp"
+#include "x_array.hpp"
 #include "Objects/Render/SkinInst.hpp"
 #include "Characters/FloorProperties.hpp"
 
 //=========================================================================
 // FORWARD DECLARATIONS
 //=========================================================================
-class actor;
 struct coke_can_profile;
 
 
@@ -42,6 +42,18 @@ private:
         {
         }
 
+    };
+
+    //-------------------------------------------------------------------------
+
+    struct velocity_constraint
+    {
+        particle* pParticleA;
+        particle* pParticleB;
+        plane     Plane;
+        f32       Distance;
+        f32       InvMassA;
+        f32       InvMassB;
     };
 
 //=========================================================================
@@ -75,7 +87,6 @@ public:
     virtual void        OnColCheck              ( void );
     virtual void        OnMove                  ( const vector3& NewPos );        
     virtual void        OnTransform             ( const matrix4& L2W    ); 
-    virtual void        OnColNotify             ( object& Object );
 
 #ifdef X_EDITOR
     virtual s32         OnValidateProperties    ( xstring& ErrorMsg );
@@ -92,6 +103,7 @@ protected:
             // Physics functions
             void    InitPhysics                 ( void );
             f32     GetSpeedSquaredSum          ( void ) const;
+            xbool   IsMoving                    ( void ) const;
             void    UpdateL2W                   ( void );
             void    Integrate                   ( f32 DeltaTime );
             void    ApplyEqualDistConstraint    ( particle& ParticleA, particle& ParticleB, f32 EqualDist );
@@ -99,20 +111,24 @@ protected:
                                                   f32 InvMassA, f32 InvMassB,
                                                   f32 Elasticity, f32 Friction );
             void    ApplyDistConstraints        ( void );
-            xbool   ApplyCylinderConstraint     ( const vector3& Bottom, const vector3& Top, f32 Radius,
-                                                  const vector3& CylinderVelocity, vector3& CollNorm );
+            xbool   ApplyCapsuleConstraint      ( const vector3& Bottom, const vector3& Top, f32 Radius,
+                                                  f32 ContactOffset, const vector3& Velocity );
             void    ApplyCollConstraints        ( void );
-            void    ApplyCanConstraints         ( coke_can& CokeCan );
-            void    ApplyCanConstraints         ( void );
-            void    ApplyActorConstraints       ( void );
-            void    ApplyConstraints            ( void );
+            void    CollectCanNeighbors         ( f32 DeltaTime, xarray<guid>& Neighbors );
+            xbool   HasCanContact               ( const coke_can& CokeCan ) const;
+            void    WakeCanContacts             ( const xarray<guid>& Neighbors );
+            void    ApplyCanConstraints         ( coke_can& CokeCan, xbool WakeNeighbors );
+            void    ApplyConstraints            ( const xarray<guid>& Neighbors, xbool WakeNeighbors );
+            xbool   AddWorldConstraint          ( particle& Particle, const plane& Plane );
+            void    SolveVelocityConstraints    ( void );
             void    ApplyDamping                ( f32 DeltaTime );
 
 //=========================================================================
 // Public functions
 //=========================================================================
 public:
-            void    ApplyActorConstraints       ( actor& Actor );
+            xbool   ApplyActorConstraints       ( const vector3& Position, f32 Radius, f32 Height,
+                                                  f32 ContactOffset, const vector3& Velocity );
 
 
 
@@ -158,6 +174,8 @@ protected:
     vector3             m_MaxInitVel;               // Max initial velocity
     s32                 m_RollAudioID;              // Can rolling audio id
     s32                 m_iProfile;                 // Which physics profile to use
+
+    xarray<velocity_constraint> m_VelocityConstraints;
 
     // Rendering
     skin_inst           m_SkinInst;                 // Skinned inst

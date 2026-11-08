@@ -46,8 +46,8 @@ namespace tracy
 
 struct backtrace_state *
 backtrace_create_state (const char *filename, int threaded,
-            backtrace_error_callback error_callback,
-            void *data)
+			backtrace_error_callback error_callback,
+			void *data)
 {
   struct backtrace_state init_state;
   struct backtrace_state *state;
@@ -65,10 +65,27 @@ backtrace_create_state (const char *filename, int threaded,
   init_state.threaded = threaded;
 
   state = ((struct backtrace_state *)
-       backtrace_alloc (&init_state, sizeof *state, error_callback, data));
+	   backtrace_alloc (&init_state, sizeof *state, error_callback, data));
   if (state == NULL)
     return NULL;
   *state = init_state;
+
+  return state;
+}
+
+/* Like backtrace_create_state, but marks the state as being for an
+   external file.  See backtrace.hpp for details.  */
+
+struct backtrace_state *
+backtrace_create_state_for_file (const char *filename, int threaded,
+				 backtrace_error_callback error_callback,
+				 void *data)
+{
+  struct backtrace_state *state;
+
+  state = backtrace_create_state (filename, threaded, error_callback, data);
+  if (state != NULL)
+    state->external_file = 1;
 
   return state;
 }

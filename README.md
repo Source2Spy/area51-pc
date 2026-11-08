@@ -37,18 +37,52 @@ The following prerequisites are required to build the source tree:
 
 [![CMake portability](https://github.com/Source2Spy/area51-pc/actions/workflows/cmake.yml/badge.svg?branch=master)](https://github.com/Source2Spy/area51-pc/actions/workflows/cmake.yml)
 
-CMake configures the complete target graph, but a build target only builds its own dependencies. The regular build presets build `A51` only.
+The game consumes a prepared shader kit. ShaderTool and DXC are built separately
+on the host; they are not dependencies of `A51`.
 
-```text
-cmake --preset linux-gcc-x64
+To prepare shaders and build the game in one command:
+
+```sh
+cmake -DA51_PRESET=linux-gcc-x64 -DA51_CONFIG=Debug -P cmake/BuildGame.cmake
+```
+
+The same command accepts Windows game presets. `A51_JOBS` controls build
+parallelism and defaults to four. Host shader tools use the native CMake generator and require Python.
+The `a51_prepare_shaders` target uses four shader workers; set `A51_SHADER_JOBS`
+when configuring the host tools to select another count from one to twelve.
+
+To run the stages separately:
+
+```sh
+cmake --preset shader-tools
+cmake --build --preset prepare-shaders --parallel 4
+cmake --preset linux-gcc-x64 -DA51_SHADER_KIT=/absolute/path/to/build/shaders/GameApp/release
 cmake --build --preset linux-gcc-x64-debug
 ```
+
+`A51_SHADER_KIT` points to one published configuration directory containing
+`shaderkit.json`, `generated/`, `catalog.json`, and ECS packages. It defaults to
+`build/shaders/GameApp/release`. CMake verifies the manifest's file hashes before
+using the kit. A missing or damaged kit stops configuration with an error.
+The regular game presets build `A51` only and do not inspect HLSL sources.
+
+After C++ changes, rebuild `A51`. After shader or contract changes, prepare the
+kit again, then rebuild `A51`. ShaderTool validates the compiled layouts and
+publishes headers and packages together; failed preparation preserves the
+previous kit. `ShaderTool -generate` writes inspection output under
+`.preview/<config>/generated` and does not publish a usable kit.
+
+Release shaders can be used with a Debug game build. To prepare debug shaders,
+run ShaderTool with `-config debug` and configure the game with the resulting
+`build/shaders/GameApp/debug` directory. Install the `.ecs` files from the same
+kit into the game's `SHADERS` filesystem. The game checks their catalog identity
+against its compiled headers before creating native shaders.
 
 To build an individual application or tool, pass its target name:
 
 ```text
 cmake --build build/linux-gcc-x64 --config Debug --target xbmptool
-cmake --build build/linux-gcc-x64 --config Debug --target GeomCompiler
+cmake --build build/linux-gcc-x64 --config Debug --target ResourceTool
 ```
 
 The aggregate targets are available when needed:
@@ -59,6 +93,23 @@ cmake --build build/linux-gcc-x64 --config Debug --target a51_tools
 ```
 
 Running a build without `--target` uses the generator's default `all` target and can build every non-excluded target.
+
+### ResourceTool
+
+`ResourceTool` uses one descriptor-driven workflow for geometry in both directions:
+
+```text
+ResourceTool compile   asset.rawgeom
+ResourceTool decompile asset.rawgeom
+```
+
+The descriptor is the round-trip manifest. Decompilation writes the render
+mesh as glTF, rigid collision as a separate `.collision.gltf`, and embeds
+runtime material parameters, UV keys, virtual meshes/textures, bone metadata,
+bone masks, custom properties, and collision-cluster metadata in the generated
+`.rawgeom`. Texture files are referenced rather than copied; rigid-body blobs
+and external animation clips remain source references until their dedicated
+round-trip formats are implemented.
 
 ## Additional info
 
@@ -96,17 +147,15 @@ Editor         | **DEAD**
 EffectsEditor  | **UNDER CONSTRUCTION**
 ELFTool        | **DELETED**
 EventEditor    | **UNDER CONSTRUCTION**/Lib for: [Editor](https://github.com/gabengaGamer/area51-pc/releases/tag/Editor-1.0)
-FontBuilder    | Working
 FontEditor     | **UNDER CONSTRUCTION**/Lib for: [Editor](https://github.com/gabengaGamer/area51-pc/releases/tag/Editor-1.0)
 FxEditor       | **UNDER CONSTRUCTION**/Lib for: [Editor](https://github.com/gabengaGamer/area51-pc/releases/tag/Editor-1.0)
 FXCompiler     | **DEAD**
 GameApp        | Working
-GeomCompiler   | **DEAD**
+ResourceTool   | **UNDER CONSTRUCTION**
 LocoEditor     | **UNDER CONSTRUCTION**/Lib for: [Editor](https://github.com/gabengaGamer/area51-pc/releases/tag/Editor-1.0)
 MeshViewer     | **UNDER CONSTRUCTION**/Lib for: [Editor](https://github.com/gabengaGamer/area51-pc/releases/tag/Editor-1.0)
 PropertyEditor | **UNDER CONSTRUCTION**/Lib for: [Editor](https://github.com/gabengaGamer/area51-pc/releases/tag/Editor-1.0)
 SoundPackager  | Working
-StringTool     | Working
 Viewer         | **DELETED**
 WinControls    | **UNDER CONSTRUCTION**/Lib for: [Editor](https://github.com/gabengaGamer/area51-pc/releases/tag/Editor-1.0)
 WorldEditor    | **UNDER CONSTRUCTION**/Lib for: [Editor](https://github.com/gabengaGamer/area51-pc/releases/tag/Editor-1.0)
@@ -124,7 +173,6 @@ xTool          | **DELETED**
 Name                                                                                         | Description                                                                             
 ---------------------------------------------------------------------------------------------| ----------------------------------------------------------------------------------------
 [Engine-51](https://github.com/bigianb/engine-51)                                            | Area-51 Asset Viewer.                                                                                         
-[Inevitable-MATX-Toolkit](https://github.com/gabengaGamer/Inevitable-MATX-Toolkit)           | Blender plugin for exporting .matx models for GeomCompiler.                                                                
 [Json-Playsurface-Processer](https://github.com/gabengaGamer/json-playsurface-processer)     | Script for importing .playsurface maps into blender.                    
 [DAT-Tool](https://github.com/gabengaGamer/DAT-Tool)                                         | Command-line interface (CLI) utility for working with Tribes: Aerial Assault DAT archive format.
 

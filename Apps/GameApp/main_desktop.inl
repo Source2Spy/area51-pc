@@ -54,13 +54,6 @@ void FreeCam( f32 DeltaTime )
 //  IMPLEMENTATION
 //=============================================================================
 
-void InitRenderPlatform( void )
-{
-    X_PROFILE_SCOPE_CATEGORY( "Context", "InitRenderPlatform" );
-}
-
-//=============================================================================
-
 xbool HandleInputPlatform( f32 DeltaTime )
 {
     static s32 s_DisplayStats = 0;
@@ -111,8 +104,3 @@ void PrintStatsPlatform( void )
 }
 
 //=============================================================================
-
-void EndRenderPlatform( void )
-{
-    X_PROFILE_SCOPE_CATEGORY( "Context", "EndRenderPlatform" );
-}

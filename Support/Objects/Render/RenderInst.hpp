@@ -37,6 +37,7 @@ public:
     render::GeometryInstanceHandle          GetInst             ( void                      ) const;
     bbox&                       GetBBox             ( void                      ) const;
     u64                         GetLODMask          ( const matrix4& L2W        );
+    u64                         GetLODMask          ( const matrix4& L2W, u32 VMeshMask );
     u64                         GetLODMask          ( u16            ScreenSize );
     void                        SetVMeshBit         ( s32            Index,
                                                       xbool          OnOff      );

@@ -1,11 +1,15 @@
-//=============================================================================
+//=========================================================================
 //
 //  MaterialArray.hpp
 //
-//=============================================================================
+//=========================================================================
 
 #ifndef MATERIALARRAY_HPP
 #define MATERIALARRAY_HPP
+
+//=========================================================================
+//  INCLUDES
+//=========================================================================
 
 #include "Render.hpp"
 
@@ -13,21 +17,24 @@
 #error "This file is for internal use by the rendering system. Please don't include it!"
 #endif
 
-//=============================================================================
-// PRIVATE PRIVATE PRIVATE
+//=========================================================================
+//  MATERIAL ARRAY
+//=========================================================================
 //
 // This class is VERY similar to a standard xharray, except that while the
 // xharray has a direct mapping between the handle and the data, ours will
-// use in indirect mapping through indices. This will be better for sorting,
-// and allow us to still store xhandles for the normal render sort key. Also
+// use an indirect mapping through indices. This will be better for sorting,
+// and allow us to still store xhandles for the scene render sort key. Also
 // this guarantees that we'll be accessing materials linearly for rendering.
 // This class should only be used by the rendering system and the game should
-// go through the interface provided in Render.hpp
-//=============================================================================
+// go through the interface provided in Render.hpp.
+//
+//=========================================================================
 
 class MaterialArray
 {
-  public:
+public:
+
     MaterialArray( void );
     ~MaterialArray( void );
 
@@ -42,9 +49,10 @@ class MaterialArray
     s32       GetIndexByHandle( xhandle hHandle );
     xhandle   GetHandleByIndex( s32 index );
     xbool     SanityCheck( void ) const;
-    void      Update( f32 deltaTime );
+    void      Update( f32 DeltaTime );
 
-  protected:
+protected:
+
     struct destructor
     {
         material Item;
@@ -61,21 +69,24 @@ class MaterialArray
 
     friend s32 NodeCompareFn( void const* pA, void const* pB );
 
-    xbool      m_sorted; // is this guy sorted?
-    s32        m_capacity;
-    s32        m_nNodes;
-    node_info* m_pNodes;   // indexes have a direct mapping into this array
-    s32*       m_pIndices; // handles have a direct mapping into this array
+    xbool       m_isSorted;  // is this guy sorted?
+    s32         m_Capacity;
+    s32         m_nNodes;
+    node_info*  m_pNodes;    // indexes have a direct mapping into this array
+    xarray<s32> m_FreeHandles;
+    s32*        m_pIndices;  // handles have a direct mapping into this array
 };
 
-//=============================================================================
+//=========================================================================
+//  INLINE FUNCTIONS
+//=========================================================================
 
 inline s32 MaterialArray::GetCount( void ) const
 {
     return m_nNodes;
 }
 
-//=============================================================================
+//=========================================================================
 
 inline material& MaterialArray::operator[]( s32 index )
 {
@@ -83,23 +94,23 @@ inline material& MaterialArray::operator[]( s32 index )
     return m_pNodes[index].Item;
 }
 
-//=============================================================================
+//=========================================================================
 
 inline material& MaterialArray::operator()( xhandle hHandle )
 {
-    ASSERT( ( hHandle.Handle >= 0 ) && ( hHandle.Handle < m_capacity ) );
+    ASSERT( ( hHandle.Handle >= 0 ) && ( hHandle.Handle < m_Capacity ) );
     return operator[]( m_pIndices[hHandle.Handle] );
 }
 
-//=============================================================================
+//=========================================================================
 
 inline s32 MaterialArray::GetIndexByHandle( xhandle hHandle )
 {
-    ASSERT( ( hHandle.Handle >= 0 ) && ( hHandle.Handle < m_capacity ) );
+    ASSERT( ( hHandle.Handle >= 0 ) && ( hHandle.Handle < m_Capacity ) );
     return m_pIndices[hHandle.Handle];
 }
 
-//=============================================================================
+//=========================================================================
 
 inline xhandle MaterialArray::GetHandleByIndex( s32 index )
 {
@@ -107,6 +118,6 @@ inline xhandle MaterialArray::GetHandleByIndex( s32 index )
     return m_pNodes[index].Handle;
 }
 
-//=============================================================================
+//=========================================================================
 #endif // MATERIALARRAY_HPP
-//=============================================================================
+//=========================================================================

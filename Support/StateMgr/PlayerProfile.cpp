@@ -36,6 +36,50 @@ namespace
 //  IMPLEMENTATION
 //=========================================================================
 
+void multiplayer_preferences::Reset( void )
+{
+    x_memset( this, 0, sizeof(*this) );
+    Host.Reset();
+    HostPort = NET_GAME_PORT;
+    SetFilter( match_browser_filter() );
+    Sort = MATCH_SORT_NAME;
+}
+
+//=========================================================================
+
+match_browser_filter multiplayer_preferences::GetFilter( void ) const
+{
+    match_browser_filter Filter;
+    Filter.Name         = FilterName;
+    Filter.Map          = FilterMap;
+    Filter.Source       = Source;
+    Filter.GameType     = GameType;
+    Filter.MaxPing      = MaxPing;
+    Filter.HideFull     = HideFull;
+    Filter.HideEmpty    = HideEmpty;
+    Filter.HidePassword = HidePassword;
+    return Filter;
+}
+
+//=========================================================================
+
+void multiplayer_preferences::SetFilter( const match_browser_filter& Filter )
+{
+    x_wstrncpy( FilterName, Filter.Name, 63 );
+    FilterName[63] = 0;
+    x_wstrncpy( FilterMap, Filter.Map, 31 );
+    FilterMap[31] = 0;
+
+    Source       = Filter.Source;
+    GameType     = Filter.GameType;
+    MaxPing      = Filter.MaxPing;
+    HideFull     = Filter.HideFull;
+    HideEmpty    = Filter.HideEmpty;
+    HidePassword = Filter.HidePassword;
+}
+
+//=========================================================================
+
 player_profile::player_profile( void )
 {
     Reset();
@@ -46,6 +90,7 @@ player_profile::player_profile( void )
 void player_profile::Reset( void )
 {
     x_memset( this, 0, sizeof(*this) );
+    m_MultiplayerPreferences.Reset();
 
     if( CONFIG_IS_AUTOSERVER )
     {
@@ -59,11 +104,11 @@ void player_profile::Reset( void )
     m_HashString            = 0;
     SetAvatarID( 0 );
     RestoreControlDefaults();
+    ingame_pad::ResetKeyboardBindings( m_KeyboardBindings );
     m_LoreTotal             = 0;
     m_bNewLoreUnlocked      = FALSE;
     m_NumSecretsUnlocked    = 0;
     m_bNewSecretUnlocked    = FALSE;
-    SetVisibleOnline( TRUE );
     SetAutosaveOn( FALSE );
     SetAlienAvatarsOn( FALSE );
     m_UniqueIdLength        = 0;
@@ -74,7 +119,6 @@ void player_profile::Reset( void )
     SetHardUnlocked( FALSE );
     SetDifficultyChanged( FALSE );
     SetGameFinished( FALSE );
-    SetAgeVerified( TRUE );
 
     // Clear lore collected
     for( s32 i = 0; i < NUM_VAULTS; i++ )
@@ -436,3 +480,21 @@ void player_profile::UnlockAll( void )
     SetGameFinished( TRUE );
 }
 #endif
+
+//==============================================================================
+
+void player_profile::AddCareerStats( const player_stats& Stats )
+{
+    m_CareerStats.KillsAsHuman  += x_clamp( Stats.KillsAsHuman, 0, S32_MAX - m_CareerStats.KillsAsHuman );
+    m_CareerStats.KillsAsMutant += x_clamp( Stats.KillsAsMutant, 0, S32_MAX - m_CareerStats.KillsAsMutant );
+    m_CareerStats.Deaths        += x_clamp( Stats.Deaths, 0, S32_MAX - m_CareerStats.Deaths );
+    m_CareerStats.PlayTime      += x_clamp( Stats.PlayTime, 0, S32_MAX - m_CareerStats.PlayTime );
+    m_CareerStats.Games         += x_clamp( Stats.Games, 0, S32_MAX - m_CareerStats.Games );
+    m_CareerStats.Wins          += x_clamp( Stats.Wins, 0, S32_MAX - m_CareerStats.Wins );
+    m_CareerStats.Gold          += x_clamp( Stats.Gold, 0, S32_MAX - m_CareerStats.Gold );
+    m_CareerStats.Silver        += x_clamp( Stats.Silver, 0, S32_MAX - m_CareerStats.Silver );
+    m_CareerStats.Bronze        += x_clamp( Stats.Bronze, 0, S32_MAX - m_CareerStats.Bronze );
+    m_CareerStats.Kicks         += x_clamp( Stats.Kicks, 0, S32_MAX - m_CareerStats.Kicks );
+    m_CareerStats.VotesStarted  += x_clamp( Stats.VotesStarted, 0, S32_MAX - m_CareerStats.VotesStarted );
+    MarkDirty();
+}

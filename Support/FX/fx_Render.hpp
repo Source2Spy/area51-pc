@@ -24,6 +24,9 @@ enum fx_mesh_topology
 
 //=============================================================================
 
+render::primitive_draw_desc fx_BuildMaterial( s32 CombineMode, xbool ReadZ,
+                                              render::primitive_sampler_mode Sampler );
+
 render::primitive_draw_desc fx_CreateMaterial( const texture& Texture,
                                                 s32            CombineMode,
                                                 xbool          ReadZ,

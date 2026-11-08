@@ -490,7 +490,7 @@ void prop_surface::OnMove( const vector3& NewPos )
     BBox += GetBBox() ;
 
     rigid_geom* pRigidGeom = m_Inst.GetRigidGeom();
-    if( pRigidGeom && pRigidGeom->m_collision.nLowClusters > 0 )
+    if( pRigidGeom && pRigidGeom->m_Collision.nLowClusters > 0 )
         g_PolyCache.InvalidateCells( BBox, GetGuid() );
 }
 
@@ -506,7 +506,7 @@ void prop_surface::OnTransform( const matrix4& L2W )
     BBox += GetBBox() ;
 
     rigid_geom* pRigidGeom = m_Inst.GetRigidGeom();
-    if( pRigidGeom && pRigidGeom->m_collision.nLowClusters > 0 )
+    if( pRigidGeom && pRigidGeom->m_Collision.nLowClusters > 0 )
         g_PolyCache.InvalidateCells( BBox, GetGuid() );
 }
 

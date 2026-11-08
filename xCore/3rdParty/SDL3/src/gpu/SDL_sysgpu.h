@@ -671,6 +671,8 @@ struct SDL_GPUDevice
 
     SDL_PropertiesID (*GetDeviceProperties)(SDL_GPUDevice *device);
 
+    void *(*GetPipelineCacheData)(SDL_GPUDevice *device, size_t *size);
+
     // State Creation
 
     SDL_GPUComputePipeline *(*CreateComputePipeline)(
@@ -1104,6 +1106,7 @@ struct SDL_GPUDevice
 #define ASSIGN_DRIVER_FUNC(func, name) \
     result->func = name##_##func;
 #define ASSIGN_DRIVER(name)                                 \
+    result->GetPipelineCacheData = NULL;                    \
     ASSIGN_DRIVER_FUNC(DestroyDevice, name)                 \
     ASSIGN_DRIVER_FUNC(GetDeviceProperties, name)      \
     ASSIGN_DRIVER_FUNC(CreateComputePipeline, name)         \

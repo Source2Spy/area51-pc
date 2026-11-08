@@ -48,18 +48,6 @@ ui_manager::dialog_tem AvatarSelectDialog =
 };
 
 //=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
-
-//=========================================================================
 //  Registration function
 //=========================================================================
 
@@ -134,22 +122,22 @@ xbool dlg_avatar_select::Create( s32                        UserID,
     player_profile& Profile = g_StateMgr.GetPendingProfile();
 
     // load avatars
-    s32 ID0  = g_UiMgr->LoadBitmap( "avatar0",  "UI_Avatar_Haz_1.xbmp"  );
-    s32 ID1  = g_UiMgr->LoadBitmap( "avatar1",  "UI_Avatar_Haz_2.xbmp"  );
-    s32 ID2  = g_UiMgr->LoadBitmap( "avatar2",  "UI_Avatar_Haz_3.xbmp"  );
-    s32 ID3  = g_UiMgr->LoadBitmap( "avatar3",  "UI_Avatar_Haz_4.xbmp"  );
-    s32 ID4  = g_UiMgr->LoadBitmap( "avatar4",  "UI_Avatar_Spec_1.xbmp" );
-    s32 ID5  = g_UiMgr->LoadBitmap( "avatar5",  "UI_Avatar_Spec_2.xbmp" );
-    s32 ID6  = g_UiMgr->LoadBitmap( "avatar6",  "UI_Avatar_Spec_3.xbmp" );
-    s32 ID7  = g_UiMgr->LoadBitmap( "avatar7",  "UI_Avatar_Spec_4.xbmp" );
-    s32 ID8  = g_UiMgr->LoadBitmap( "avatar8",  "UI_Avatar_Tech_1.xbmp" );
-    s32 ID9  = g_UiMgr->LoadBitmap( "avatar9",  "UI_Avatar_Tech_2.xbmp" );
-    s32 ID10 = g_UiMgr->LoadBitmap( "avatar10", "UI_Avatar_Tech_3.xbmp" );
-    s32 ID11 = g_UiMgr->LoadBitmap( "avatar11", "UI_Avatar_Tech_4.xbmp" );
-    s32 ID12 = g_UiMgr->LoadBitmap( "avatar12", "UI_Avatar_Sci_1.xbmp"  );
-    s32 ID13 = g_UiMgr->LoadBitmap( "avatar13", "UI_Avatar_Sci_2.xbmp"  );
-    s32 ID14 = g_UiMgr->LoadBitmap( "avatar14", "UI_Avatar_Sci_3.xbmp"  );
-    s32 ID15 = g_UiMgr->LoadBitmap( "avatar15", "UI_Avatar_Sci_4.xbmp"  ); 
+    s32 ID0  = g_UiMgr->LoadBitmap( "avatar0",  "AVATARS/UI_AVATAR_HAZ_1.XBMP"  );
+    s32 ID1  = g_UiMgr->LoadBitmap( "avatar1",  "AVATARS/UI_AVATAR_HAZ_2.XBMP"  );
+    s32 ID2  = g_UiMgr->LoadBitmap( "avatar2",  "AVATARS/UI_AVATAR_HAZ_3.XBMP"  );
+    s32 ID3  = g_UiMgr->LoadBitmap( "avatar3",  "AVATARS/UI_AVATAR_HAZ_4.XBMP"  );
+    s32 ID4  = g_UiMgr->LoadBitmap( "avatar4",  "AVATARS/UI_AVATAR_SPEC_1.XBMP" );
+    s32 ID5  = g_UiMgr->LoadBitmap( "avatar5",  "AVATARS/UI_AVATAR_SPEC_2.XBMP" );
+    s32 ID6  = g_UiMgr->LoadBitmap( "avatar6",  "AVATARS/UI_AVATAR_SPEC_3.XBMP" );
+    s32 ID7  = g_UiMgr->LoadBitmap( "avatar7",  "AVATARS/UI_AVATAR_SPEC_4.XBMP" );
+    s32 ID8  = g_UiMgr->LoadBitmap( "avatar8",  "AVATARS/UI_AVATAR_TECH_1.XBMP" );
+    s32 ID9  = g_UiMgr->LoadBitmap( "avatar9",  "AVATARS/UI_AVATAR_TECH_2.XBMP" );
+    s32 ID10 = g_UiMgr->LoadBitmap( "avatar10", "AVATARS/UI_AVATAR_TECH_3.XBMP" );
+    s32 ID11 = g_UiMgr->LoadBitmap( "avatar11", "AVATARS/UI_AVATAR_TECH_4.XBMP" );
+    s32 ID12 = g_UiMgr->LoadBitmap( "avatar12", "AVATARS/UI_AVATAR_SCI_1.XBMP"  );
+    s32 ID13 = g_UiMgr->LoadBitmap( "avatar13", "AVATARS/UI_AVATAR_SCI_2.XBMP"  );
+    s32 ID14 = g_UiMgr->LoadBitmap( "avatar14", "AVATARS/UI_AVATAR_SCI_3.XBMP"  );
+    s32 ID15 = g_UiMgr->LoadBitmap( "avatar15", "AVATARS/UI_AVATAR_SCI_4.XBMP"  );
 
     // set up selections
     m_pAvatarSelect->DeleteAllItems();

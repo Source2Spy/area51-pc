@@ -14,7 +14,7 @@
 
 #include "../Support/Trigger/Trigger_Manager.hpp"
 #include "../Support/Trigger/Trigger_Object.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 
 #include "Entropy.hpp"
 
@@ -70,7 +70,7 @@ void cause_damage::Execute ( trigger_object* pParent )
     
     if (m_bCreateLight)
     {
-        g_LightMgr.CreateLight( GetPositionOwner(), m_LightColor, 
+        render::GetRenderPipeline().GetLightSystem().CreateLight( GetPositionOwner(), m_LightColor, 
             m_LightRadius, m_LightIntensity, m_LightFadeTime );
     }
     

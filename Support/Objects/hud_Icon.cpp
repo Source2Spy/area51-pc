@@ -283,7 +283,7 @@ void hud_icon::RenderIcon( player* pPlayer, const icon_inf& Icon )
             BitmapRotation = x_atan2( DirToIcon.GetX(), DirToIcon.GetY() );
         }
 
-        m_ScreenEdgeBmp.SetName( PRELOAD_FILE("Hud_icon.xbmp") );
+        m_ScreenEdgeBmp.SetName( PRELOAD_FILE("HUD/GENERAL/HUD_ICON.XBMP") );
 
         texture* pTexture = m_ScreenEdgeBmp.GetPointer();
         if( pTexture == NULL )
@@ -304,6 +304,10 @@ void hud_icon::RenderIcon( player* pPlayer, const icon_inf& Icon )
                            
         vector2 WH( (f32)Bitmap.GetWidth() / 4.0f, (f32)Bitmap.GetHeight() / 4.0f );
 
+        if( Icon.IconType == ICON_WAYPOINT )
+        {
+            WH *= 1.0f / g_UIRenderer.GetViewport().GetHudUserScale();
+        }
 
         if( (Icon.IconType == ICON_FLAG_INNER) || 
             (Icon.IconType == ICON_FLAG_OUTER) )
@@ -529,5 +533,4 @@ void hud_icon::OnEnumProp( prop_enum&  List )
 }
 
 //==============================================================================
-
 

@@ -1,8 +1,8 @@
-//=============================================================================
+//=========================================================================
 //
 //  Texture.cpp
 //
-//=============================================================================
+//=========================================================================
 
 //=========================================================================
 //  INCLUDES
@@ -22,9 +22,9 @@ static s32 s_Count = 0;
 static s32 s_nTexture = 0;
 static s32 s_TextureMem = 0;
 
-//=============================================================================
+//=========================================================================
 //  TYPES
-//=============================================================================
+//=========================================================================
 
 static struct texture_loader : public rsc_loader
 {
@@ -40,7 +40,12 @@ static struct texture_loader : public rsc_loader
         texture* pTexture = new texture;
         ASSERT( pTexture );
 
-        pTexture->m_bitmap.Load( pFp );
+        if( !pTexture->m_bitmap.Load( pFp ) )
+        {
+            delete pTexture;
+            x_throw( "Failed to load texture bitmap." );
+            return NULL;
+        }
 
         // sanity check
         switch ( pTexture->m_bitmap.GetFormat() )
@@ -52,7 +57,22 @@ static struct texture_loader : public rsc_loader
             case xbitmap::FMT_16_ARGB_1555:
             case xbitmap::FMT_16_URGB_1555:
             case xbitmap::FMT_16_RGB_565:
-
+#ifdef TARGET_MOBILE
+            case xbitmap::FMT_ASTC_4X4:
+            case xbitmap::FMT_ASTC_5X4:
+            case xbitmap::FMT_ASTC_5X5:
+            case xbitmap::FMT_ASTC_6X5:
+            case xbitmap::FMT_ASTC_6X6:
+            case xbitmap::FMT_ASTC_8X5:
+            case xbitmap::FMT_ASTC_8X6:
+            case xbitmap::FMT_ASTC_8X8:
+            case xbitmap::FMT_ASTC_10X5:
+            case xbitmap::FMT_ASTC_10X6:
+            case xbitmap::FMT_ASTC_10X8:
+            case xbitmap::FMT_ASTC_10X10:
+            case xbitmap::FMT_ASTC_12X10:
+            case xbitmap::FMT_ASTC_12X12:
+#endif
 #ifdef TARGET_DESKTOP
             case xbitmap::FMT_DXT1:
             case xbitmap::FMT_DXT3:
@@ -123,7 +143,7 @@ static struct texture_loader : public rsc_loader
 
 } s_Texture_Loader;
 
-//=============================================================================
+//=========================================================================
 
 static struct cubemap_loader : public rsc_loader
 {
@@ -182,7 +202,7 @@ static struct cubemap_loader : public rsc_loader
 
 } s_Cubemap_Loader;
 
-//=============================================================================
+//=========================================================================
 
 texture::texture( void )
 {
@@ -190,14 +210,14 @@ texture::texture( void )
     m_pShaderResourceOverride = NULL;
 }
 
-//=============================================================================
+//=========================================================================
 
 vram_texture const& texture::GetTexture( void ) const
 {
     return m_texture;
 }
 
-//=============================================================================
+//=========================================================================
 
 shader_resource const* texture::GetShaderResource( void ) const
 {
@@ -209,21 +229,21 @@ shader_resource const* texture::GetShaderResource( void ) const
     return vram_GetShaderResource( m_texture );
 }
 
-//=============================================================================
+//=========================================================================
 
 shader_resource const* texture::GetShaderResourceOverride( void ) const
 {
     return m_pShaderResourceOverride;
 }
 
-//=============================================================================
+//=========================================================================
 
 void texture::SetShaderResourceOverride( shader_resource const* pResource )
 {
     m_pShaderResourceOverride = pResource;
 }
 
-//=============================================================================
+//=========================================================================
 
 void texture::GetStats( s32* pNumTextureLoaded, s32* pTextureMemorySize )
 {
@@ -231,21 +251,21 @@ void texture::GetStats( s32* pNumTextureLoaded, s32* pTextureMemorySize )
     *pTextureMemorySize = s_TextureMem;
 }
 
-//=============================================================================
+//=========================================================================
 
 cubemap::cubemap( void )
 {
     m_texture = vram_texture();
 }
 
-//=============================================================================
+//=========================================================================
 
 vram_texture const& cubemap::GetTexture( void ) const
 {
     return m_texture;
 }
 
-//=============================================================================
+//=========================================================================
 
 shader_resource const* cubemap::GetShaderResource( void ) const
 {

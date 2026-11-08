@@ -130,7 +130,7 @@ void action_create_template::OnEnumProp    ( prop_enum& rPropList )
     rPropList.PropEnumGuid    (  "Marker" ,       "Use a marker to place this object, gets position, rotation, and zone.", 0 );
     rPropList.PropEnumGuid    (  "Group",         "Group to place the spawned object into", 0 );
 
-    rPropList.PropEnumExternal( "Storage Var", "global\0global_guid", 
+    rPropList.PropEnumExternal( "Storage Var", "global\0global_guid\0", 
                                 "(Optional) You can store the guid of the object created in this global variable.", PROP_TYPE_MUST_ENUM );
     
     actions_ex_base::OnEnumProp( rPropList );

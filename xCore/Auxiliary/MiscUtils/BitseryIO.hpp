@@ -30,21 +30,22 @@ enum
     FILE_HEADER_SIZE = 19,
 };
 
-//=========================================================================
+//------------------------------------------------------------------------
 
 struct config : bitsery::DefaultConfig
 {
-    static constexpr bitsery::EndiannessType Endianness =
-        bitsery::EndiannessType::LittleEndian;
-    static constexpr bool CheckAdapterErrors = true;
-    static constexpr bool CheckDataErrors    = true;
+    static constexpr bitsery::EndiannessType Endianness = bitsery::EndiannessType::LittleEndian;
+    static constexpr bool CheckAdapterErrors            = true;
+    static constexpr bool CheckDataErrors               = true;
 };
+
+//------------------------------------------------------------------------
 
 typedef bitsery::InputBufferAdapter<const u8*, config> input_adapter;
 typedef std::vector<u8>                                output_buffer;
 typedef bitsery::OutputBufferAdapter<output_buffer, config> output_adapter;
 
-//=========================================================================
+//------------------------------------------------------------------------
 
 struct file_header
 {
@@ -55,12 +56,16 @@ struct file_header
     u32 PayloadChecksum;
 };
 
+//------------------------------------------------------------------------
+
 struct file_format
 {
     u8  Magic[4];
     u16 Version;
 };
 
+//=========================================================================
+//  IMPLEMENTATION
 //=========================================================================
 
 template<class SERIALIZER>

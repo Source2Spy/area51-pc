@@ -98,6 +98,8 @@ protected:
         matrix4         m_PreviousL2W;
         s32             m_NActive;
         s32             m_PCursor;
+        s32*            m_pActiveIndices;
+        s32*            m_pActivePositions;
 
         // Pointers to various data buffers
         fx_sparticle*   m_pParticles;

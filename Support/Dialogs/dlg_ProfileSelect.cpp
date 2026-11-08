@@ -23,11 +23,7 @@
 #include "StringMgr/StringMgr.hpp"
 #include "ResourceMgr/ResourceMgr.hpp"
 #include "Parsing/TextIn.hpp"
-#ifdef CONFIG_VIEWER
-#include "../../Apps/ArtistViewer/Config.hpp"
-#else
 #include "../../Apps/GameApp/Config.hpp"    
-#endif
 #include "SaveData/SaveDataMgr.hpp"
 
 //=========================================================================
@@ -80,18 +76,6 @@ ui_manager::dialog_tem ProfileSelectDialog =
 };
 
 //=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
-
-//=========================================================================
 //  Registration function
 //=========================================================================
 
@@ -124,6 +108,7 @@ dlg_profile_select::dlg_profile_select( void )
 
 dlg_profile_select::~dlg_profile_select( void )
 {
+    Destroy();
 }
 
 //=========================================================================
@@ -699,13 +684,9 @@ void dlg_profile_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                     xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_OK" ));
                     SetNavTextVisible( FALSE );
 
-                    m_PopUp->Configure( g_StringTableMgr( "ui", "IDS_PROFILE_DUPLICATE_NAME" ), 
-                        TRUE, 
-                        FALSE, 
-                        FALSE, 
-                        g_StringTableMgr( "ui", "IDS_PROFILE_DUPLICATE_NAME_MSG" ),
-                        navText,
-                        &m_PopUpResult );
+                    m_PopUp->ConfigureMessage( g_StringTableMgr( "ui", "IDS_PROFILE_DUPLICATE_NAME" ),
+                                               g_StringTableMgr( "ui", "IDS_PROFILE_DUPLICATE_NAME_MSG" ),
+                                               &m_PopUpResult );
 
                     return;
                 }
