@@ -119,7 +119,7 @@ xbool ExpandDeclaredRecipes( shader_script& Script, std::set<std::string>& Names
         Identity += Vertex ? ":vertex" : ":pixel";
         const xstring& Source = Vertex ? Family.Source : Family.PixelSource;
         Identity += std::filesystem::path( (const char*)Source ).lexically_relative( std::filesystem::path( (const char*)Script.SourceRoot ) ).generic_string();
-        const auto        Digest   = ecs_HashContent( reinterpret_cast<const byte*>( Identity.data() ), static_cast<u32>( Identity.size() ) );
+        const auto        Digest   = x_HashContent( reinterpret_cast<const byte*>( Identity.data() ), static_cast<u32>( Identity.size() ) );
         std::string       Name     = "combo_";
         static const char Digits[] = "0123456789abcdef";
 

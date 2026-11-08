@@ -155,7 +155,7 @@ xstring CachePath( const shader_script& Script, const shader_entry& Shader, cons
 
 //==============================================================================
 
-ecs_content_id CacheKey( const shader_script& Script, const shader_entry& Shader,
+x_content_id CacheKey( const shader_script& Script, const shader_entry& Shader,
                          const compile_options& Options, const char* pTarget )
 {
     // Hash compiler inputs only. Package layout changes do not alter stage code.
@@ -183,7 +183,7 @@ ecs_content_id CacheKey( const shader_script& Script, const shader_entry& Shader
     Inputs.String( Shader.VulkanArgs );
     Inputs.String( Shader.D3D12Args );
     Inputs.Append( Shader.SourceContent.GetPtr(), 32 );
-    ecs_content_hash Hash;
+    x_content_hash Hash;
     Hash.Update( Inputs.Data.GetPtr(), Inputs.Data.GetCount() );
 
     if( Script.Sources )
@@ -240,7 +240,7 @@ xbool ReadCachedBlob( const xstring& Path, Reader& File, xarray<byte>& Bytes, xb
     // The metadata records both the byte count and the content identity.
     const u32      Size = File.Count( 128 * 1024 * 1024 );
     const u32      CRC  = File.U32();
-    ecs_content_id Identity;
+    x_content_id Identity;
 
     for( u32 i = 0; i < 8; ++i )
         x_store_le32( Identity.GetPtr() + i * 4, File.U32() );
@@ -264,10 +264,10 @@ xbool ReadCachedBlob( const xstring& Path, Reader& File, xarray<byte>& Bytes, xb
         Bytes.SetCount( Size );
         const xbool Read = x_fread( Bytes.GetPtr(), 1, Size, pInput ) == static_cast<s32>( Size );
         x_fclose( pInput );
-        return Read && x_chksum( Bytes.GetPtr(), Size ) == CRC && ecs_HashContent( Bytes.GetPtr(), Size ) == Identity;
+        return Read && x_chksum( Bytes.GetPtr(), Size ) == CRC && x_HashContent( Bytes.GetPtr(), Size ) == Identity;
     }
 
-    ecs_content_hash Hash;
+    x_content_hash Hash;
     byte             Buffer[64 * 1024];
     u32              Remaining = Size;
 
@@ -295,7 +295,7 @@ xbool WriteCachedBlob( const xstring& Path, Writer& File, const xarray<byte>& By
 {
     File.U32( Bytes.GetCount() );
     File.U32( x_chksum( Bytes.GetPtr(), Bytes.GetCount() ) );
-    const ecs_content_id Identity = ecs_HashContent( Bytes.GetPtr(), Bytes.GetCount() );
+    const x_content_id Identity = x_HashContent( Bytes.GetPtr(), Bytes.GetCount() );
 
     for( u32 i = 0; i < 8; ++i )
         File.U32( x_load_le32( Identity.GetPtr() + i * 4 ) );
@@ -330,7 +330,7 @@ xbool LoadShaderCache( const shader_script& Script, const shader_entry& Shader,
             return FALSE;
 
         const byte*          Header = Bytes.GetPtr();
-        const ecs_content_id Key    = CacheKey( Script, Variant, Options, pTarget );
+        const x_content_id Key    = CacheKey( Script, Variant, Options, pTarget );
 
         if( x_load_le32( Header ) != 0x34434153 || x_memcmp( Header + 4, Key.GetPtr(), 32 ) ||
             x_load_le32( Header + 36 ) != static_cast<u32>( Bytes.GetCount() - 44 ) ||
@@ -480,7 +480,7 @@ xbool WriteShaderCache( const shader_script& Script, const shader_entry& Shader,
         xarray<byte> Bytes;
         Bytes.SetCount( 44 + File.Data.GetCount() );
         x_store_le32( Bytes.GetPtr(), 0x34434153 );
-        const ecs_content_id Key = CacheKey( Script, Variant, Options, Output.Target );
+        const x_content_id Key = CacheKey( Script, Variant, Options, Output.Target );
         x_memcpy( Bytes.GetPtr() + 4, Key.GetPtr(), 32 );
         x_store_le32( Bytes.GetPtr() + 36, File.Data.GetCount() );
         x_store_le32( Bytes.GetPtr() + 40, x_chksum( File.Data.GetPtr(), File.Data.GetCount() ) );
@@ -526,14 +526,14 @@ xbool CollectKitFiles( const xstring& Folder, std::vector<std::filesystem::path>
 
 //==============================================================================
 
-xbool HashKitFile( const std::filesystem::path& Path, ecs_content_id& Digest )
+xbool HashKitFile( const std::filesystem::path& Path, x_content_id& Digest )
 {
     X_FILE* pInput = x_fopen( Path.string().c_str(), "rb" );
 
     if( !pInput )
         return FALSE;
 
-    ecs_content_hash Hash;
+    x_content_hash Hash;
     byte             Buffer[64 * 1024];
     s32              Count;
 
@@ -561,15 +561,15 @@ xbool KitState( const shader_script& Script, xarray<byte>& State )
     File.String( Script.Config );
     compile_options Options;
     Options.CompilerFingerprint = Script.CompilerFingerprint;
-    ecs_content_hash Inputs;
+    x_content_hash Inputs;
 
     for( s32 i = 0; i < Script.Shaders.GetCount(); ++i )
     {
-        const ecs_content_id Key = CacheKey( Script, Script.Shaders[i], Options, "kit" );
+        const x_content_id Key = CacheKey( Script, Script.Shaders[i], Options, "kit" );
         Inputs.Update( Key.GetPtr(), 32 );
     }
 
-    const ecs_content_id InputIdentity = Inputs.Finish();
+    const x_content_id InputIdentity = Inputs.Finish();
     File.Append( InputIdentity.GetPtr(), 32 );
     const xstring                      Folder = JoinPath( Script.OutRoot, Script.Config );
     std::vector<std::filesystem::path> Files;
@@ -580,7 +580,7 @@ xbool KitState( const shader_script& Script, xarray<byte>& State )
     for( const auto& Path : Files )
     {
         File.String( Path.lexically_relative( (const char*)Folder ).generic_string().c_str() );
-        ecs_content_id Digest;
+        x_content_id Digest;
 
         if( !HashKitFile( Path, Digest ) )
             return FALSE;
@@ -633,7 +633,7 @@ xbool WriteShaderKitManifest( const shader_script& Script )
                        (unsigned long long)Script.CatalogId, (const char*)Script.Config ) );
     for( size_t i = 0; i < Files.size(); ++i )
     {
-        ecs_content_id Digest;
+        x_content_id Digest;
 
         if( !HashKitFile( Files[i], Digest ) )
             return FALSE;

@@ -13,6 +13,7 @@
 
 #include "x_files.hpp"
 #include "x_ref.hpp"
+#include "x_hash.hpp"
 #include "Auxiliary/CommandLine/CommandLine.hpp"
 #include "Entropy/Shader/ecs_package.hpp"
 #include "Entropy/e_Shader.hpp"
@@ -150,7 +151,7 @@ struct shader_entry
     xbool          ColorArithmetic     = FALSE;
     u32            CompileCapabilities = 0;
     u64            ProgramId           = 0;
-    ecs_content_id SourceContent       = {};
+    x_content_id SourceContent       = {};
     u32            ResourceSlots[64];
     u32            UniformSlots[64];
 

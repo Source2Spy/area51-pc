@@ -31,7 +31,7 @@ u64 HashText( u64 Hash, const xstring& Text )
 //==============================================================================
 
 static
-xbool HashSource( const xstring& File, const xstring& Root, u64& Hash, std::set<std::string>& Seen, shader_source_snapshot& Snapshot, ecs_content_hash& ContentHash )
+xbool HashSource( const xstring& File, const xstring& Root, u64& Hash, std::set<std::string>& Seen, shader_source_snapshot& Snapshot, x_content_hash& ContentHash )
 {
     const std::string Canonical = std::filesystem::weakly_canonical( (const char*)File ).string();
 
@@ -289,14 +289,14 @@ xbool GenerateShaderContract( shader_script& Script, xbool WriteFiles )
     }
 
     std::map<std::string, u64>            SourceHashes;
-    std::map<std::string, ecs_content_id> SourceContent;
+    std::map<std::string, x_content_id> SourceContent;
 
     for( s32 i = 0; i < Script.ComputeShaders.GetCount(); ++i )
     {
         shader_entry&         Shader  = Script.ComputeShaders[i];
         u64                   Content = 14695981039346656037ull;
         std::set<std::string> Seen;
-        ecs_content_hash      ContentHash;
+        x_content_hash      ContentHash;
 
         if( !HashSource( Shader.Source, GetDirectory( Shader.Source ), Content, Seen, *Script.Sources, ContentHash ) )
         {
@@ -331,7 +331,7 @@ xbool GenerateShaderContract( shader_script& Script, xbool WriteFiles )
         {
             u64                   Content = 14695981039346656037ull;
             std::set<std::string> Seen;
-            ecs_content_hash      ContentHash;
+            x_content_hash      ContentHash;
 
             if( !HashSource( Shader.Source, GetDirectory( Shader.Source ), Content, Seen, *Script.Sources, ContentHash ) )
                 return FALSE;

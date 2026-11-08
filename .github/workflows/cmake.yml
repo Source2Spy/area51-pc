@@ -19,7 +19,7 @@ jobs:
         run: cmake --preset shader-tools
 
       - name: Prepare shader kit
-        run: cmake --build --preset prepare-shaders --parallel 4
+        run: cmake --build --preset prepare-shaders --parallel 4 -- /p:WarningLevel=0 /clp:ErrorsOnly /nologo
 
       - name: Configure
         env:
@@ -28,14 +28,14 @@ jobs:
         run: cmake --preset windows-msvc-x64 -DA51_REQUIRE_BUILD_KEY=$env:A51_REQUIRE_BUILD_KEY
 
       - name: Build full Release graph
-        run: cmake --build --preset windows-msvc-x64-release --parallel 4
+        run: cmake --build --preset windows-msvc-x64-release --parallel 4 -- /p:WarningLevel=0 /clp:ErrorsOnly /nologo
 
       - name: Build custom configurations
         shell: pwsh
         run: |
-          cmake --build --preset windows-msvc-x64-optdebug --target dfsTool --parallel 4
-          cmake --build --preset windows-msvc-x64-qa --target dfsTool --parallel 4
-          cmake --build --preset windows-msvc-x64-editor-debug --target dfsTool --parallel 4
+          cmake --build --preset windows-msvc-x64-optdebug --target dfsTool --parallel 4 -- /p:WarningLevel=0 /clp:ErrorsOnly /nologo
+          cmake --build --preset windows-msvc-x64-qa --target dfsTool --parallel 4 -- /p:WarningLevel=0 /clp:ErrorsOnly /nologo
+          cmake --build --preset windows-msvc-x64-editor-debug --target dfsTool --parallel 4 -- /p:WarningLevel=0 /clp:ErrorsOnly /nologo
 
       - name: Package runtime
         run: cmake -DA51_BINARY=build/windows-msvc-x64/Apps/GameApp/Release/A51.exe -DA51_SHADER_KIT=build/shaders/GameApp/release -DA51_PACKAGE_DIR=build/packages/windows-x64 -P cmake/PackageRuntime.cmake

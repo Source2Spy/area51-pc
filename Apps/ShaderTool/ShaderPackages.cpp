@@ -50,7 +50,7 @@ void ReportPackedBlocks( void* pContext, u32 Completed, u32 Total )
 
 //==============================================================================
 
-xstring BlockCachePath( const shader_block_cache& Cache, const ecs_content_id& Key )
+xstring BlockCachePath( const shader_block_cache& Cache, const x_content_id& Key )
 {
     char              Name[71];
     static const char Hex[] = "0123456789abcdef";
@@ -67,7 +67,7 @@ xstring BlockCachePath( const shader_block_cache& Cache, const ecs_content_id& K
 
 //==============================================================================
 
-xbool LoadPackedBlock( void* pContext, const ecs_content_id& Key, ecs_package_block& Block, xarray<byte>& Stored )
+xbool LoadPackedBlock( void* pContext, const x_content_id& Key, ecs_package_block& Block, xarray<byte>& Stored )
 {
     shader_block_cache& Cache = *static_cast<shader_block_cache*>( pContext );
     xarray<byte>        File;
@@ -85,10 +85,10 @@ xbool LoadPackedBlock( void* pContext, const ecs_content_id& Key, ecs_package_bl
         x_memcmp( pHeader + 32, Key.GetPtr(), 32 ) )
         return FALSE;
 
-    ecs_content_hash Hash;
+    x_content_hash Hash;
     Hash.Update( pHeader, 64 );
     Hash.Update( pHeader + 96, File.GetCount() - 96 );
-    const ecs_content_id Digest = Hash.Finish();
+    const x_content_id Digest = Hash.Finish();
 
     if( x_memcmp( Digest.GetPtr(), pHeader + 64, 32 ) )
         return FALSE;
@@ -115,7 +115,7 @@ xbool LoadPackedBlock( void* pContext, const ecs_content_id& Key, ecs_package_bl
 
 //==============================================================================
 
-xbool SavePackedBlock( void* pContext, const ecs_content_id& Key, const ecs_package_block& Block,
+xbool SavePackedBlock( void* pContext, const x_content_id& Key, const ecs_package_block& Block,
                        const xarray<byte>& Stored )
 {
     shader_block_cache& Cache = *static_cast<shader_block_cache*>( pContext );
@@ -131,10 +131,10 @@ xbool SavePackedBlock( void* pContext, const ecs_content_id& Key, const ecs_pack
     x_store_le32( pHeader + 20, Block.DecodedCRC );
     x_memcpy( pHeader + 32, Key.GetPtr(), 32 );
     x_memcpy( pHeader + 96, Stored.GetPtr(), Stored.GetCount() );
-    ecs_content_hash Hash;
+    x_content_hash Hash;
     Hash.Update( pHeader, 64 );
     Hash.Update( pHeader + 96, Stored.GetCount() );
-    const ecs_content_id Digest = Hash.Finish();
+    const x_content_id Digest = Hash.Finish();
     x_memcpy( pHeader + 64, Digest.GetPtr(), 32 );
     const xstring Path      = BlockCachePath( Cache, Key );
     const xstring Temporary = Path + ".tmp";
@@ -227,7 +227,7 @@ xbool BuildShaderPackage( const shader_script& Script, const compile_options& Op
     ecs_package_index Package;
     Package.CatalogId             = Script.CatalogId;
     Package.Name                  = (const char*)PackageName;
-    const ecs_content_id Identity = ecs_HashContent( reinterpret_cast<const byte*>( (const char*)Package.Name ),
+    const x_content_id Identity = x_HashContent( reinterpret_cast<const byte*>( (const char*)Package.Name ),
                                                      static_cast<u32>( Package.Name.GetLength() ) );
     for( u32 i = 0; i < 8; ++i )
         Package.PackageId |= static_cast<u64>( Identity[i] ) << ( i * 8 );
@@ -449,7 +449,7 @@ xbool WriteShaderPackages( const shader_script& Script, const compile_options& O
             Decoded += Index.Blocks[i].DecodedSize;
         }
 
-        const auto Digest = ecs_HashContent( File.GetPtr(), static_cast<u32>( File.GetCount() ) );
+        const auto Digest = x_HashContent( File.GetPtr(), static_cast<u32>( File.GetCount() ) );
         UpdateShaderPackageProgress( Name.c_str(), Stats.Blocks, Stats.Blocks, Stats.Zstd, Stats.Cached, Stats.Raw,
                                      "done", TRUE, x_TicksToMs( x_GetTime() - PackageStart ) );
         static const char Hex[] = "0123456789abcdef";

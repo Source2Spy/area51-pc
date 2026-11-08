@@ -270,7 +270,7 @@ if( TARGET a51_shader_compiler )
         )
     endif()
 
-    if( TARGET dxcompiler )
+    if( TARGET dxcompiler AND NOT WIN32 )
         target_compile_definitions( a51_shader_compiler PRIVATE DXC_USE_DIRECTX_HEADERS=1 )
         target_include_directories( a51_shader_compiler PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/xCore/3rdParty/DXC/external/DirectX-Headers/include/directx"
