@@ -235,7 +235,7 @@ set( _a51_tool_targets
     Art2Code
     dfsTool
     XBMPViewer
-    SoundPackager
+    # SoundPackager
     ShaderTool
     DecalCompiler
     ResourceTool

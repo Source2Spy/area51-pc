@@ -8,7 +8,6 @@
 
 #include "Auxiliary/CommandLine/CommandLine.hpp"
 #include "x_bytestream.hpp"
-#include "DspTool.hpp"
 #include "Parsing/tokenizer.hpp"
 #include "x_debug.hpp"
 #include "aiff_file.hpp"
@@ -22,11 +21,6 @@
 #include "ParseScript.hpp"
 #include "Compress.hpp"
 #include "ExportPackage.hpp"
-
-extern "C"
-{
-    #include "encvag.h"
-};
 
 //------------------------------------------------------------------------------
 
@@ -57,9 +51,6 @@ void DisplayHelp( void )
     x_printf( "\n" );
     x_printf( "options:\n" );
     x_printf( "         -pc                - Compile for PC\n" );
-    x_printf( "         -ps2               - Compile for PS2\n" );
-    x_printf( "         -gcn               - Compile for GCN\n" );
-    x_printf( "         -xbox              - Compile for XBox\n" );
     x_printf( "\n" );
     x_printf( "         -v                 - Verbose\n" );
     x_printf( "         -d                 - Debug\n" );
@@ -191,9 +182,6 @@ int main(int argc, char* argv[])
     CommandLine.AddOptionDef( "V"     );
     CommandLine.AddOptionDef( "D"     );
     CommandLine.AddOptionDef( "PC"    );
-    CommandLine.AddOptionDef( "PS2"   );
-    CommandLine.AddOptionDef( "GCN"   );
-    CommandLine.AddOptionDef( "XBOX"  );
     CommandLine.AddOptionDef( "CLEAN" );
     CommandLine.AddOptionDef( "CMDLINE");
     CommandLine.AddOptionDef( "DUMP"  );
@@ -208,13 +196,6 @@ int main(int argc, char* argv[])
     if( NeedHelp || (CommandLine.GetNumArguments() == 0) )
     {
         DisplayHelp();
-        return 10;
-    }
-
-    // Try to load the nintendo dsp DLL
-    if( !dsptool_Load() )
-    {
-        x_printf( "Error loading 'dsptool.dll'\n" );
         return 10;
     }
 
@@ -235,18 +216,6 @@ int main(int argc, char* argv[])
     if( CommandLine.FindOption( xstring("PC") ) != -1 )
     {
         s_Targets.Append() = EXPORT_DESKTOP;
-    }
-    if( CommandLine.FindOption( xstring("PS2") ) != -1 )
-    {
-        s_Targets.Append() = EXPORT_PS2;
-    }
-    if( CommandLine.FindOption( xstring("GCN") ) != -1 )
-    {
-        s_Targets.Append() = EXPORT_GCN;
-    }
-    if( CommandLine.FindOption( xstring("XBOX") ) != -1 )
-    {
-        s_Targets.Append() = EXPORT_XBOX;
     }
     if( CommandLine.FindOption( xstring("CLEAN") ) != -1 )
     {
@@ -304,9 +273,6 @@ int main(int argc, char* argv[])
             ProcessScript( (const char*)ScriptName );
         }
     }
-
-    // Unload nintendo dsp DLL
-    dsptool_Unload();
 
     // Return success
     return 0;

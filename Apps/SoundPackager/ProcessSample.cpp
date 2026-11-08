@@ -271,21 +271,16 @@ u32 CompressAudioFile( X_FILE* in, X_FILE* out, s32 Temperature, s32* NumChannel
                     break;
 
                 case EXPORT_PS2:
-#if defined( A51_SOUND_PACKAGER_NO_ENCVAG )
-                    x_printf( "PS2 ADPCM export is unavailable in this architecture.\\n" );
+                    x_printf( "PS2 ADPCM export is unavailable.\n" );
                     return 0;
-#else
-                    return CompressAudioFilePS2_ADPCM( in, out, NumChannels, &SyncSize );
-#endif
-                    break;
 
                 case EXPORT_GCN:
-                    Result = CompressAudioFileGCN_ADPCM( in, out, NumChannels, &SyncSize );
-                    break;
+                    x_printf( "GCN audio export is unavailable.\n" );
+                    return 0;
 
                 case EXPORT_XBOX:
-                    Result = CompressAudioFileXBOX_ADPCM( in, out, NumChannels, &SyncSize );
-                    break;
+                    x_printf( "Xbox audio export is unavailable.\n" );
+                    return 0;
 
                 default:
                     ASSERT( 0 );
@@ -301,8 +296,8 @@ u32 CompressAudioFile( X_FILE* in, X_FILE* out, s32 Temperature, s32* NumChannel
                     break;
 
                 case EXPORT_XBOX:
-                    Result = CompressAudioFileXBOX_PCM( in, out, NumChannels, &SyncSize );
-                    break;
+                    x_printf( "Xbox audio export is unavailable.\n" );
+                    return 0;
 
                 default:
                     ASSERT( 0 );
@@ -318,8 +313,8 @@ u32 CompressAudioFile( X_FILE* in, X_FILE* out, s32 Temperature, s32* NumChannel
                     break;
 
                 case EXPORT_GCN:
-                    Result = CompressAudioFileGCN_MP3( in, out, NumChannels, &SyncSize );
-                    break;
+                    x_printf( "GCN audio export is unavailable.\n" );
+                    return 0;
 
                 default:
                     ASSERT( 0 );
