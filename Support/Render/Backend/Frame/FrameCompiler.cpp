@@ -75,6 +75,7 @@ FrameCompiler::GeomDrawPacket::GeomDrawPacket( void )
       DynamicIndexCount( 0 ),
       DynamicLightingIndex( 0 ),
       CoverageUsesTextureAlpha( FALSE ),
+      GlowCapable( FALSE ),
       pDamageMask( NULL ),
       pDamageTexture( NULL ),
       pDamageUpload( NULL ),
@@ -576,6 +577,7 @@ void FrameCompiler::Kill( void )
     m_lDrawPackets.Clear();
     m_ScenePipelineRequirements.Clear();
     m_ScenePipelineSlots.Clear();
+    m_PreparedPacketPipelines.Clear();
     m_lRigidFrameInstances.Clear();
     m_lRigidFrameLighting.Clear();
     m_lRigidFrameColors.Clear();
@@ -1770,6 +1772,13 @@ xbool FrameCompiler::BuildPackets( const xarray<geom_draw_item>&    Draws,
 
     m_ScenePipelineSlots.SetCount( static_cast<s32>( SlotCount ) );
 
+    if( !ReserveArrayCapacity( m_PreparedPacketPipelines, m_lDrawPackets.GetCount(), "prepared packet pipelines" ) )
+    {
+        return FALSE;
+    }
+
+    m_PreparedPacketPipelines.SetCount( m_lDrawPackets.GetCount() );
+
     for( s32 Slot = 0; Slot < m_ScenePipelineSlots.GetCount(); ++Slot )
     {
         m_ScenePipelineSlots[Slot] = -1;
@@ -1778,7 +1787,15 @@ xbool FrameCompiler::BuildPackets( const xarray<geom_draw_item>&    Draws,
     for( s32 i = 0; i < m_lDrawPackets.GetCount(); ++i )
     {
         GeomDrawPacket& Packet = m_lDrawPackets[i];
-        geom_pass_desc  Pass;
+
+        Packet.SubmissionIndex = i;
+        Packet.GlowCapable     = ComputePacketGlowCapable( Packet );
+
+        PreparedPacketPipelines& Prepared = m_PreparedPacketPipelines[i];
+
+        Prepared = PreparedPacketPipelines();
+
+        geom_pass_desc Pass;
         Pass.ColorFormat     = Frame.Desc.Formats.SceneColorFormat;
         Pass.DepthFormat     = pDepthDesc->Format;
         Pass.SampleCount     = Frame.Desc.SampleCount;
@@ -1810,19 +1827,22 @@ xbool FrameCompiler::BuildPackets( const xarray<geom_draw_item>&    Draws,
             DepthPass.EnableShadows = FALSE;
             DepthPass.WriteNormals  = Frame.SceneNormals.IsValid();
 
+            RenderStateSelection DepthState;
+
             if( Packet.Kind == GEOM_PACKET_DYNAMIC )
             {
-                const RenderStateSelection DepthState =
-                    BuildDynamicPipelineState( Flags, DepthPass, Packet.LightingMode, Packet.Projection );
+                DepthState = BuildDynamicPipelineState( Flags, DepthPass, Packet.LightingMode, Packet.Projection );
                 Packet.pDepthPipeline = GetDynamicPipeline( DepthState );
             }
             else
             {
-                const RenderStateSelection DepthState = BuildMaterialPipelineState(
+                DepthState = BuildMaterialPipelineState(
                     Packet.pMaterial, Flags, Packet.MaterialOverride, IsPacketGlowCapable( i ),
                     DepthPass, Packet.LightingMode, Packet.Projection );
                 Packet.pDepthPipeline = Packet.Kind == GEOM_PACKET_SKIN ? GetSkinPipeline( DepthState )
                                                                         : GetRigidPipeline( DepthState );
+                DepthState.Program.Vertex = Packet.Kind == GEOM_PACKET_SKIN ? VertexContract::Skin
+                                                                            : VertexContract::Rigid;
             }
 
             if( !Packet.pDepthPipeline )
@@ -1830,6 +1850,18 @@ xbool FrameCompiler::BuildPackets( const xarray<geom_draw_item>&    Draws,
                 RENDER_THROW( "FrameCompiler", "failed to prepare depth pipeline for packet %d", i );
                 return FALSE;
             }
+
+            SurfaceProgram* pDepthProgram = GetSurfaceProgram( DepthState.Program );
+
+            if( !pDepthProgram )
+            {
+                return FALSE;
+            }
+
+            Prepared.Depth.Pass      = DepthPass;
+            Prepared.Depth.State     = DepthState;
+            Prepared.Depth.pPipeline = Packet.pDepthPipeline;
+            Prepared.Depth.pBindings = &pDepthProgram->Bindings;
         }
 
         RenderStateSelection MaterialState;
@@ -1858,6 +1890,18 @@ xbool FrameCompiler::BuildPackets( const xarray<geom_draw_item>&    Draws,
 
         Packet.SceneProgram = MaterialState.Program;
 
+        SurfaceProgram* pProgram = GetSurfaceProgram( MaterialState.Program );
+
+        if( !pProgram )
+        {
+            return FALSE;
+        }
+
+        Prepared.Scene.Pass      = Pass;
+        Prepared.Scene.State     = MaterialState;
+        Prepared.Scene.pPipeline = pPipeline;
+        Prepared.Scene.pBindings = &pProgram->Bindings;
+
         const u64 Hash     = render_GetPipelineSerial( *pPipeline );
         const u32 SlotMask = static_cast<u32>( m_ScenePipelineSlots.GetCount() - 1 );
         u32       Slot     = static_cast<u32>( Hash ^ ( Hash >> 32 ) ) & SlotMask;
@@ -1874,7 +1918,6 @@ xbool FrameCompiler::BuildPackets( const xarray<geom_draw_item>&    Draws,
             Slot = ( Slot + 1 ) & SlotMask;
         }
 
-        Packet.SubmissionIndex    = i;
         Packet.ScenePipelineIndex = m_ScenePipelineSlots[Slot];
 
         if( Packet.ScenePipelineIndex < 0 )
@@ -2391,6 +2434,7 @@ xbool FrameCompiler::RequestLightCookies( const xarray<RenderLightingHandle>& Li
 
 xbool FrameCompiler::PrepareProjectionAtlas( FrameGraphBuilder& Graph )
 {
+    m_hasProjectionConstants   = FALSE;
     m_RequestedLightCookieMask = 0;
 
     const s32 nProjLights = m_pContext->pProjections->GetProjLightCount();
@@ -2433,7 +2477,7 @@ xbool FrameCompiler::PrepareProjectionAtlas( FrameGraphBuilder& Graph )
         return FALSE;
     }
 
-    return TRUE;
+    return PrepareProjectionConstants();
 }
 
 //=========================================================================
@@ -2442,6 +2486,8 @@ xbool FrameCompiler::PrepareProjectionAtlas( FrameGraphBuilder& Graph )
 
 void FrameCompiler::ClearPackets( void )
 {
+    m_hasProjectionConstants = FALSE;
+
     WaitForOrderedDraws();
     m_OrderedDrawJob             = OrderedDrawJob();
     m_areOrderedDrawsPrepared    = FALSE;
@@ -2451,6 +2497,7 @@ void FrameCompiler::ClearPackets( void )
     m_lDrawPackets.SetCount( 0 );
     m_ScenePipelineRequirements.SetCount( 0 );
     m_ScenePipelineSlots.SetCount( 0 );
+    m_PreparedPacketPipelines.SetCount( 0 );
     m_lRigidFrameInstances.SetCount( 0 );
     m_lRigidFrameLighting.SetCount( 0 );
     m_lRigidFrameColors.SetCount( 0 );
@@ -2674,6 +2721,36 @@ xbool FrameCompiler::IsFirstPersonDepthPacket( s32 PacketIndex ) const
 
 //=========================================================================
 
+xbool FrameCompiler::PreparedMaterialPipeline::MatchesPass( const geom_pass_desc& PassData ) const
+{
+    // View/dimensions are pushed as uniforms separately; these fields select the pipeline.
+    return pPipeline && pBindings &&
+           Pass.ColorFormat == PassData.ColorFormat && Pass.DepthFormat == PassData.DepthFormat &&
+           Pass.SampleCount == PassData.SampleCount && Pass.DepthMode == PassData.DepthMode &&
+           Pass.WriteSceneDepth == PassData.WriteSceneDepth && Pass.WriteGlowMask == PassData.WriteGlowMask &&
+           Pass.WriteNormals == PassData.WriteNormals && Pass.EnableShadows == PassData.EnableShadows &&
+           Pass.SceneFogMode == PassData.SceneFogMode && Pass.BloomFogMode == PassData.BloomFogMode;
+}
+
+//=========================================================================
+
+const FrameCompiler::PreparedMaterialPipeline* FrameCompiler::FindPreparedMaterialState(
+    const GeomDrawPacket& Packet, const geom_pass_desc& PassData ) const
+{
+    if( Packet.SubmissionIndex >= static_cast<u32>( m_PreparedPacketPipelines.GetCount() ) )
+    {
+        return NULL;
+    }
+
+    const PreparedPacketPipelines&  Prepared = m_PreparedPacketPipelines[Packet.SubmissionIndex];
+    const PreparedMaterialPipeline& Pipeline = PassData.DepthMode == GEOM_DEPTH_PREPASS ? Prepared.Depth
+                                                                                      : Prepared.Scene;
+
+    return Pipeline.MatchesPass( PassData ) ? &Pipeline : NULL;
+}
+
+//=========================================================================
+
 render_pipeline* FrameCompiler::FindPreparedMaterialPipeline( s32 PacketIndex, const RenderStateSelection& State ) const
 {
     ASSERT( PacketIndex >= 0 && PacketIndex < m_lDrawPackets.GetCount() );
@@ -2744,8 +2821,13 @@ xbool FrameCompiler::IsPacketGlowCapable( s32 PacketIndex ) const
         return FALSE;
     }
 
-    const GeomDrawPacket& Packet = m_lDrawPackets[PacketIndex];
+    return m_lDrawPackets[PacketIndex].GlowCapable;
+}
 
+//=========================================================================
+
+xbool FrameCompiler::ComputePacketGlowCapable( const GeomDrawPacket& Packet ) const
+{
     if( Packet.ContributionPolicy == render::RENDER_CONTRIBUTION_SUPPRESS_BLOOM )
     {
         return FALSE;
@@ -4254,6 +4336,7 @@ xbool FrameCompiler::QueueDynamicPipeline( const geom_pass_desc& Pass, u32 Rende
 
 void FrameCompiler::ReleaseLevelPipelines( void )
 {
+    ClearPackets();
     m_RigidPipelines.Reset();
     m_SkinPipelines.Reset();
     m_DynamicPipelines.Reset();
@@ -4480,7 +4563,8 @@ render_pipeline* FrameCompiler::GetRigidPipeline( const RenderStateSelection& Pi
 
 //=========================================================================
 
-xbool FrameCompiler::BindRigidPipeline( const RenderStateSelection& PipelineState, render_pipeline* pPrepared )
+xbool FrameCompiler::BindRigidPipeline( const RenderStateSelection& PipelineState, render_pipeline* pPrepared,
+                                       const ShaderBindingLayout* pPreparedBindings )
 {
     if( ( PipelineState.Program.Outputs == ShaderOutputs::LinearDepth ||
           PipelineState.Program.Outputs == ShaderOutputs::LinearDepthNormals ) && !pPrepared )
@@ -4497,17 +4581,22 @@ xbool FrameCompiler::BindRigidPipeline( const RenderStateSelection& PipelineStat
 
     m_ActiveShaderKind = GEOM_SHADER_RIGID;
 
-    ShaderProgramKey ProgramKey = PipelineState.Program;
-    ProgramKey.Vertex           = VertexContract::Rigid;
-
-    SurfaceProgram* pProgram = GetSurfaceProgram( ProgramKey );
-
-    if( !pProgram )
+    if( !pPreparedBindings )
     {
-        return FALSE;
+        ShaderProgramKey ProgramKey = PipelineState.Program;
+        ProgramKey.Vertex           = VertexContract::Rigid;
+
+        SurfaceProgram* pProgram = GetSurfaceProgram( ProgramKey );
+
+        if( !pProgram )
+        {
+            return FALSE;
+        }
+
+        pPreparedBindings = &pProgram->Bindings;
     }
 
-    m_pActiveSurfaceBindings = &pProgram->Bindings;
+    m_pActiveSurfaceBindings = pPreparedBindings;
     m_ActiveSamplerPreset    = PipelineState.Sampler;
 
     return TRUE;
@@ -4545,7 +4634,8 @@ render_pipeline* FrameCompiler::GetSkinPipeline( const RenderStateSelection& Pip
 
 //=========================================================================
 
-xbool FrameCompiler::BindSkinPipeline( const RenderStateSelection& PipelineState, render_pipeline* pPrepared )
+xbool FrameCompiler::BindSkinPipeline( const RenderStateSelection& PipelineState, render_pipeline* pPrepared,
+                                      const ShaderBindingLayout* pPreparedBindings )
 {
     if( ( PipelineState.Program.Outputs == ShaderOutputs::LinearDepth ||
           PipelineState.Program.Outputs == ShaderOutputs::LinearDepthNormals ) && !pPrepared )
@@ -4562,17 +4652,22 @@ xbool FrameCompiler::BindSkinPipeline( const RenderStateSelection& PipelineState
 
     m_ActiveShaderKind = GEOM_SHADER_SKIN;
 
-    ShaderProgramKey ProgramKey = PipelineState.Program;
-    ProgramKey.Vertex           = VertexContract::Skin;
-
-    SurfaceProgram* pProgram = GetSurfaceProgram( ProgramKey );
-
-    if( !pProgram )
+    if( !pPreparedBindings )
     {
-        return FALSE;
+        ShaderProgramKey ProgramKey = PipelineState.Program;
+        ProgramKey.Vertex           = VertexContract::Skin;
+
+        SurfaceProgram* pProgram = GetSurfaceProgram( ProgramKey );
+
+        if( !pProgram )
+        {
+            return FALSE;
+        }
+
+        pPreparedBindings = &pProgram->Bindings;
     }
 
-    m_pActiveSurfaceBindings = &pProgram->Bindings;
+    m_pActiveSurfaceBindings = pPreparedBindings;
     m_ActiveSamplerPreset    = PipelineState.Sampler;
 
     return TRUE;

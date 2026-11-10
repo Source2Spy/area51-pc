@@ -247,7 +247,7 @@ xbool RenderBackend::EndFrame( void )
 
 void RenderBackend::AbortFrame( void )
 {
-    m_FrameCompiler.WaitForOrderedDraws();
+    m_FrameCompiler.ClearPackets();
     if( m_FrameStorage.IsCollecting() || m_FrameStorage.IsSealed() )
     {
         m_ProjectionAtlas.Invalidate();

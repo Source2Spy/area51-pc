@@ -268,7 +268,7 @@ xbool ClothTessellation::Declare( FrameGraphBuilder& Graph, const dynamic_geom_v
 
 //=========================================================================
 
-xbool ClothTessellation::Execute( RenderPassContext& Context, PassData Data )
+xbool ClothTessellation::Execute( RenderPassContext& Context, const PassData& Data )
 {
     ClothTessellation& Owner = *Data.pOwner;
     Owner.m_isReady = FALSE;

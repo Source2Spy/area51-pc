@@ -20,6 +20,7 @@
 
 #include "e_Composite.hpp"
 #include "x_debug.hpp"
+#include "x_profile.hpp"
 
 namespace render
 {
@@ -343,6 +344,8 @@ s32 ForwardEncoder::CompareItems( const void* pA, const void* pB )
 
 void ForwardEncoder::Sort( void )
 {
+    X_PROFILE_SCOPE_CATEGORY( "Renderer", "Forward/Sort" );
+
     if( m_Items.GetCount() > 1 )
     {
         x_qsort( m_Items.GetPtr(), m_Items.GetCount(), sizeof( DrawItem ), CompareItems );
@@ -353,6 +356,8 @@ void ForwardEncoder::Sort( void )
 
 xbool ForwardEncoder::BuildDrawBatches( const RenderFrameContext& Frame )
 {
+    X_PROFILE_SCOPE_CATEGORY( "Renderer", "Forward/BuildDrawBatches" );
+
     Primitives().BeginSpriteBatches();
     Geom().BeginForwardBatches();
 

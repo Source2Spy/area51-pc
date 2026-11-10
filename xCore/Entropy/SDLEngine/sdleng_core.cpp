@@ -857,17 +857,6 @@ xbool eng_BeginFrame( void )
     {
         X_PROFILE_SCOPE_CATEGORY( "Frame", "Frame.Begin" );
 
-        {
-            X_PROFILE_SCOPE_CATEGORY( "Frame", "WindowEvents" );
-
-            if( !sdleng_WindowPumpMessages() )
-            {
-                eng_Reboot( REBOOT_QUIT );
-                x_GetProfiler().CancelFrame();
-                return FALSE;
-            }
-        }
-
         while( TRUE )
         {
             if( s.bResizePending )
@@ -896,6 +885,27 @@ xbool eng_BeginFrame( void )
 
             if( sdleng_GetSwapchainTexture() )
             {
+                {
+                    X_PROFILE_SCOPE_CATEGORY( "Frame", "WindowEvents" );
+
+                    // Collect input after the blocking acquire, not before it.
+                    if( !sdleng_WindowPumpMessages() )
+                    {
+                        eng_Reboot( REBOOT_QUIT );
+                        sdleng_CancelFrame();
+                        x_GetProfiler().CancelFrame();
+                        return FALSE;
+                    }
+                }
+
+                // Target recreation requires no active command buffer. A resize
+                // received by this batch must be applied before rendering.
+                if( s.bResizePending )
+                {
+                    sdleng_CancelFrame();
+                    continue;
+                }
+
                 break;
             }
 
@@ -1041,7 +1051,11 @@ xbool eng_EndFrame( void )
     ShaderMetric.Set( sdleng_GetShaderCount() );
     RenderTargetMetric.Set( sdleng_GetRenderTargetCount() );
 
-    const xbool bSubmitted = sdleng_EndFrame();
+    xbool bSubmitted;
+    {
+        X_PROFILE_SCOPE_CATEGORY( "Frame", "Frame.SubmitPresent" );
+        bSubmitted = sdleng_EndFrame();
+    }
     const xtick SubmitTime = x_GetTime();
     s.RenderSubmitMs       = sdleng_GetRenderSubmitMs();
 

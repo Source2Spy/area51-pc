@@ -13,6 +13,7 @@
 #include "e_Engine.hpp"
 #include "e_RenderTarget.hpp"
 #include "x_debug.hpp"
+#include "x_profile.hpp"
 #include "Font/FontMgr.hpp"
 
 #include <stddef.h>
@@ -1160,6 +1161,8 @@ void ui_renderer::BeginFrame( void )
 
 xbool ui_renderer::Prepare( void )
 {
+    X_PROFILE_SCOPE_CATEGORY( "UI", "UI/Prepare" );
+
     if( !m_isInitialized )
         return TRUE;
 
@@ -1256,6 +1259,8 @@ xbool ui_renderer::ExecuteGraphPassThunk( render::RenderPassContext& Context, ui
 
 xbool ui_renderer::ExecuteGraphPass( render::RenderPassContext& Context )
 {
+    X_PROFILE_SCOPE_CATEGORY( "UI", "UI/ExecuteGraphPass" );
+
     const rtarget* pBackBuffer = Context.Write( Context.GetFrame().FinalColor );
 
     if( !pBackBuffer ||

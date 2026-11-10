@@ -175,7 +175,11 @@ enum asset_platform
 //------------------------------------------------------------------------------
 
 #ifndef X_PROFILE
-    #define X_PROFILE 0
+    #if defined( A51_PROFILE_NVTX ) && A51_PROFILE_NVTX
+        #define X_PROFILE 1
+    #else
+        #define X_PROFILE 0
+    #endif
 #endif
 
 #ifndef X_PROFILE_TRACY

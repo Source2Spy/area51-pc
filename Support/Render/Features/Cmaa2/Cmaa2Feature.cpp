@@ -338,7 +338,7 @@ xbool Cmaa2Feature::BuildGraphStage( RenderFeatureGraphStage Stage, FrameGraphBu
 
 //=========================================================================
 
-xbool Cmaa2Feature::Execute( RenderPassContext& Context, PassData Data )
+xbool Cmaa2Feature::Execute( RenderPassContext& Context, const PassData& Data )
 {
     if( !shader_PushUniformData( SHADER_STAGE_COMPUTE, 0, &Data.Constants, sizeof( Data.Constants ) ) )
     {
@@ -397,7 +397,7 @@ xbool Cmaa2Feature::Execute( RenderPassContext& Context, PassData Data )
 
 //=========================================================================
 
-xbool Cmaa2Feature::ExecuteResolve( RenderPassContext& Context, RenderResourceHandle Color )
+xbool Cmaa2Feature::ExecuteResolve( RenderPassContext& Context, const RenderResourceHandle& Color )
 {
     const rtarget* pSource = Context.Read( Color );
     return pSource && Context.Write( Context.GetFrame().FinalColor ) &&

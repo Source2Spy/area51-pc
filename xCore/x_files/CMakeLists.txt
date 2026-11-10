@@ -1,4 +1,14 @@
-﻿if( WIN32 )
+﻿option( A51_PROFILE_NVTX "Enable the optional NVTX3 profiling adapter" OFF )
+
+if( A51_PROFILE_NVTX )
+    find_path( A51_NVTX_INCLUDE_DIR nvtx3/nvToolsExt.h )
+    if( NOT A51_NVTX_INCLUDE_DIR )
+        message( FATAL_ERROR
+            "A51_PROFILE_NVTX requires the official NVTX3 headers. Set A51_NVTX_INCLUDE_DIR to the directory containing nvtx3/nvToolsExt.h." )
+    endif()
+endif()
+
+if( WIN32 )
     set( X_FILES_PLATFORM_SOURCES
         "${CMAKE_CURRENT_LIST_DIR}/Implementation/x_atomic_windows.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Implementation/x_threads_windows.cpp"
@@ -58,6 +68,8 @@ a51_add_project( x_files STATIC
         "${CMAKE_CURRENT_LIST_DIR}/Implementation/x_mutex.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Implementation/x_plus.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Implementation/x_profile.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/Implementation/x_profile_nvtx.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/Implementation/x_profile_nvtx.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/Implementation/x_profile_tracy_client.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Implementation/x_stdio.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Implementation/x_string.cpp"
@@ -115,6 +127,16 @@ a51_add_project( x_files STATIC
         "${CMAKE_CURRENT_LIST_DIR}/Implementation/x_stdio_private.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/Implementation/x_threads_private.hpp"
 )
+
+if( A51_PROFILE_NVTX )
+    target_include_directories( x_files PRIVATE "${A51_NVTX_INCLUDE_DIR}" )
+    target_compile_definitions( x_files PRIVATE X_PROFILE_NVTX=1 )
+    target_compile_definitions( a51_build_options INTERFACE A51_PROFILE_NVTX=1 )
+    target_compile_options( a51_build_options INTERFACE
+        "$<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang>:-fno-omit-frame-pointer>"
+        "$<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang>:-g>" )
+    target_link_libraries( x_files PRIVATE ${CMAKE_DL_LIBS} )
+endif()
 
 if( CMAKE_SYSTEM_NAME STREQUAL "Android" AND
     CMAKE_CXX_COMPILER_ID MATCHES "Clang" )

@@ -54,6 +54,7 @@ struct sdleng_window_state
     void*                         pResizeContext;
     sdleng_window_event_fn*       pEventCallback;
     void*                         pEventContext;
+    u64                           EventFrameSerial;
 
     sdleng_window_state( void )
     {
@@ -368,6 +369,7 @@ xbool sdleng_WindowInit( const sdleng_window_desc& Desc )
     s_Window.CloseRequested      = FALSE;
     s_Window.WrappedNativeWindow = ( s_Window.hWindow != NULL );
     s_Window.OwnsWindow          = FALSE;
+    s_Window.EventFrameSerial    = 0;
 
     if( s_Window.hWindow )
     {
@@ -447,6 +449,7 @@ void sdleng_WindowKill( void )
     s_Window.CloseRequested      = FALSE;
     s_Window.WrappedNativeWindow = FALSE;
     s_Window.OwnsWindow          = FALSE;
+    s_Window.EventFrameSerial    = 0;
 }
 
 //==============================================================================
@@ -536,7 +539,8 @@ void sdleng_WindowDispatchEvent( const SDL_Event& Event, SDL_WindowID WindowID )
 
 //==============================================================================
 
-xbool sdleng_WindowPumpMessages( void )
+static
+xbool sdleng_WindowPollMessages( void )
 {
     if( !s_Window.VideoInitialized )
     {
@@ -574,6 +578,26 @@ xbool sdleng_WindowPumpMessages( void )
 
 //==============================================================================
 
+xbool sdleng_WindowPumpMessages( void )
+{
+    // Render-only frames still service the window; input consumes the same batch.
+    // Without an active frame (editor logic, for example), each call stays fresh.
+    const u64 FrameSerial = sdleng_GetCurrentFrameSerial();
+    if( sdleng_InFrame() && FrameSerial )
+    {
+        if( s_Window.EventFrameSerial == FrameSerial )
+        {
+            return !s_Window.CloseRequested;
+        }
+
+        s_Window.EventFrameSerial = FrameSerial;
+    }
+
+    return sdleng_WindowPollMessages();
+}
+
+//==============================================================================
+
 xbool sdleng_WindowWaitForActivity( void )
 {
     if( !s_Window.VideoInitialized )
@@ -593,7 +617,9 @@ xbool sdleng_WindowWaitForActivity( void )
         sdleng_WindowDispatchEvent( Event, WindowID );
     }
 
-    return sdleng_WindowPumpMessages();
+    // A suspended frame must keep receiving restore/resize/quit events even when
+    // its normal event batch has already been collected.
+    return sdleng_WindowPollMessages();
 }
 
 //==============================================================================

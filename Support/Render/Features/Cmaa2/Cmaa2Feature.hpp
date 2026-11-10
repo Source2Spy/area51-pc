@@ -62,8 +62,8 @@ class Cmaa2Feature : public IRenderFeature
     //  FUNCTIONS
     //-------------------------------------------------------------------------
 
-    static xbool Execute( RenderPassContext& Context, PassData Data );
-    static xbool ExecuteResolve( RenderPassContext& Context, RenderResourceHandle Color );
+    static xbool Execute( RenderPassContext& Context, const PassData& Data );
+    static xbool ExecuteResolve( RenderPassContext& Context, const RenderResourceHandle& Color );
 
     //-------------------------------------------------------------------------
     //  DATA

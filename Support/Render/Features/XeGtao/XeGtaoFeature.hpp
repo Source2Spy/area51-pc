@@ -73,7 +73,7 @@ class XeGtaoFeature : public IRenderFeature
     //  FUNCTIONS
     //-------------------------------------------------------------------------
 
-    static xbool Execute( RenderPassContext& Context, PassData Data );
+    static xbool Execute( RenderPassContext& Context, const PassData& Data );
     xbool BuildVisibility( FrameGraphBuilder& Graph, const RenderFrameContext& Frame,
                             RenderResourceHandle Source, f32 Radius, xbool FirstPerson,
                             RenderResourceHandle& Visibility );

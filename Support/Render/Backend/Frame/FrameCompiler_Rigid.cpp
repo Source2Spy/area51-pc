@@ -120,10 +120,22 @@ xbool FrameCompiler::SetRigidMaterial( const material*       pMaterial,
     geom_pass_desc DrawPass = PassData;
     DrawPass.EnableShadows  = PassData.EnableShadows && m_lDrawPackets[PacketIndex].Shadows;
 
-    RenderStateSelection PipelineState = BuildMaterialPipelineState( pMaterial, RenderFlags, OverrideMat,
-                                                                     WriteGlowAlpha, DrawPass, Lighting, Projection );
+    const PreparedMaterialPipeline* pPrepared = FindPreparedMaterialState( m_lDrawPackets[PacketIndex], DrawPass );
+    xbool                           Bound;
 
-    if( !BindRigidPipeline( PipelineState, FindPreparedMaterialPipeline( PacketIndex, PipelineState ) ) )
+    if( pPrepared )
+    {
+        Bound = BindRigidPipeline( pPrepared->State, pPrepared->pPipeline, pPrepared->pBindings );
+    }
+    else
+    {
+        // Glow-mask and other execution-only pass variants still need their own selection.
+        const RenderStateSelection PipelineState = BuildMaterialPipelineState(
+            pMaterial, RenderFlags, OverrideMat, WriteGlowAlpha, DrawPass, Lighting, Projection );
+        Bound = BindRigidPipeline( PipelineState, FindPreparedMaterialPipeline( PacketIndex, PipelineState ) );
+    }
+
+    if( !Bound )
     {
         RENDER_THROW( "FrameCompiler", "failed to bind rigid render pipeline" );
         return FALSE;

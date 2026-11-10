@@ -422,7 +422,7 @@ xbool XeGtaoFeature::BuildVisibility( FrameGraphBuilder& Graph, const RenderFram
 
 //=========================================================================
 
-xbool XeGtaoFeature::Execute( RenderPassContext& Context, PassData Data )
+xbool XeGtaoFeature::Execute( RenderPassContext& Context, const PassData& Data )
 {
     if( !shader_PushUniformData( SHADER_STAGE_COMPUTE, 0, &Data.Constants, sizeof( Data.Constants ) ) )
     {

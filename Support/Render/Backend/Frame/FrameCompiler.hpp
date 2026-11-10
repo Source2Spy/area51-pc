@@ -446,6 +446,7 @@ protected:
         u32                                        DynamicIndexCount;
         u32                                        DynamicLightingIndex;
         xbool                                      CoverageUsesTextureAlpha;
+        xbool                                      GlowCapable;
         const shader_resource*                     pDamageMask;
         vram_texture*                              pDamageTexture;
         const u8*                                  pDamageUpload;
@@ -541,6 +542,28 @@ protected:
         ShaderBindingLayout Bindings;
     };
 
+    //-------------------------------------------------------------------------
+
+    struct PreparedMaterialPipeline
+    {
+        geom_pass_desc             Pass;
+        RenderStateSelection       State;
+        render_pipeline*           pPipeline = NULL;
+        const ShaderBindingLayout* pBindings = NULL;
+
+        xbool MatchesPass( const geom_pass_desc& PassData ) const;
+    };
+
+    //-------------------------------------------------------------------------
+
+    struct PreparedPacketPipelines
+    {
+        PreparedMaterialPipeline Scene;
+        PreparedMaterialPipeline Depth;
+    };
+
+    //-------------------------------------------------------------------------
+
     struct ScenePipelineRequirement
     {
         GraphicsPipelineKey  Key;
@@ -585,11 +608,15 @@ protected:
                                      xbool                       IsPrewarm = FALSE );
     render_pipeline*     GetRigidPipeline( const RenderStateSelection& PipelineState, xbool isPrewarm = FALSE );
     render_pipeline*     GetSkinPipeline( const RenderStateSelection& PipelineState, xbool isPrewarm = FALSE );
-    xbool                BindRigidPipeline( const RenderStateSelection& PipelineState, render_pipeline* pPrepared );
-    xbool                BindSkinPipeline( const RenderStateSelection& PipelineState, render_pipeline* pPrepared );
+    xbool                BindRigidPipeline( const RenderStateSelection& PipelineState, render_pipeline* pPrepared,
+                                           const ShaderBindingLayout* pPreparedBindings = NULL );
+    xbool                BindSkinPipeline( const RenderStateSelection& PipelineState, render_pipeline* pPrepared,
+                                          const ShaderBindingLayout* pPreparedBindings = NULL );
     void                 DestroyRigidPipelines( void );
     void                 DestroySkinPipelines( void );
     render_pipeline*     FindPreparedMaterialPipeline( s32 PacketIndex, const RenderStateSelection& State ) const;
+    const PreparedMaterialPipeline* FindPreparedMaterialState( const GeomDrawPacket& Packet,
+                                                              const geom_pass_desc& PassData ) const;
 
     //-------------------------------------------------------------------------
     //  RESOURCE INITIALIZATION
@@ -629,6 +656,8 @@ protected:
                                u8                    OverrideMat,
                                const geom_pass_desc& PassData );
     xbool      UpdateProjTextures( void );
+    xbool      PrepareProjectionConstants( void );
+    xbool      ComputePacketGlowCapable( const GeomDrawPacket& Packet ) const;
     s32        FindSkinPoseSlot( const matrix4* pBones, s32 BoneCount ) const;
     xbool      BuildShadowMapConstants( FrameGraphBuilder& Graph );
     static u32 BuildBatchStateFlags( u32 RenderFlags );
@@ -833,6 +862,13 @@ protected:
     xarray<s32>                      m_ScenePipelineSlots;
     xarray<GeomDrawPacket>           m_lDrawPackets;
     material                         m_DefaultDistortionMaterial;
+
+    // Indexed by SubmissionIndex, so packet sorting does not copy or invalidate prepared state.
+    xarray<PreparedPacketPipelines>  m_PreparedPacketPipelines;
+
+    ProjectionTextureConstants      m_ProjectionConstants;
+    ProjectionTextureConstants      m_ResetProjectionConstants;
+    xbool                           m_hasProjectionConstants = FALSE;
 };
 
 //=========================================================================
@@ -874,6 +910,8 @@ PacketMetadata::PacketMetadata( void )
 inline
 void FrameCompiler::SetContext( const RenderBackendContext& Context )
 {
+    m_PreparedPacketPipelines.SetCount( 0 );
+    m_hasProjectionConstants = FALSE;
     m_pContext = &Context;
 }
 

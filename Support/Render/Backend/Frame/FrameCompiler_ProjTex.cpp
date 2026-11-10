@@ -39,11 +39,13 @@ xbool FrameCompiler::ResetProjTextures( void )
         return TRUE;
     }
 
-    ProjectionTextureConstants Constants;
-    x_memset( &Constants, 0, sizeof( Constants ) );
-    Constants.ProjectionAtlasParams = m_pContext->pProjection->GetSamplingParams();
+    if( !m_hasProjectionConstants )
+    {
+        return FALSE;
+    }
 
-    return shader_PushUniformData( SHADER_STAGE_PIXEL, pBindings->ProjTexturesPixel, &Constants, sizeof( Constants ) );
+    return shader_PushUniformData( SHADER_STAGE_PIXEL, pBindings->ProjTexturesPixel, &m_ResetProjectionConstants,
+                                  sizeof( m_ResetProjectionConstants ) );
 }
 
 //=========================================================================
@@ -62,9 +64,26 @@ xbool FrameCompiler::UpdateProjTextures( void )
         return TRUE;
     }
 
-    ProjectionTextureConstants Constants;
-    x_memset( &Constants, 0, sizeof( Constants ) );
-    Constants.ProjectionAtlasParams = m_pContext->pProjection->GetSamplingParams();
+    if( !m_hasProjectionConstants )
+    {
+        return FALSE;
+    }
+
+    return shader_PushUniformData( SHADER_STAGE_PIXEL, pBindings->ProjTexturesPixel, &m_ProjectionConstants,
+                                  sizeof( m_ProjectionConstants ) );
+}
+
+//=========================================================================
+
+xbool FrameCompiler::PrepareProjectionConstants( void )
+{
+    m_hasProjectionConstants = FALSE;
+
+    x_memset( &m_ResetProjectionConstants, 0, sizeof( m_ResetProjectionConstants ) );
+    m_ResetProjectionConstants.ProjectionAtlasParams = m_pContext->pProjection->GetSamplingParams();
+    m_ProjectionConstants                            = m_ResetProjectionConstants;
+
+    ProjectionTextureConstants& Constants = m_ProjectionConstants;
 
     const s32 nProjLights =
         MIN( m_pContext->pProjections->GetProjLightCount(), ProjectionTextureRegistry::MaxLightProjectionCount );
@@ -124,7 +143,9 @@ xbool FrameCompiler::UpdateProjTextures( void )
         Constants.ProjShadowInfo[Dest]       = Region.Sampling;
     }
 
-    return shader_PushUniformData( SHADER_STAGE_PIXEL, pBindings->ProjTexturesPixel, &Constants, sizeof( Constants ) );
+    m_hasProjectionConstants = TRUE;
+
+    return TRUE;
 }
 
 } // namespace render

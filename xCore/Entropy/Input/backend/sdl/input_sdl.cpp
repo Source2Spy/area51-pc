@@ -102,8 +102,9 @@ static struct
 static s32   s_SDLToDIK[ SDL_SCANCODE_COUNT ];
 static xbool s_KeyMapInitialized = FALSE;
 
-// Used only while the backend pumps the SDL event queue for the current frame.
-static input_event_buffer* s_pCaptureEvents = NULL;
+// Window pumping also runs during render-only and suspended frames. Preserve
+// digital edges until the next input capture instead of relying on final state.
+static input_event_buffer s_PendingEvents;
 
 //==============================================================================
 // HELPERS
@@ -314,6 +315,12 @@ xbool IsEventForWindow( SDL_Event const& Event, SDL_WindowID WindowID )
         case SDL_EVENT_MOUSE_WHEEL:
         {
             return (Event.wheel.windowID == 0) || (Event.wheel.windowID == WindowID);
+        }
+
+        case SDL_EVENT_WINDOW_FOCUS_LOST:
+        case SDL_EVENT_WINDOW_MINIMIZED:
+        {
+            return (Event.window.windowID == 0) || (Event.window.windowID == WindowID);
         }
 
         default:
@@ -942,7 +949,7 @@ xbool SetRelativeMouseMode( xbool Enabled )
 static
 void HandleKeyboardEvent( SDL_Event const& Event )
 {
-    if( !s_pCaptureEvents || !sdleng_WindowIsActive() )
+    if( !sdleng_WindowIsActive() )
     {
         return;
     }
@@ -959,7 +966,7 @@ void HandleKeyboardEvent( SDL_Event const& Event )
         return;
     }
 
-    AppendDigitalEvent( *s_pCaptureEvents,
+    AppendDigitalEvent( s_PendingEvents,
                         static_cast<input_gadget>( INPUT_KBD__BEGIN + DIKCode ),
                         0,
                         s_Input.Keyboard.Digital[DIKCode],
@@ -973,7 +980,7 @@ void HandleKeyboardEvent( SDL_Event const& Event )
 static
 void HandleMouseButtonEvent( SDL_Event const& Event )
 {
-    if( !s_pCaptureEvents || !sdleng_WindowIsActive() )
+    if( !sdleng_WindowIsActive() )
     {
         return;
     }
@@ -984,7 +991,7 @@ void HandleMouseButtonEvent( SDL_Event const& Event )
         return;
     }
 
-    AppendDigitalEvent( *s_pCaptureEvents,
+    AppendDigitalEvent( s_PendingEvents,
                         GetMouseButtonGadget( ButtonIndex ),
                         0,
                         s_Input.Mouse.Digital[ButtonIndex],
@@ -1007,6 +1014,28 @@ void HandleWindowEvent( void* pContext, SDL_Event const& Event, SDL_WindowID Win
 
     switch( Event.type )
     {
+        case SDL_EVENT_WINDOW_FOCUS_LOST:
+        case SDL_EVENT_WINDOW_MINIMIZED:
+        {
+            // Retain releases even if focus returns before input is consumed.
+            u32 const TimeStamp = (u32)SDL_GetTicks();
+
+            for( s32 i = 0; i < DIGITAL_COUNT_KBD; ++i )
+            {
+                AppendDigitalEvent( s_PendingEvents,
+                                    static_cast<input_gadget>( INPUT_KBD__BEGIN + i ),
+                                    0, s_Input.Keyboard.Digital[i], FALSE, 0.0f, TimeStamp );
+            }
+
+            for( s32 i = 0; i < DIGITAL_COUNT_MOUSE; ++i )
+            {
+                AppendDigitalEvent( s_PendingEvents, GetMouseButtonGadget( i ),
+                                    0, s_Input.Mouse.Digital[i], FALSE, 0.0f, TimeStamp );
+            }
+
+            break;
+        }
+
         case SDL_EVENT_KEY_DOWN:
         case SDL_EVENT_KEY_UP:
         {
@@ -1086,6 +1115,7 @@ public:
 
         InitializeKeyMap();
         x_memset( &s_Input, 0, sizeof(s_Input) );
+        s_PendingEvents.BeginCapture( (u32)SDL_GetTicks() );
 
         for( s32 i = 0; i < MAX_GAMEPADS; i++ )
         {
@@ -1117,7 +1147,7 @@ public:
 
     void Kill( void ) override
     {
-        s_pCaptureEvents = NULL;
+        s_PendingEvents.BeginCapture( 0 );
         sdleng_WindowSetEventCallback( NULL, NULL );
         SetRelativeMouseMode( FALSE );
         ClearFeedback();
@@ -1143,12 +1173,10 @@ public:
         Events.BeginCapture( StartTime );
         ClearRelativeState();
 
-        s_pCaptureEvents = &Events;
         if( !sdleng_WindowPumpMessages() )
         {
             s_Input.ExitApp = TRUE;
         }
-        s_pCaptureEvents = NULL;
 
         if( sdleng_WindowIsCloseRequested() )
         {
@@ -1156,6 +1184,19 @@ public:
         }
 
         u32 const TimeStamp = (u32)SDL_GetTicks();
+
+        for( s32 i = 0; i < s_PendingEvents.GetCount(); ++i )
+        {
+            input_event const& Event = s_PendingEvents.GetEvent( i );
+            Events.Append( Event.GadgetID, Event.DeviceID, Event.Type, Event.Value, Event.TimeStamp );
+        }
+
+        if( s_PendingEvents.HasOverflowed() )
+        {
+            Events.MarkOverflow();
+        }
+
+        s_PendingEvents.BeginCapture( TimeStamp );
 
         CaptureMouseWheel( Events, TimeStamp );
         CaptureMouse( Events, TimeStamp );

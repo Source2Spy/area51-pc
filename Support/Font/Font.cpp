@@ -10,6 +10,7 @@
 
 #include "Font.hpp"
 #include "FontMgr.hpp"
+#include "x_profile.hpp"
 
 //=========================================================================
 //  IMPLEMENTATION
@@ -57,6 +58,8 @@ FontMetrics Font::GetMetrics( void ) const
 
 xbool Font::BuildLayout( const xwchar* pText, const TextLayoutOptions& Options, TextLayout& Result )
 {
+    X_PROFILE_SCOPE_CATEGORY( "UI", "Font/BuildLayoutUTF16" );
+
     return BuildTextLayout( *this, pText, Options, Result );
 }
 
@@ -64,6 +67,8 @@ xbool Font::BuildLayout( const xwchar* pText, const TextLayoutOptions& Options, 
 
 xbool Font::BuildLayout( const char* pText, const TextLayoutOptions& Options, TextLayout& Result )
 {
+    X_PROFILE_SCOPE_CATEGORY( "UI", "Font/BuildLayoutUTF8" );
+
     Result.Clear();
 
     xwstring Decoded;
@@ -81,6 +86,8 @@ void Font::AddFallback( const xref<FontFace>& Face )
 
 xbool Font::PrepareText( const TextLayout& Layout, f32 Scale, PreparedText& Result )
 {
+    X_PROFILE_SCOPE_CATEGORY( "UI", "Font/PrepareText" );
+
     Result.Glyphs.Clear();
 
     if( Layout.Owner.Get() != this )

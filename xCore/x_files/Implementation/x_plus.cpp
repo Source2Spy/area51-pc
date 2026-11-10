@@ -14,6 +14,13 @@
 
 #include <cstdlib>
 
+#if defined( X_PROFILE_NVTX ) && X_PROFILE_NVTX
+#include "x_profile_nvtx.hpp"
+#if defined( _MSC_VER )
+#include <intrin.h>
+#endif
+#endif
+
 #ifndef X_MATH_HPP
 #include "../x_math.hpp"
 #endif
@@ -1460,6 +1467,18 @@ void* x_memmove( void* pDest, const void* pSrc, s32 Count )
     // See if we have anything to do.
     if( (Count == 0) || (pSrc == pDest) )
         return( pDest );
+
+#if defined( X_PROFILE_NVTX ) && X_PROFILE_NVTX
+    // Capture only the direct return address; unwinding every copy would distort the workload.
+    #if defined( __GNUC__ ) || defined( __clang__ )
+    void const* pCaller = __builtin_extract_return_addr( __builtin_return_address( 0 ) );
+    #elif defined( _MSC_VER )
+    void const* pCaller = _ReturnAddress();
+    #else
+    void const* pCaller = NULL;
+    #endif
+    xprofile_memmove_scope ProfileCopy( Count, pCaller );
+#endif
 
     pFrom = (byte*)pSrc;
     pTo   = (byte*)pDest;

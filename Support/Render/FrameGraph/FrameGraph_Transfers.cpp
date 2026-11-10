@@ -15,12 +15,50 @@ namespace render
 
 struct FrameGraphBuilder::TransferData
 {
+    //-------------------------------------------------------------------------
+    //  FUNCTIONS
+    //-------------------------------------------------------------------------
+
+    TransferData( void ) = default;
+
+    TransferData( TransferData&& Data ) noexcept
+        : Resource( Data.Resource ),
+          pBuffer( Data.pBuffer ),
+          pTexture( Data.pTexture ),
+          BufferUpload( Data.BufferUpload ),
+          TextureUpload( Data.TextureUpload ),
+          pBytes( Data.pBytes ),
+          GenerateMips( Data.GenerateMips ),
+          pPending( Data.pPending )
+    {
+        Data.pBytes = NULL;
+    }
+
+    ~TransferData( void )
+    {
+        if( pBytes )
+        {
+            x_free( pBytes );
+        }
+    }
+
+    TransferData( const TransferData& Data )             = delete;
+    TransferData& operator=( const TransferData& Data ) = delete;
+    TransferData& operator=( TransferData&& Data )      = delete;
+
+    //-------------------------------------------------------------------------
+    //  DATA
+    //-------------------------------------------------------------------------
+
     RenderResourceHandle      Resource;
     rbuffer*                  pBuffer = NULL;
     vram_texture*             pTexture = NULL;
     rbuffer_upload_desc       BufferUpload;
     vram_texture_upload_desc  TextureUpload;
-    xarray<u8>                Bytes;
+
+    // Upload descriptors point into this allocation, whose address survives
+    // the ownership move into the graph's inline payload storage.
+    u8*                       pBytes = NULL;
     xbool                     GenerateMips = FALSE;
     xbool*                    pPending = NULL;
 };
@@ -29,7 +67,7 @@ struct FrameGraphBuilder::TransferData
 //  IMPLEMENTATION
 //=========================================================================
 
-xbool FrameGraphBuilder::ExecuteTransfer( RenderPassContext& Context, TransferData Data )
+xbool FrameGraphBuilder::ExecuteTransfer( RenderPassContext& Context, const TransferData& Data )
 {
     if( !Context.GetFrame().pGraph->GetShaderResource( Data.Resource ) )
     {
@@ -43,11 +81,9 @@ xbool FrameGraphBuilder::ExecuteTransfer( RenderPassContext& Context, TransferDa
 
     if( Data.pBuffer )
     {
-        Data.BufferUpload.pData = Data.Bytes.GetPtr();
         return rbuffer_Upload( *Data.pBuffer, Data.BufferUpload );
     }
 
-    Data.TextureUpload.pData = Data.Bytes.GetPtr();
     if( !vram_UploadTexture( *Data.pTexture, Data.TextureUpload ) )
     {
         return FALSE;
@@ -74,22 +110,29 @@ xbool FrameGraphBuilder::QueueUpload( rbuffer& Buffer, const rbuffer_upload_desc
     Data.Resource      = ImportExternal( Buffer, Buffer.Desc.pDebugName ? Buffer.Desc.pDebugName : "ExternalBuffer" );
     Data.pBuffer       = &Buffer;
     Data.BufferUpload  = Upload;
-    Data.Bytes.SetCount( static_cast<s32>( Upload.Size ) );
-    x_memcpy( Data.Bytes.GetPtr(), Upload.pData, Upload.Size );
+    Data.pBytes        = static_cast<u8*>( x_malloc( Upload.Size ) );
+    if( !Data.pBytes )
+    {
+        Fail( "failed to allocate buffer upload staging storage" );
+        return FALSE;
+    }
+    x_memcpy( Data.pBytes, Upload.pData, Upload.Size );
+    Data.BufferUpload.pData = Data.pBytes;
+    const RenderResourceHandle Resource = Data.Resource;
 
     RenderPassDesc Desc;
     Desc.pDebugName = "UploadBuffer";
     Desc.Type       = RENDER_PASS_TRANSFER;
-    const RenderPassId Pass = AddPass( Desc, ExecuteTransfer, Data );
-    if( Pass == INVALID_RENDER_PASS || !Data.Resource.IsValid() )
+    const RenderPassId Pass = AddPass( Desc, ExecuteTransfer, static_cast<TransferData&&>( Data ) );
+    if( Pass == INVALID_RENDER_PASS || !Resource.IsValid() )
     {
         return FALSE;
     }
 
-    AddWriteAccess( Pass, Data.Resource, RENDER_RESOURCE_ACCESS_COPY_DEST );
+    AddWriteAccess( Pass, Resource, RENDER_RESOURCE_ACCESS_COPY_DEST );
     if( !Upload.bCycle && ( Upload.Offset || Upload.Size != Buffer.Desc.Size ) )
     {
-        AddReadAccess( Pass, Data.Resource, RENDER_RESOURCE_ACCESS_PRESERVE );
+        AddReadAccess( Pass, Resource, RENDER_RESOURCE_ACCESS_PRESERVE );
     }
     return TRUE;
 }
@@ -145,22 +188,29 @@ xbool FrameGraphBuilder::QueueUpload( vram_texture& Texture, const vram_texture_
     Data.pTexture      = &Texture;
     Data.pPending      = pPending;
     Data.TextureUpload = Upload;
-    Data.Bytes.SetCount( static_cast<s32>( Upload.Size ) );
-    x_memcpy( Data.Bytes.GetPtr(), Upload.pData, Upload.Size );
+    Data.pBytes        = static_cast<u8*>( x_malloc( Upload.Size ) );
+    if( !Data.pBytes )
+    {
+        Fail( "failed to allocate texture upload staging storage" );
+        return FALSE;
+    }
+    x_memcpy( Data.pBytes, Upload.pData, Upload.Size );
+    Data.TextureUpload.pData = Data.pBytes;
+    const RenderResourceHandle Resource = Data.Resource;
 
     RenderPassDesc Desc;
     Desc.pDebugName = "UploadTexture";
     Desc.Type       = RENDER_PASS_TRANSFER;
-    const RenderPassId Pass = AddPass( Desc, ExecuteTransfer, Data );
-    if( Pass == INVALID_RENDER_PASS || !Data.Resource.IsValid() )
+    const RenderPassId Pass = AddPass( Desc, ExecuteTransfer, static_cast<TransferData&&>( Data ) );
+    if( Pass == INVALID_RENDER_PASS || !Resource.IsValid() )
     {
         return FALSE;
     }
 
-    AddWriteAccess( Pass, Data.Resource, RENDER_RESOURCE_ACCESS_COPY_DEST );
+    AddWriteAccess( Pass, Resource, RENDER_RESOURCE_ACCESS_COPY_DEST );
     if( !Upload.bCycle )
     {
-        AddReadAccess( Pass, Data.Resource, RENDER_RESOURCE_ACCESS_PRESERVE );
+        AddReadAccess( Pass, Resource, RENDER_RESOURCE_ACCESS_PRESERVE );
     }
     if( pPending )
     {
@@ -208,18 +258,19 @@ xbool FrameGraphBuilder::QueueGenerateMipmaps( vram_texture& Texture )
     Data.Resource      = ImportExternal( Texture, Texture.Desc.pDebugName ? Texture.Desc.pDebugName : "MipTexture" );
     Data.pTexture      = &Texture;
     Data.GenerateMips  = TRUE;
+    const RenderResourceHandle Resource = Data.Resource;
 
     RenderPassDesc Desc;
     Desc.pDebugName = "GenerateMipmaps";
     Desc.Type       = RENDER_PASS_TRANSFER;
-    const RenderPassId Pass = AddPass( Desc, ExecuteTransfer, Data );
-    if( Pass == INVALID_RENDER_PASS || !Data.Resource.IsValid() )
+    const RenderPassId Pass = AddPass( Desc, ExecuteTransfer, static_cast<TransferData&&>( Data ) );
+    if( Pass == INVALID_RENDER_PASS || !Resource.IsValid() )
     {
         return FALSE;
     }
 
-    AddReadAccess( Pass, Data.Resource, RENDER_RESOURCE_ACCESS_COPY_SOURCE | RENDER_RESOURCE_ACCESS_PRESERVE );
-    AddWriteAccess( Pass, Data.Resource, RENDER_RESOURCE_ACCESS_COPY_DEST );
+    AddReadAccess( Pass, Resource, RENDER_RESOURCE_ACCESS_COPY_SOURCE | RENDER_RESOURCE_ACCESS_PRESERVE );
+    AddWriteAccess( Pass, Resource, RENDER_RESOURCE_ACCESS_COPY_DEST );
     return TRUE;
 }
 

@@ -479,15 +479,64 @@ public:
 
 //-------------------------------------------------------------------------
 
+// Only value and pointer payloads are stored. Strip source references and
+// top-level qualifiers without changing a pointer's pointee qualifiers.
+template <typename TPayload>
+struct RenderPassPayloadTraits
+{
+    typedef TPayload        StoredType;
+    typedef const TPayload& ExecuteArg;
+    typedef xbool ( *ExecuteFn )( RenderPassContext& Context, ExecuteArg Payload );
+};
+
+template <typename TPayload>
+struct RenderPassPayloadTraits<TPayload*>
+{
+    typedef TPayload* StoredType;
+    typedef TPayload* ExecuteArg;
+    typedef xbool ( *ExecuteFn )( RenderPassContext& Context, ExecuteArg Payload );
+};
+
+template <typename TPayload>
+struct RenderPassPayloadTraits<const TPayload> : RenderPassPayloadTraits<TPayload>
+{
+};
+
+template <typename TPayload>
+struct RenderPassPayloadTraits<volatile TPayload> : RenderPassPayloadTraits<TPayload>
+{
+};
+
+template <typename TPayload>
+struct RenderPassPayloadTraits<const volatile TPayload> : RenderPassPayloadTraits<TPayload>
+{
+};
+
+template <typename TPayload>
+struct RenderPassPayloadTraits<TPayload&> : RenderPassPayloadTraits<TPayload>
+{
+};
+
+template <typename TPayload>
+struct RenderPassPayloadTraits<TPayload&&> : RenderPassPayloadTraits<TPayload>
+{
+};
+
+//-------------------------------------------------------------------------
+
 template <typename TPayload>
 struct RenderTypedPassPayload : public RenderPassPayload
 {
-    typedef xbool ( *ExecuteFn )( RenderPassContext& Context, TPayload Payload );
+    // Pointer payloads retain their existing by-value callback contract. Owned
+    // values are read in place, never copied for execution.
+    typedef typename RenderPassPayloadTraits<TPayload>::ExecuteArg ExecuteArg;
+    typedef xbool ( *ExecuteFn )( RenderPassContext& Context, ExecuteArg Payload );
 
     ExecuteFn Callback;
     TPayload  Payload;
 
-    RenderTypedPassPayload( ExecuteFn ExecuteIn, const TPayload& PayloadIn );
+    template <typename TSource>
+    RenderTypedPassPayload( ExecuteFn ExecuteIn, TSource&& PayloadIn );
 
     virtual xbool Execute( RenderPassContext& Context );
 };
@@ -604,10 +653,11 @@ public:
                             xbool* const* ppPending = NULL );
     xbool QueueGenerateMipmaps( vram_texture& Texture );
 
+    // Lvalues are copied into graph storage; rvalues transfer ownership.
     template <typename TPayload>
-    RenderPassId AddPass( const RenderPassDesc&                                Desc,
-                              typename RenderTypedPassPayload<TPayload>::ExecuteFn Execute,
-                              const TPayload&                                      Payload );
+    RenderPassId AddPass( const RenderPassDesc&                                  Desc,
+                         typename RenderPassPayloadTraits<TPayload>::ExecuteFn Execute,
+                         TPayload&&                                            Payload );
     xbool DeclareCompositePipeline( RenderPassId Pass, composite_blend_mode Blend, const shader* pPixelShader = NULL );
     void  Read( RenderPassId Pass, RenderResourceHandle Resource );
     void  Read( RenderPassId Pass, RenderResourceHandle Resource, u32 Access );
@@ -722,10 +772,10 @@ private:
     template <typename TPayload>
     static void DestroyTypedPayload( void* pStorage );
 
-    template <typename TPayload>
+    template <typename TPayload, typename TSource>
     RenderTypedPassPayload<TPayload>* CreateTypedPayload(
         typename RenderTypedPassPayload<TPayload>::ExecuteFn Execute,
-        const TPayload& Payload );
+        TSource&&                                           Payload );
 
     void ReleasePayload( RenderPassPayload* pPayload );
 
@@ -754,7 +804,7 @@ private:
     void             BeginResourceValidation( const Pass& PassData );
     static xbool     ValidateResourceAccess( const shader_resource& Resource,
                                              shader_resource_access Access, void* pContext );
-    static xbool     ExecuteTransfer( RenderPassContext& Context, TransferData Data );
+    static xbool     ExecuteTransfer( RenderPassContext& Context, const TransferData& Data );
 
     //-------------------------------------------------------------------------
     //  DATA
@@ -1000,10 +1050,11 @@ RenderPassPayload::~RenderPassPayload( void )
 //=========================================================================
 
 template <typename TPayload>
+template <typename TSource>
 inline
-RenderTypedPassPayload<TPayload>::RenderTypedPassPayload( ExecuteFn ExecuteIn, const TPayload& PayloadIn )
+RenderTypedPassPayload<TPayload>::RenderTypedPassPayload( ExecuteFn ExecuteIn, TSource&& PayloadIn )
     : Callback( ExecuteIn ),
-      Payload( PayloadIn )
+      Payload( static_cast<TSource&&>( PayloadIn ) )
 {
 }
 
@@ -1028,9 +1079,9 @@ u64 FrameResourcePool::GetResetEpoch( void ) const
 
 template <typename TPayload>
 inline
-RenderPassId FrameGraphBuilder::AddPass( const RenderPassDesc&                                Desc,
-                                         typename RenderTypedPassPayload<TPayload>::ExecuteFn Execute,
-                                         const TPayload&                                      Payload )
+RenderPassId FrameGraphBuilder::AddPass( const RenderPassDesc&                                  Desc,
+                                       typename RenderPassPayloadTraits<TPayload>::ExecuteFn Execute,
+                                       TPayload&&                                            Payload )
 {
     if( !Execute )
     {
@@ -1038,7 +1089,9 @@ RenderPassId FrameGraphBuilder::AddPass( const RenderPassDesc&                  
         return INVALID_RENDER_PASS;
     }
 
-    RenderTypedPassPayload<TPayload>* pPayload = CreateTypedPayload( Execute, Payload );
+    typedef typename RenderPassPayloadTraits<TPayload>::StoredType StoredPayload;
+    RenderTypedPassPayload<StoredPayload>* pPayload =
+        CreateTypedPayload<StoredPayload>( Execute, static_cast<TPayload&&>( Payload ) );
 
     if( !pPayload )
     {
@@ -1101,11 +1154,11 @@ void FrameGraphBuilder::DestroyTypedPayload( void* pStorage )
 
 //=========================================================================
 
-template <typename TPayload>
+template <typename TPayload, typename TSource>
 inline
 RenderTypedPassPayload<TPayload>* FrameGraphBuilder::CreateTypedPayload(
     typename RenderTypedPassPayload<TPayload>::ExecuteFn Execute,
-    const TPayload&                                      Payload )
+    TSource&&                                           Payload )
 {
     typedef RenderTypedPassPayload<TPayload> TypedPayload;
     static_assert( sizeof( TypedPayload ) <= PAYLOAD_STORAGE_SIZE,
@@ -1117,7 +1170,7 @@ RenderTypedPassPayload<TPayload>* FrameGraphBuilder::CreateTypedPayload(
     }
 
     PayloadBlock& Block = m_PayloadBlocks.Append();
-    Block.pPayload      = new ( Block.Storage ) TypedPayload( Execute, Payload );
+    Block.pPayload      = new ( Block.Storage ) TypedPayload( Execute, static_cast<TSource&&>( Payload ) );
     Block.Destroy       = DestroyTypedPayload<TPayload>;
 
     return static_cast<TypedPayload*>( Block.pPayload );

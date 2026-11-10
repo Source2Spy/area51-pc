@@ -590,13 +590,20 @@ xbool FrameCompiler::ExecuteDynamicPacket( const GeomDrawPacket& Packet, const g
 
     const u32 RenderFlags =
         Packet.RenderFlags | ( ( Packet.InstFeatures & render::GEOM_INST_FORCED_GLOW ) ? render::GLOWING : 0u );
+
     geom_pass_desc DrawPass = Pass;
-    DrawPass.EnableShadows = Pass.EnableShadows && Packet.Shadows;
-    const RenderStateSelection State =
-        BuildDynamicPipelineState( RenderFlags, DrawPass, Packet.LightingMode, Packet.Projection );
+    DrawPass.EnableShadows  = Pass.EnableShadows && Packet.Shadows;
+
+    const PreparedMaterialPipeline* pPrepared = FindPreparedMaterialState( Packet, DrawPass );
+    const RenderStateSelection      State     =
+        pPrepared ? pPrepared->State
+                  : BuildDynamicPipelineState( RenderFlags, DrawPass, Packet.LightingMode, Packet.Projection );
+
     const view*      pView     = Pass.pView ? Pass.pView->GetSourceView() : NULL;
-    render_pipeline* pPipeline = Pass.DepthMode == GEOM_DEPTH_PREPASS ? Packet.pDepthPipeline
-                                                                     : GetDynamicPipeline( State );
+    render_pipeline* pPipeline = pPrepared ? pPrepared->pPipeline
+                                         : Pass.DepthMode == GEOM_DEPTH_PREPASS ? Packet.pDepthPipeline
+                                                                              : GetDynamicPipeline( State );
+
     const rstate_sampler* pSampler = GetSampler( RSTATE_SAMPLER_PRESET_LINEAR_CLAMP );
 
     if( !pView || !pPipeline || !pSampler || !Packet.Resources.pDiffuse || !Packet.pDamageMask ||
@@ -607,14 +614,21 @@ xbool FrameCompiler::ExecuteDynamicPacket( const GeomDrawPacket& Packet, const g
 
     m_ActiveShaderKind = GEOM_SHADER_DYNAMIC;
 
-    SurfaceProgram* pProgram = GetSurfaceProgram( State.Program );
+    const ShaderBindingLayout* pBindings = pPrepared ? pPrepared->pBindings : NULL;
 
-    if( !pProgram )
+    if( !pBindings )
     {
-        return FALSE;
+        SurfaceProgram* pProgram = GetSurfaceProgram( State.Program );
+
+        if( !pProgram )
+        {
+            return FALSE;
+        }
+
+        pBindings = &pProgram->Bindings;
     }
 
-    const ShaderBindingLayout& Bindings = pProgram->Bindings;
+    const ShaderBindingLayout& Bindings = *pBindings;
     m_pActiveSurfaceBindings            = &Bindings;
 
     DynamicDrawConstants Constants = {};

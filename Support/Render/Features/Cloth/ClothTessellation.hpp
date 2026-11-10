@@ -34,7 +34,7 @@ public:
 private:
     struct PassData;
 
-    static xbool Execute( RenderPassContext& Context, PassData Data );
+    static xbool Execute( RenderPassContext& Context, const PassData& Data );
 
     shader                m_Shader;
     rbuffer               m_SourceVertices;
