@@ -25,6 +25,14 @@ a51_add_project( a51_shader_compiler STATIC
         dxcompiler
 )
 
+if( CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND
+    CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "13" AND
+    CMAKE_CXX_COMPILER_VERSION VERSION_LESS "14" )
+    # GCC 13 loop unswitching at -O3 drops alpha-tested ForceZFill shadow profiles.
+    set_property( SOURCE "${CMAKE_CURRENT_LIST_DIR}/ShaderRecipes.cpp"
+        APPEND PROPERTY COMPILE_OPTIONS -fno-unswitch-loops )
+endif()
+
 # Reflection and validation are host tools; none of these libraries enter Android.
 add_library( a51_spirv_reflect STATIC
     "${CMAKE_SOURCE_DIR}/xCore/3rdParty/SPIRV-Reflect/spirv_reflect.c" )
