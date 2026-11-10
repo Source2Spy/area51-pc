@@ -37,7 +37,12 @@ jobs:
           cmake --build --preset windows-msvc-x64-editor-debug --target dfsTool --parallel 4 -- /p:WarningLevel=0 /clp:ErrorsOnly /nologo
 
       - name: Package runtime
-        run: cmake -DA51_BINARY=build/windows-msvc-x64/Apps/GameApp/Release/A51.exe -DA51_SHADER_KIT=build/shaders/GameApp/release -DA51_PACKAGE_DIR=build/packages/windows-x64 -P cmake/PackageRuntime.cmake
+        run: >-
+          cmake
+          "-DA51_BINARY=build/windows-msvc-x64/Apps/GameApp/Release/A51.exe"
+          "-DA51_SHADER_KIT=build/shaders/GameApp/release"
+          "-DA51_PACKAGE_DIR=build/packages/windows-x64"
+          -P cmake/PackageRuntime.cmake
 
       - name: Upload build
         uses: actions/upload-artifact@v4
