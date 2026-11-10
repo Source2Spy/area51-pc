@@ -10,7 +10,6 @@ jobs:
     runs-on: windows-2022
     env:
       _CL_: '/w'
-      A51_SKIP_SHADERS: 'true'
       A51_BUILD_KEY: ${{ secrets.A51_BUILD_KEY }}
       A51_REQUIRE_BUILD_KEY: 'ON'
 
@@ -19,15 +18,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure host shader tools
-        if: env.A51_SKIP_SHADERS != 'true'
         run: cmake --preset shader-tools
 
       - name: Prepare shader kit
-        if: env.A51_SKIP_SHADERS != 'true'
         run: cmake --build --preset prepare-shaders --parallel 4 -- /p:WarningLevel=0 /clp:ErrorsOnly /nologo
 
       - name: Configure
-        run: cmake --preset windows-msvc-x64 -DA51_REQUIRE_BUILD_KEY=$env:A51_REQUIRE_BUILD_KEY -DA51_SKIP_SHADER_KIT_VALIDATION=$env:A51_SKIP_SHADERS
+        run: cmake --preset windows-msvc-x64 -DA51_REQUIRE_BUILD_KEY=$env:A51_REQUIRE_BUILD_KEY
 
       - name: Build full Release graph
         run: cmake --build --preset windows-msvc-x64-release --parallel 4 -- /p:WarningLevel=0 /clp:ErrorsOnly /nologo
@@ -40,11 +37,9 @@ jobs:
           cmake --build --preset windows-msvc-x64-editor-debug --target dfsTool --parallel 4 -- /p:WarningLevel=0 /clp:ErrorsOnly /nologo
 
       - name: Package runtime
-        if: env.A51_SKIP_SHADERS != 'true'
         run: cmake -DA51_BINARY=build/windows-msvc-x64/Apps/GameApp/Release/A51.exe -DA51_SHADER_KIT=build/shaders/GameApp/release -DA51_PACKAGE_DIR=build/packages/windows-x64 -P cmake/PackageRuntime.cmake
 
       - name: Upload build
-        if: env.A51_SKIP_SHADERS != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: A51-windows-x64-release
