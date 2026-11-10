@@ -518,7 +518,7 @@ void dlg_online_join::FillMatchList( void )
     xbool Filtered = (m_Filter.Source != MATCH_SOURCE_ALL) || m_Filter.Name.GetLength() ||
                      (m_Filter.GameType != GAME_MP) || m_Filter.Map.GetLength() ||
                      (m_Filter.MaxPing >= 0) || m_Filter.HideFull || m_Filter.HideEmpty || m_Filter.HidePassword;
-    m_pFilters->SetLabel( xwstring( g_StringTableMgr( "ui", "IDS_BROWSER_FILTERS" ) ) + (Filtered ? " *" : "") );
+    m_pFilters->SetLabel( xwstring( g_StringTableMgr( "ui", "IDS_BROWSER_FILTERS" ) ) + xwstring( Filtered ? " *" : "" ) );
     UpdateDetails();
 }
 
@@ -540,13 +540,13 @@ void dlg_online_join::UpdateDetails( void )
 
     m_pDetails->SetLabel( pServer->Name );
     m_pEndpoint->SetLabel( xwstring( pServer->Remote.GetStrAddress() ) );
-    m_pMap->SetLabel( xwstring( g_StringTableMgr( "ui", "IDS_BROWSER_MAP" ) ) + ": " + pServer->MissionName );
-    m_pMode->SetLabel( xwstring( g_StringTableMgr( "ui", "IDS_BROWSER_MODE" ) ) + ": " + pServer->GameType );
+    m_pMap->SetLabel( xwstring( g_StringTableMgr( "ui", "IDS_BROWSER_MAP" ) ) + xwstring( ": " ) + pServer->MissionName );
+    m_pMode->SetLabel( xwstring( g_StringTableMgr( "ui", "IDS_BROWSER_MODE" ) ) + xwstring( ": " ) + pServer->GameType );
     m_pPlayers->SetLabel( xwstring( g_StringTableMgr( "ui", "IDS_HEADER_PLAYERS" ) ) +
                          xwstring( xfs( ": %d/%d", pServer->Players, pServer->MaxPlayers ) ) );
     m_pPing->SetLabel( xwstring( g_StringTableMgr( "ui", "IDS_BROWSER_PING" ) ) +
                       xwstring( (pServer->PingDelay < 0.0f) ? ": --" : xfs( ": %d ms", (s32)pServer->PingDelay ) ) );
-    m_pPassword->SetLabel( xwstring( g_StringTableMgr( "ui", "IDS_JOIN_PASSWORD" ) ) + " " +
+    m_pPassword->SetLabel( xwstring( g_StringTableMgr( "ui", "IDS_JOIN_PASSWORD" ) ) + xwstring( " " ) +
                            g_StringTableMgr( "ui", (pServer->Flags & SERVER_HAS_PASSWORD) ? "IDS_YES" : "IDS_NO" ) );
     m_pComplete->SetLabel( xwstring( g_StringTableMgr( "ui", "IDS_BROWSER_COMPLETE" ) ) +
                           xwstring( xfs( ": %d%%", pServer->PercentComplete ) ) );
