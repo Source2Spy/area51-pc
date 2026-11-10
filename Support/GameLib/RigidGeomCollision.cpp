@@ -264,13 +264,12 @@ xbool IsPointInsideTri( const vector3& P, const vector3& TriP0, const vector3& T
 
 //==============================================================================
 
-#ifdef TARGET_WINDOWS
 s32 RPC_COUNT=0;
-void RigidGeom_RayVsPCHiPoly(      guid        Guid, 
-                               const bbox&      WorldBBox,
-                               const u64         MeshMask,
-                               const matrix4*    pL2W, 
-                               const rigid_geom& RigidGeom )
+void RigidGeom_RayVsHiPoly(      guid        Guid,
+                           const bbox&       WorldBBox,
+                           const u64         MeshMask,
+                           const matrix4*    pL2W,
+                           const rigid_geom& RigidGeom )
 {
     s32 k;
 
@@ -600,7 +599,6 @@ void RigidGeom_RayVsPCHiPoly(      guid        Guid,
         }
     }
 }
-#endif
 //==============================================================================
 
 void RigidGeom_ApplyCollision(       guid        Guid, 
@@ -637,19 +635,17 @@ void RigidGeom_ApplyCollision(       guid        Guid,
         return;
     }
 
-    #ifdef TARGET_WINDOWS
     //
-    // Check for Ray vs. PC High poly
+    // Check for Ray vs. High poly
     //
     if( g_CollisionMgr.IsUsingHighPoly() &&
         ((g_CollisionMgr.GetDynamicPrimitive()==PRIMITIVE_DYNAMIC_RAY) ||
          (g_CollisionMgr.GetDynamicPrimitive()==PRIMITIVE_DYNAMIC_LOS))
       )
     {
-        RigidGeom_RayVsPCHiPoly( Guid, BBox, MeshMask, pL2W, *pRigidGeom );
+        RigidGeom_RayVsHiPoly( Guid, BBox, MeshMask, pL2W, *pRigidGeom );
         return;
     }
-    #endif
 
     // Which collision resolution to use?
     if( g_CollisionMgr.IsUsingHighPoly() )
