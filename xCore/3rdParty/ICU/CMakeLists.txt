@@ -487,6 +487,12 @@ target_compile_features( a51_icu_i18n PRIVATE cxx_std_17 )
 set_target_properties( a51_icu_i18n PROPERTIES POSITION_INDEPENDENT_CODE ON )
 
 target_link_libraries( a51_icu_i18n PUBLIC a51_icu_common )
+
+if( MSVC )
+    target_compile_options( a51_icu_common PRIVATE /utf-8 )
+    target_compile_options( a51_icu_i18n PRIVATE /utf-8 )
+endif()
+
 if( WIN32 )
     target_link_libraries( a51_icu_common PRIVATE advapi32 )
 else()

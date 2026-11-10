@@ -83,6 +83,7 @@ option( A51_BUILD_SELECTED_APPS "Build the selected application targets" ON )
 option( A51_ENABLE_QT "Enable Qt integration for XBMPViewer when Qt6 is available" ON )
 option( A51_EXPORT_COMPILE_COMMANDS "Generate compile_commands.json for tooling" ON )
 option( A51_BUILD_SHADER_TOOL "Build the host shader compiler and preparation target" OFF )
+option( A51_SKIP_SHADER_KIT_VALIDATION "Skip shader kit validation for partial C++ build diagnostics (not a runnable build)" OFF )
 set( A51_SHADER_KIT "${CMAKE_SOURCE_DIR}/build/shaders/GameApp/release"
      CACHE PATH "Prepared GameApp shader kit" )
 set( A51_SHADER_TOOLS_ONLY OFF )
@@ -297,6 +298,12 @@ endif()
 
 if( TARGET Render )
     include( A51ShaderKit )
+    if( A51_SKIP_SHADER_KIT_VALIDATION )
+        message( WARNING
+            "Shader kit validation skipped for C++ build diagnostics. "
+            "Without generated shader headers, shader consumers will fail to compile. "
+            "This mode does not produce a verified runnable build." )
+    else()
     a51_import_shader_kit( "${A51_SHADER_KIT}"
         generated/a51_compute_cloth_tessellate.hpp
         generated/a51_compute_cmaa2_init.hpp
@@ -314,6 +321,7 @@ if( TARGET Render )
         generated/a51_compute_xegtao_denoise.hpp
         generated/a51_compute_xegtao_denoise_final.hpp
         generated/a51_compute_xegtao_resolve.hpp )
+    endif()
     target_include_directories( Render PUBLIC "${A51_SHADER_KIT}/generated" )
     foreach( _a51_shader_consumer Entropy UserInterface Gamelib FX A51 main )
         if( TARGET ${_a51_shader_consumer} )
