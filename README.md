@@ -52,6 +52,7 @@ The original PC code was written around Direct3D, 32-bit Windows and the develop
 * Tessellated cloth rendering.
 * Improved cloth rendering with restored console-style cloth destruction.
 * Per-pixel flashlight lighting.
+* Restored the LensFilter, a vertex-color modulator.
 * Fixed lighting on `.skingeom` meshes, including skinned characters and other animated geometry.
 * Fixed lighting on `.rigidgeom` meshes used for debris and effects.
 * Restored beta-era film grain and screen-warp effects.
