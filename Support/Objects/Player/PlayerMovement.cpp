@@ -21,9 +21,6 @@ static const f32 s_MovementReferenceFrameRate = 30.0f;
 
 static f32  ComputeSoftLean             ( f32 LeanAmount );
 static f32  ComputeLean                 ( f32 SoftLeanAmount );
-static f32  ComputeLeanValueForPosition ( const vector3& Start,
-                                           const vector3& HitPoint,
-                                           xbool bLeaningRight );
 static void HideObject                  ( object* pObject );
 static void UnhideObject                ( object* pObject );
 
@@ -431,42 +428,6 @@ void player::UpdateLean( f32 LeanValue, f32 DeltaTime )
 
     m_SoftLeanAmount = ComputeSoftLean( m_LeanAmount );
 
-    // check to make sure we aren't violating any collision
-    if ( (m_LeanState == LEAN_RIGHT) || (m_LeanState == LEAN_LEFT) )
-    {
-        // New position
-        vector3 StartPos( GetPosition() );
-        vector3 Offset  ( GetAnimPlayerOffset() );
-        Offset.GetY() = 0.0f;
-        vector3 EndPos  ( GetPosition() + Offset );
-
-        //
-        // We need to elevate our collision check to account for uneven floors
-        // that cause us to collide at our feet, when we're mostly just
-        // concerned about the player's head and weapon
-        //
-        static const f32 TweakLeanElevate = 10.0f;
-        StartPos.GetY() += TweakLeanElevate;
-        EndPos.GetY() += TweakLeanElevate;
-
-        const vector3 Delta( EndPos - StartPos );
-
-        if ( Delta.LengthSquared() > ZERO )
-        {
-            m_Physics.SetupPlayerCollisionCheck( StartPos, EndPos );
-            g_CollisionMgr.CheckCollisions( object::TYPE_ALL_TYPES, 
-                                            object::ATTR_BLOCKS_PLAYER_LOS, 
-                                            object::ATTR_COLLISION_PERMEABLE | object::ATTR_LIVING );
-
-            if ( g_CollisionMgr.m_nCollisions > 0 )
-            {
-                vector3 StopPos = StartPos + (Delta * g_CollisionMgr.m_Collisions[0].T);
-                m_SoftLeanAmount = ComputeLeanValueForPosition( StartPos, StopPos, m_LeanState == LEAN_RIGHT );
-                m_LeanAmount = ComputeLean( m_SoftLeanAmount );
-            }
-        }
-    }
-
 #ifndef X_EDITOR
     // Send across net?    
     if(     ( OldLeanState      != m_LeanState      )
@@ -497,6 +458,51 @@ vector3 player::GetLeanOffset( void )
 
     return Lean;
 }
+
+//=========================================================================
+
+void player::ConstrainLean( void )
+{
+    vector3 Delta = GetLeanOffset();
+    Delta.GetY() = 0.0f;
+    const f32 Distance = Delta.Length();
+    if( (Distance <= ZERO) || !m_Physics.IsLocoCollisionOn() )
+    {
+        return;
+    }
+
+    // Validate a virtual player capsule at the leaned position. The eye and its
+    // near plane stay inside this hull; arms spring offsets do not move the hull.
+    const vector3 Start = GetPosition();
+    m_Physics.SetupPlayerCollisionCheck( Start, Start + Delta );
+    g_CollisionMgr.UseLowPoly();
+    g_CollisionMgr.SetMaxCollisions( MAX_COLLISION_MGR_COLLISIONS );
+    g_CollisionMgr.DoNotRemoveDuplicateGuids();
+    g_CollisionMgr.CheckCollisions( object::TYPE_ALL_TYPES, object::ATTR_BLOCKS_PLAYER,
+                                     object::ATTR_COLLISION_PERMEABLE | object::ATTR_LIVING );
+
+    f32 Fraction = 1.0f;
+    for( s32 i = 0; i < g_CollisionMgr.m_nCollisions; i++ )
+    {
+        const collision_mgr::collision& Hit = g_CollisionMgr.m_Collisions[i];
+        if( Hit.SlipPlane.Normal.Dot( Delta ) < -ZERO )
+        {
+            Fraction = MIN( Fraction, x_max( 0.0f, Hit.T - PlayerView::ClearanceMargin / Distance ) );
+        }
+    }
+    if( Fraction >= 1.0f )
+    {
+        return;
+    }
+
+    m_SoftLeanAmount *= Fraction;
+    m_LeanAmount = ComputeLean( m_SoftLeanAmount );
+#ifndef X_EDITOR
+    m_NetDirtyBits |= LEAN_BIT;
+#endif
+}
+
+//=========================================================================
 
 void player::UpdateArmsOffsetForLean( f32 DeltaTime )
 {
@@ -564,10 +570,14 @@ void player::UpdateArmsOffsetForLean( f32 DeltaTime )
     ASSERT( m_LeanWeaponOffset.IsValid() );
 }
 
+//=========================================================================
+
 vector3 player::GetAnimPlayerOffset( void )
 {
     return m_ArmsOffset + GetLeanOffset() + m_LeanWeaponOffset;
 }
+
+//=========================================================================
 
 void player::ManTurret( guid TurretGuid, 
                         guid Turret2Guid, 
@@ -633,6 +643,8 @@ void player::ManTurret( guid TurretGuid,
     m_bInTurret  = TRUE;
 }
 
+//=========================================================================
+
 void player::ExitTurret( void )
 {
     if ( m_bInTurret )
@@ -665,6 +677,8 @@ void player::ExitTurret( void )
 
     }
 }
+
+//=========================================================================
 
 void player::Teleport( const vector3& Position,
                        zone_mgr::zone_id Zone1,
@@ -765,6 +779,8 @@ void player::Teleport( const vector3& Position,
     AttachWeapon();
 }
 
+//=========================================================================
+
 xbool player::IsAvatar( void )
 {
     xbool bRenderAvatar = !m_bActivePlayer
@@ -782,6 +798,8 @@ xbool player::IsAvatar( void )
     return bRenderAvatar;
 }
 
+//=========================================================================
+
 xbool player::UsingLoco( void )
 {
 #if defined( X_EDITOR )
@@ -791,6 +809,8 @@ xbool player::UsingLoco( void )
     return ( GameMgr.IsGameMultiplayer() );
 #endif
 }
+
+//=========================================================================
 
 static f32 ComputeSoftLean( f32 LeanAmount )
 {
@@ -804,6 +824,8 @@ static f32 ComputeSoftLean( f32 LeanAmount )
     return( Sign * (1.0f - ((x_sin( Period + Phase ) + 1.0f) / 2.0f)) );
 }
 
+//=========================================================================
+
 static f32 ComputeLean( f32 SoftLeanAmount )
 {
     SoftLeanAmount = MAX( -1.0f, SoftLeanAmount );
@@ -815,19 +837,7 @@ static f32 ComputeLean( f32 SoftLeanAmount )
     return Sign * LeanAmount;
 }
 
-static f32 ComputeLeanValueForPosition( const vector3& Start, const vector3& HitPoint, xbool bLeaningRight )
-{
-    vector3 Lean( HitPoint - Start );
-    Lean.GetY() = 0.0f;
-
-    f32 LeanAmount = (Lean / GetTweakF32( "LeanX" )).Length();
-    if ( bLeaningRight )
-    {
-        LeanAmount *= -1.0f;
-    }
-
-    return LeanAmount;
-}
+//=========================================================================
 
 static void HideObject( object* pObj )
 {
@@ -838,6 +848,8 @@ static void HideObject( object* pObj )
         pObj->OnMove( Pos );
     }
 }
+
+//=========================================================================
 
 static void UnhideObject( object* pObj )
 {

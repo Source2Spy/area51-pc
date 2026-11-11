@@ -493,9 +493,9 @@ xbool pain::ComputeDamageAndForce( health_handle HealthHandle, guid VictimGuid, 
     f32 ForceScalar;
 
     // Check if pain does splash damage or not
-    if( IsExplosion() )
+    if( PainProfile.m_bSplash )
     {
-        // Handle splash-based pain, including explicit area-source overrides.
+        // Falloff belongs to the profile, not the source's impact classification.
 
         // Compute falloff distance to decay pain by.
         vector3 PainVictimDelta = m_VictimPainPosition - m_Position;
@@ -534,8 +534,16 @@ xbool pain::ComputeDamageAndForce( health_handle HealthHandle, guid VictimGuid, 
         DamageScalar = 1.0f;
         ForceScalar  = 1.0f;
 
-        // Use pain direction to build force direction
-        m_ForceDirection = m_Direction;
+        // Stage-radius explosions can use non-splash profiles with full table damage.
+        if( IsExplosion() )
+        {
+            m_ForceDirection = m_VictimPainPosition - m_Position;
+            m_ForceDirection.Normalize();
+        }
+        else
+        {
+            m_ForceDirection = m_Direction;
+        }
     }
     
     // Apply team damage scalars

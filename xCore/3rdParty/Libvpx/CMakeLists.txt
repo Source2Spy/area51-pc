@@ -1423,8 +1423,7 @@ set(_libvpx_config_mk_vars
   HAVE_AVX HAVE_AVX2 HAVE_AVX512 HAVE_NEON_ASM HAVE_NEON HAVE_NEON_DOTPROD
   HAVE_NEON_I8MM HAVE_SVE HAVE_SVE2 HAVE_MIPS32 HAVE_MIPS64 HAVE_DSPR2 HAVE_MSA
   HAVE_MMI HAVE_VSX HAVE_LSX HAVE_LASX)
-file(WRITE "${LIBVPX_BINARY_DIR}/libvpx_config.mk"
-  "# Generated file.\n")
+set(_libvpx_config_mk "# Generated file.\n")
 foreach(_libvpx_mk_var IN LISTS _libvpx_config_mk_vars)
   if(_libvpx_mk_var MATCHES "^CONFIG_")
     string(REGEX REPLACE "^CONFIG_" "LIBVPX_CONFIG_"
@@ -1434,13 +1433,16 @@ foreach(_libvpx_mk_var IN LISTS _libvpx_config_mk_vars)
       _libvpx_cmake_var "${_libvpx_mk_var}")
   endif()
   if(${_libvpx_cmake_var})
-    file(APPEND "${LIBVPX_BINARY_DIR}/libvpx_config.mk"
+    string(APPEND _libvpx_config_mk
       "${_libvpx_mk_var}=yes\n")
   else()
-    file(APPEND "${LIBVPX_BINARY_DIR}/libvpx_config.mk"
+    string(APPEND _libvpx_config_mk
       "${_libvpx_mk_var}=no\n")
   endif()
 endforeach()
+
+file(CONFIGURE OUTPUT "${LIBVPX_BINARY_DIR}/libvpx_config.mk"
+  CONTENT "@_libvpx_config_mk@" @ONLY)
 
 function(libvpx_generate_rtcd output_name symbol defs_file)
   add_custom_command(
@@ -1541,25 +1543,27 @@ if(LIBVPX_BUILD_SHARED)
   list(REMOVE_DUPLICATES _libvpx_export_symbols)
   if(WIN32)
     set(_libvpx_export_file "${LIBVPX_BINARY_DIR}/libvpx.def")
-    file(WRITE "${_libvpx_export_file}" "LIBRARY vpx\nEXPORTS\n")
+    set(_libvpx_export_content "LIBRARY vpx\nEXPORTS\n")
     foreach(_libvpx_export_symbol IN LISTS _libvpx_export_symbols)
-      file(APPEND "${_libvpx_export_file}"
+      string(APPEND _libvpx_export_content
         "${_libvpx_export_symbol}\n")
     endforeach()
   elseif(APPLE)
     set(_libvpx_export_file "${LIBVPX_BINARY_DIR}/libvpx.syms")
-    file(WRITE "${_libvpx_export_file}" "")
+    set(_libvpx_export_content "")
     foreach(_libvpx_export_symbol IN LISTS _libvpx_export_symbols)
-      file(APPEND "${_libvpx_export_file}" "_${_libvpx_export_symbol}\n")
+      string(APPEND _libvpx_export_content "_${_libvpx_export_symbol}\n")
     endforeach()
   else()
     set(_libvpx_export_file "${LIBVPX_BINARY_DIR}/libvpx.ver")
-    file(WRITE "${_libvpx_export_file}" "{ global:\n")
+    set(_libvpx_export_content "{ global:\n")
     foreach(_libvpx_export_symbol IN LISTS _libvpx_export_symbols)
-      file(APPEND "${_libvpx_export_file}" "${_libvpx_export_symbol};\n")
+      string(APPEND _libvpx_export_content "${_libvpx_export_symbol};\n")
     endforeach()
-    file(APPEND "${_libvpx_export_file}" "local: *; };\n")
+    string(APPEND _libvpx_export_content "local: *; };\n")
   endif()
+  file(CONFIGURE OUTPUT "${_libvpx_export_file}"
+    CONTENT "@_libvpx_export_content@" @ONLY)
 endif()
 
 set(_libvpx_arm_asm_generated_sources)

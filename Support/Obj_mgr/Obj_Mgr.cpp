@@ -2442,7 +2442,8 @@ void obj_mgr::CollectVisibleLights( void )
         if( !m_ObjectType[Type].pDesc )
             continue;
 
-        for( slot_id ID = m_ObjectType[Type].FirstType; ID != SLOT_NULL; ID = GetNext( ID ) )
+        // Visibility lists already include zone/portal and frustum culling.
+        for( slot_id ID = m_ObjectType[Type].FirstVis; ID != SLOT_NULL; ID = GetNextVis( ID ) )
         {
             object* pObject = m_ObjectSlot[ID].pObject;
             ASSERT( pObject );
@@ -2451,9 +2452,6 @@ void obj_mgr::CollectVisibleLights( void )
             if( pObject->IsHidden() )
                 continue;
 #endif
-
-            if( IsBoxInView( pObject->GetBBox(), XBIN(111111) ) == -1 )
-                continue;
 
             pObject->OnCollectLight();
         }

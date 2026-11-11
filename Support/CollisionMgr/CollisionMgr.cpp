@@ -929,8 +929,19 @@ void collision_mgr::ApplySphereToCapsule( const vector3& WorldPos, f32 Radius,
     f32                    T;
     vector3                Point, Normal;
 
+    // Permeables are volumes: stationary or separating overlaps still notify.
+    const xbool InitialOverlap =
+        ( m_FilterTheseAttributes & object::ATTR_COLLISION_PERMEABLE ) &&
+        ( ComputeCapsuleCapsuleSeparation( Capsule.AxisStartA, Capsule.AxisStartB, Capsule.Radius,
+                                           WorldPos, WorldPos, Radius, vector3( 0.0f, 1.0f, 0.0f ), Normal ) <= 0.0f );
+    T = 0.0f;
+    if( InitialOverlap )
+    {
+        Point = WorldPos + Normal * Radius;
+    }
+
     // A stationary sphere is a capsule whose two axis endpoints coincide.
-    if( !ComputeCapsuleCapsuleCollision( Capsule.AxisStartA,
+    if( !InitialOverlap && !ComputeCapsuleCapsuleCollision( Capsule.AxisStartA,
                                        Capsule.AxisStartB,
                                        Capsule.AxisEndA - Capsule.AxisStartA,
                                        Capsule.Radius,
@@ -1196,6 +1207,29 @@ void collision_mgr::ApplyTriangleToRay(
 
 void collision_mgr::ApplyAABBoxToCapsule( const bbox& Bounds, u32 Flags, s32 PrimitiveKey )
 {
+    const dynamic_capsule& Capsule = m_CapsuleInfo[m_ContextInfo.Context];
+    if( ( m_FilterTheseAttributes & object::ATTR_COLLISION_PERMEABLE ) &&
+        ComputeCapsuleAABBoxOverlap( Capsule.AxisStartA, Capsule.AxisStartB, Capsule.Radius, Bounds ) )
+    {
+        // A trigger can contain the whole capsule, with no box face contact.
+        // Volume overlaps have no unique surface normal; oppose motion when possible.
+        vector3 Normal = Capsule.AxisStartA - Capsule.AxisEndA;
+        if( Normal.LengthSquared() > 0.000001f )
+        {
+            Normal.Normalize();
+        }
+        else
+        {
+            Normal.Set( 0.0f, 1.0f, 0.0f );
+        }
+        const vector3 Point = Bounds.GetCenter();
+        plane Plane;
+        Plane.Setup( Point, Normal );
+        RecordCollision( collision( 0.0f, Point, Plane, Plane, m_ContextInfo.Guid, PrimitiveKey,
+                                    PRIMITIVE_STATIC_AA_BBOX, FALSE, Bounds.Max.GetY(), Flags ) );
+        return;
+    }
+
     // Reuse triangle contact handling for the two triangles on each box face.
     const vector3& L           = Bounds.Min;
     const vector3& H           = Bounds.Max;

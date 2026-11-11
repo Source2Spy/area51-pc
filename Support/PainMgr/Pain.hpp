@@ -55,7 +55,7 @@ public:
     // These routines provide additional information (if available) to later inquiries
     void SetDirection           ( const vector3& Direction ); 
     void SetDirectHitGuid       ( guid DirectHitGuid );
-    // Setup derives this from IsSplash; area sources can override legacy profiles.
+    // Classifies the source independently of profile falloff and direct-hit targets.
     void SetImpactType          ( impact_type Type );
     void SetCustomScalar        ( f32 CustomScalar );
     void SetCollisionInfo       ( const collision_mgr::collision& CollisionInfo );

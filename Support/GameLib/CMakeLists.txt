@@ -244,6 +244,7 @@ a51_add_project( Gamelib STATIC
         "${CMAKE_CURRENT_LIST_DIR}/../Objects/Player/PlayerState.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/../Objects/Player/PlayerStatus.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/../Objects/Player/PlayerView.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/../Objects/Player/PlayerViewBounds.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/../Objects/Player/PlayerViewPolicy.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/../Objects/Player/PlayerStepView.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/../Objects/Player/PlayerCinemaPolicy.cpp"

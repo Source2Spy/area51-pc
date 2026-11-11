@@ -816,6 +816,12 @@ void player::OnAdvanceSimulation( f32 DeltaTime )
     
     // Keep this ordering: ghost loco must be current before the weapon is
     // positioned and the first-person animation is advanced.
+    if( !IsAvatar() && IsAlive() && !IsCinemaRunning() )
+    {
+        // Validate lean at the final physics position before both poses and
+        // replicated lean consume it, including platform motion/returning lean.
+        ConstrainLean();
+    }
     UpdateGhostLoco( DeltaTime );
     UpdateArmsAnimation( pWeapon, DeltaTime );
 

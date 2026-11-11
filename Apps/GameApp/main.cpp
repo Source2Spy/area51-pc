@@ -886,8 +886,7 @@ void RenderGame( void )
         if ( MAX_LOCAL_PLAYERS >= nPlayers )
         {
             // one view, set it to the entire screen
-            view& rView0 = player::GetLiveView( 0 );
-            rView0.SetViewport( 0, 0, XRes, YRes );
+            pPlayers[0]->SetViewViewport( 0, 0, XRes, YRes );
         }
         break;
 
@@ -895,10 +894,8 @@ void RenderGame( void )
         if ( MAX_LOCAL_PLAYERS >= nPlayers )
         {
             // two views, set them to a horizontal split
-            view& rView0 = player::GetLiveView( 0 );
-            view& rView1 = player::GetLiveView( 1 );
-            rView0.SetViewport( 0,0       ,XRes,YRes/2-1 ); // top
-            rView1.SetViewport( 0,YRes/2+1,XRes,YRes     ); // bottom
+            pPlayers[0]->SetViewViewport( 0,0       ,XRes,YRes/2-1 ); // top
+            pPlayers[1]->SetViewViewport( 0,YRes/2+1,XRes,YRes     ); // bottom
 
             if( !g_StateMgr.IsPaused() && eng_Begin( "Kill last rect" ) )
             {
@@ -912,12 +909,9 @@ void RenderGame( void )
         if ( MAX_LOCAL_PLAYERS >= nPlayers )
         {
             // four views, set them to a 4-way split
-            view& rView0 = player::GetLiveView( 0 );
-            view& rView1 = player::GetLiveView( 1 );
-            view& rView2 = player::GetLiveView( 2 );
-            rView0.SetViewport( 0       ,0       ,XRes/2-1,YRes/2-1 );   // upper-left
-            rView1.SetViewport( XRes/2+1,0       ,XRes    ,YRes/2-1 );   // upper-right
-            rView2.SetViewport( 0       ,YRes/2+1,XRes    ,YRes     );   // bottom
+            pPlayers[0]->SetViewViewport( 0       ,0       ,XRes/2-1,YRes/2-1 );   // upper-left
+            pPlayers[1]->SetViewViewport( XRes/2+1,0       ,XRes    ,YRes/2-1 );   // upper-right
+            pPlayers[2]->SetViewViewport( 0       ,YRes/2+1,XRes    ,YRes     );   // bottom
 
 
             if( !g_StateMgr.IsPaused() && eng_Begin( "Kill last rect" ) )
@@ -933,15 +927,10 @@ void RenderGame( void )
         if ( MAX_LOCAL_PLAYERS >= nPlayers )
         {
             // four views, set them to a 4-way split
-            view& rView0 = player::GetLiveView( 0 );
-            view& rView1 = player::GetLiveView( 1 );
-            view& rView2 = player::GetLiveView( 2 );
-            view& rView3 = player::GetLiveView( 3 ); 
-
-            rView0.SetViewport( 0       ,0,       XRes/2-1,YRes/2-1 );   // upper-left
-            rView1.SetViewport( XRes/2+1,0,       XRes    ,YRes/2-1 );   // upper-right
-            rView2.SetViewport( 0       ,YRes/2+1,XRes/2-1,YRes     );   // lower-left
-            rView3.SetViewport( XRes/2+1,YRes/2+1,XRes    ,YRes     );   // lower-right
+            pPlayers[0]->SetViewViewport( 0       ,0,       XRes/2-1,YRes/2-1 );   // upper-left
+            pPlayers[1]->SetViewViewport( XRes/2+1,0,       XRes    ,YRes/2-1 );   // upper-right
+            pPlayers[2]->SetViewViewport( 0       ,YRes/2+1,XRes/2-1,YRes     );   // lower-left
+            pPlayers[3]->SetViewViewport( XRes/2+1,YRes/2+1,XRes    ,YRes     );   // lower-right
 
 
             if( !g_StateMgr.IsPaused() && eng_Begin( "Kill last rect" ) )

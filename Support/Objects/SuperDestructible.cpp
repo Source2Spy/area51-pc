@@ -1043,6 +1043,7 @@ void super_destructible_obj::BroadcastPain( s32 iUsePainFromThisStage )
             // Stage radius selects the victims. Legacy profiles such as
             // GENERIC_EXPLOSIVE are not marked IsSplash in the level data.
             Pain.SetImpactType( pain::IMPACT_EXPLOSION );
+            Pain.SetDirectHitGuid( pObject->GetGuid() );
             Pain.ApplyToObject( pObject );
         }
     }

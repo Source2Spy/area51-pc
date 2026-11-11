@@ -296,7 +296,7 @@ public:
 //=========================================================================
 //
 // GetActivePlayer  -   This is to get the active player.
-// GetLiveView      -   Gets the raw live player view for viewport setup.
+// GetLiveView      -   Gets the raw live player view.
 // GetSimulationView-   Gets the authoritative view used by gameplay.
 // GetRenderView    -   Gets the current view used by rendering.
 // GetIsActiveView  -   Tells whether or not this player has the active view.
@@ -344,6 +344,7 @@ public:
             void            SetLocalPlayer      ( s32 LocalIndex );
 
     static  view&           GetLiveView         ( s32 Player );
+            void            SetViewViewport     ( s32 X0, s32 Y0, s32 X1, s32 Y1 );
             view&           GetSimulationView   ( void );
     const   view&           GetRenderView       ( void ) const;
             void            FinalizeCinemaView   ( void );
@@ -625,6 +626,9 @@ protected:
             void        SetCinemaActive                  ( xbool Active );
             PlayerViewContext BuildPlayerViewContext     ( void ) const;
             PlayerViewSample BuildFirstPersonViewSample  ( void );
+            void        GetFirstPersonViewClearance      ( f32& NearClip, f32& Clearance );
+            vector3     ConstrainFirstPersonViewPosition ( const vector3& Position );
+            void        ConstrainLean                    ( void );
             PlayerViewSample BuildCinemaViewSample       ( void );
             PlayerViewSample BuildDeathViewSample        ( void ) const;
             void        ApplyViewSample                  ( view& View,

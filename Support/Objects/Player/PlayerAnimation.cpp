@@ -25,9 +25,6 @@
 static tweak_handle JBEAN_PitchThrowOffsetTweak( "JBEAN_PitchThrowOffset" );
 static tweak_handle JBEAN_PitchThrowAngleTweak ( "JBEAN_PitchThrowAngle" );
 static const f32    s_ArmsVelocityCarryover = 0.5f;
-static const f32    s_MaxCameraDelta       = 28.0f;
-static const f32    s_CameraContactOffset  = 0.1f;
-static const f32    s_CameraMoveEpsilon    = 0.0001f;
 
 #ifdef DEBUG_GRENADE_THROWING
 xbool   g_ShowGrenadeEventCollision = FALSE;
@@ -38,105 +35,16 @@ vector3 g_NewEventPos               ( 0.0f, 0.0f, 0.0f );
 //=========================================================================
 
 static
-vector3 MoveFirstPersonCamera( player& Player,
-                               const vector3& Start,
-                               const vector3& End,
-                               f32 Radius )
+vector3 GetFirstPersonCameraPivotCorrection( char_anim_player& AnimPlayer, s32 CameraBone )
 {
-    vector3 Position = Start;
-    vector3 Delta    = End - Start;
-    xbool const Horizontal = (Delta.GetY() == 0.0f);
-    vector3 Planes[CHARACTER_MOVEMENT_MAX_PLANES];
-    s32 PlaneCount = 0;
+    const vector3 BindOffset = (AnimPlayer.GetBindPosition( CameraBone ) -
+                                AnimPlayer.GetBindPosition( 0 )) * AnimPlayer.GetScale();
 
-    for( s32 i = 0; i < CHARACTER_MOVEMENT_MAX_PLANES; i++ )
-    {
-        if( Delta.LengthSquared() <= SQR( s_CameraMoveEpsilon ) )
-        {
-            break;
-        }
+    radian3 Rotation = AnimPlayer.GetRotation();
+    Rotation.Yaw -= AnimPlayer.GetAnimInfo().GetHandleAngle();
 
-        g_CollisionMgr.SphereSetup( Player.GetGuid(), Position, Position + Delta, Radius );
-        g_CollisionMgr.UseLowPoly();
-        g_CollisionMgr.SetMaxCollisions( MAX_COLLISION_MGR_COLLISIONS );
-        g_CollisionMgr.DoNotRemoveDuplicateGuids();
-        g_CollisionMgr.CheckCollisions( object::TYPE_ALL_TYPES,
-                                        object::ATTR_BLOCKS_PLAYER,
-                                        object::ATTR_COLLISION_PERMEABLE | object::ATTR_LIVING );
-
-        // Tangential and separating contacts do not restrict the sweep.
-        s32 First = -1;
-        for( s32 j = 0; j < g_CollisionMgr.m_nCollisions; j++ )
-        {
-            collision_mgr::collision const& Hit = g_CollisionMgr.m_Collisions[j];
-            if( (Hit.SlipPlane.Normal.Dot( Delta ) < -s_CameraMoveEpsilon) &&
-                ((First == -1) || (Hit.T < g_CollisionMgr.m_Collisions[First].T)) )
-            {
-                First = j;
-            }
-        }
-
-        if( First == -1 )
-        {
-            Position += Delta;
-            break;
-        }
-
-        collision_mgr::collision const& Hit = g_CollisionMgr.m_Collisions[First];
-        vector3 Normal = Hit.SlipPlane.Normal;
-        f32 const T = x_clamp( Hit.T - s_CameraContactOffset / -Normal.Dot( Delta ),
-                              0.0f, 1.0f );
-        Position += Delta * T;
-
-        if( !Horizontal )
-        {
-            break;
-        }
-
-        // Keep horizontal clearance at the resolved eye height.
-        Normal.GetY() = 0.0f;
-        if( !Normal.SafeNormalize() )
-        {
-            break;
-        }
-
-        Planes[PlaneCount++] = Normal;
-        Delta = CharacterMovement::ClipVelocity( Delta * (1.0f - T), Planes, PlaneCount );
-    }
-
-    return Position;
-}
-
-//=========================================================================
-
-static
-vector3 ComputeFirstPersonCameraCorrection( player& Player,
-                                            const vector3& ViewPosition,
-                                            const vector3& SafePosition,
-                                            f32 Radius )
-{
-    // Limit the animated camera's rearward offset in player space.
-    vector3 Position = ViewPosition;
-    vector3 const Forward( radian3( 0.0f, Player.GetYaw(), 0.0f ) );
-    vector3 const LimitPosition = Player.GetPosition() - (s_MaxCameraDelta * Forward);
-    plane LimitPlane;
-    LimitPlane.Setup( LimitPosition, Forward );
-
-    if( LimitPlane.InBack( Position ) )
-    {
-        Position -= LimitPlane.Normal * LimitPlane.Distance( Position );
-    }
-
-    // Resolve vertical clearance before horizontal clearance to preserve
-    // eye height along walls. SafePosition is the capsule's head center.
-    vector3 HeightPosition = SafePosition;
-    HeightPosition.GetY() = Position.GetY();
-    HeightPosition = MoveFirstPersonCamera( Player, SafePosition, HeightPosition, Radius );
-
-    Position.GetY() = HeightPosition.GetY();
-    Position = MoveFirstPersonCamera( Player, HeightPosition, Position, Radius );
-
-    return Position - ViewPosition;
+    return AnimPlayer.GetBasisMatrix().RotateVector(
+        PlayerView::GetFirstPersonPivotCorrection( BindOffset, Rotation ) );
 }
 
 //=========================================================================
@@ -155,6 +63,8 @@ void player::InitializeMeleeAnimStateList(void)
     // randomize it initially
     RandomizeMeleeAnimStateList();
 }
+
+//=========================================================================
 
 void player::RandomizeMeleeAnimStateList( void )
 {
@@ -182,6 +92,8 @@ void player::RandomizeMeleeAnimStateList( void )
     }
 }
 
+//=========================================================================
+
 player::animation_state player::GetNextMeleeState( void )
 {
     m_MeleeAnimStateIndex++;
@@ -195,6 +107,8 @@ player::animation_state player::GetNextMeleeState( void )
 
     return m_MeleeAnimStates[m_MeleeAnimStateIndex];
 }
+
+//=========================================================================
 
 void player::OnAnimationInit( void )
 {
@@ -272,6 +186,8 @@ void player::OnAnimationInit( void )
 
 }
 
+//=========================================================================
+
 void player::ResetAnimationTable( void )
 {
     LOG_MESSAGE( "player::ResetAnimationTable", "" );
@@ -288,6 +204,8 @@ void player::ResetAnimationTable( void )
         }
     }
 }
+
+//=========================================================================
 
 inven_item player::GetWeaponFromAnimName( const char* pAnimName )
 {
@@ -344,6 +262,8 @@ inven_item player::GetWeaponFromAnimName( const char* pAnimName )
 
     return retValue;
 }
+
+//=========================================================================
 
 player::animation_state player::GetAnimStateFromName( const char* pAnimName )
 {
@@ -520,6 +440,8 @@ player::animation_state player::GetAnimStateFromName( const char* pAnimName )
     return retValue;
 }
 
+//=========================================================================
+
 player::animation_state player::GetMotionTransitionAnimState( void )
 {
     animation_state retState = ANIM_STATE_UNDEFINED;
@@ -539,6 +461,8 @@ player::animation_state player::GetMotionTransitionAnimState( void )
 
     return retState;    
 }
+
+//=========================================================================
 
 void player::SetAnimation( const animation_state& AnimState , const s32& nAnimIndex , const f32& fBlendTime )
 {
@@ -590,6 +514,8 @@ void player::SetAnimation( const animation_state& AnimState , const s32& nAnimIn
     }
 }
 
+//=========================================================================
+
 void player::CameraFall( f32 fPercentHeight )
 {
     f32 fHeight =  GetBBox().Min.GetY() + ((GetBBox().GetSize().GetY() + m_EyesOffset.GetY() ) * fPercentHeight) + 10.0f; //10 cm buffer
@@ -597,10 +523,14 @@ void player::CameraFall( f32 fPercentHeight )
     MoveAnimPlayer( m_PosOverrideCamera );
 }
 
+//=========================================================================
+
 void player::OnAnimEvents( void )
 {
     g_EventMgr.HandleSuperEvents( m_AnimPlayer, this );
 }
+
+//=========================================================================
 
 void player::OnEvent( const event& Event )
 {
@@ -944,6 +874,8 @@ void player::OnEvent( const event& Event )
     }
 }
 
+//=========================================================================
+
 vector3 player::SetupGrenadeThrow( const vector3 &EventPos )
 {
     vector3 NewEventPos = EventPos;
@@ -1071,6 +1003,8 @@ vector3 player::SetupGrenadeThrow( const vector3 &EventPos )
     return NewEventPos;
 }
 
+//=========================================================================
+
 void player::GetThrowPoints( vector3 &Point1, vector3 &Point2, vector3 &Point3 )
 {    
     // get the player position and raise the "eyes" up to the event pos.
@@ -1098,6 +1032,8 @@ void player::GetThrowPoints( vector3 &Point1, vector3 &Point2, vector3 &Point3 )
     Point2 = Point1 + (lean * d);  // perpendicular position
 }
 
+//=========================================================================
+
 xbool player::IsAnimStateAvailable2( inven_item WeaponItem, animation_state AnimState )
 {
     // Get a reference to the state that we are considering
@@ -1109,6 +1045,8 @@ xbool player::IsAnimStateAvailable2( inven_item WeaponItem, animation_state Anim
 
     return FALSE;
 }
+
+//=========================================================================
 
 vector3 player::GetBonePos( s32 BoneIndex )
 {
@@ -1126,20 +1064,25 @@ vector3 player::GetBonePos( s32 BoneIndex )
 
 void player::UpdateArmsAnimation( new_weapon* pWeapon, f32 DeltaTime )
 {
+    const xbool ConstrainFirstPerson = !IsAvatar() && IsAlive() && !IsCinemaRunning();
+    if( ConstrainFirstPerson )
+    {
+        // Rebuild from the physical eye anchor, never from last frame's correction.
+        OnMoveViewPosition( GetPosition() );
+        m_AnimPlayer.SetRoll( m_SoftLeanAmount * DEG_TO_RAD( GetTweakF32( "LeanMaxDegrees" ) ) );
+    }
+
     if( m_AnimGroup.GetPointer() )
     {
         vector3 Position;
         m_AnimPlayer.Advance( DeltaTime, Position );
 
-        if( !IsAvatar() && IsAlive() && (m_iCameraBone >= 0) && !IsCinemaRunning() )
+        if( ConstrainFirstPerson && (m_iCameraBone >= 0) )
         {
-            f32 const Radius = m_Physics.GetColRadius();
-            vector3 const SafePosition = GetPosition() +
-                vector3( 0.0f, m_Physics.GetColHeight() - Radius, 0.0f );
-            vector3 const Correction = ComputeFirstPersonCameraCorrection( *this,
-                                                                           GetDefaultViewPos(),
-                                                                           SafePosition,
-                                                                           Radius );
+            const vector3 ViewPosition = GetDefaultViewPos();
+            const vector3 PreferredPosition = ViewPosition +
+                GetFirstPersonCameraPivotCorrection( m_AnimPlayer, m_iCameraBone );
+            const vector3 Correction = ConstrainFirstPersonViewPosition( PreferredPosition ) - ViewPosition;
 
             // Apply the shared rig correction before weapon attachment and events.
             m_AnimPlayer.SetPosition( m_AnimPlayer.GetPosition() + Correction );

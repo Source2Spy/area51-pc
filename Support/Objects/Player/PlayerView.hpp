@@ -32,6 +32,7 @@ struct PlayerViewSample
     radian          XFOV;
     f32             NearClip;
     f32             FarClip;
+    f32             FirstPersonClearance; // Resolved eye's projection margin; zero for authored cameras.
     PlayerViewMode  Mode;
     xbool           HasZoneSnapshot;
     guid            ZoneSourceGuid;
@@ -87,8 +88,19 @@ class PlayerView
 {
 public:
 
+    static constexpr f32 DefaultNearClip = 10.0f;
+    static constexpr f32 ClearanceMargin = 0.1f;
+
                     PlayerView                  ( void );
 
+    static f32      GetNearPlaneRadius          ( f32 NearClip, radian XFOV, radian YFOV );
+    static void     ComputeFirstPersonClearance ( f32 Radius, radian XFOV, radian YFOV,
+                                                   f32& NearClip, f32& Clearance );
+    static vector3  GetFirstPersonPivotCorrection ( const vector3& BindOffset,
+                                                     const radian3& Rotation );
+    static vector3  ConstrainFirstPersonPosition ( const vector3& Position,
+                                                   const vector3& CapsuleBottom,
+                                                   f32 Height, f32 Radius, f32 Clearance );
     static PlayerViewMode SelectMode            ( const PlayerViewContext& Context );
     static PlayerViewSample BlendSamples        ( const PlayerViewSample& From,
                                                    const PlayerViewSample& To,

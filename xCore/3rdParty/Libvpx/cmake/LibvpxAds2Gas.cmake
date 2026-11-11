@@ -20,4 +20,4 @@ endif()
 
 string(REPLACE ".include \"./vpx_config.asm\""
   ".include \"vpx_config_gas.asm\"" _libvpx_asm "${_libvpx_asm}")
-file(WRITE "${OUTPUT}" "${_libvpx_asm}")
+file(CONFIGURE OUTPUT "${OUTPUT}" CONTENT "@_libvpx_asm@" @ONLY)

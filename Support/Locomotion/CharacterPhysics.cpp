@@ -1297,6 +1297,7 @@ void character_physics::NotifyContacts( const xarray<CharacterMovementHit>& Obje
 
 xbool character_physics::MoveDisplacement( vector3& Position, const vector3& Delta )
 {
+    const vector3 StartPosition = Position;
     const CharacterMovementResult Result =
         CharacterMovement::Move( *this, GetMovementSettings(), Position, Delta, 1.0f, FALSE, FALSE );
     Position = Result.Position;
@@ -1307,6 +1308,12 @@ xbool character_physics::MoveDisplacement( vector3& Position, const vector3& Del
     }
     m_bNavCollided |= Result.Collided;
     NotifyContacts( Result.Hits );
+
+    object* pActor = g_ObjMgr.GetObjectByGuid( m_Guid );
+    if( m_bHandlePermeable && pActor )
+    {
+        CollectPermeable( pActor, StartPosition, Position );
+    }
     return TRUE;
 }
 

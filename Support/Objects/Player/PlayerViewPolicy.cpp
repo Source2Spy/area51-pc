@@ -12,8 +12,9 @@
 
 PlayerViewSample::PlayerViewSample( void ) :
     XFOV     ( R_60 ),
-    NearClip ( 10.0f ),
+    NearClip ( PlayerView::DefaultNearClip ),
     FarClip  ( 8000.0f ),
+    FirstPersonClearance ( 0.0f ),
     Mode     ( PlayerViewMode::FirstPerson ),
     HasZoneSnapshot ( FALSE ),
     ZoneSourceGuid  ( NULL_GUID )
@@ -85,6 +86,8 @@ PlayerViewSample PlayerView::BlendSamples( const PlayerViewSample& From,
 
     PlayerViewSample Result = To;
     Result.HasZoneSnapshot = To.HasZoneSnapshot && (T == 1.0f);
+    // An intermediate cinematic pose is not contained by the destination hull.
+    Result.FirstPersonClearance = (T == 1.0f) ? To.FirstPersonClearance : 0.0f;
     Result.ViewToWorld.Setup( vector3( 1.0f, 1.0f, 1.0f ), Rotation, Position );
     Result.XFOV     = From.XFOV     + ((To.XFOV     - From.XFOV)     * T);
     Result.NearClip = From.NearClip + ((To.NearClip - From.NearClip) * T);
