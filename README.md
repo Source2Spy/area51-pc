@@ -1,12 +1,9 @@
 ```text
-$$$$$$$\                                              $$\                           $$\       $$$$$$$\    $$\
-$$  __$$\                                             $$ |                          $$ |      $$  ____| $$$$ |
-$$ |  $$ | $$$$$$\   $$$$$$\   $$$$$$\  $$$$$$\$$$$\  $$ | $$$$$$\  $$$$$$$\   $$$$$$$ |$$$$\ $$ |      \_$$ |
-$$ |  $$ |$$  __$$\ $$  __$$\  \____$$\ $$  _$$  _$$\ $$ | \____$$\ $$  __$$\ $$  __$$ |\____|$$$$$$$\    $$ |
-$$ |  $$ |$$ |  \__|$$$$$$$$ | $$$$$$$ |$$ / $$ / $$ |$$ | $$$$$$$ |$$ |  $$ |$$ /  $$ |$$$$\ \_____$$\   $$ |
-$$ |  $$ |$$ |      $$   ____|$$  __$$ |$$ | $$ | $$ |$$ |$$  __$$ |$$ |  $$ |$$ |  $$ |\____|$$\   $$ |  $$ |
-$$$$$$$  |$$ |      \$$$$$$$\ \$$$$$$$ |$$ | $$ | $$ |$$ |\$$$$$$$ |$$ |  $$ |\$$$$$$$ |      \$$$$$$  |$$$$$$\
-\_______/ \__|       \_______| \_______|\__| \__| \__|\__| \_______|\__|  \__| \_______|       \______/ \______|
+██████  ██████  ███████  █████  ███    ███ ██       █████  ███    ██ ██████        ███████  ██ 
+██   ██ ██   ██ ██      ██   ██ ████  ████ ██      ██   ██ ████   ██ ██   ██       ██      ███ 
+██   ██ ██████  █████   ███████ ██ ████ ██ ██      ███████ ██ ██  ██ ██   ██ █████ ███████  ██ 
+██   ██ ██   ██ ██      ██   ██ ██  ██  ██ ██      ██   ██ ██  ██ ██ ██   ██            ██  ██ 
+██████  ██   ██ ███████ ██   ██ ██      ██ ███████ ██   ██ ██   ████ ██████        ███████  ██ 
 ```
 
 [![CMake portability](https://github.com/Source2Spy/area51-pc/actions/workflows/cmake.yml/badge.svg?branch=forward%2B)](https://github.com/Source2Spy/area51-pc/actions/workflows/cmake.yml)
@@ -89,6 +86,7 @@ The original PC code was written around Direct3D, 32-bit Windows and the develop
 * Internet multiplayer using `+connect <host-ip>`. Manual port forwarding may be required when the host is behind a router.
 * Cross-platform multiplayer between Windows, Linux and Android.
 * Reworked multiplayer dialogs and tabs in the original PC-style interface.
+* Working voice chat, like on console versions.
 
 ## Programming and Code Quality
 
@@ -335,7 +333,7 @@ Keep the compiled shader packages from the same build as the executable. The run
 
 ## Multiplayer
 
-You can join a host directly from the `select server` _dlg.
+You can join a host directly from the `select server` dialog.
 
 The host may need to forward the game's network port through their router. LAN connections do not require port forwarding.
 
@@ -379,7 +377,7 @@ Texture files are referenced rather than copied. Rigid-body blobs and external a
 ## Original Applications
 
 <details>
-<summary>Show the original tools and migration status</summary>
+<summary>Show the original tools</summary>
 
 The statuses below come from the project's original tool list. Several programs still require work after the migration from the Visual Studio 2003/2004 toolchain.
 
@@ -460,7 +458,7 @@ The modern graphics backends use compiled `.ecs` shader blob packages and genera
 
 No. LAN and direct-IP multiplayer work without GameSpy. For internet hosting, the router may need port forwarding.
 
-### Can I use `ResourceTool` for a complete asset round trip?**
+### Can I use `ResourceTool` for a complete asset round trip?
 
 Almost. Its descriptor-driven geometry workflow is evolving, and some data types are still handled as external references.
 
