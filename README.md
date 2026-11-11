@@ -50,12 +50,14 @@ The original PC code was written around Direct3D, 32-bit Windows and the develop
 * XeGTAO ambient occlusion.
 * Screen Space Reflections (SSR).
 * SMAA, CMAA2 and MSAA anti-aliasing.
+* Anisotropic filtering.
 * Tessellated cloth rendering.
 * Improved cloth rendering with restored console-style cloth destruction.
 * Per-pixel flashlight lighting.
 * Restored the LensFilter, a vertex-color modulator.
 * Fixed lighting on `.skingeom` meshes, including skinned characters and other animated geometry.
 * Fixed lighting on `.rigidgeom` meshes used for debris and effects.
+* Fixed translucent rendering.
 * Restored beta-era film grain and screen-warp effects.
 * Restored PlayStation 2 radial blur and fog effects.
 * Correct brightness and contrast adjustments in the game's video settings.
@@ -159,7 +161,7 @@ Cloth uses tessellation in the new renderer. The rewritten `d3deng_draw` path ha
 
 * Investigate movement in water on Rift. The player cannot jump while submerged; it is unclear whether jumping or surfacing should take precedence.
 * Certain settings can produce a black prewarm screen.
-* Game have some stutter issues.
+* Game have some minor stutter issues.
 
 ## Deferred Work
 
