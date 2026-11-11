@@ -22,16 +22,16 @@ This file contains the following sections:
 2. [Renderer Features Explained](#renderer-features-explained)
 3. [TODO](#todo)
 4. [General Notes](#general-notes)
-5. [License](#license)
-6. [Getting the Source Code](#getting-the-source-code)
-7. [Compiling on Windows](#compiling-on-windows)
-8. [Compiling on Linux](#compiling-on-linux)
-9. [Compiling on Android](#compiling-on-android)
-10. [Original Xbox (Legacy)](#original-xbox-legacy)
-11. [Shader Pipeline](#shader-pipeline)
-12. [Installation](#installation)
-13. [Development and Modding Tools](#development-and-modding-tools)
-14. [Bug Reports](#bug-reports)
+5. [Getting the Source Code](#getting-the-source-code)
+6. [Compiling on Windows](#compiling-on-windows)
+7. [Compiling on Linux](#compiling-on-linux)
+8. [Compiling on Android](#compiling-on-android)
+9. [Original Xbox (Legacy)](#original-xbox-legacy)
+10. [Shader Pipeline](#shader-pipeline)
+11. [Installation](#installation)
+12. [Development and Modding Tools](#development-and-modding-tools)
+13. [Bug Reports](#bug-reports)
+14. [License](#license)
 15. [FAQ](#faq)
 
 # About the Port
@@ -222,16 +222,6 @@ The original Xbox target uses the older console toolchain and is separate from t
 The source used by this project comes from a development snapshot dated March 31, 2005, at 10:40:19, shortly before the game's commercial release. According to the history accompanying the original source release, the files were discovered at a garage sale involving a former THQ developer.
 
 That snapshot contains the Entropy engine, game code and targets for PC, PlayStation 2 and Xbox, as well as early GameCube work and debug symbols for several platforms. The source snapshot does not contain the complete retail game assets.
-
-# License
-
-This repository contains source code originating from an unofficial release of *Area-51* (2005), developed by Inevitable Entertainment and published by Midway Games. The original game code, assets, name and trademarks remain the property of their respective rights holders, including Warner Bros. Discovery.
-
-Dreamland-51 is an independent, non-commercial community project. The repository is maintained in good faith for preservation and development work and is not an official release from the original developers or publishers. Making the source available here does not grant a license to the original game or its assets.
-
-Warner Bros. Discovery, Skydance Corporation, Midway Games and Inevitable Entertainment are not affiliated with, do not endorse and are not involved in the project.
-
-Third-party components have their own licenses, including Unlicense, BSD, MIT and LGPLv3 terms where applicable. See `legalnotices.txt`, `thirdpartylegalnotices.txt`, `fontlegalnotices.txt` and the license files distributed with individual libraries.
 
 # Getting the Source Code
 
@@ -485,6 +475,16 @@ The statuses below come from the project's original tool list. Several programs 
 Report bugs through the [GitHub issue tracker](https://github.com/Source2Spy/area51-pc/issues). Include the build or commit, operating system, graphics API, and instructions for reproducing the problem. Logs and screenshots help with startup and rendering bugs.
 
 Project discussion is also available on [Discord](https://discord.gg/7gGhFSjxsq).
+
+# License
+
+This repository contains source code originating from an unofficial release of *Area-51* (2005), developed by Inevitable Entertainment and published by Midway Games. The original game code, assets, name and trademarks remain the property of their respective rights holders, including Warner Bros. Discovery.
+
+Dreamland-51 is an independent, non-commercial community project. The repository is maintained in good faith for preservation and development work and is not an official release from the original developers or publishers. Making the source available here does not grant a license to the original game or its assets.
+
+Warner Bros. Discovery, Skydance Corporation, Midway Games and Inevitable Entertainment are not affiliated with, do not endorse and are not involved in the project.
+
+Third-party components have their own licenses, including Unlicense, BSD, MIT and LGPLv3 terms where applicable. See `legalnotices.txt`, `thirdpartylegalnotices.txt`, `fontlegalnotices.txt` and the license files distributed with individual libraries.
 
 # FAQ
 
