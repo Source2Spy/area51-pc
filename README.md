@@ -354,7 +354,7 @@ The package contains the game executable and `SHADERS/` directory. Game data mus
 
 ## Windows, Linux and Android
 
-1. Download the [asset pack](https://github.com/Source2Spy/area51-pc/releases/tag/ASSETS-14.08.2026).
+1. Download the [Asset Pack](https://github.com/Source2Spy/area51-pc/releases).
 2. Download the executable for your platform from [GitHub Actions](https://github.com/Source2Spy/area51-pc/actions), or compile it yourself using the instructions above.
 3. Extract the game assets to a new directory.
 4. Copy the executable and its `SHADERS/` folder into that directory, keeping the existing resource paths.
