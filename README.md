@@ -23,9 +23,9 @@ This file contains the following sections:
 3. [TODO](#todo)
 4. [General Notes](#general-notes)
 5. [Getting the Source Code](#getting-the-source-code)
-6. [Compiling on Windows](#compiling-on-windows)
-7. [Compiling on Linux](#compiling-on-linux)
-8. [Compiling on Android](#compiling-on-android)
+6. [Compiling Windows Target](#compiling-windows-target)
+7. [Compiling Linux Target](#compiling-linux-target)
+8. [Compiling Android Target](#compiling-android-target)
 9. [Original Xbox (Legacy)](#original-xbox-legacy)
 10. [Shader Pipeline](#shader-pipeline)
 11. [Installation](#installation)
@@ -238,7 +238,7 @@ git pull --ff-only
 
 Desktop builds use CMake. The original Visual Studio project and solution files belong to the old toolchain and are no longer used for current Windows builds.
 
-# Compiling on Windows
+# Compiling Windows Target
 
 You will need Visual Studio 2022 with the C++ desktop tools, CMake, and Python for the host shader utilities. Run the following commands from a Visual Studio developer terminal in the repository root.
 
@@ -262,7 +262,7 @@ build/windows-msvc-x64/Apps/GameApp/Release/A51.exe
 
 A Debug build can use the Release shader kit. If you modify the shader sources, prepare the kit again before rebuilding the executable.
 
-# Compiling on Linux
+# Compiling Linux Target
 
 Install GCC, CMake, Ninja, Python and the development packages needed by SDL3. The package list used by the project's Linux CI can be found in [`.github/workflows/cmake.yml`](https://github.com/Source2Spy/area51-pc/blob/forward%2B/.github/workflows/cmake.yml).
 
@@ -286,7 +286,7 @@ build/linux-gcc-x64/Apps/GameApp/Release/A51
 
 Other architecture presets are defined in `CMakePresets.json`. When using a different preset, supply its name through `A51_PRESET`.
 
-# Compiling on Android
+# Compiling Android Target
 
 The Android build uses Gradle and the Android NDK. The repository's Android CI configuration uses Java 17, Gradle 8.9, Android API 36, NDK `29.0.14206865` and Android SDK CMake 3.31.6.
 
