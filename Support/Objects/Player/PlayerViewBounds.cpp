@@ -57,7 +57,7 @@ vector3 PlayerView::ConstrainFirstPersonPosition( const vector3& Position,
     // plane corner. This bounds animation without another world collision solver.
     vector3 AxisPosition = CapsuleBottom;
     AxisPosition.GetY() = x_clamp( Position.GetY(), CapsuleBottom.GetY() + Radius,
-                                                    CapsuleBottom.GetY() + Height - Radius );
+                                                    CapsuleBottom.GetY() + Height - Clearance );
     const vector3 Offset = Position - AxisPosition;
     const f32 DistanceSquared = Offset.LengthSquared();
     const f32 AllowedRadius = Radius - Clearance;

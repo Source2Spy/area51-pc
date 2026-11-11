@@ -44,9 +44,7 @@
 //  DEFINES
 //==============================================================================
 
-#if defined( TARGET_DESKTOP ) || defined( TARGET_MOBILE )
 #define USE_ANSI_IO_TEXT
-#endif
 
 //#define CAPTURE_FILE_NAMES
 
