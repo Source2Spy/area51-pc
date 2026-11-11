@@ -44,7 +44,7 @@
 //  DEFINES
 //==============================================================================
 
-#ifdef TARGET_DESKTOP
+#if defined( TARGET_DESKTOP ) || defined( TARGET_MOBILE )
 #define USE_ANSI_IO_TEXT
 #endif
 
