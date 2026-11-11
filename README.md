@@ -159,6 +159,7 @@ Cloth uses tessellation in the new renderer. The rewritten `d3deng_draw` path ha
 
 * Investigate movement in water on Rift. The player cannot jump while submerged; it is unclear whether jumping or surfacing should take precedence.
 * Certain settings can produce a black prewarm screen.
+* Game have some stutter issues.
 
 ## Deferred Work
 
