@@ -68,7 +68,7 @@ The original PC code was written around Direct3D, 32-bit Windows and the develop
 * SDL3 gamepad support, with controls ready for Steam Input remapping.
 * Fixed camera handling, including unintended 360-degree rotation and the ability to see through walls.
 * Fixed the aiming bug that prevented the player from aiming correctly while looking upward.
-* Reimplemented menu controls and navigation while preserving the appearance of the original PC interface.
+* Reimplemented menu controls and navigation while preserving the appearance of the original Console-style interface.
 * Reimplemented the multiplayer dialogs and menu tabs.
 * Improved navigation and presentation in the Secrets and Lore menus.
 * Runtime font loading, replacing parts of the original fixed font setup.
@@ -88,18 +88,18 @@ The original PC code was written around Direct3D, 32-bit Windows and the develop
 * GameSpy-free networking, including direct connections to a host by IP address.
 * Internet multiplayer by manual connect. Port forwarding may be required when the host is behind a router.
 * Cross-platform multiplayer between Windows, Linux and Android.
-* Reworked multiplayer dialogs and tabs in the original PC-style interface.
+* Reworked multiplayer dialogs and tabs in the original Console-style interface.
 * Working voice chat, like on console versions.
 
 ## Programming and Code Quality
 
 * Native 64-bit support.
-* Windows, Linux and Android platform support.
+* Native Windows, Linux and Android platform support.
 * SDL3-based OS layer in place of the old Windows-specific code for windows, audio and input.
 * CMake build system for desktop development with GCC and MSVC support. The original Visual Studio solutions are deprecated.
 * All libraries and supporting technologies are built from source, without relying on the original game's binary-only middleware.
 * Reworked serialization for models, decals and lightmaps. The formats no longer depend on the binary layout produced by a particular compiler or on the target's pointer size.
-* Separate host-side shader tools (`ShaderTool` and DXC) and a prepared shader kit for the game build. The `A51` target does not rebuild shaders whenever the C++ code changes.
+* Separate host-side shader tools (`ShaderTool` and DXC) and a prepared shader kit for the game build.
 * Shader-kit manifests with hash verification and matching runtime shader packages.
 
 ## Modding Support
