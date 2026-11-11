@@ -5,18 +5,17 @@ AREA-51 SOURCE CODE — LEGAL NOTICE
 ABOUT THIS MATERIAL
 ------------------------------------------------------------------------------------
 
-This repository contains the leaked source code of the 2005 video game *Area-51*,
-originally developed by Inevitable Entertainment and published by Midway Games.
-All rights to the original game, its assets, name, and trademarks belong to
-Warner Bros. Discovery.
+This repository contains source code originating from an unofficial release of Area-51 (2005), 
+developed by Inevitable Entertainment and published by Midway Games. 
+The original game code, assets, name and trademarks remain the property of their respective rights holders, 
+including Warner Bros. Discovery.
 
-This constitutes a form of redistribution for archival purposes.
-It is made in good faith under fair use principles,
-without intent to infringe upon the rights of the original copyright holders.
+Dreamland-51 is an independent, non-commercial community project. 
+The repository is maintained in good faith for preservation and development work and is not an official release from the original developers or publishers. 
+Making the source available here does not grant a license to the original game or its assets.
 
-This project is an independent, non-commercial community initiative.
-**Warner Bros. Discovery, Midway Games, and Inevitable Entertainment are not affiliated
-with, do not endorse, and have no involvement in this repository or its contents.**
+Warner Bros. Discovery, Skydance Corporation, Midway Games and Inevitable Entertainment 
+are not affiliated with, do not endorse and are not involved in the project.
 
 ------------------------------------------------------------------------------------
 OPEN-SOURCE COMPONENTS
@@ -25,15 +24,6 @@ OPEN-SOURCE COMPONENTS
 Some files within this codebase reference or utilize open-source libraries
 distributed under licenses (e.g. Unlicense, BSD, MIT, LGPLv3).
 Full license texts for these components are included in `xCore/3rdParty/thirdpartylegalnotices.txt`.
-
-------------------------------------------------------------------------------------
-DISCLAIMER
-------------------------------------------------------------------------------------
-
-THIS MATERIAL IS PROVIDED FOR HISTORICAL RESEARCH AND EDUCATIONAL PURPOSES ONLY.  
-IT IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
-BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE, OR NON-INFRINGEMENT.
 
 ====================================================================================
 END OF FILE
