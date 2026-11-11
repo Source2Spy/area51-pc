@@ -50,6 +50,7 @@ The original PC code was written around Direct3D, 32-bit Windows and the develop
 * Screen Space Reflections (SSR).
 * SMAA, CMAA2 and MSAA anti-aliasing.
 * Tessellated cloth rendering.
+* Improved cloth rendering with restored console-style cloth destruction.
 * Per-pixel flashlight lighting.
 * Fixed lighting on `.skingeom` meshes, including skinned characters and other animated geometry.
 * Fixed lighting on `.rigidgeom` meshes used for debris and effects.
@@ -83,7 +84,7 @@ The original PC code was written around Direct3D, 32-bit Windows and the develop
 
 * LAN multiplayer without the original GameSpy service.
 * GameSpy-free networking, including direct connections to a host by IP address.
-* Internet multiplayer using `+connect <host-ip>`. Manual port forwarding may be required when the host is behind a router.
+* Internet multiplayer by manual connect. Port forwarding may be required when the host is behind a router.
 * Cross-platform multiplayer between Windows, Linux and Android.
 * Reworked multiplayer dialogs and tabs in the original PC-style interface.
 * Working voice chat, like on console versions.
