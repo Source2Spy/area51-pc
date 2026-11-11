@@ -11,7 +11,7 @@
 
 #ifndef X_EDITOR
 #include "Render/PrimitiveDebug.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
 #endif
 
@@ -25,6 +25,8 @@
 #include "Objects/Group.hpp"
 #include "GameLib/StatsMgr.hpp"
 #include "UI/ui_renderer.hpp"
+#include "UI/ui_manager.hpp"
+#include "UI/ui_font.hpp"
 #include "GameLib/RenderContext.hpp"
 #include "Objects/Event.hpp"
 #include "EventMgr/EventMgr.hpp"
@@ -606,7 +608,7 @@ void character::OnInit( void )
 #endif
 
 #ifndef X_RETAIL
-    int c;
+    s32 c;
     for(c=0;c<4;c++)
     {    
         x_strcpy(m_StateChangeList[c],"");
@@ -1393,7 +1395,7 @@ void character::AdvanceLoco( f32 DeltaTime )
     // Advance loco
     GetLocoPointer()->OnAdvance(DeltaTime);
 
-    if( GetLocoPointer()->m_Physics.GetFallMode() == TRUE && m_pActiveState && !m_pActiveState->IgnoreFalling() )
+    if( GetLocoPointer()->m_Physics.IsAirborne() == TRUE && m_pActiveState && !m_pActiveState->IgnoreFalling() )
     {
         if( !m_LocoFallingOverride )
         {
@@ -1805,7 +1807,7 @@ void character::OnAdvanceSimulation( f32 DeltaTime )
 
         // This is needed to get the airborn stuff working on the ghost.
         character_physics& Physics = GetLocoPointer()->m_Physics;
-        SetIsAirborn( Physics.IsAirborn() );
+        SetIsAirborn( Physics.IsAirborne() );
 
         // For now, always assume orientation changes.
         m_NetDirtyBits |= ORIENTATION_BIT;
@@ -2502,9 +2504,11 @@ void character::SetupDebugTextBlock( s32 nLines, s32 nCharsWide, xcolor Color )
     m_nScreenBlockMaxLines = nLines;
     m_iScreenBlockLine = 0;
 
-    s32     CharWidth = 5;
+    const s32 Font = g_UiMgr ? g_UiMgr->FindFont( "small" ) : -1;
+    const s32 LineHeight = Font >= 0 ? g_UiMgr->GetLineHeight( Font ) : 10;
+    const s32 CharWidth = Font >= 0 ? g_UiMgr->GetFont( "small" )->GetGlyphAdvance( 'M' ) : 5;
     s32 Width = (s32)(nCharsWide * CharWidth);
-    s32 Height = 10*nLines;
+    s32 Height = LineHeight*nLines;
 
 
     m_ScreenBlockCursor.X -= (Width * Horizontal);
@@ -2516,7 +2520,11 @@ void character::SetupDebugTextBlock( s32 nLines, s32 nCharsWide, xcolor Color )
         (s32) m_ScreenBlockCursor.Y, 
         (s32)(m_ScreenBlockCursor.X + Width), 
         (s32)(m_ScreenBlockCursor.Y + Height) );
+    s32 WidthPixels, HeightPixels;
+    eng_GetRes( WidthPixels, HeightPixels );
+    g_UIRenderer.PushScreenSpace( irect( 0, 0, WidthPixels, HeightPixels ) );
     g_UIRenderer.DrawRect( R, Color );
+    g_UIRenderer.PopScreenSpace();
 
     m_nPreviousRequestedLines = 0;
 }
@@ -2528,17 +2536,28 @@ void character::PrintToTextBlock( xcolor Color, const char* pFormatString, ... )
     if (m_iScreenBlockLine >= m_nScreenBlockMaxLines)
         return;
 
-    char    Buf[ 256 ];
     x_va_list   Args;
     x_va_start( Args, pFormatString );
-    x_vsprintf( Buf, pFormatString, Args );
+    xstring Text;
+    Text.FormatV( pFormatString, Args );
+    x_va_end( Args );
 
-    text_PushColor( Color );
-
-    text_PrintPixelXY( Buf, (s32)m_ScreenBlockCursor.X, (s32)m_ScreenBlockCursor.Y );
-    m_ScreenBlockCursor.Y += 10.0f;
-
-    text_PopColor();
+    if( !g_UiMgr )
+        return;
+    const s32 Font = g_UiMgr->FindFont( "small" );
+    if( Font < 0 )
+        return;
+    const xwstring Message( (const char*)Text );
+    irect TextBounds;
+    g_UiMgr->TextSize( Font, TextBounds, Message, Message.GetLength() );
+    TextBounds.Translate( (s32)m_ScreenBlockCursor.X, (s32)m_ScreenBlockCursor.Y );
+    s32 WidthPixels, HeightPixels;
+    eng_GetRes( WidthPixels, HeightPixels );
+    g_UIRenderer.PushScreenSpace( irect( 0, 0, WidthPixels, HeightPixels ) );
+    g_UiMgr->RenderText( Font, TextBounds, ui_font::h_left | ui_font::v_top, Color, Message, TRUE, FALSE );
+    g_UIRenderer.PopScreenSpace();
+    m_ScreenBlockCursor.Y += g_UiMgr->GetLineHeight( Font );
+    m_iScreenBlockLine++;
 }
 #endif // X_EDITOR
 
@@ -2798,12 +2817,13 @@ void character::OnDebugRender( void )
                                       
                     // Display audio info?
                     s32 VoiceID = LipSyncCont.GetVoiceID();
-                    if( g_AudioMgr.IsValidVoiceId( VoiceID ) )
+                    if( g_AudioMgr.IsValidVoiceIdCached( VoiceID ) )
                     {
                         // Lookup info
-                        const char* pAudioName   = g_AudioMgr.GetVoiceDescriptor( VoiceID );
+                        char        pAudioName[128];
+                        g_AudioMgr.GetVoiceDescriptorCached( VoiceID, pAudioName, sizeof(pAudioName) );
                         s32         AudioFrame   = (s32)( LipSyncCont.GetAudioTime() * 30.0f );
-                        s32         AudioNFrames = (s32)( g_AudioMgr.GetLengthSeconds  ( VoiceID ) * 30.0f );
+                        s32         AudioNFrames = (s32)( g_AudioMgr.GetLengthSecondsCached  ( VoiceID ) * 30.0f );
 
                         // Show info                        
                         PrintToTextBlock( XCOLOR_YELLOW, "LipSyncAudioName :%s",   pAudioName );
@@ -5109,10 +5129,6 @@ xbool character::UpdateGoal( f32 DeltaTime )
             g_AudioMgr.Release( m_VoiceID, 0.0f );
             SetVoiceID(0);
 
-#if defined( CONFIG_VIEWER ) || (defined( CONFIG_QA )&& !defined TARGET_XBOX)
-//            x_DebugSetCause( xfs( "Voice Failed to Start!\n" ) );
-//           *(u32*)1 = 0;
-#endif
         }
 
         break;
@@ -5194,7 +5210,7 @@ void character::UpdateVoice( f32 DeltaTime )
 
     xbool bNeedToWait =
         ( !m_VoiceStarted && 
-          g_AudioMgr.IsValidVoiceId( m_VoiceID ) &&
+          g_AudioMgr.IsValidVoiceIdCached( m_VoiceID ) &&
           ( m_TimeWaitingForVoiceToStart < k_MaxTimeWaitingForVoiceStart ||
             m_LipSyncStartAnimFrame >= 0.0f ) ); 
 
@@ -5204,7 +5220,7 @@ void character::UpdateVoice( f32 DeltaTime )
         m_TimeWaitingForVoiceToStart += DeltaTime;
 
         // if the voice is has started and is warm 
-        if ( g_ConverseMgr.IsReadyToPlay(m_VoiceID) &&
+        if ( g_AudioMgr.IsVoiceReadyCached( m_VoiceID ) &&
              GetLocoPointer()->m_Player.GetFrame() >= m_LipSyncStartAnimFrame )
         {
             // start the voice 
@@ -5234,13 +5250,13 @@ void character::UpdateVoice( f32 DeltaTime )
                 }
             }
         }
-        else if (!g_ConverseMgr.IsActive(m_VoiceID))
+        else if( !g_AudioMgr.IsValidVoiceIdCached( m_VoiceID ) )
         {
             //hmm sound is not active, must have been bumped out of the list, re-warmup
             SetVoiceID( g_ConverseMgr.PlayStream(m_CurrentDialogInfo.m_DialogName, GetPosition(), GetGuid(), GetZone1(), IMMEDIATE_PLAY, FALSE, m_CurrentDialogInfo.m_DialogFlags ) );
         }
     }
-    else if ( !g_ConverseMgr.IsPlaying(m_VoiceID) )
+    else if( !g_AudioMgr.IsValidVoiceIdCached( m_VoiceID ) )
     {
         if( m_CurrentDialogType == DIALOG_COVER_REQ ||
             m_CurrentDialogType == DIALOG_RELOAD ||
@@ -5263,7 +5279,7 @@ void character::UpdateVoice( f32 DeltaTime )
         }
         SetVoiceID(0);
     }
-    else if ( g_ConverseMgr.IsPlaying(m_VoiceID) )
+    else if( g_AudioMgr.IsValidVoiceIdCached( m_VoiceID ) )
     {
         vector3 myPosition = GetPosition();
         g_ConverseMgr.SetPosition( m_VoiceID, myPosition, GetZone1() );
@@ -5383,7 +5399,7 @@ void character::AttemptToAvoidActorCollision( f32 DeltaTime )
                 if( pObject && pObject->IsKindOf(actor::GetRTTI()) )
                 {
                     actor &actorObject = actor::GetSafeType(*pObject);
-                    f32 angleDiff = x_MinAngleDiff(toNavTarget.GetYaw(),actorObject.GetLocoPointer()->m_Physics.GetVelocity().GetYaw());
+                    f32 angleDiff = x_MinAngleDiff(toNavTarget.GetYaw(),actorObject.GetLocoPointer()->m_Physics.GetMotionVelocity().GetYaw());
                     xbool actorMoving = ( actorObject.GetLocoPointer()->GetState() == loco::STATE_MOVE );
 
                     // we will only wait if the actor is moving.
@@ -9104,7 +9120,8 @@ xbool character::PlayDialog( eDialogType dialogType, const char* dialogName, xbo
     xbool bPlayDialog = TRUE;
     if( g_ConverseMgr.IsPlaying(m_VoiceID) )
     {
-        if( dialogName && g_AudioMgr.GetPriority(m_VoiceID) > g_AudioMgr.GetPriority(dialogName) )
+        if( ( g_AudioMgr.IsVoicePending(m_VoiceID) ||
+              (dialogName && g_AudioMgr.GetPriorityCached(m_VoiceID) > g_AudioMgr.GetPriority(dialogName)) ) )
         {            
             bPlayDialog = FALSE;
         }
@@ -9340,7 +9357,8 @@ xbool character::PlayDialog( eDialogType dialogType, const char* dialogName, xbo
             char Descriptor[MAX_DESCRIPTOR_NAME];
             x_sprintf( Descriptor, "%s_%s", characterName, actionName );
 
-            if( g_AudioMgr.GetPriority(m_VoiceID) > g_AudioMgr.GetPriority(Descriptor) )
+            if( g_AudioMgr.IsVoicePending(m_VoiceID) ||
+                g_AudioMgr.GetPriorityCached(m_VoiceID) > g_AudioMgr.GetPriority(Descriptor) )
             {
                 return FALSE;
             }
@@ -11512,16 +11530,13 @@ xbool character::GetClearToMoveTo( const vector3& location, xbool doCollisionChe
     }
 
     if( doCollisionCheck )
-    {        
-        // do a collision check... 
-        g_CollisionMgr.LineOfSightSetup( GetGuid(), GetPositionWithOffset(OFFSET_CENTER), testPosition );
-        g_CollisionMgr.SetMaxCollisions(1);
-        // Perform collision
-        g_CollisionMgr.CheckCollisions( object::TYPE_ALL_TYPES, object::ATTR_BLOCKS_CHARACTER, object::ATTR_COLLISION_PERMEABLE );
-        if ( g_CollisionMgr.m_nCollisions != 0 )
-        {
+    {
+        loco* pLoco = GetLocoPointer();
+        if( !pLoco )
             return FALSE;
-        }
+        testPosition -= GetPositionWithOffset( OFFSET_CENTER ) - GetPosition();
+        if( !pLoco->m_Physics.CanMoveTo( testPosition ) )
+            return FALSE;
     }
     return TRUE;
 }
@@ -12577,7 +12592,7 @@ void character::UpdateLookahead( void )
     {
         return;
     }
-    vector3 nextPosition = GetPosition() + GetLocoPointer()->m_Physics.GetVelocity();
+    vector3 nextPosition = GetPosition() + GetLocoPointer()->m_Physics.GetMotionVelocity();
     if( m_CurrentConnectionSlot != NULL_NAV_SLOT )
     {
         ng_connection2& Conn = g_NavMap.GetConnectionByID( m_CurrentConnectionSlot );

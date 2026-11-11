@@ -99,7 +99,6 @@ set(LIBRARIES
   clangLex
   clangTooling
   clangBasic
-  libclang
   dxcvalidator
   )
 

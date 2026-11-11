@@ -8,6 +8,7 @@
 // INCLUDES
 //=============================================================================
 #include "Debris/debris.hpp"
+#include "Characters/FloorProperties.hpp"
 
 //=============================================================================
 class debris_rigid : public debris
@@ -37,6 +38,7 @@ public:
 
             void        SetVMeshMask    ( u32 MeshMask );
 
+    virtual void        OnAdvanceSimulation ( f32 DeltaTime );
     virtual void        OnRender        ( void );
     virtual void        UpdatePhysics   ( f32 DeltaTime );
 
@@ -49,6 +51,8 @@ public:
 protected:
 
     rigid_inst          m_RigidInst;
+    floor_properties    m_FloorProperties;
+    f32                 m_FadeTime;
     u32                 m_VMeshMask;
 };
 
@@ -64,4 +68,4 @@ void debris_rigid::SetVMeshMask( u32 VMeshMask )
 // END
 //=============================================================================
 #endif//DEBRIS_RIGID_HPP
- 
+

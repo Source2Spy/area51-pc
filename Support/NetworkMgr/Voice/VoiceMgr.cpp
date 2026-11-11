@@ -13,10 +13,10 @@
 #include "VoiceMgr.hpp"
 #include "VoiceProxy.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/GameServer.hpp"
+#include "NetworkMgr/Connection/GameServer.hpp"
 
 #include "Objects/Actor/Actor.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 
 voice_mgr g_VoiceMgr;
 
@@ -859,6 +859,8 @@ void voice_mgr::AcceptUpdate( netstream& BitStream )
     ASSERT( g_NetworkMgr.IsClient() );
 
     DataPresent = BitStream.ReadFlag();
+    if( BitStream.ReadError() )
+        return;
     //
     // We have the data coming in from a bitstream. This is only called on a client
     // and means that the server has sent some data to it. This is responsible for
@@ -883,14 +885,12 @@ void voice_mgr::AcceptUpdate( netstream& BitStream )
     BitStream.ReadRangedS32( Owner, 0, NET_MAX_PLAYERS - 1 );
     BitStream.ReadRangedS32( TalkMode, TALK_MODE_FIRST, TALK_MODE_LAST );
 
-    if( !IN_RANGE( 0, Owner, NET_MAX_PLAYERS - 1 ) ||
-        !IN_RANGE( TALK_MODE_FIRST, TalkMode, TALK_MODE_LAST ) )
-    {
-        ASSERT( FALSE );
-        m_Headset.AcceptUpdate( BitStream );
-        SetLocalVoiceOwner( -1, TALK_NOT_TALKING );
+    if( BitStream.ReadError() )
         return;
-    }
+
+    fifo::update Update;
+    if( !m_Headset.ReadUpdate( BitStream, Update ) )
+        return;
 
     if( (GetLocalVoiceOwner() != Owner) ||
         (m_LocalVoiceTalkType != static_cast<actual_talk_mode>( TalkMode )) )
@@ -898,7 +898,8 @@ void voice_mgr::AcceptUpdate( netstream& BitStream )
         LOG_MESSAGE( "voice_mgr::AcceptUpdate", "New voice owner, old speaker:%d, new speaker:%d", GetLocalVoiceOwner(), Owner );
         SetLocalVoiceOwner( Owner, static_cast<actual_talk_mode>( TalkMode ) );
     }
-    m_Headset.AcceptUpdate( BitStream );
+
+    m_Headset.AcceptUpdate( Update );
 }
 
 //==============================================================================

@@ -27,10 +27,7 @@
 // Data
 
 extern          xbool       g_ShowPlayerPos;
-extern          xbool       g_DevWantsToSave;
-extern          xbool       g_DevWantsToLoad;
 extern          xbool       g_RenderFrameRateInfo;
-extern          xbool       g_bFrameScaling;
 
 extern          s32         g_Changelist;
 extern  const   char*       g_pBuildDate;
@@ -38,27 +35,17 @@ extern  const   char*       g_pBuildDate;
 extern          map_list    g_MapList;
 
                 xbool       g_ShowQAInfo      = FALSE;
-                xbool       g_ShowVertexUsage = FALSE;
-                xbool       g_ShowGammaInfo   = FALSE;
-                s32         g_ScreenShotSize  = 3;
-                xbool       g_ScreenShotModeEnabled = FALSE;
-
-                u32         g_SkinnedGeomSize = 0;
-                u32         g_RigidGeomSize = 0;
-                u32         g_PushSize = 0;
-
 #if ENABLE_STATS_MGR
         static  s32         s_StatsLegend = 0;
 static const char*  StatsLegendText[] = { "Off", "CPU time", "GPU time", "Small Bars" };
 #endif
-
-static const char*  ScreenShotSizeText[] = { "1x1", "2x2", "3x3", "4x4", "5x5", "6x6", "7x7", "8x8" };
 
 //==============================================================================
 
 debug_menu_page_general::debug_menu_page_general( ) : debug_menu_page()
 {
     m_pTitle = "General";
+    m_pItemStatsLegend = NULL;
 
     m_pItemShowQA =         AddItemBool     ( "Show QA info"           , g_ShowQAInfo );
 #if ENABLE_STATS_MGR
@@ -79,52 +66,16 @@ debug_menu_page_general::debug_menu_page_general( ) : debug_menu_page()
 #endif
 
 
-#if !defined( TARGET_WINDOWS )
-                            #ifdef TARGET_XBOX
-                            AddItemSeperator( );
-                            AddItemBool( "Show vertex usage", g_ShowVertexUsage );
-                            AddItemBool( "Show gamma info"  , g_ShowGammaInfo   );
-                            AddItemBool( "Frame scaling"    , g_bFrameScaling );
-                            #endif
-
-                            AddItemSeperator( );
-                            m_pItemScreenShotSize = AddItemEnum     ( "Screen shot size"       , g_ScreenShotSize, ScreenShotSizeText, 8 );
-                            m_pItemScreenShot =     AddItemButton   ( "Take screen shot" );
-                            AddItemBool     ( "Enable screen shot mode", g_ScreenShotModeEnabled );
-                            AddItemSeperator( "(L3+R3 controller 0, or X controller 1)" );
-#endif
                             AddItemSeperator( );
                             AddItemFloat    ( "Debug menu background alpha", g_DebugMenu.m_FadeAlpha, 0.0f, 1.0f, 0.1f );
                             AddItemSeperator( );
-    m_pItemQuickLoad =      AddItemButton   ( "Quick load" );
-    m_pItemQuickSave =      AddItemButton   ( "Quick save" );
+
 }
 
 //==============================================================================
 
 void debug_menu_page_general::OnChangeItem( debug_menu_item* pItem )
 {
-    if( pItem == m_pItemQuickLoad )
-    {
-#ifdef OLD_SAVE
-        g_SaveMgr.RequestLoad();
-#endif
-    }
-
-    if( pItem == m_pItemQuickSave )
-    {
-#ifdef OLD_SAVE
-        g_SaveMgr.RequestSave();
-#endif
-    }
-
-    if( pItem == m_pItemScreenShot )
-    {
-#if !defined( X_RETAIL ) && !defined( TARGET_WINDOWS )
-        eng_ScreenShot( DEBUG_SCREEN_SHOT_DIR, g_ScreenShotSize + 1 );
-#endif
-    }
-
     if( pItem == m_pItemStatsLegend )
     {
 #if ENABLE_STATS_MGR
@@ -167,8 +118,18 @@ void debug_menu_page_general::OnPreRender ( void )
     // Set variables
     player* pPlayer = SMP_UTIL_GetActivePlayer();
     s32 font = g_UiMgr->FindFont("small");
-    s32 XRes,YRes;
-    eng_GetRes(XRes,YRes);
+    const irect Bounds = g_UIRenderer.GetViewport().GetLogicalClipBounds();
+
+    if( g_RenderFrameRateInfo )
+    {
+        const f32 FPS = eng_GetCPUFrameRate();
+        const xwstring Text( (const char*)xfs( "FPS %.1f / %.2f ms", FPS, FPS > 0.0f ? 1000.0f / FPS : 0.0f ) );
+        irect Rect;
+        g_UiMgr->TextSize( font, Rect, Text, Text.GetLength() );
+        Rect.Translate( Bounds.l + 10, Bounds.t + 10 );
+        g_UIRenderer.DrawRect( Rect, xcolor( 0, 0, 0, 128 ) );
+        g_UiMgr->RenderText( font, Rect, ui_font::h_left | ui_font::v_top, XCOLOR_WHITE, Text );
+    }
 
     if ( g_ShowPlayerPos && pPlayer )
     {
@@ -177,146 +138,17 @@ void debug_menu_page_general::OnPreRender ( void )
 
         xwstring posText = (const char *)xfs( "Player( %7.1f, %7.1f, %7.1f )", Pos.GetX(), Pos.GetY(), Pos.GetZ() );
         g_UiMgr->TextSize( font, Rect, posText, posText.GetLength());
-        #ifdef TARGET_XBOX
-        Rect.Translate(XRes/2-50, 25);
-        #else
-        Rect.Translate(XRes - 270, 25);
-        #endif
+        Rect.Translate( Bounds.r - Rect.r - 10, Bounds.t - Rect.t + 10 );
 
         g_UIRenderer.DrawRect( Rect, xcolor(0,0,0,128) );
         g_UiMgr->RenderText( font, Rect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), posText );
     }
 
-    #ifdef TARGET_XBOX
-    /*if( g_bFrameScaling )
-    {
-        extern f32  g_Brightness;
-        extern f32  g_Contrast;
-
-        irect Rect;
-        s32 x = XRes/2-50;
-        s32 y = 50;
-        Rect.Set(x - 4, y, x + 230, y + g_UiMgr->GetLineHeight(font) * 4);
-        g_UIRenderer.DrawRect( Rect, xcolor(0,0,0,128) );
-
-        // Show resolutions
-        xwstring Text;
-    extern void
-        xbox_GetResolutionText( xwstring& );
-        xbox_GetResolutionText( Text );
-
-        g_UiMgr->RenderText( font, Rect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), Text );
-        y += g_UiMgr->GetLineHeight(font);
-    }
-    else if( g_ShowGammaInfo )
-    {
-        extern f32  g_Brightness;
-        extern f32  g_Contrast;
-
-        irect Rect;
-        s32 x = XRes/2-50;
-        s32 y = 50;
-        Rect.Set(x - 4, y, x + 230, y + g_UiMgr->GetLineHeight(font) * 4);
-        g_UIRenderer.DrawRect( Rect, xcolor(0,0,0,128) );
-
-        // heading
-        g_UiMgr->RenderText( font, Rect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), xwstring( "BACK + DPad_R/L or White/Black" ) );
-        y += g_UiMgr->GetLineHeight(font);
-
-        // brightness
-        xwstring Line0 = (const char *)xfs( "Brightness: %fMB", g_Brightness );
-        g_UiMgr->TextSize( font, Rect, Line0, Line0.GetLength());
-        Rect.Translate(x, y);
-        g_UiMgr->RenderText( font, Rect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), Line0 );
-        y += g_UiMgr->GetLineHeight(font);
-
-        // contrast
-        xwstring Line1 = (const char *)xfs( "Contrast: %fMB", g_Contrast );
-        g_UiMgr->TextSize( font, Rect, Line1, Line1.GetLength());
-        Rect.Translate(x, y);
-        g_UiMgr->RenderText( font, Rect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), Line1 );
-        y += g_UiMgr->GetLineHeight(font);
-    }*/
-    else if( g_ShowVertexUsage )
-    {
-        irect Rect;
-        s32 x = XRes/2-50;
-        s32 y = 50;
-        Rect.Set(x - 4, y, x + 230, y + g_UiMgr->GetLineHeight(font) * 4);
-        g_UIRenderer.DrawRect( Rect, xcolor(0,0,0,128) );
-
-        // vertex memory pool
-        u32 VertexRAM = g_VertFactory.GetGeneralPool().GetFree();
-        u32 TotalVRAM = g_VertFactory.GetGeneralPool().GetSize();
-        {
-            xwstring RAM = (const char *)xfs( "Vertices: %fMB of %fMB", f32(VertexRAM)/1024.0f/1024.0f,f32(TotalVRAM)/1024.0f/1024.0f );
-            g_UiMgr->TextSize( font, Rect, RAM, RAM.GetLength());
-            Rect.Translate(x, y);
-            g_UiMgr->RenderText( font, Rect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), RAM );
-            y += g_UiMgr->GetLineHeight(font);
-        }
-
-        // texture memory pool
-        u32 TextureRAM = g_TextureFactory.GetGeneralPool().GetFree();
-        u32 TotalTRAM  = g_TextureFactory.GetGeneralPool().GetSize();
-        {
-            xwstring RAM = (const char *)xfs( "Textures: %fMB of %fMB", f32(TextureRAM)/1024.0f/1024.0f,f32(TotalTRAM)/1024.0f/1024.0f );
-            g_UiMgr->TextSize( font, Rect, RAM, RAM.GetLength());
-            Rect.Translate(x, y);
-            g_UiMgr->RenderText( font, Rect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), RAM );
-            y += g_UiMgr->GetLineHeight(font);
-        }
-
-        // skinned geoms
-        {
-            xwstring RAM = (const char *)xfs( "Skinned: %fMB", f32(g_SkinnedGeomSize)/1024.0f/1024.0f );
-            g_UiMgr->TextSize( font, Rect, RAM, RAM.GetLength());
-            Rect.Translate(x, y);
-            g_UiMgr->RenderText( font, Rect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), RAM );
-            y += g_UiMgr->GetLineHeight(font);
-        }
-
-        // regid geoms
-        {
-            xwstring RAM = (const char *)xfs( "Rigid: %fMB", f32(g_RigidGeomSize)/1024.0f/1024.0f );
-            g_UiMgr->TextSize( font, Rect, RAM, RAM.GetLength());
-            Rect.Translate(x, y);
-            g_UiMgr->RenderText( font, Rect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), RAM );
-            y += g_UiMgr->GetLineHeight(font);
-        }
-
-        // push buffers
-        {
-            xwstring RAM = (const char *)xfs( "Push: %fMB", f32(g_PushSize)/1024.0f/1024.0f );
-            g_UiMgr->TextSize( font, Rect, RAM, RAM.GetLength());
-            Rect.Translate(x, y);
-            g_UiMgr->RenderText( font, Rect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), RAM );
-            y += g_UiMgr->GetLineHeight(font);
-        }
-
-        // push buffers
-        {
-            xwstring RAM = (const char *)xfs( "General: %fMB", f32(x_MemGetFree())/1024.0f/1024.0f );
-            g_UiMgr->TextSize( font, Rect, RAM, RAM.GetLength());
-            Rect.Translate(x, y);
-            g_UiMgr->RenderText( font, Rect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), RAM );
-            y += g_UiMgr->GetLineHeight(font);
-        }
-    }
-    else
-    // nb: fall through to if( g_ShowQAInfo ) because they both draw
-    // nb: to the same location onscreen.
-    #endif
-
     if( g_ShowQAInfo )
     {
         irect Rect;
-        #ifdef TARGET_XBOX
-        s32 x = XRes/2-50;
-        #else
-        s32 x = XRes - 235;
-        #endif
-        s32 y = 50;
+        s32 x = Bounds.r - 240;
+        s32 y = Bounds.t + 40;
         Rect.Set(x - 4, y, x + 230, y + g_UiMgr->GetLineHeight(font) * 4);
         g_UIRenderer.DrawRect( Rect, xcolor(0,0,0,128) );
 
@@ -341,14 +173,14 @@ void debug_menu_page_general::OnPreRender ( void )
 
         // change list 
         xwstring Change  = (const char *)xfs( "Chg: %d", g_Changelist );
-        g_UiMgr->TextSize( font, Rect, Level, Change.GetLength());
+        g_UiMgr->TextSize( font, Rect, Change, Change.GetLength());
         Rect.Translate(x, y);
         g_UiMgr->RenderText( font, Rect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), Change );
         y += g_UiMgr->GetLineHeight(font);
 
         // build date
         xwstring Build  = (const char *)xfs( "Bld: %s", g_pBuildDate );
-        g_UiMgr->TextSize( font, Rect, Level, Build.GetLength());
+        g_UiMgr->TextSize( font, Rect, Build, Build.GetLength());
         Rect.Translate(x, y);
         g_UiMgr->RenderText( font, Rect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), Build );
         y += g_UiMgr->GetLineHeight(font);
@@ -356,84 +188,11 @@ void debug_menu_page_general::OnPreRender ( void )
         // build low water mark
         extern s32 g_MemoryLowWater;
         xwstring Mem  = (const char *)xfs( "Mem: %d", g_MemoryLowWater );
-        g_UiMgr->TextSize( font, Rect, Level, Mem.GetLength());
+        g_UiMgr->TextSize( font, Rect, Mem, Mem.GetLength());
         Rect.Translate(x, y);
         g_UiMgr->RenderText( font, Rect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), Mem );
         y += g_UiMgr->GetLineHeight(font);
     }
-
-#if ENABLE_STATS_MGR
-    if( g_ShowQAInfo )
-    {
-        stats_mgr* pStats = stats_mgr::GetStatsMgr();
-        if( pStats )
-        {
-            const s32 lh = g_UiMgr->GetLineHeight( font );
-            s32       px = 10;
-            s32       py = 50;
-
-            struct stat_row { stat_fields Field; f32 Ms; };
-            stat_row Rows[k_stats_NumTimerStats];
-            s32      nRows  = 0;
-            f32      CPUSum = 0.0f;
-            for( s32 si = 0; si < k_stats_NumTimerStats; si++ )
-            {
-                f32 Ms = pStats->GetStat( (stat_fields)si, k_stats_Average, 0.5f );
-                CPUSum += Ms;
-                if( Ms >= 0.05f )
-                {
-                    Rows[nRows].Field = (stat_fields)si;
-                    Rows[nRows].Ms    = Ms;
-                    nRows++;
-                }
-            }
-
-            for( s32 a = 1; a < nRows; a++ )
-            {
-                stat_row Key = Rows[a];
-                s32      b   = a - 1;
-                while( b >= 0 && Rows[b].Ms < Key.Ms )
-                {
-                    Rows[b+1] = Rows[b];
-                    b--;
-                }
-                Rows[b+1] = Key;
-            }
-
-            irect Box;
-            Box.Set( px - 4, py - 2, px + 196, py + lh * (nRows + 2) + 2 );
-            g_UIRenderer.DrawRect( Box, xcolor(0,0,0,160) );
-
-            irect TRect;
-            f32   FPS     = eng_GetCPUFrameRate();
-            f32   FrameMs = ( FPS > 0.0f ) ? ( 1000.0f / FPS ) : 0.0f;
-            xcolor FPSCol = ( FPS >= 55.0f ) ? xcolor(  0,255,  0,255 )
-                          : ( FPS >= 30.0f ) ? xcolor(255,255,  0,255 )
-                          :                    xcolor(255, 64, 64,255 );
-
-            xwstring LFps = (const char *)xfs( "FPS %3.0f  (%4.1f ms)", FPS, FrameMs );
-            g_UiMgr->TextSize( font, TRect, LFps, LFps.GetLength() );
-            TRect.Translate( px, py );
-            g_UiMgr->RenderText( font, TRect, ui_font::h_left|ui_font::v_top, FPSCol, LFps );
-            py += lh;
-
-            xwstring LSum = (const char *)xfs( "CPU sum  %5.2f ms", CPUSum );
-            g_UiMgr->TextSize( font, TRect, LSum, LSum.GetLength() );
-            TRect.Translate( px, py );
-            g_UiMgr->RenderText( font, TRect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), LSum );
-            py += lh;
-
-            for( s32 r = 0; r < nRows; r++ )
-            {
-                xwstring LRow = (const char *)xfs( "%-14s%5.2f", stats_mgr::GetStatName( Rows[r].Field ), Rows[r].Ms );
-                g_UiMgr->TextSize( font, TRect, LRow, LRow.GetLength() );
-                TRect.Translate( px, py );
-                g_UiMgr->RenderText( font, TRect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), LRow );
-                py += lh;
-            }
-        }
-    }
-#endif
 
 }
 

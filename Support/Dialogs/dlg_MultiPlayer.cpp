@@ -47,18 +47,6 @@ ui_manager::dialog_tem MultiPlayerDialog =
 };
 
 //=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
-
-//=========================================================================
 //  Registration function
 //=========================================================================
 
@@ -633,13 +621,9 @@ void dlg_multi_player::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                     xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_OK" ));
                     SetNavTextVisible( FALSE );
 
-                    m_PopUp->Configure( g_StringTableMgr( "ui", "IDS_PROFILE_DUPLICATE_NAME" ), 
-                        TRUE, 
-                        FALSE, 
-                        FALSE, 
-                        g_StringTableMgr( "ui", "IDS_PROFILE_DUPLICATE_NAME_MSG" ),
-                        navText,
-                        &m_PopUpResult );
+                    m_PopUp->ConfigureMessage( g_StringTableMgr( "ui", "IDS_PROFILE_DUPLICATE_NAME" ),
+                                               g_StringTableMgr( "ui", "IDS_PROFILE_DUPLICATE_NAME_MSG" ),
+                                               &m_PopUpResult );
                     return;
                 }
             }

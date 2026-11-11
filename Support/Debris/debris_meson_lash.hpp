@@ -15,7 +15,8 @@
 #include "FX/fx_Mgr.hpp"
 #include "AudioMgr/AudioMgr.hpp"
 #include "../Objects/Player/Player.hpp"
-#include "NetworkMgr/NetObj.hpp"
+#include "NetworkMgr/Replication/NetObj.hpp"
+#include "Render/Texture.hpp"
 
 #define MAX_LASHES                  8
 #define MAX_LASH_TARGETS            64
@@ -23,8 +24,11 @@
 
 
 //=============================================================================
+struct net_meson_update;
+
 class debris_meson_explosion : public netobj
 {
+    friend struct net_meson_update;
 public:
     CREATE_RTTI( debris_meson_explosion, netobj, object )
 
@@ -257,6 +261,7 @@ protected:
     guid                    m_GuidOfOwner;
     s32                     m_NetSlotOfOwner;
 
+    rhandle<texture>        m_Texture;
     rhandle<decal_package>  m_hDecalPackage;
 
     // Main data, timing, basic info, etc...
@@ -310,7 +315,7 @@ static  target_behaviour        m_TargetBehaviour[ TARGET_TYPE_MAX ];
 
 #ifndef X_EDITOR
 
-virtual         void    net_AcceptUpdate    ( const bitstream& BitStream );
+virtual         void    net_AcceptUpdate    ( const net_meson_update& Update );
 virtual         void    net_ProvideUpdate   (       bitstream& BitStream, 
                                                     u32&       DirtyBits );
 

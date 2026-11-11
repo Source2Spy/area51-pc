@@ -94,3 +94,8 @@ add_clang_library(clangCodeGen
   clangFrontend
   clangLex
   )
+
+# GCC -O3 miscompiles floating texture component classification in this file.
+# Keep DXIL validation enabled and limit the workaround to the affected unit.
+set_source_files_properties(CGHLSLMS.cpp PROPERTIES
+  COMPILE_OPTIONS "$<$<AND:$<CONFIG:Release>,$<CXX_COMPILER_ID:GNU>>:-O1>")

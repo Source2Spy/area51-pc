@@ -9,81 +9,73 @@
 #ifndef GEOM_SHADOW_COMMON_HLSL
 #define GEOM_SHADOW_COMMON_HLSL
 
+#include "shadow_evsm.hlsl"
+
 //==============================================================================
 //  FUNCTIONS
 //==============================================================================
 
-float GetFaceShadowResolution( uint sourceIndex )
+float GetFaceShadowResolution( uint SourceIndex )
 {
-    const float  depthAtlasTexelSize = GetShadowParams().x;
-    const float  sampleAtlasTexelSize = GetShadowFilterParams().x;
-    const float4 atlasRect = GetFaceShadowAtlasRect( sourceIndex );
-    const float  normalizedWidth = atlasRect.z - atlasRect.x + sampleAtlasTexelSize;
-    return max( normalizedWidth / max( depthAtlasTexelSize, 1e-8f ), 1.0f );
+    return GetFaceShadowProjectionData( SourceIndex ).w;
 }
 
 //==============================================================================
 
-float ComputeFaceShadowWorldTexelSize( uint sourceIndex, float3 worldPos )
+float ComputeFaceShadowWorldTexelSize( uint SourceIndex, float3 WorldPos )
 {
-    const float4 lightPosRadius  = GetFaceShadowLightPosRadius( sourceIndex );
-    const float4 lightDirFalloff = GetFaceShadowLightDirFalloff( sourceIndex );
-    const float4 lightData       = GetFaceShadowLightData( sourceIndex );
-    const float3 faceDirection   = normalize( lightDirFalloff.xyz );
-    const float  faceDepth       = max( dot( worldPos - lightPosRadius.xyz, faceDirection ), 0.0f );
-    const float  resolution      = GetFaceShadowResolution( sourceIndex );
-
-    float tanHalfFov;
-    if( lightData.w > 0.5f )
-    {
-        tanHalfFov = 1.0f + GetShadowParams().z / resolution;
-    }
-    else
-    {
-        const float cosHalfFov = clamp( lightData.x, 1e-4f, 1.0f );
-        tanHalfFov = sqrt( saturate( 1.0f - cosHalfFov * cosHalfFov ) ) / cosHalfFov;
-    }
-
-    return ( 2.0f * faceDepth * tanHalfFov ) / resolution;
+    const float3 LightPosition = GetFaceShadowLightPosRadius( SourceIndex ).xyz;
+    const float3 FaceDirection = GetFaceShadowLightDirRadial( SourceIndex ).xyz;
+    const float FaceDepth = max( dot( WorldPos - LightPosition, FaceDirection ), 0.0f );
+    return FaceDepth * GetFaceShadowProjectionData( SourceIndex ).z;
 }
 
 //==============================================================================
 
-float3 ComputeNormalBiasedShadowWorldPos( uint sourceIndex, float3 worldPos, float3 geometricNormal )
+float3 ComputeNormalBiasedShadowWorldPos( uint SourceIndex, float3 WorldPos, float3 GeometricNormal, float3 PointToLightDir )
 {
-    const float3 lightPos        = GetFaceShadowLightPosRadius( sourceIndex ).xyz;
-    const float3 pointToLightDir = normalize( lightPos - worldPos );
-    const float3 normal          = normalize( geometricNormal );
-    const float  normalCos       = saturate( dot( normal, pointToLightDir ) );
-    const float  normalSin       = sqrt( saturate( 1.0f - normalCos * normalCos ) );
-    const float  worldTexelSize  = ComputeFaceShadowWorldTexelSize( sourceIndex, worldPos );
-    const float4 shadowParams    = GetShadowParams();
+    const float3 Normal          = GeometricNormal;
+    const float  NormalCos       = saturate( dot( Normal, PointToLightDir ) );
+    const float  NormalSin       = sqrt( saturate( 1.0f - NormalCos * NormalCos ) );
+    const float  WorldTexelSize  = ComputeFaceShadowWorldTexelSize( SourceIndex, WorldPos );
+    const float4 ShadowParams    = GetShadowParams();
 
-    return worldPos + normal * ( worldTexelSize * shadowParams.y * normalSin );
+    return WorldPos + Normal * ( WorldTexelSize * ShadowParams.y * NormalSin );
 }
 
 //==============================================================================
 
-bool ProjectFaceShadowSource( uint sourceIndex,
-                              float3 shadowWorldPos,
-                              out float3 shadowUVW )
+bool FaceShadowIsPointFace( uint SourceIndex )
 {
-    shadowUVW = 0.0f;
+    static const float KFaceShadowSourceTypePointFace = 1.0f;
+    return GetFaceShadowLightData( SourceIndex ).w == KFaceShadowSourceTypePointFace;
+}
 
-    const float4 shadowPos = mul( FaceShadowMatrices[sourceIndex], float4( shadowWorldPos, 1.0f ) );
-    if( shadowPos.w <= 0.0f )
+//==============================================================================
+
+bool ProjectFaceShadowSource( uint SourceIndex,
+                              float3 ShadowWorldPos,
+                              out float3 ShadowUVW )
+{
+    ShadowUVW = 0.0f;
+
+    const float3 RelativePos = ShadowWorldPos - GetFaceShadowLightPosRadius( SourceIndex ).xyz;
+    const float2 NearFar = GetFaceShadowProjectionData( SourceIndex ).xy;
+    float4 ShadowPos = mul( FaceShadowMatrices[SourceIndex], float4( RelativePos, 0.0f ) );
+    ShadowPos.z = ( NearFar.y * ShadowPos.w - NearFar.x * NearFar.y ) / ( NearFar.y - NearFar.x );
+    if( ShadowPos.w <= 0.0f )
     {
         return false;
     }
 
-    shadowUVW.xy = shadowPos.xy / shadowPos.w;
-    shadowUVW.z  = shadowPos.z / shadowPos.w;
+    ShadowUVW.xy = ShadowPos.xy / ShadowPos.w;
+    ShadowUVW.z  = ShadowPos.z / ShadowPos.w;
 
-    const float  halfTexel = GetShadowFilterParams().x * 0.5f;
-    const float4 atlasRect = GetFaceShadowAtlasRect( sourceIndex );
-    if( shadowUVW.x < atlasRect.x - halfTexel || shadowUVW.x > atlasRect.z + halfTexel ||
-        shadowUVW.y < atlasRect.y - halfTexel || shadowUVW.y > atlasRect.w + halfTexel ||
-        shadowUVW.z < 0.0f || shadowUVW.z > 1.0f )
+    const float  HalfTexel = GetShadowFilterParams().x * 0.5f;
+    const float4 AtlasRect = GetFaceShadowAtlasRect( SourceIndex );
+    if( ShadowUVW.x < AtlasRect.x - HalfTexel || ShadowUVW.x > AtlasRect.z + HalfTexel ||
+        ShadowUVW.y < AtlasRect.y - HalfTexel || ShadowUVW.y > AtlasRect.w + HalfTexel ||
+        ShadowUVW.z < 0.0f || ShadowUVW.z > 1.0f )
     {
         return false;
     }
@@ -93,167 +85,130 @@ bool ProjectFaceShadowSource( uint sourceIndex,
 
 //==============================================================================
 
-float2 WarpEVSMDepth( float depth, float2 exponents )
+float SampleFaceShadowEVSM( uint SourceIndex, float3 ShadowWorldPos, float3 ShadowUVW )
 {
-    const float warpedDepth = depth * 2.0f - 1.0f;
-    return float2( exp( exponents.x * warpedDepth ), -exp( -exponents.y * warpedDepth ) );
+    static const float KDepthBias = 1.0e-4f;
+
+    const float4 AtlasRect = GetFaceShadowAtlasRect( SourceIndex );
+    const float4 EvsmParams = GetShadowFilterParams();
+    const float2 Exponents = EvsmParams.yz;
+    const float4 Moments = txFaceShadowAtlas.SampleLevel(
+        samFaceShadow, clamp( ShadowUVW.xy, AtlasRect.xy, AtlasRect.zw ), 0.0f );
+    const float4 LightPosRadius = GetFaceShadowLightPosRadius( SourceIndex );
+    const float ReceiverDepth =
+        saturate( length( ShadowWorldPos - LightPosRadius.xyz ) / max( LightPosRadius.w, 1.0e-4f ) );
+    const float2 WarpedDepth = WarpEVSMDepth( ReceiverDepth, Exponents );
+    const float2 DepthScale = KDepthBias * Exponents * abs( WarpedDepth );
+    const float2 MinimumVariance = DepthScale * DepthScale;
+    const float PositiveVisibility =
+        ComputeEVSMChebyshevBound( Moments.xy, WarpedDepth.x, MinimumVariance.x );
+    const float NegativeVisibility =
+        ComputeEVSMChebyshevBound( Moments.zw, WarpedDepth.y, MinimumVariance.y );
+    const float Visibility = min( PositiveVisibility, NegativeVisibility );
+    return saturate( ( Visibility - EvsmParams.w ) / max( 1.0f - EvsmParams.w, 1.0e-4f ) );
 }
 
 //==============================================================================
 
-float ComputeEVSMChebyshevBound( float2 moments, float receiverDepth, float minimumVariance )
+bool ComputeFaceShadowReceiverPlane( uint SourceIndex,
+                                     float3 ShadowUVW,
+                                     float3 WorldPos,
+                                     float3 GeometricNormal,
+                                     out float2 DepthGradient,
+                                     out float DepthError )
 {
-    if( receiverDepth <= moments.x )
+    static const float KFloatEpsilon = 1.192092896e-7f;
+
+    const float4x4 ShadowMatrix = FaceShadowMatrices[SourceIndex];
+    const float3 U = ShadowMatrix[0].xyz - ShadowUVW.x * ShadowMatrix[3].xyz;
+    const float3 V = ShadowMatrix[1].xyz - ShadowUVW.y * ShadowMatrix[3].xyz;
+    const float3 Z = ShadowMatrix[2].xyz - ShadowUVW.z * ShadowMatrix[3].xyz;
+    const float3 TangentU = cross( V, GeometricNormal );
+    const float3 TangentV = cross( GeometricNormal, U );
+    const float Determinant = dot( U, TangentU );
+    const float Scale = dot( U, U ) * dot( V, V );
+
+    DepthGradient = 0.0f;
+    DepthError = 0.0f;
+    if( Determinant * Determinant <= 1.0e-10f * Scale )
     {
-        return 1.0f;
+        return false;
     }
 
-    const float variance = max( moments.y - moments.x * moments.x, minimumVariance );
-    const float depthDelta = receiverDepth - moments.x;
-    return variance / ( variance + depthDelta * depthDelta );
+    DepthGradient = float2( dot( Z, TangentU ), dot( Z, TangentV ) ) / Determinant;
+    const float3 RelativePos = WorldPos - GetFaceShadowLightPosRadius( SourceIndex ).xyz;
+    const float FaceDepth = dot( RelativePos, GetFaceShadowLightDirRadial( SourceIndex ).xyz );
+    const float3 PlaneDepth = Z - DepthGradient.x * U - DepthGradient.y * V;
+    DepthError = 4.0f * KFloatEpsilon * dot( abs( PlaneDepth ), abs( WorldPos ) ) / max( FaceDepth, 1.0e-4f );
+    return true;
 }
 
 //==============================================================================
 
-bool FaceShadowIsPointFace( uint sourceIndex )
+float SampleFaceShadowHard( uint SourceIndex, float3 ShadowUVW, float2 DepthGradient, float DepthError )
 {
-    static const float kFaceShadowSourceTypePointFace = 1.0f;
-    return GetFaceShadowLightData( sourceIndex ).w == kFaceShadowSourceTypePointFace;
+    static const float KFloatEpsilon = 1.192092896e-7f;
+
+    const float4 AtlasRect = GetFaceShadowAtlasRect( SourceIndex );
+    const float TexelSize = GetShadowParams().x;
+    const float2 SampleUV = clamp( ShadowUVW.xy, AtlasRect.xy, AtlasRect.zw );
+    const float2 TexelUV = ( floor( SampleUV / TexelSize ) + 0.5f ) * TexelSize;
+    const float ShadowDepth = txFaceShadowAtlas.SampleLevel(
+        samFaceShadow, TexelUV, 0.0f ).x;
+    const float2 SampleOffset = TexelUV - ShadowUVW.xy;
+    float ReceiverDepth = ShadowUVW.z + dot( DepthGradient, SampleOffset );
+    const float ArithmeticScale = abs( ShadowUVW.z ) + dot( abs( DepthGradient ), abs( SampleOffset ) );
+    DepthError += 8.0f * KFloatEpsilon * ArithmeticScale;
+    ReceiverDepth -= DepthError;
+    return saturate( ReceiverDepth ) <= ShadowDepth ? 1.0f : 0.0f;
 }
 
 //==============================================================================
 
-float LinearizeFaceShadowDepth( uint sourceIndex, float depth )
+bool TrySampleFaceShadow( uint SourceIndex,
+                          float3 WorldPos,
+                          float3 GeometricNormal,
+                          float3 PointToLightDir,
+                          out float Visibility )
 {
-    const float2 projectionNearFar = GetFaceShadowProjectionData( sourceIndex ).xy;
-    const float  nearZ             = max( projectionNearFar.x, 1.0e-4f );
-    const float  farZ              = max( projectionNearFar.y, nearZ + 1.0e-4f );
-    const float  denominator       = max( farZ - depth * ( farZ - nearZ ), 1.0e-4f );
-    return ( nearZ * farZ ) / denominator;
-}
-
-//==============================================================================
-
-float4 GetFaceShadowDepthClampRect( uint sourceIndex )
-{
-    const float  depthAtlasTexelSize  = GetShadowParams().x;
-    const float  sampleAtlasTexelSize = GetShadowFilterParams().x;
-    const float  insetDifference      = max( sampleAtlasTexelSize - depthAtlasTexelSize, 0.0f ) * 0.5f;
-    const float4 sampleRect           = GetFaceShadowAtlasRect( sourceIndex );
-    return sampleRect + float4( -insetDifference, -insetDifference, insetDifference, insetDifference );
-}
-
-//==============================================================================
-
-float ApplyPointShadowContactHardening( uint sourceIndex,
-                                        float3 shadowWorldPos,
-                                        float3 shadowUVW,
-                                        float evsmVisibility )
-{
-    const float4 depthClampRect = GetFaceShadowDepthClampRect( sourceIndex );
-    const float blockerDepth = txFaceShadowDepthAtlas.SampleLevel(
-        samFaceShadowDepth, clamp( shadowUVW.xy, depthClampRect.xy, depthClampRect.zw ), 0.0f );
-
-    if( shadowUVW.z <= blockerDepth )
+    float3 ShadowUVW;
+    if( !ProjectFaceShadowSource( SourceIndex, WorldPos, ShadowUVW ) )
     {
-        return evsmVisibility;
-    }
-
-    const float receiverDistance = LinearizeFaceShadowDepth( sourceIndex, shadowUVW.z );
-    const float blockerDistance  = LinearizeFaceShadowDepth( sourceIndex, blockerDepth );
-    const float blockerSeparation = max( receiverDistance - blockerDistance, 0.0f );
-
-    const float depthAtlasTexelSize  = max( GetShadowParams().x, 1.0e-8f );
-    const float sampleAtlasTexelSize = GetShadowFilterParams().x;
-    const float momentToDepthScale   = sampleAtlasTexelSize / depthAtlasTexelSize;
-    const float filterRadiusTexels   = GetShadowContactParams().x * momentToDepthScale;
-
-    const float filterWorldRadius =
-        ComputeFaceShadowWorldTexelSize( sourceIndex, shadowWorldPos ) * filterRadiusTexels;
-    const float contactWeight =
-        smoothstep( 0.0f, max( filterWorldRadius, 1.0e-4f ), blockerSeparation );
-    return evsmVisibility * contactWeight;
-}
-
-//==============================================================================
-
-float SampleFaceShadowEVSM( uint sourceIndex, float3 shadowWorldPos, float3 shadowUVW )
-{
-    static const float kMinimumVariance = 1.0e-5f;
-
-    const float4 atlasRect = GetFaceShadowAtlasRect( sourceIndex );
-    const float4 evsmParams = GetShadowFilterParams();
-    const float2 exponents = evsmParams.yz;
-    const float4 moments = txFaceShadowAtlas.SampleLevel(
-        samFaceShadow, clamp( shadowUVW.xy, atlasRect.xy, atlasRect.zw ), 0.0f );
-    float receiverDepth = shadowUVW.z;
-    if( FaceShadowIsPointFace( sourceIndex ) )
-    {
-        const float4 lightPosRadius = GetFaceShadowLightPosRadius( sourceIndex );
-        receiverDepth =
-            saturate( length( shadowWorldPos - lightPosRadius.xyz ) / max( lightPosRadius.w, 1.0e-4f ) );
-    }
-    const float2 warpedDepth = WarpEVSMDepth( receiverDepth, exponents );
-    const float2 depthScale = exponents * abs( warpedDepth );
-    const float2 minimumVariance = kMinimumVariance * depthScale * depthScale;
-    const float positiveVisibility =
-        ComputeEVSMChebyshevBound( moments.xy, warpedDepth.x, minimumVariance.x );
-    const float negativeVisibility =
-        ComputeEVSMChebyshevBound( moments.zw, warpedDepth.y, minimumVariance.y );
-    const float visibility = min( positiveVisibility, negativeVisibility );
-    const float evsmVisibility =
-        saturate( ( visibility - evsmParams.w ) / max( 1.0f - evsmParams.w, 1.0e-4f ) );
-    if( !FaceShadowIsPointFace( sourceIndex ) )
-    {
-        return evsmVisibility;
-    }
-
-    return ApplyPointShadowContactHardening( sourceIndex, shadowWorldPos, shadowUVW, evsmVisibility );
-}
-
-//==============================================================================
-
-float SampleFaceShadowHard( uint sourceIndex, float3 shadowUVW )
-{
-    const float4 atlasRect = GetFaceShadowAtlasRect( sourceIndex );
-    const float shadowDepth = txFaceShadowAtlas.SampleLevel(
-        samFaceShadow, clamp( shadowUVW.xy, atlasRect.xy, atlasRect.zw ), 0.0f ).x;
-    return shadowUVW.z <= shadowDepth ? 1.0f : 0.0f;
-}
-
-//==============================================================================
-
-bool TrySampleFaceShadow( uint sourceIndex,
-                          float3 worldPos,
-                          float3 geometricNormal,
-                          out float visibility )
-{
-    const float3 biasedWorldPos = ComputeNormalBiasedShadowWorldPos( sourceIndex, worldPos, geometricNormal );
-
-    float3 shadowUVW;
-    if( !ProjectFaceShadowSource( sourceIndex, biasedWorldPos, shadowUVW ) )
-    {
-        visibility = 1.0f;
+        Visibility = 1.0f;
         return false;
     }
 
     if( GetShadowParams().w > 0.5f )
     {
-        visibility = SampleFaceShadowEVSM( sourceIndex, biasedWorldPos, shadowUVW );
+        Visibility = SampleFaceShadowEVSM( SourceIndex, WorldPos, ShadowUVW );
     }
     else
     {
-        visibility = SampleFaceShadowHard( sourceIndex, shadowUVW );
+        float2 DepthGradient = 0.0f;
+        float DepthError = 0.0f;
+        if( !ComputeFaceShadowReceiverPlane( SourceIndex, ShadowUVW, WorldPos, GeometricNormal,
+                                             DepthGradient, DepthError ) )
+        {
+            const float3 BiasedWorldPos =
+                ComputeNormalBiasedShadowWorldPos( SourceIndex, WorldPos, GeometricNormal, PointToLightDir );
+            if( !ProjectFaceShadowSource( SourceIndex, BiasedWorldPos, ShadowUVW ) )
+            {
+                Visibility = 1.0f;
+                return false;
+            }
+        }
+
+        Visibility = SampleFaceShadowHard( SourceIndex, ShadowUVW, DepthGradient, DepthError );
     }
     return true;
 }
 
 //==============================================================================
 
-float ComputeShadowNearInfluence( float lightDistance, float nearZ, float lightRadius )
+float ComputeShadowNearInfluence( float LightDistance, float NearZ )
 {
-    const float nearFadeRange = max( nearZ, 0.05f );
-    return saturate( ( lightDistance - nearZ ) / nearFadeRange );
+    const float NearFadeRange = max( NearZ, 0.05f );
+    return saturate( ( LightDistance - NearZ ) / NearFadeRange );
 }
 
 //==============================================================================

@@ -10,6 +10,7 @@
 #include "UI/ui_combo.hpp"
 #include "UI/ui_font.hpp"
 #include "UI/ui_manager.hpp"
+#include "UI/ui_slider.hpp"
 #include "UI/ui_text.hpp"
 
 #include "dlg_DisplaySettings.hpp"
@@ -27,15 +28,15 @@ enum display_controls
     IDC_DISPLAY_RESOLUTION_TEXT,
     IDC_DISPLAY_PRESENT_MODE_TEXT,
     IDC_DISPLAY_FRAME_LIMIT_TEXT,
-    IDC_DISPLAY_UI_SCALE_TEXT,
-    IDC_DISPLAY_HUD_SCALE_TEXT,
+    IDC_DISPLAY_BRIGHTNESS_TEXT,
+    IDC_DISPLAY_CONTRAST_TEXT,
 
     IDC_DISPLAY_MODE,
     IDC_DISPLAY_RESOLUTION,
     IDC_DISPLAY_PRESENT_MODE,
     IDC_DISPLAY_FRAME_LIMIT,
-    IDC_DISPLAY_UI_SCALE,
-    IDC_DISPLAY_HUD_SCALE,
+    IDC_DISPLAY_BRIGHTNESS,
+    IDC_DISPLAY_CONTRAST,
     IDC_DISPLAY_BUTTON_APPLY,
 };
 
@@ -101,15 +102,15 @@ ui_manager::control_tem DisplaySettingsControls[] =
     { IDC_DISPLAY_RESOLUTION_TEXT, "IDS_NULL",                   "text",    40,  75, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
     { IDC_DISPLAY_PRESENT_MODE_TEXT,"IDS_NULL",                  "text",    40, 110, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
     { IDC_DISPLAY_FRAME_LIMIT_TEXT, "IDS_NULL",                  "text",    40, 145, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_DISPLAY_UI_SCALE_TEXT,   "IDS_NULL",                   "text",    40, 198, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_DISPLAY_HUD_SCALE_TEXT,  "IDS_NULL",                   "text",    40, 233, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_DISPLAY_BRIGHTNESS_TEXT, "IDS_NULL",                   "text",    40, 198, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_DISPLAY_CONTRAST_TEXT,   "IDS_NULL",                   "text",    40, 233, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
 
     { IDC_DISPLAY_MODE,            "IDS_NULL",                   "combo",  290,  40, 140, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
     { IDC_DISPLAY_RESOLUTION,      "IDS_NULL",                   "combo",  290,  75, 140, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
     { IDC_DISPLAY_PRESENT_MODE,    "IDS_NULL",                   "combo",  290, 110, 140, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
     { IDC_DISPLAY_FRAME_LIMIT,     "IDS_NULL",                   "combo",  290, 145, 140, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_DISPLAY_UI_SCALE,        "IDS_NULL",                   "combo",  290, 198, 140, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_DISPLAY_HUD_SCALE,       "IDS_NULL",                   "combo",  290, 233, 140, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_DISPLAY_BRIGHTNESS,      "IDS_NULL",                   "slider", 300, 198, 120, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_DISPLAY_CONTRAST,        "IDS_NULL",                   "slider", 300, 233, 120, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE },
 
     { IDC_DISPLAY_BUTTON_APPLY,    "IDS_PROFILE_OPTIONS_ACCEPT", "button",  40, 285, 220, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE },
 };
@@ -173,16 +174,16 @@ xbool dlg_display_settings::Create( s32                       UserID,
     m_pResolution        = (ui_combo*) FindChildByID( IDC_DISPLAY_RESOLUTION );
     m_pPresentMode       = (ui_combo*) FindChildByID( IDC_DISPLAY_PRESENT_MODE );
     m_pFrameLimit        = (ui_combo*) FindChildByID( IDC_DISPLAY_FRAME_LIMIT );
-    m_pUIScale           = (ui_combo*) FindChildByID( IDC_DISPLAY_UI_SCALE );
-    m_pHUDScale          = (ui_combo*) FindChildByID( IDC_DISPLAY_HUD_SCALE );
+    m_pBrightness        = (ui_slider*)FindChildByID( IDC_DISPLAY_BRIGHTNESS );
+    m_pContrast          = (ui_slider*)FindChildByID( IDC_DISPLAY_CONTRAST );
     m_pButtonApply       = (ui_button*)FindChildByID( IDC_DISPLAY_BUTTON_APPLY );
 
     m_pDisplayModeText   = (ui_text*)FindChildByID( IDC_DISPLAY_MODE_TEXT );
     m_pResolutionText    = (ui_text*)FindChildByID( IDC_DISPLAY_RESOLUTION_TEXT );
     m_pPresentModeText   = (ui_text*)FindChildByID( IDC_DISPLAY_PRESENT_MODE_TEXT );
     m_pFrameLimitText    = (ui_text*)FindChildByID( IDC_DISPLAY_FRAME_LIMIT_TEXT );
-    m_pUIScaleText       = (ui_text*)FindChildByID( IDC_DISPLAY_UI_SCALE_TEXT );
-    m_pHUDScaleText      = (ui_text*)FindChildByID( IDC_DISPLAY_HUD_SCALE_TEXT );
+    m_pBrightnessText    = (ui_text*)FindChildByID( IDC_DISPLAY_BRIGHTNESS_TEXT );
+    m_pContrastText      = (ui_text*)FindChildByID( IDC_DISPLAY_CONTRAST_TEXT );
 
     global_settings& PendingSettings = g_StateMgr.GetPendingSettings();
     m_OriginalSettings = PendingSettings;
@@ -191,8 +192,16 @@ xbool dlg_display_settings::Create( s32                       UserID,
     m_pResolution ->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV );
     m_pPresentMode->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV );
     m_pFrameLimit ->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV );
-    m_pUIScale     ->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV );
-    m_pHUDScale    ->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV );
+
+    m_pBrightness->SetRange( BRIGHTNESS_MIN_PERCENT, BRIGHTNESS_MAX_PERCENT );
+    m_pBrightness->SetStep( 5 );
+    m_pBrightness->SetValue( PendingSettings.GetBrightness() );
+    m_pBrightness->UseDefaultSound( FALSE );
+
+    m_pContrast->SetRange( CONTRAST_MIN_PERCENT, CONTRAST_MAX_PERCENT );
+    m_pContrast->SetStep( 5 );
+    m_pContrast->SetValue( PendingSettings.GetContrast() );
+    m_pContrast->UseDefaultSound( FALSE );
 
     m_pDisplayMode->AddItem( g_StringTableMgr( "ui", "IDS_DISPLAY_MODE_BORDERLESS" ), ENG_DISPLAY_BORDERLESS );
     m_pDisplayMode->AddItem( g_StringTableMgr( "ui", "IDS_DISPLAY_MODE_WINDOWED"   ), ENG_DISPLAY_WINDOWED );
@@ -260,42 +269,19 @@ xbool dlg_display_settings::Create( s32                       UserID,
     }
     m_pFrameLimit->SetSelection( FrameLimitSelection );
 
-    for( s32 Percent = UI_SCALE_MIN_PERCENT; Percent <= UI_SCALE_MAX_PERCENT; Percent += 10 )
-    {
-        m_pUIScale->AddItem( xwstring( xfs( "%d%%", Percent ) ), Percent );
-    }
-    for( s32 Percent = HUD_SCALE_MIN_PERCENT; Percent <= HUD_SCALE_MAX_PERCENT; Percent += 10 )
-    {
-        m_pHUDScale->AddItem( xwstring( xfs( "%d%%", Percent ) ), Percent );
-    }
-
-    s32 UIScaleSelection = m_pUIScale->FindItemByData( PendingSettings.GetUIScale() );
-    if( UIScaleSelection == -1 )
-    {
-        UIScaleSelection = m_pUIScale->FindItemByData( UI_SCALE_DEFAULT_PERCENT );
-    }
-    m_pUIScale->SetSelection( UIScaleSelection );
-
-    s32 HUDScaleSelection = m_pHUDScale->FindItemByData( PendingSettings.GetHUDScale() );
-    if( HUDScaleSelection == -1 )
-    {
-        HUDScaleSelection = m_pHUDScale->FindItemByData( HUD_SCALE_DEFAULT_PERCENT );
-    }
-    m_pHUDScale->SetSelection( HUDScaleSelection );
-
     m_pDisplayModeText->SetLabel( g_StringTableMgr( "ui", "IDS_DISPLAY_MODE" ) );
     m_pResolutionText ->SetLabel( g_StringTableMgr( "ui", "IDS_DISPLAY_RESOLUTION" ) );
     m_pPresentModeText->SetLabel( g_StringTableMgr( "ui", "IDS_DISPLAY_PRESENT_MODE" ) );
     m_pFrameLimitText ->SetLabel( g_StringTableMgr( "ui", "IDS_DISPLAY_FRAME_LIMIT" ) );
-    m_pUIScaleText    ->SetLabel( g_StringTableMgr( "ui", "IDS_DISPLAY_UI_SCALE" ) );
-    m_pHUDScaleText   ->SetLabel( g_StringTableMgr( "ui", "IDS_DISPLAY_HUD_SCALE" ) );
+    m_pBrightnessText ->SetLabel( g_StringTableMgr( "ui", "IDS_OPTIONS_BRIGHTNESS" ) );
+    m_pContrastText   ->SetLabel( g_StringTableMgr( "ui", "IDS_OPTIONS_CONTRAST" ) );
 
     m_pDisplayModeText->SetLabelFlags( ui_font::h_left|ui_font::v_center );
     m_pResolutionText ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
     m_pPresentModeText->SetLabelFlags( ui_font::h_left|ui_font::v_center );
     m_pFrameLimitText ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
-    m_pUIScaleText    ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
-    m_pHUDScaleText   ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
+    m_pBrightnessText ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
+    m_pContrastText   ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
     m_pButtonApply    ->SetFlag( ui_win::WF_BUTTON_LEFT, TRUE );
 
     s32 const CurrentControl = g_StateMgr.GetCurrentControl();
@@ -313,15 +299,15 @@ xbool dlg_display_settings::Create( s32                       UserID,
     m_pResolution     ->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pPresentMode    ->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pFrameLimit     ->SetFlag( ui_win::WF_VISIBLE, FALSE );
-    m_pUIScale        ->SetFlag( ui_win::WF_VISIBLE, FALSE );
-    m_pHUDScale       ->SetFlag( ui_win::WF_VISIBLE, FALSE );
+    m_pBrightness     ->SetFlag( ui_win::WF_VISIBLE, FALSE );
+    m_pContrast       ->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pButtonApply    ->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pDisplayModeText->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pResolutionText ->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pPresentModeText->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pFrameLimitText ->SetFlag( ui_win::WF_VISIBLE, FALSE );
-    m_pUIScaleText    ->SetFlag( ui_win::WF_VISIBLE, FALSE );
-    m_pHUDScaleText   ->SetFlag( ui_win::WF_VISIBLE, FALSE );
+    m_pBrightnessText ->SetFlag( ui_win::WF_VISIBLE, FALSE );
+    m_pContrastText   ->SetFlag( ui_win::WF_VISIBLE, FALSE );
 
     m_CurrHL = 0;
     m_PopUp = NULL;
@@ -454,14 +440,9 @@ void dlg_display_settings::ApplySettings( global_settings& Settings )
         Settings.SetFrameRateLimit( static_cast<FrameRateLimit>( m_pFrameLimit->GetSelectedItemData() ) );
     }
 
-    if( m_pUIScale->GetSelection() != -1 )
-    {
-        Settings.SetUIScale( static_cast<s32>( m_pUIScale->GetSelectedItemData() ) );
-    }
-    if( m_pHUDScale->GetSelection() != -1 )
-    {
-        Settings.SetHUDScale( static_cast<s32>( m_pHUDScale->GetSelectedItemData() ) );
-    }
+    Settings.SetBrightness( m_pBrightness->GetValue() );
+    Settings.SetContrast( m_pContrast->GetValue() );
+
 }
 
 //==============================================================================
@@ -550,8 +531,8 @@ void dlg_display_settings::OnDelete( ui_win* pWin )
             m_pPresentMode->FindItemByData( PendingSettings.GetPresentMode() ) );
         m_pFrameLimit->SetSelection(
             m_pFrameLimit->FindItemByData( static_cast<s32>( PendingSettings.GetFrameRateLimit() ) ) );
-        m_pUIScale->SetSelection( m_pUIScale->FindItemByData( PendingSettings.GetUIScale() ) );
-        m_pHUDScale->SetSelection( m_pHUDScale->FindItemByData( PendingSettings.GetHUDScale() ) );
+        m_pBrightness->SetValue( PendingSettings.GetBrightness() );
+        m_pContrast->SetValue( PendingSettings.GetContrast() );
     }
 }
 
@@ -587,15 +568,15 @@ void dlg_display_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         m_pResolution     ->SetFlag( ui_win::WF_VISIBLE, TRUE );
         m_pPresentMode    ->SetFlag( ui_win::WF_VISIBLE, TRUE );
         m_pFrameLimit     ->SetFlag( ui_win::WF_VISIBLE, TRUE );
-        m_pUIScale        ->SetFlag( ui_win::WF_VISIBLE, TRUE );
-        m_pHUDScale       ->SetFlag( ui_win::WF_VISIBLE, TRUE );
+        m_pBrightness     ->SetFlag( ui_win::WF_VISIBLE, TRUE );
+        m_pContrast       ->SetFlag( ui_win::WF_VISIBLE, TRUE );
         m_pButtonApply    ->SetFlag( ui_win::WF_VISIBLE, TRUE );
         m_pDisplayModeText->SetFlag( ui_win::WF_VISIBLE, TRUE );
         m_pResolutionText ->SetFlag( ui_win::WF_VISIBLE, TRUE );
         m_pPresentModeText->SetFlag( ui_win::WF_VISIBLE, TRUE );
         m_pFrameLimitText ->SetFlag( ui_win::WF_VISIBLE, TRUE );
-        m_pUIScaleText    ->SetFlag( ui_win::WF_VISIBLE, TRUE );
-        m_pHUDScaleText   ->SetFlag( ui_win::WF_VISIBLE, TRUE );
+        m_pBrightnessText ->SetFlag( ui_win::WF_VISIBLE, TRUE );
+        m_pContrastText   ->SetFlag( ui_win::WF_VISIBLE, TRUE );
 
         s32 const CurrentControl = g_StateMgr.GetCurrentControl();
         if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
@@ -674,26 +655,26 @@ void dlg_display_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         m_pFrameLimitText->SetLabelColor( xcolor(126,220,60,255) );
     }
 
-    if( m_pUIScale->IsFocused() )
+    if( m_pBrightness->IsFocused() )
     {
         highLight = 4;
-        m_pUIScaleText->SetLabelColor( xcolor(255,252,204,255) );
-        g_UiMgr->SetScreenHighlight( m_pUIScaleText->GetPosition() );
+        m_pBrightnessText->SetLabelColor( xcolor(255,252,204,255) );
+        g_UiMgr->SetScreenHighlight( m_pBrightnessText->GetPosition() );
     }
     else
     {
-        m_pUIScaleText->SetLabelColor( xcolor(126,220,60,255) );
+        m_pBrightnessText->SetLabelColor( xcolor(126,220,60,255) );
     }
 
-    if( m_pHUDScale->IsFocused() )
+    if( m_pContrast->IsFocused() )
     {
         highLight = 5;
-        m_pHUDScaleText->SetLabelColor( xcolor(255,252,204,255) );
-        g_UiMgr->SetScreenHighlight( m_pHUDScaleText->GetPosition() );
+        m_pContrastText->SetLabelColor( xcolor(255,252,204,255) );
+        g_UiMgr->SetScreenHighlight( m_pContrastText->GetPosition() );
     }
     else
     {
-        m_pHUDScaleText->SetLabelColor( xcolor(126,220,60,255) );
+        m_pContrastText->SetLabelColor( xcolor(126,220,60,255) );
     }
 
     if( m_pButtonApply->IsFocused() )

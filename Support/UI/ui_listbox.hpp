@@ -50,6 +50,7 @@ public:
 
     virtual void    Render                  ( s32 ox=0, s32 oy=0 );
     virtual void    RenderHeader            ( irect r );
+    virtual void    RenderSelection         ( irect r );
     virtual void    RenderItem              ( irect r, const item& Item, const xcolor& c1, const xcolor& c2 );
 
     virtual void    SetPosition             ( const irect& Position );
@@ -72,6 +73,7 @@ public:
 
     void            SetExitOnSelect         ( xbool State );
     void            SetExitOnBack           ( xbool State )                             { m_ExitOnBack = State; }
+    void            SetAcceptOnRepeatClick  ( xbool State )                             { m_AcceptOnRepeatClick = State; }
 
     s32             AddItem                 ( const xwstring& Item, uaddr Data = 0, uaddr Data2 = 0 , xbool State = TRUE, u32 Flags = 0 );
     s32             AddItem                 ( const xwchar*   Item, uaddr Data = 0, uaddr Data2 = 0 , xbool State = TRUE, u32 Flags = 0 );
@@ -126,6 +128,7 @@ public:
     xcolor          GetBackgroundColor      ( void ) const;
 
     void            AlphaSortList           ( void );
+    virtual irect   GetListRect             ( void ) const;
 
 protected:
     s32             GetMaxFirstVisibleItem  ( void ) const;
@@ -134,13 +137,15 @@ protected:
     s32             GetItemAt               ( s32 x, s32 y ) const;
     s32             FindEnabledItem         ( s32 Start, s32 Direction ) const;
     xbool           SelectUserItem          ( s32 iItem );
-    void            UpdateScrollBar         ( void );
+    virtual void    UpdateScrollBar         ( void );
     void            UpdateVisibleItemCount  ( void );
 
     //-------------------------------------------------------------------------
 
     xbool           m_ExitOnSelect;
     xbool           m_ExitOnBack;
+    xbool           m_AcceptOnRepeatClick;
+    s32             m_LastPointerSelection;
     xbool           m_ShowBorders;
     xbool           m_ShowFrame;
     xbool           m_ShowHeaderBar;

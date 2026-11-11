@@ -37,6 +37,12 @@ class audio_stream_decoder
 public:
     virtual                         ~audio_stream_decoder   ( void ) {}
 
+    // Returns TRUE when the decoder no longer uses the stream file.
+    virtual xbool RequestStop( void )
+    {
+        return TRUE;
+    }
+
     virtual audio_decode_result     Decode                  ( audio_stream* pStream,
                                                               s16*          pBufferL,
                                                               s16*          pBufferR,

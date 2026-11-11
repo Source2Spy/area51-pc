@@ -14,7 +14,7 @@
 #include "UI/ui_renderer.hpp"
 
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 
 //==============================================================================
 // STORAGE

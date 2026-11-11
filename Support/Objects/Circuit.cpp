@@ -18,7 +18,7 @@ Circuit\\+DM+Tag+INF+   = 00 - NONE             no      no      yes
 #include "Render/PrimitiveDebug.hpp"
 #include "Circuit.hpp"
 #include "MP_Settings.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 
 //==============================================================================
 //  FUNCTIONS

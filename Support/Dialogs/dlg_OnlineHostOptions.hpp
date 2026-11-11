@@ -1,7 +1,7 @@
 //==============================================================================
-//  
+//
 //  dlg_OnlineHostOptions.hpp
-//  
+//
 //==============================================================================
 
 #ifndef DLG_ONLINE_HOST_OPTIONS_HPP
@@ -12,74 +12,65 @@
 //==============================================================================
 
 #include "UI/ui_dialog.hpp"
-#include "UI/ui_frame.hpp"
-#include "UI/ui_text.hpp"
-#include "UI/ui_combo.hpp"
-#include "UI/ui_edit.hpp"
+#include "StateMgr/GlobalSettings.hpp"
 
-#include "Dialogs/dlg_PopUp.hpp"
+class ui_combo;
+class ui_edit;
+class ui_check;
+class ui_text;
 
+struct host_options
+{
+    host_settings       Settings;
+    s32                 Port;
+    xstring             Directory;
+    xbool               Reconfigure;
+};
 
+void dlg_online_host_options_register( ui_manager* pManager );
 
 //==============================================================================
-//  dlg_online_host_options
-//==============================================================================
-
-extern void     dlg_online_host_options_register  ( ui_manager* pManager );
-extern ui_win*  dlg_online_host_options_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
-
-class ui_button;
 
 class dlg_online_host_options : public ui_dialog
 {
 public:
-                        dlg_online_host_options ( void );
-    virtual            ~dlg_online_host_options ( void );
-
     xbool               Create                  ( s32                       UserID,
                                                   ui_manager*               pManager,
                                                   ui_manager::dialog_tem*   pDialogTem,
                                                   const irect&              Position,
                                                   ui_win*                   pParent,
                                                   s32                       Flags,
-                                                  void*                     pUserData);
-    virtual void        Destroy                 ( void );
-
+                                                  void*                     pUserData );
     virtual void        Render                  ( s32 ox=0, s32 oy=0 );
+    virtual void        OnNotify                ( ui_notification const& Event );
+    virtual void        OnAccept                ( ui_win* pWin );
+    virtual void        OnCancel                ( ui_win* pWin );
 
-    virtual void        OnNavigate           ( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX = FALSE, xbool WrapY = FALSE );
-    virtual void        OnAccept             ( ui_win* pWin );
-    virtual void        OnCancel               ( ui_win* pWin );
+private:
+    void                UpdateDirectoryControl  ( void );
+    void                ConfigureGameType       ( s32 Type );
+    void                ReadSettings            ( const host_settings& Settings );
 
-    virtual void        OnUpdate                ( ui_win* pWin, f32 DeltaTime );
-
-    void                EnableBlackout          ( void )                    { m_bRenderBlackout = TRUE; }
-
-protected:
-    ui_frame*           m_pFrame1;
-    
-    ui_text*            m_pNumPlayerText;
-    ui_text*            m_pScoreText;
-    ui_text*            m_pTimeLimitText;
-    ui_text*            m_pVoteText;
-    ui_text*            m_pMapScalingText;
-    ui_text*            m_pFriendlyFireText;
-    
-    ui_combo*           m_pNumPlayerSelect;
-    ui_combo*           m_pScoreSelect;
-    ui_combo*           m_pTimeSelect;
-    ui_combo*           m_pVoteSelect;
-    ui_combo*           m_pMapScalingSelect;
-    ui_combo*           m_pFireSelect;
-
-    ui_button*          m_pContinueButton;
-
-    dlg_popup*          m_PopUp;
-
-    s32                 m_CurrHL;
-
-    s32                 m_CurrGameType;
-    xbool               m_bRenderBlackout;
+    host_options*       m_pOptions;
+    xbool               m_Advanced;
+    xbool               m_Rebuilding;
+    ui_combo*           m_pMode;
+    ui_combo*           m_pPlayers;
+    ui_combo*           m_pScore;
+    ui_combo*           m_pTime;
+    ui_combo*           m_pMutation;
+    ui_combo*           m_pVote;
+    ui_combo*           m_pFire;
+    ui_check*           m_pScaling;
+    ui_edit*            m_pAddress;
+    ui_edit*            m_pPassword;
+    ui_edit*            m_pPort;
+    ui_edit*            m_pDirectory;
+    ui_check*           m_pVoice;
+    ui_check*           m_pPrivate;
+    ui_check*           m_pLanOnly;
+    ui_check*           m_pCheats;
+    ui_text*            m_pStatus;
 };
 
 //==============================================================================

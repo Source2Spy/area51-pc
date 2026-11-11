@@ -455,6 +455,8 @@ void damage_field::OnColNotify( object& Object )
     if (!m_bActive )
         return;
 
+    xbool bWasDoingDamage = m_bDoingDamage;
+
     if (m_SpatialTargets & DF_TARGET_PLAYER)
     {
         if ( Object.IsKindOf( player::GetRTTI() ) == TRUE )
@@ -473,7 +475,7 @@ void damage_field::OnColNotify( object& Object )
                 m_bDoingDamage = TRUE;
     }
 
-    if (m_bDoingDamage)
+    if (m_bDoingDamage && !bWasDoingDamage)
     {
         m_TimeSinceLastDamage = m_TimeDelay + 1.0f;
     }

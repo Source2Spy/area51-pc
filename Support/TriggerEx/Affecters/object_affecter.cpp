@@ -42,7 +42,7 @@ void object_affecter::OnEnumProp ( prop_enum& rPropList, const char* pPropName, 
         rPropList.PropEnumGuid(  xfs("%s Guid", pPropName), "The GUID of the object to act upon.", PROP_TYPE_MUST_ENUM | Flags );
     
     if (m_GuidCode == OBJECT_CODE_CHECK_BY_GLOBAL_GUID )
-        rPropList.PropEnumExternal( xfs("%s Var", pPropName), "global\0global_guid", 
+        rPropList.PropEnumExternal( xfs("%s Var", pPropName), "global\0global_guid\0", 
                                     "Name of the Global Guid Variable that you wish to affect.", PROP_TYPE_MUST_ENUM | Flags );
 }
 

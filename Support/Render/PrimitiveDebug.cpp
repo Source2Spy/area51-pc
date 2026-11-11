@@ -1,8 +1,8 @@
-//=============================================================================
+//=========================================================================
 //
 //  PrimitiveDebug.cpp
 //
-//=============================================================================
+//=========================================================================
 
 //=========================================================================
 //  INCLUDES
@@ -11,37 +11,36 @@
 #include "PrimitiveDebug.hpp"
 
 #include "UI/ui_renderer.hpp"
+#include "UI/ui_manager.hpp"
+#include "UI/ui_font.hpp"
 
 #include "e_Engine.hpp"
-#include "e_Text.hpp"
 #include "x_debug.hpp"
 
-//=============================================================================
+//=========================================================================
 //  HELPER FUNCTIONS
-//=============================================================================
+//=========================================================================
 
-static 
+static
 render::primitive_draw_desc LineDesc( render::primitive_depth_mode depth, render::primitive_raster_mode raster = render::PRIMITIVE_RASTER_SOLID_NO_CULL )
 {
     return render::primitive_draw_desc( NULL, render::PRIMITIVE_TOPOLOGY_LINE_LIST, render::PRIMITIVE_BLEND_ALPHA,
-                                        depth, raster, render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                        render::PRIMITIVE_LAYER_TRANSPARENT );
+                                        depth, raster, render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
 }
 
-//=============================================================================
+//=========================================================================
 
-static 
+static
 render::primitive_draw_desc TriangleDesc( render::primitive_depth_mode depth, render::primitive_raster_mode raster )
 {
     return render::primitive_draw_desc( NULL, render::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
                                         render::PRIMITIVE_BLEND_ALPHA, depth, raster,
-                                        render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                        render::PRIMITIVE_LAYER_TRANSPARENT );
+                                        render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
 }
 
-//=============================================================================
+//=========================================================================
 
-static 
+static
 matrix4 IdentityMatrix( void )
 {
     matrix4 result;
@@ -49,9 +48,9 @@ matrix4 IdentityMatrix( void )
     return result;
 }
 
-//=============================================================================
+//=========================================================================
 
-static 
+static
 xbool AddBoxLines( render::PrimitiveBatch& batch, bbox const& bounds, xcolor color )
 {
     vector3 const positions[8] = {
@@ -76,11 +75,11 @@ xbool AddBoxLines( render::PrimitiveBatch& batch, bbox const& bounds, xcolor col
     return TRUE;
 }
 
-//=============================================================================
+//=========================================================================
 
-static 
+static
 xbool SubmitVolumeGeometry( vector3 const& position0, vector3 const& position1, f32 width, f32 height,
-                            xcolor color, render::primitive_depth_mode depth, matrix4 const& localToWorld )
+                            xcolor color, render::primitive_depth_mode depth, matrix4 const& LocalToWorld )
 {
     vector3 corners[8];
     vector3 slope = position0 - position1;
@@ -117,13 +116,13 @@ xbool SubmitVolumeGeometry( vector3 const& position0, vector3 const& position1, 
     }
 
     return render::SubmitPrimitives( TriangleDesc( depth, render::PRIMITIVE_RASTER_SOLID_NO_CULL ),
-                                     localToWorld, vertices, ARRAYSIZE( vertices ), indices, ARRAYSIZE( indices ) );
+                                     LocalToWorld, vertices, ARRAYSIZE( vertices ), indices, ARRAYSIZE( indices ) );
 }
 
-//=============================================================================
+//=========================================================================
 
-static 
-xbool GetProjectedPoint( vector3 const& position, vector3& screenPosition, irect& screenBounds )
+static
+xbool GetProjectedPoint( vector3 const& position, vector3& ScreenPosition, irect& ScreenBounds )
 {
     view const* pView = eng_GetView();
     if ( !pView )
@@ -131,7 +130,7 @@ xbool GetProjectedPoint( vector3 const& position, vector3& screenPosition, irect
         return FALSE;
     }
 
-    screenPosition = pView->PointToScreen( position );
+    ScreenPosition = pView->PointToScreen( position );
     s32 x0;
     s32 y0;
     s32 x1;
@@ -141,13 +140,13 @@ xbool GetProjectedPoint( vector3 const& position, vector3& screenPosition, irect
     s32 width;
     s32 height;
     eng_GetRes( width, height );
-    screenBounds.Set( 0, 0, width, height );
+    ScreenBounds.Set( 0, 0, width, height );
     return TRUE;
 }
 
-//=============================================================================
+//=========================================================================
 //  IMPLEMENTATION
-//=============================================================================
+//=========================================================================
 
 xbool render::debug::Line( vector3 const& position0, vector3 const& position1, xcolor color,
                            primitive_depth_mode depth )
@@ -161,7 +160,7 @@ xbool render::debug::Line( vector3 const& position0, vector3 const& position1, x
                              ARRAYSIZE( indices ) );
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::debug::Box( bbox const& bounds, xcolor color, primitive_depth_mode depth,
                           primitive_raster_mode raster )
@@ -172,17 +171,17 @@ xbool render::debug::Box( bbox const& bounds, xcolor color, primitive_depth_mode
     return AddBoxLines( batch, bounds, color ) && batch.Submit( identity );
 }
 
-//=============================================================================
+//=========================================================================
 
-xbool render::debug::Box( bbox const& bounds, matrix4 const& localToWorld, xcolor color,
+xbool render::debug::Box( bbox const& bounds, matrix4 const& LocalToWorld, xcolor color,
                           primitive_depth_mode depth, primitive_raster_mode raster )
 {
     PrimitiveBatch batch( LineDesc( depth, raster ) );
     batch.Reserve( 24, 24 );
-    return AddBoxLines( batch, bounds, color ) && batch.Submit( localToWorld );
+    return AddBoxLines( batch, bounds, color ) && batch.Submit( LocalToWorld );
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::debug::SolidBox( bbox const& bounds, xcolor color, primitive_depth_mode depth,
                                primitive_raster_mode raster )
@@ -209,13 +208,13 @@ xbool render::debug::SolidBox( bbox const& bounds, xcolor color, primitive_depth
                              ARRAYSIZE( indices ) );
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::debug::Sphere( vector3 const& position, f32 radius, xcolor color, primitive_depth_mode depth )
 {
     f32 constexpr a = 0.8506f;
     f32 constexpr b = 0.5257f;
-    vector3 const unitPositions[12] = {
+    vector3 const UnitPositions[12] = {
         vector3( +a, 0, +b ), vector3( +a, 0, -b ), vector3( -a, 0, +b ), vector3( -a, 0, -b ),
         vector3( +b, +a, 0 ), vector3( -b, +a, 0 ), vector3( +b, -a, 0 ), vector3( -b, -a, 0 ),
         vector3( 0, +b, +a ), vector3( 0, -b, +a ), vector3( 0, +b, -a ), vector3( 0, -b, -a ) };
@@ -227,8 +226,8 @@ xbool render::debug::Sphere( vector3 const& position, f32 radius, xcolor color, 
     batch.Reserve( ARRAYSIZE( pairs ), ARRAYSIZE( pairs ) );
     for ( s32 i = 0; i < ARRAYSIZE( pairs ); i += 2 )
     {
-        vector3 const position0 = position + unitPositions[pairs[i]] * radius;
-        vector3 const position1 = position + unitPositions[pairs[i + 1]] * radius;
+        vector3 const position0 = position + UnitPositions[pairs[i]] * radius;
+        vector3 const position1 = position + UnitPositions[pairs[i + 1]] * radius;
         if ( !batch.AddLine( position0, position1, color, color ) )
         {
             return FALSE;
@@ -239,29 +238,29 @@ xbool render::debug::Sphere( vector3 const& position, f32 radius, xcolor color, 
     return batch.Submit( identity );
 }
 
-//=============================================================================
+//=========================================================================
 
-xbool render::debug::Arc( vector3 const& center, f32 radius, radian direction, radian fieldOfView,
-                          xcolor color, f32 segmentDensity, primitive_depth_mode depth )
+xbool render::debug::Arc( vector3 const& center, f32 radius, radian direction, radian FieldOfView,
+                          xcolor color, f32 SegmentDensity, primitive_depth_mode depth )
 {
-    if ( ( radius <= 0.0f ) || ( fieldOfView <= 0.0f ) || ( segmentDensity <= 0.0f ) )
+    if ( ( radius <= 0.0f ) || ( FieldOfView <= 0.0f ) || ( SegmentDensity <= 0.0f ) )
     {
         return FALSE;
     }
 
-    s32 const segmentCount = MAX( 1, 1 + static_cast<s32>( radius * fieldOfView * segmentDensity ) );
-    radian const startAngle = direction - fieldOfView * 0.5f;
-    radian const angleStep = fieldOfView / segmentCount;
+    s32 const SegmentCount = MAX( 1, 1 + static_cast<s32>( radius * FieldOfView * SegmentDensity ) );
+    radian const StartAngle = direction - FieldOfView * 0.5f;
+    radian const AngleStep = FieldOfView / SegmentCount;
 
     PrimitiveBatch batch( LineDesc( depth ) );
-    batch.Reserve( ( segmentCount + 2 ) * 2, ( segmentCount + 2 ) * 2 );
+    batch.Reserve( ( SegmentCount + 2 ) * 2, ( SegmentCount + 2 ) * 2 );
 
     vector3 previous = center;
-    for ( s32 i = 0; i <= segmentCount; ++i )
+    for ( s32 i = 0; i <= SegmentCount; ++i )
     {
         f32 sine;
         f32 cosine;
-        x_sincos( startAngle + angleStep * i, sine, cosine );
+        x_sincos( StartAngle + AngleStep * i, sine, cosine );
         vector3 const position( center.GetX() + radius * sine, center.GetY(), center.GetZ() + radius * cosine );
         if ( !batch.AddLine( previous, position, color, color ) )
         {
@@ -273,17 +272,17 @@ xbool render::debug::Arc( vector3 const& center, f32 radius, radian direction, r
     return batch.AddLine( previous, center, color, color ) && batch.Submit( IdentityMatrix() );
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::debug::Circle( vector3 const& center, f32 radius, xcolor color, vector3 const& up,
-                             f32 segmentAngle, primitive_depth_mode depth )
+                             f32 SegmentAngle, primitive_depth_mode depth )
 {
-    if ( ( radius <= 0.0f ) || ( segmentAngle <= 0.0f ) || ( up.LengthSquared() <= 0.000001f ) )
+    if ( ( radius <= 0.0f ) || ( SegmentAngle <= 0.0f ) || ( up.LengthSquared() <= 0.000001f ) )
     {
         return FALSE;
     }
 
-    s32 const segmentCount = MAX( 6, static_cast<s32>( R_360 / segmentAngle ) );
+    s32 const SegmentCount = MAX( 6, static_cast<s32>( R_360 / SegmentAngle ) );
     vector3 axis = up;
     axis.Normalize();
     vector3 perpendicular = ( x_abs( axis.Dot( vector3( 0.0f, 1.0f, 0.0f ) ) ) > 0.001f )
@@ -292,12 +291,12 @@ xbool render::debug::Circle( vector3 const& center, f32 radius, xcolor color, ve
     perpendicular.NormalizeAndScale( radius );
 
     PrimitiveBatch batch( LineDesc( depth ) );
-    batch.Reserve( segmentCount * 2, segmentCount * 2 );
+    batch.Reserve( SegmentCount * 2, SegmentCount * 2 );
 
     vector3 previous = center + perpendicular;
-    for ( s32 i = 1; i <= segmentCount; ++i )
+    for ( s32 i = 1; i <= SegmentCount; ++i )
     {
-        quaternion const rotation( axis, R_360 * i / segmentCount );
+        quaternion const rotation( axis, R_360 * i / SegmentCount );
         vector3 const position = center + rotation * perpendicular;
         if ( !batch.AddLine( previous, position, color, color ) )
         {
@@ -309,7 +308,7 @@ xbool render::debug::Circle( vector3 const& center, f32 radius, xcolor color, ve
     return batch.Submit( IdentityMatrix() );
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::debug::Cylinder( vector3 const& center, f32 radius, f32 height, s32 segments, xcolor color,
                                xbool capped, vector3 const& up, primitive_depth_mode depth )
@@ -330,8 +329,8 @@ xbool render::debug::Cylinder( vector3 const& center, f32 radius, f32 height, s3
 
     PrimitiveBatch batch( TriangleDesc( depth, PRIMITIVE_RASTER_SOLID_NO_CULL ) );
     batch.Reserve( segments * ( capped ? 12 : 6 ), segments * ( capped ? 12 : 6 ) );
-    primitive_vertex const topCenter( center + vertical, vector2( 0.5f, 0.5f ), color );
-    primitive_vertex const bottomCenter( center - vertical, vector2( 0.5f, 0.5f ), color );
+    primitive_vertex const TopCenter( center + vertical, vector2( 0.5f, 0.5f ), color );
+    primitive_vertex const BottomCenter( center - vertical, vector2( 0.5f, 0.5f ), color );
 
     for ( s32 i = 0; i < segments; ++i )
     {
@@ -350,8 +349,8 @@ xbool render::debug::Cylinder( vector3 const& center, f32 radius, f32 height, s3
         }
 
         if ( capped &&
-             ( !batch.AddTriangle( topCenter, top1, top0 ) ||
-               !batch.AddTriangle( bottomCenter, bottom0, bottom1 ) ) )
+             ( !batch.AddTriangle( TopCenter, top1, top0 ) ||
+               !batch.AddTriangle( BottomCenter, bottom0, bottom1 ) ) )
         {
             return FALSE;
         }
@@ -360,7 +359,7 @@ xbool render::debug::Cylinder( vector3 const& center, f32 radius, f32 height, s3
     return batch.Submit( IdentityMatrix() );
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::debug::Volume( vector3 const& position0, vector3 const& position1, f32 width, f32 height, xcolor color,
                              primitive_depth_mode depth )
@@ -368,7 +367,7 @@ xbool render::debug::Volume( vector3 const& position0, vector3 const& position1,
     return SubmitVolumeGeometry( position0, position1, width, height, color, depth, IdentityMatrix() );
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::debug::Volume( bbox const& bounds, xcolor color, primitive_depth_mode depth )
 {
@@ -380,9 +379,9 @@ xbool render::debug::Volume( bbox const& bounds, xcolor color, primitive_depth_m
     return Volume( position0, position1, size.GetX() * 0.5f, size.GetY() * 0.5f, color, depth );
 }
 
-//=============================================================================
+//=========================================================================
 
-xbool render::debug::Volume( bbox const& bounds, matrix4 const& localToWorld, xcolor color,
+xbool render::debug::Volume( bbox const& bounds, matrix4 const& LocalToWorld, xcolor color,
                              primitive_depth_mode depth )
 {
     vector3 position0 = bounds.GetCenter();
@@ -391,10 +390,10 @@ xbool render::debug::Volume( bbox const& bounds, matrix4 const& localToWorld, xc
     position1.GetZ() = bounds.Max.GetZ();
     vector3 const size = bounds.GetSize();
     return SubmitVolumeGeometry( position0, position1, size.GetX() * 0.5f, size.GetY() * 0.5f, color, depth,
-                                 localToWorld );
+                                 LocalToWorld );
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::debug::Ngon( vector3 const* pPoints, s32 nPoints, xcolor color, xbool wire,
                            primitive_depth_mode depth )
@@ -436,7 +435,7 @@ xbool render::debug::Ngon( vector3 const* pPoints, s32 nPoints, xcolor color, xb
     return batch.Submit( identity );
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::debug::Arrow( vector3 const& start, vector3 const& end, xcolor color, primitive_depth_mode depth )
 {
@@ -468,9 +467,9 @@ xbool render::debug::Arrow( vector3 const& start, vector3 const& end, xcolor col
            batch.AddLine( end, wing1, color, color ) && batch.Submit( identity );
 }
 
-//=============================================================================
+//=========================================================================
 
-xbool render::debug::Axis( matrix4 const& localToWorld, f32 size, primitive_depth_mode depth )
+xbool render::debug::Axis( matrix4 const& LocalToWorld, f32 size, primitive_depth_mode depth )
 {
     primitive_vertex const vertices[6] = {
         primitive_vertex( vector3( 0.0f, 0.0f, 0.0f ), vector2( 0.0f, 0.0f ), XCOLOR_WHITE ),
@@ -480,11 +479,11 @@ xbool render::debug::Axis( matrix4 const& localToWorld, f32 size, primitive_dept
         primitive_vertex( vector3( 0.0f, 0.0f, 0.0f ), vector2( 0.0f, 0.0f ), XCOLOR_WHITE ),
         primitive_vertex( vector3( 0.0f, 0.0f, size ), vector2( 0.0f, 0.0f ), XCOLOR_BLUE ) };
     u16 const indices[6] = { 0, 1, 2, 3, 4, 5 };
-    return SubmitPrimitives( LineDesc( depth ), localToWorld, vertices, ARRAYSIZE( vertices ), indices,
+    return SubmitPrimitives( LineDesc( depth ), LocalToWorld, vertices, ARRAYSIZE( vertices ), indices,
                              ARRAYSIZE( indices ) );
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::debug::Axis( f32 size, primitive_depth_mode depth )
 {
@@ -492,7 +491,7 @@ xbool render::debug::Axis( f32 size, primitive_depth_mode depth )
     return Axis( identity, size, depth );
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::debug::Grid( vector3 const& corner, vector3 const& edge0, vector3 const& edge1, xcolor color,
                            s32 subdivisions, primitive_depth_mode depth )
@@ -500,28 +499,28 @@ xbool render::debug::Grid( vector3 const& corner, vector3 const& edge0, vector3 
     return Grid( corner, edge0, edge1, color, subdivisions, subdivisions, depth );
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::debug::Grid( vector3 const& corner, vector3 const& edge0, vector3 const& edge1, xcolor color,
-                           s32 edge0Subdivisions, s32 edge1Subdivisions, primitive_depth_mode depth )
+                           s32 Edge0Subdivisions, s32 Edge1Subdivisions, primitive_depth_mode depth )
 {
-    if ( (edge0Subdivisions < 1) || (edge1Subdivisions < 1) )
+    if ( (Edge0Subdivisions < 1) || (Edge1Subdivisions < 1) )
     {
         return FALSE;
     }
 
     PrimitiveBatch batch( LineDesc( depth ) );
-    batch.Reserve( (edge0Subdivisions + edge1Subdivisions + 2) * 2,
-                   (edge0Subdivisions + edge1Subdivisions + 2) * 2 );
-    for ( s32 i = 0; i <= edge0Subdivisions; ++i )
+    batch.Reserve( (Edge0Subdivisions + Edge1Subdivisions + 2) * 2,
+                   (Edge0Subdivisions + Edge1Subdivisions + 2) * 2 );
+    for ( s32 i = 0; i <= Edge0Subdivisions; ++i )
     {
-        f32 const t = static_cast<f32>( i ) / static_cast<f32>( edge0Subdivisions );
+        f32 const t = static_cast<f32>( i ) / static_cast<f32>( Edge0Subdivisions );
         if ( !batch.AddLine( corner + edge0 * t, corner + edge0 * t + edge1, color, color ) )
             return FALSE;
     }
-    for ( s32 i = 0; i <= edge1Subdivisions; ++i )
+    for ( s32 i = 0; i <= Edge1Subdivisions; ++i )
     {
-        f32 const t = static_cast<f32>( i ) / static_cast<f32>( edge1Subdivisions );
+        f32 const t = static_cast<f32>( i ) / static_cast<f32>( Edge1Subdivisions );
         if ( !batch.AddLine( corner + edge1 * t, corner + edge1 * t + edge0, color, color ) )
             return FALSE;
     }
@@ -530,26 +529,26 @@ xbool render::debug::Grid( vector3 const& corner, vector3 const& edge0, vector3 
     return batch.Submit( identity );
 }
 
-//=============================================================================
+//=========================================================================
 
-xbool render::debug::Frustum( view const& frustumView, xcolor color, f32 distance, primitive_depth_mode depth )
+xbool render::debug::Frustum( view const& FrustumView, xcolor color, f32 distance, primitive_depth_mode depth )
 {
     s32 x0;
     s32 y0;
     s32 x1;
     s32 y1;
-    frustumView.GetViewport( x0, y0, x1, y1 );
+    FrustumView.GetViewport( x0, y0, x1, y1 );
 
     vector3 positions[6];
-    positions[0] = frustumView.GetPosition();
-    positions[1] = frustumView.RayFromScreen( static_cast<f32>( x0 ), static_cast<f32>( y0 ), view::VIEW );
-    positions[2] = frustumView.RayFromScreen( static_cast<f32>( x0 ), static_cast<f32>( y1 ), view::VIEW );
-    positions[3] = frustumView.RayFromScreen( static_cast<f32>( x1 ), static_cast<f32>( y1 ), view::VIEW );
-    positions[4] = frustumView.RayFromScreen( static_cast<f32>( x1 ), static_cast<f32>( y0 ), view::VIEW );
+    positions[0] = FrustumView.GetPosition();
+    positions[1] = FrustumView.RayFromScreen( static_cast<f32>( x0 ), static_cast<f32>( y0 ), view::VIEW );
+    positions[2] = FrustumView.RayFromScreen( static_cast<f32>( x0 ), static_cast<f32>( y1 ), view::VIEW );
+    positions[3] = FrustumView.RayFromScreen( static_cast<f32>( x1 ), static_cast<f32>( y1 ), view::VIEW );
+    positions[4] = FrustumView.RayFromScreen( static_cast<f32>( x1 ), static_cast<f32>( y0 ), view::VIEW );
     for ( s32 i = 1; i <= 4; ++i )
     {
         positions[i] *= distance / positions[i].GetZ();
-        positions[i] = frustumView.ConvertV2W( positions[i] );
+        positions[i] = FrustumView.ConvertV2W( positions[i] );
     }
     positions[5] = ( positions[1] + positions[2] + positions[3] + positions[4] ) * 0.25f;
 
@@ -567,23 +566,23 @@ xbool render::debug::Frustum( view const& frustumView, xcolor color, f32 distanc
            batch.AddLine( positions[0], positions[5], XCOLOR_GREY, XCOLOR_GREY ) && batch.Submit( identity );
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::debug::Marker( vector3 const& position, xcolor color )
 {
-    vector3 screenPosition;
-    irect screenBounds;
-    if ( !g_UIRenderer.IsInitialized() || !GetProjectedPoint( position, screenPosition, screenBounds ) )
+    vector3 ScreenPosition;
+    irect ScreenBounds;
+    if ( !g_UIRenderer.IsInitialized() || !GetProjectedPoint( position, ScreenPosition, ScreenBounds ) )
     {
         return FALSE;
     }
 
-    screenPosition.GetX() = MAX( static_cast<f32>( screenBounds.l ),
-                                 MIN( static_cast<f32>( screenBounds.r ), screenPosition.GetX() ) );
-    screenPosition.GetY() = MAX( static_cast<f32>( screenBounds.t ),
-                                 MIN( static_cast<f32>( screenBounds.b ), screenPosition.GetY() ) );
+    ScreenPosition.GetX() = MAX( static_cast<f32>( ScreenBounds.l ),
+                                 MIN( static_cast<f32>( ScreenBounds.r ), ScreenPosition.GetX() ) );
+    ScreenPosition.GetY() = MAX( static_cast<f32>( ScreenBounds.t ),
+                                 MIN( static_cast<f32>( ScreenBounds.b ), ScreenPosition.GetY() ) );
 
-    vector2 const center( screenPosition.GetX(), screenPosition.GetY() );
+    vector2 const center( ScreenPosition.GetX(), ScreenPosition.GetY() );
     ui_vertex const vertices[4] = {
         ui_vertex( center + vector2( 0.0f, -8.0f ), vector2( 0.5f, 0.0f ), color ),
         ui_vertex( center + vector2( -8.0f, 0.0f ), vector2( 0.0f, 0.5f ), color ),
@@ -591,10 +590,10 @@ xbool render::debug::Marker( vector3 const& position, xcolor color )
         ui_vertex( center + vector2( 8.0f, 0.0f ), vector2( 1.0f, 0.5f ), color ) };
     u32 const indices[6] = { 0, 1, 2, 2, 3, 0 };
 
-    g_UIRenderer.PushScreenSpace( screenBounds );
+    g_UIRenderer.PushScreenSpace( ScreenBounds );
     xbool result = g_UIRenderer.GetDrawList().AddTriangles( ui_material(), vertices, ARRAYSIZE( vertices ), indices,
                                                             ARRAYSIZE( indices ) );
-    if ( result && ( screenPosition.GetZ() < 0.0f ) )
+    if ( result && ( ScreenPosition.GetZ() < 0.0f ) )
     {
         result = g_UIRenderer.DrawPoint( center, XCOLOR_BLACK, 8.0f );
     }
@@ -602,30 +601,30 @@ xbool render::debug::Marker( vector3 const& position, xcolor color )
     return result;
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::debug::Point( vector3 const& position, xcolor color, s32 size )
 {
-    vector3 screenPosition;
-    irect screenBounds;
-    if ( !g_UIRenderer.IsInitialized() || !GetProjectedPoint( position, screenPosition, screenBounds ) ||
-         ( screenPosition.GetZ() < 0.0f ) || ( size <= 0 ) )
+    vector3 ScreenPosition;
+    irect ScreenBounds;
+    if ( !g_UIRenderer.IsInitialized() || !GetProjectedPoint( position, ScreenPosition, ScreenBounds ) ||
+         ( ScreenPosition.GetZ() < 0.0f ) || ( size <= 0 ) )
     {
         return FALSE;
     }
 
-    g_UIRenderer.PushScreenSpace( screenBounds );
-    xbool const result = g_UIRenderer.DrawPoint( vector2( screenPosition.GetX(), screenPosition.GetY() ), color,
+    g_UIRenderer.PushScreenSpace( ScreenBounds );
+    xbool const result = g_UIRenderer.DrawPoint( vector2( ScreenPosition.GetX(), ScreenPosition.GetY() ), color,
                                                  static_cast<f32>( size * 2 ) );
     g_UIRenderer.PopScreenSpace();
     return result;
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool render::debug::Label( vector3 const& position, xcolor color, char const* pFormat, ... )
 {
-    if ( !pFormat )
+    if ( !pFormat || !g_UiMgr || !g_UIRenderer.IsInitialized() )
     {
         return FALSE;
     }
@@ -636,33 +635,37 @@ xbool render::debug::Label( vector3 const& position, xcolor color, char const* p
         return FALSE;
     }
 
-    vector3 const screenPosition = pView->PointToScreen( position );
+    vector3 const ScreenPosition = pView->PointToScreen( position );
     s32 x0;
     s32 y0;
     s32 x1;
     s32 y1;
     pView->GetViewport( x0, y0, x1, y1 );
-    if ( ( screenPosition.GetZ() < 0.0f ) || ( screenPosition.GetX() < x0 ) || ( screenPosition.GetX() > x1 ) ||
-         ( screenPosition.GetY() < y0 ) || ( screenPosition.GetY() > y1 ) )
+    if ( ( ScreenPosition.GetZ() < 0.0f ) || ( ScreenPosition.GetX() < x0 ) || ( ScreenPosition.GetX() > x1 ) ||
+         ( ScreenPosition.GetY() < y0 ) || ( ScreenPosition.GetY() > y1 ) )
     {
         return FALSE;
     }
 
-    char message[256];
     x_va_list arguments;
     x_va_start( arguments, pFormat );
-    x_vsprintf( message, pFormat, arguments );
+    xstring message;
+    message.FormatV( pFormat, arguments );
+    x_va_end( arguments );
 
-    s32 unused;
-    s32 characterWidth;
-    s32 characterHeight;
-    text_GetParams( unused, unused, unused, unused, characterWidth, characterHeight, unused );
-    static_cast<void>( characterHeight );
+    const s32 Font = g_UiMgr->FindFont( "small" );
+    if( Font < 0 )
+        return FALSE;
 
-    text_PushColor( color );
-    text_PrintPixelXY( message, static_cast<s32>( screenPosition.GetX() ) -
-                                   ( characterWidth * x_strlen( message ) ) / 2,
-                       static_cast<s32>( screenPosition.GetY() ) );
-    text_PopColor();
+    irect TextBounds;
+    const xwstring Text( (const char*)message );
+    g_UiMgr->TextSize( Font, TextBounds, Text, Text.GetLength() );
+    TextBounds.Translate( static_cast<s32>( ScreenPosition.GetX() ) - TextBounds.GetWidth() / 2,
+                          static_cast<s32>( ScreenPosition.GetY() ) );
+    s32 Width, Height;
+    eng_GetRes( Width, Height );
+    g_UIRenderer.PushScreenSpace( irect( 0, 0, Width, Height ) );
+    g_UiMgr->RenderText( Font, TextBounds, ui_font::h_left | ui_font::v_top, color, Text, TRUE, FALSE );
+    g_UIRenderer.PopScreenSpace();
     return TRUE;
 }

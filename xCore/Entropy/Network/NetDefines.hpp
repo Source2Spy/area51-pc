@@ -38,6 +38,7 @@
 #define NET_FLAGS_BROADCAST                 (1<<3)
 #define NET_FLAGS_CLOSED                    (1<<4)
 #define NET_FLAGS_VDP                       (1<<5)
+#define NET_FLAGS_BIND_EXACT                (1<<6)
 
 #define NET_HISTORY_SIZE                    10
 #define NET_HISTORY_INTERVAL                1000

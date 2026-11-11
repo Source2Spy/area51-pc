@@ -1,21 +1,21 @@
 //==============================================================================
 // JUMPING BEAN PROJECTILE
 //==============================================================================
-
-//==============================================================================
 // INCLUDES
 //==============================================================================
+
+#include "NetworkMgr/Replication/NetUpdate.hpp"
 
 #include "Render/PrimitiveDebug.hpp"
 #include "JumpingBeanProjectile.hpp"
 #include "AudioMgr/AudioMgr.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "Objects/AnimSurface.hpp"
 #include "Objects/ClothObject.hpp"
 #include "Objects/DestructibleObj.hpp"
 #include "Decals/DecalMgr.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "GameLib/DebugCheats.hpp"
 #include "Objects/Player/Player.hpp"
 #include "x_files/x_plus.hpp"
@@ -24,7 +24,6 @@
 // DEFINES
 //==============================================================================
 
-#define NO_CHAOS
 
 #define GRENADE_ELASTICITY          0.4f
 #define MAX_BOUNCES_PER_ADVANCE     2
@@ -35,27 +34,10 @@
 
 f32 jumping_bean_projectile::s_JumpingBean_Alert_Time = 1.2f;
 
-static xrandom Random;
 
 //==============================================================================
 // Tweaks
 //==============================================================================
-
-// Bounce Run factor.  Basically a velocity loss/elasticity value.  
-// Lower means it will slow down, higher it will speed up on a bounce.  
-// Over 1 is will accelerate, under 1 will decelerate.  1 is a constant velocity. 
-tweak_handle s_JBEAN_BounceRunTweak             ("JBEAN_BounceRun");
-
-// Bounce Rise factor.  MUST BE NEGATIVE. Basically a velocity loss/elasticity value.  
-// Lower means it will slow down, higher it will speed up on a bounce.  
-// Over 1 is will accelerate, under 1 will decelerate.  1 is a constant velocity.
-tweak_handle s_JBEAN_BounceRiseTweak            ("JBEAN_BounceRise");
-
-// Randomness of bounce; range goes from -n to +n.
-tweak_handle s_JBEAN_BounceFactorTweak          ("JBEAN_BounceFactor");
-
-// Randomness of bounce for first throw.  Make the angle small if you want it to not go behind player. Range goes from -n to +n.
-tweak_handle s_JBEAN_BounceFactor_InitialTweak  ("JBEAN_BounceFactor_Initial");
 
 // In NORMAL mode, how many times can we bounce?
 tweak_handle s_JBEAN_MaxBouncesTweak            ("JBEAN_MaxBounces");
@@ -122,6 +104,8 @@ const object_desc&  jumping_bean_projectile::GetObjectType   ( void )
 
 jumping_bean_projectile::jumping_bean_projectile()
 {
+    m_FloorProperties.Init( 1.0f, 0.128f );
+
     m_MaxAliveTime          = JBG_LifeTimeTweak.GetF32();
     m_ParticleExplosion     = particle_emitter::JUMPING_BEAN_EXPLOSION;
 
@@ -149,15 +133,8 @@ jumping_bean_projectile::jumping_bean_projectile()
     m_RigidInst.SetVMeshBit("Shell",TRUE);
     m_RigidInst.SetVMeshBit("Missile",FALSE);
 
-    #ifdef NO_CHAOS
     m_BounceFactorRise  = -0.20f;
     m_BounceFactorRun   =  0.75f;
-    #else
-    m_RandomSeed        = x_irand( 0, 255 );
-    Random.srand( (m_RandomSeed << 7) | m_RandomSeed );
-    m_BounceFactorRise  = Random.frand( -0.20f, s_JBEAN_BounceRiseTweak.GetF32() );
-    m_BounceFactorRun   = Random.frand(  0.75f, s_JBEAN_BounceRunTweak.GetF32()  );
-    #endif
 }
 
 //=============================================================================================
@@ -169,6 +146,9 @@ void jumping_bean_projectile::SetStart( const vector3& Position,
                         f32      Gravity )
 {
     net_proj::SetStart(Position, Orientation, Velocity, Zone1, Zone2, Gravity);
+
+    m_FloorProperties.Init( 1.0f, 0.128f, GetGuid() );
+    m_FloorProperties.ForceUpdate( Position );
 
     // In MP games, there is no expert mode.
     #ifndef X_EDITOR
@@ -208,7 +188,7 @@ bbox jumping_bean_projectile::GetLocalBBox( void ) const
 
     if( pRigidGeom )
     {
-        return( pRigidGeom->m_collision.BBox );
+        return( pRigidGeom->m_Collision.BBox );
     }
     
     return( bbox( vector3( 10.0f, 10.0f, 10.0f),
@@ -382,6 +362,8 @@ void jumping_bean_projectile::OnAdvanceSimulation( f32 DeltaTime )
         return;
     }
 
+    m_FloorProperties.Update( GetPosition(), DeltaTime );
+
     if( m_GrenadeMode == GM_EXPERT )
     {
         // clear bounces
@@ -442,7 +424,7 @@ void jumping_bean_projectile::OnExplode( void )
     DestroyParticles();
 
     //add a light where the explosion occurred
-    g_LightMgr.AddFadingLight( GetPosition(), xcolor(55, 55, 135, 255), 175.0f, 1.0f, 1.3f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( GetPosition(), xcolor(55, 55, 135, 255), 175.0f, 1.0f, 1.3f );
 /*
     //render particle explosion
     guid ExplosionGuid = particle_emitter::CreatePresetParticleAndOrient( 
@@ -725,18 +707,6 @@ void jumping_bean_projectile::OnImpact( collision_mgr::collision& Coll, object* 
 
     if( m_GrenadeMode != GM_EXPERT )
     {
-        #ifndef NO_CHAOS
-        s32 Seed = m_RandomSeed + m_ImpactCount;
-        Random.srand( (Seed << 7) | Seed );
-        f32 fJBGBounceFactor = (m_ImpactCount == 0) 
-                             ? s_JBEAN_BounceFactor_InitialTweak.GetF32() 
-                             : s_JBEAN_BounceFactorTweak.GetF32();
-        radian Angle = Random.frand( -fJBGBounceFactor, fJBGBounceFactor );
-    //  CLOG_MESSAGE( (m_ImpactCount == 0), 
-    //                "jumping_bean_projectile::OnImpact", 
-    //                "Seed:%d - Angle:%g", m_RandomSeed, Angle );
-        m_Velocity.RotateY( Angle );
-        #endif
     }
     else
     {
@@ -783,6 +753,10 @@ void jumping_bean_projectile::OnImpact( collision_mgr::collision& Coll, object* 
 //=============================================================================================
 void jumping_bean_projectile::OnRender( void )
 {
+    f32 WarpFade = GetExplosionFade();
+    if( ( WarpFade > 0.0f ) && render::GetActiveRenderScopeDesc().EnablePostProcessing )
+        render::AddScreenWarp( GetPosition(), 400.0f, 1.0f - 0.6f * WarpFade );
+
     // Don't render if exploded
     if( m_Exploded )
         return;
@@ -808,7 +782,7 @@ void jumping_bean_projectile::OnRender( void )
     {
         u32 Flags = (GetFlagBits() & object::FLAG_CHECK_PLANES) ? render::CLIPPED : 0;
         
-        m_RigidInst.Render( &RenderL2W, Flags );
+        m_RigidInst.Render( &RenderL2W, Flags, m_FloorProperties.GetColor() );
     }
 
 #ifdef X_EDITOR
@@ -829,35 +803,9 @@ xbool jumping_bean_projectile::LoadInstance( const char* pFileName )
 #ifndef X_EDITOR
 //==============================================================================
 
-void jumping_bean_projectile::net_AcceptActivate( const bitstream& BS )
+void jumping_bean_projectile::net_AcceptStart( const net_projectile_update& Update )
 {
-    (void)BS;
-    #ifdef NO_CHAOS
-    m_BounceFactorRise  = -0.20f;
-    m_BounceFactorRun   =  0.75f;
-    #else
-    BS.ReadRangedS32( m_RandomSeed, 0, 255 );
-    Random.srand( (m_RandomSeed << 7) | m_RandomSeed );
-    m_BounceFactorRise  = Random.frand( -0.20f, s_JBEAN_BounceRiseTweak.GetF32() );
-    m_BounceFactorRun   = Random.frand(  0.75f, s_JBEAN_BounceRunTweak.GetF32()  );
-    #endif
-}
-
-//==============================================================================
-
-void jumping_bean_projectile::net_ProvideActivate( bitstream& BS )
-{
-    (void)BS;
-    #ifndef NO_CHAOS
-    BS.WriteRangedS32( m_RandomSeed, 0, 255 );
-    #endif
-}
-
-//==============================================================================
-
-void jumping_bean_projectile::net_AcceptStart( const bitstream& BS )
-{
-    BS.ReadRangedS32( m_ImpactCount, 0, 7 );
+    m_ImpactCount = Update.ImpactCount;
 }
 
 //==============================================================================

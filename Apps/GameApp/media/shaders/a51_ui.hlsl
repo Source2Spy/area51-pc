@@ -11,6 +11,7 @@
 //==============================================================================
 
 #include "common/shader_bindings.hlsl"
+#include "a51_shader_contract.hlsl"
 
 //==============================================================================
 //  RESOURCES
@@ -18,8 +19,7 @@
 
 A51_CBUFFER_ATTR(0, 0) cbuffer cbUIDraw A51_CBUFFER_BIND(0, 0)
 {
-    float2 LogicalOrigin;
-    float2 InverseLogicalSize;
+    A51_ABI_FIELDS_UIDrawData
 };
 
 A51_SAMPLED_TEXTURE_ATTR(0, 0) Texture2D txUI A51_SAMPLED_TEXTURE_BIND(0, 0);
@@ -49,22 +49,25 @@ struct PS_INPUT
 //  SHADERS
 //==============================================================================
 
-PS_INPUT VSMain( VS_INPUT input )
+PS_INPUT VSMain( VS_INPUT Input )
 {
-    PS_INPUT output;
-    const float2 normalized = (input.Position - LogicalOrigin) * InverseLogicalSize;
-    output.Position = float4( normalized.x * 2.0f - 1.0f,
-                              1.0f - normalized.y * 2.0f,
+    PS_INPUT Output;
+    const float2 Normalized = (Input.Position - LogicalOrigin) * InverseLogicalSize;
+    Output.Position = float4( Normalized.x * 2.0f - 1.0f,
+                              1.0f - Normalized.y * 2.0f,
                               0.0f,
                               1.0f );
-    output.Color = input.Color.bgra;
-    output.UV = input.UV;
-    return output;
+    Output.Color = Input.Color.bgra;
+    Output.UV = Input.UV;
+    return Output;
 }
 
 //==============================================================================
 
-float4 PSMain( PS_INPUT input ) : SV_Target0
+float4 PSMain( PS_INPUT Input ) : SV_Target0
 {
-    return txUI.Sample( samUI, input.UV ) * input.Color;
+    const float4 SampleValue = txUI.Sample( samUI, Input.UV );
+    if( Coverage != 0 )
+        return float4( Input.Color.rgb, Input.Color.a * SampleValue.r );
+    return SampleValue * Input.Color;
 }

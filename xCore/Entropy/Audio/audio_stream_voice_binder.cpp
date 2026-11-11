@@ -133,7 +133,9 @@ voice* audio_stream_voice_binder::UpdateCheckStreams( audio_voice_mgr& Voices, v
                         pLeftElement = pElement;
                         pLeftChannel = pLeftElement->pChannel;
                         if( (pRightElement = pElement->pStereoElement) != NULL )
+                        {
                             pRightChannel = pRightElement->pChannel;
+                        }
                     }
 
                     // Try to acquire a stream.
@@ -150,7 +152,9 @@ voice* audio_stream_voice_binder::UpdateCheckStreams( audio_voice_mgr& Voices, v
                         // Nuke the voice, put it in the freelist if the stream can't be started.
                         // TODO: Fix this so it just removes the elements.
                         if( Voices.FreeVoice( pVoice, TRUE ) )
+                        {
                             return NULL;
+                        }
 
                         return pVoice;
                     }
@@ -177,7 +181,9 @@ voice* audio_stream_voice_binder::UpdateCheckStreams( audio_voice_mgr& Voices, v
                         else
                         {
                             if( Voices.FreeVoice( pVoice, TRUE ) )
+                            {
                                 return NULL;
+                            }
 
                             return pVoice;
                         }
@@ -211,7 +217,9 @@ voice* audio_stream_voice_binder::UpdateCheckStreams( audio_voice_mgr& Voices, v
                             else
                             {
                                 if( Voices.FreeVoice( pVoice, TRUE ) )
+                                {
                                     return NULL;
+                                }
 
                                 return pVoice;
                             }
@@ -231,7 +239,9 @@ voice* audio_stream_voice_binder::UpdateCheckStreams( audio_voice_mgr& Voices, v
                     (!pElement->pChannel->StreamData.pStream) )
                 {
                     if( Voices.FreeVoice( pVoice, TRUE ) )
+                    {
                         return NULL;
+                    }
 
                     return pVoice;
                 }
@@ -246,7 +256,9 @@ voice* audio_stream_voice_binder::UpdateCheckStreams( audio_voice_mgr& Voices, v
 
                 // Stereo? If so, mark stereo element as ready.
                 if( pElement->pStereoElement )
+                {
                     pElement->pStereoElement->State = ELEMENT_READY;
+                }
 
                 // Element has changed.
                 pVoice->Dirty |= audio_voice_mgr::VOICE_DB_ELEMENT_CHANGE;
@@ -271,6 +283,7 @@ void audio_stream_voice_binder::InstantiateStreamSample( audio_stream* pStream, 
     switch( WhichChannel )
     {
         case LEFT_CHANNEL:
+        {
                 ASSERT( pStream->pChannel[LEFT_CHANNEL] );
 
                 // Make a copy of the sample
@@ -279,8 +292,10 @@ void audio_stream_voice_binder::InstantiateStreamSample( audio_stream* pStream, 
                 // Point channel to the copy now
                 pStream->pChannel[LEFT_CHANNEL]->Sample.pHotSample = &pStream->Samples[LEFT_CHANNEL].Sample;
                 break;
+        }
 
         case RIGHT_CHANNEL:
+        {
                 ASSERT( pStream->pChannel[RIGHT_CHANNEL] );
 
                 if( pStream->pChannel[RIGHT_CHANNEL] )
@@ -292,10 +307,13 @@ void audio_stream_voice_binder::InstantiateStreamSample( audio_stream* pStream, 
                     pStream->pChannel[RIGHT_CHANNEL]->Sample.pHotSample = &pStream->Samples[RIGHT_CHANNEL].Sample;
                 }
                 break;
+        }
 
         default:
+        {
             // Should never get here.
             ASSERT( 0 );
             break;
+        }
     }
 }

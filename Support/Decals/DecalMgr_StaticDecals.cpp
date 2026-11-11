@@ -791,8 +791,7 @@ void decal_mgr::RenderEditorStaticWireframes( void )
                                                 render::PRIMITIVE_BLEND_OPAQUE,
                                                 render::PRIMITIVE_DEPTH_READ_WRITE,
                                                 render::PRIMITIVE_RASTER_WIREFRAME_NO_CULL,
-                                                render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                render::PRIMITIVE_LAYER_SURFACE );
+                                                render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
     render::PrimitiveBatch batch( material );
     const vector2 uv( 0.0f, 0.0f );
     const xcolor color( 255, 50, 50, 255 );

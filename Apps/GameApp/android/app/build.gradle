@@ -3,6 +3,12 @@ plugins {
 }
 
 def gameAssetDirectory = project.findProperty('A51_ASSET_DIR') ?: 'src/main/assets'
+def shaderKitDirectory = project.findProperty('A51_SHADER_KIT') ?: rootProject.file('../../../build/shaders/GameApp/release').absolutePath
+def nativeLibraryDirectory = project.findProperty('A51_NATIVE_LIB_DIR')
+def releaseDebuggable = (project.findProperty('A51_RELEASE_DEBUGGABLE') ?: 'false').toBoolean()
+def requireBuildKey = project.findProperty('A51_REQUIRE_BUILD_KEY') ?: 'OFF'
+def releaseKeystore = System.getenv('ANDROID_RELEASE_KEYSTORE')
+def releaseKeystorePassword = System.getenv('ANDROID_KEYSTORE_PASSWORD')
 
 android {
     namespace = 'com.area51.game'
@@ -16,13 +22,35 @@ android {
         versionCode 1
         versionName '1.0'
 
-        externalNativeBuild {
-            cmake {
-                arguments '-DA51_BUILD_SELECTED_APPS=ON',
-                          '-DA51_ENABLE_QT=OFF',
-                          '-DA51_BUILD_WINDOWS_TARGETS=OFF'
-                abiFilters 'arm64-v8a'
+        if (!nativeLibraryDirectory) {
+            externalNativeBuild {
+                cmake {
+                    arguments '-DA51_BUILD_SELECTED_APPS=ON',
+                              '-DA51_ENABLE_QT=OFF',
+                              '-DA51_BUILD_WINDOWS_TARGETS=OFF',
+                              "-DA51_REQUIRE_BUILD_KEY=${requireBuildKey}",
+                              "-DA51_SHADER_KIT=${shaderKitDirectory}"
+                    abiFilters 'arm64-v8a'
+                }
             }
+        }
+    }
+
+    signingConfigs {
+        if (releaseKeystore) {
+            release {
+                storeFile file(releaseKeystore)
+                storePassword releaseKeystorePassword
+                keyAlias 'area51'
+                keyPassword releaseKeystorePassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            debuggable releaseDebuggable
+            signingConfig releaseKeystore ? signingConfigs.release : signingConfigs.debug
         }
     }
 
@@ -33,13 +61,18 @@ android {
                 '../../../../xCore/3rdParty/SDL3/android-project/app/src/main/java'
             ]
             assets.srcDirs = [gameAssetDirectory]
+            if (nativeLibraryDirectory) {
+                jniLibs.srcDirs = [nativeLibraryDirectory]
+            }
         }
     }
 
-    externalNativeBuild {
-        cmake {
-            path '../../../../CMakeLists.txt'
-            version '3.31.6'
+    if (!nativeLibraryDirectory) {
+        externalNativeBuild {
+            cmake {
+                path '../../../../CMakeLists.txt'
+                version '3.31.6'
+            }
         }
     }
 }

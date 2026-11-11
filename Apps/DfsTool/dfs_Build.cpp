@@ -12,10 +12,8 @@
 #include "dictionary.hpp"
 #include "x_bytestream.hpp"
 #include "x_plus.hpp"
-#include "windows.h"
-
-#if !defined(TARGET_WINDOWS)
-  #error "dfs_Build.cpp is only valid for TARGET_WINDOWS"
+#if defined(TARGET_WINDOWS)
+  #include "windows.h"
 #endif
 
 #include <string.h>
@@ -160,6 +158,7 @@ checksummer g_Checksummer;
 static 
 inline s32 TransformChar( s32 c )
 {
+#if defined(TARGET_WINDOWS)
     // Upper Case
     if( (c >= 'a') && (c <= 'z') )
         c += 'A' - 'a';
@@ -167,6 +166,11 @@ inline s32 TransformChar( s32 c )
     // All slashes will be back-slashes
     if( c == '/' )
         c = '\\';
+#else
+    // Normalize path separators for the host filesystem.
+    if( c == '\\' )
+        c = '/';
+#endif
 
     // Return transformed character
     return c;
@@ -191,7 +195,7 @@ void dfs_SetRootPath( const char* pRootPath )
     {
         s_NormalizedRoot = pRootPath;
 
-        // Normalize: uppercase, backslashes
+        // Normalize path spelling for the current host.
         for( s32 i=0; i<s_NormalizedRoot.GetLength(); ++i )
         {
             s32 c = s_NormalizedRoot[i];
@@ -280,7 +284,7 @@ void dfs_ReadScripts( const xarray<xstring>& Scripts )
                         char* pStringStart = pCursor;
 
                         // Scan for end of string & transform string on the way
-                        while( (*pCursor != 0x0d) && (*pCursor != 0) )
+                        while( (*pCursor != 0x0d) && (*pCursor != 0x0a) && (*pCursor != 0) )
                         {
                             *pCursor++ = (char)TransformChar( *pCursor );
                         }
@@ -288,16 +292,14 @@ void dfs_ReadScripts( const xarray<xstring>& Scripts )
                         // Keep record of end of string
                         char* pStringEnd = pCursor;
 
-                        // Advance cursor if not at end of file
-                        if( *pCursor != 0 )
+                        // Skip the line ending before terminating the string.
+                        while( (*pCursor == 0x0d) || (*pCursor == 0x0a) )
                             pCursor++;
 
                         // Remove any trailing whitespace
-                        while( (pStringEnd > pStringStart) && x_isspace(*pStringEnd) )
-                        {
-                            *pStringEnd = 0;
+                        while( (pStringEnd > pStringStart) && x_isspace(pStringEnd[-1]) )
                             pStringEnd--;
-                        }
+                        *pStringEnd = 0;
 
                         // Skip to next string if we got an empty string
                         if( pStringEnd == pStringStart )
@@ -350,29 +352,9 @@ void dfs_ReadScripts( const xarray<xstring>& Scripts )
 
 //==============================================================================
 
-xbool GetFileTime( const char* pPathName, FILETIME& FileTime )
+xbool GetFileTime( const char* pPathName, u64& FileTime )
 {
-    BY_HANDLE_FILE_INFORMATION  FileInfo;
-    xbool                       Found = FALSE;
-
-    // Does the file exist?
-    HANDLE hFile = CreateFile( pPathName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
-    if( hFile != NULL )
-    {
-        // Get write time of file
-        if( GetFileInformationByHandle( hFile, &FileInfo ) )
-        {
-            // Get time the DFS file was last written
-            FileTime = FileInfo.ftLastWriteTime;
-            Found = TRUE;
-        }
-
-        // Close the file
-        CloseHandle( hFile );
-    }
-
-    // Return success code
-    return Found;
+    return x_GetFileTime( pPathName, FileTime );
 }
 
 //==============================================================================
@@ -381,8 +363,8 @@ xbool dfs_AreSourceFilesNewer( const xstring& PathNameDFS, xarray<src_file>& Src
 {
     xbool       FoundNewer = TRUE;
     s32         nCompared  = 0;
-    FILETIME    TimeDFS;
-    FILETIME    TimeSrc;
+    u64         TimeDFS;
+    u64         TimeSrc;
 
     //
     // Check if file listings match
@@ -433,7 +415,7 @@ xbool dfs_AreSourceFilesNewer( const xstring& PathNameDFS, xarray<src_file>& Src
                 pStrings + pEntry->FileNameOffset2,
                 pStrings + pEntry->ExtNameOffset);
 
-            if( x_stricmp(OldName,(const char*)SrcFiles[i].pPathName) != 0 )
+            if( x_stricmp(OldName, SrcFiles[i].pStoredPath) != 0 )
             {
                 x_free( pDFS );
                 return TRUE;
@@ -457,7 +439,7 @@ xbool dfs_AreSourceFilesNewer( const xstring& PathNameDFS, xarray<src_file>& Src
             {
                 // Compare against DFS time
                 nCompared++;
-                if( CompareFileTime( &TimeDFS, &TimeSrc ) <= 0 )
+                if( TimeDFS <= TimeSrc )
                 {
                     // The source file is newer than the DFS file
                     FoundNewer = TRUE;
@@ -834,7 +816,7 @@ void dfs_Build( const xstring&          PathName,
                     if( pDataFile == NULL )
                     {
                         // Error opening data file to write
-                        ::MessageBox( NULL, xfs("Could not open file: %s.%03d\n",DataFileName, nDataFiles), "dfsTool Error", MB_ICONSTOP );
+                        x_printf( "Could not open file: %s.%03d\n", DataFileName, nDataFiles );
                         exit(10);
                     }
                     else

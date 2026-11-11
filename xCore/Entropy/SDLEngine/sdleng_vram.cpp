@@ -19,6 +19,47 @@
 #endif
 
 //==============================================================================
+//  CONSTANTS
+//==============================================================================
+
+enum
+{
+    SDLENG_MAX_TEXTURE_UPLOAD_BATCH = 128
+};
+
+//==============================================================================
+//  TYPES
+//==============================================================================
+
+struct sdlvram_prepared_upload
+{
+    vram_texture_region Region;
+    u32                 RowPitch;
+    u32                 SlicePitch;
+    u32                 SourceRowPitch;
+    u32                 SourceSlicePitch;
+    u32                 RowBytes;
+    u32                 RowCount;
+    u32                 UploadSize;
+    u32                 Offset;
+    xbool               bGenerateMips;
+
+    sdlvram_prepared_upload( void ) :
+        Region          (),
+        RowPitch        ( 0 ),
+        SlicePitch      ( 0 ),
+        SourceRowPitch  ( 0 ),
+        SourceSlicePitch( 0 ),
+        RowBytes        ( 0 ),
+        RowCount        ( 0 ),
+        UploadSize      ( 0 ),
+        Offset          ( 0 ),
+        bGenerateMips   ( FALSE )
+    {
+    }
+};
+
+//==============================================================================
 //  LOCAL STORAGE
 //==============================================================================
 
@@ -32,7 +73,7 @@ static u32                   s_TextureCount = 0;
 static
 u32 sdlvram_MaxU32( u32 A, u32 B )
 {
-    return (A > B) ? A : B;
+    return ( A > B ) ? A : B;
 }
 
 //==============================================================================
@@ -41,6 +82,7 @@ static
 u32 sdlvram_MipExtent( u32 Extent, u32 MipLevel )
 {
     Extent >>= MipLevel;
+
     return Extent ? Extent : 1;
 }
 
@@ -51,12 +93,46 @@ xbool sdlvram_ToSDLTextureType( vram_texture_type Type, SDL_GPUTextureType& SDLT
 {
     switch( Type )
     {
-        case VRAM_TEXTURE_TYPE_2D:         SDLType = SDL_GPU_TEXTURETYPE_2D;         return TRUE;
-        case VRAM_TEXTURE_TYPE_2D_ARRAY:   SDLType = SDL_GPU_TEXTURETYPE_2D_ARRAY;   return TRUE;
-        case VRAM_TEXTURE_TYPE_3D:         SDLType = SDL_GPU_TEXTURETYPE_3D;         return TRUE;
-        case VRAM_TEXTURE_TYPE_CUBE:       SDLType = SDL_GPU_TEXTURETYPE_CUBE;       return TRUE;
-        case VRAM_TEXTURE_TYPE_CUBE_ARRAY: SDLType = SDL_GPU_TEXTURETYPE_CUBE_ARRAY; return TRUE;
-        default: return FALSE;
+        case VRAM_TEXTURE_TYPE_2D:
+        {
+            SDLType = SDL_GPU_TEXTURETYPE_2D;
+            return TRUE;
+        }
+        break;
+
+        case VRAM_TEXTURE_TYPE_2D_ARRAY:
+        {
+            SDLType = SDL_GPU_TEXTURETYPE_2D_ARRAY;
+            return TRUE;
+        }
+        break;
+
+        case VRAM_TEXTURE_TYPE_3D:
+        {
+            SDLType = SDL_GPU_TEXTURETYPE_3D;
+            return TRUE;
+        }
+        break;
+
+        case VRAM_TEXTURE_TYPE_CUBE:
+        {
+            SDLType = SDL_GPU_TEXTURETYPE_CUBE;
+            return TRUE;
+        }
+        break;
+
+        case VRAM_TEXTURE_TYPE_CUBE_ARRAY:
+        {
+            SDLType = SDL_GPU_TEXTURETYPE_CUBE_ARRAY;
+            return TRUE;
+        }
+        break;
+
+        default:
+        {
+            return FALSE;
+        }
+        break;
     }
 }
 
@@ -68,25 +144,39 @@ SDL_GPUTextureUsageFlags sdlvram_ToSDLUsageFlags( u32 UsageFlags )
     SDL_GPUTextureUsageFlags SDLFlags = 0;
 
     if( UsageFlags & VRAM_TEXTURE_USAGE_SAMPLED )
+    {
         SDLFlags |= SDL_GPU_TEXTUREUSAGE_SAMPLER;
+    }
 
     if( UsageFlags & VRAM_TEXTURE_USAGE_COLOR_TARGET )
+    {
         SDLFlags |= SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
+    }
 
     if( UsageFlags & VRAM_TEXTURE_USAGE_DEPTH_STENCIL_TARGET )
+    {
         SDLFlags |= SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET;
+    }
 
     if( UsageFlags & VRAM_TEXTURE_USAGE_GRAPHICS_STORAGE_READ )
+    {
         SDLFlags |= SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ;
+    }
 
     if( UsageFlags & VRAM_TEXTURE_USAGE_COMPUTE_STORAGE_READ )
+    {
         SDLFlags |= SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ;
+    }
 
     if( UsageFlags & VRAM_TEXTURE_USAGE_COMPUTE_STORAGE_WRITE )
+    {
         SDLFlags |= SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE;
+    }
 
     if( UsageFlags & VRAM_TEXTURE_USAGE_COMPUTE_STORAGE_READ_WRITE )
+    {
         SDLFlags |= SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE;
+    }
 
     return SDLFlags;
 }
@@ -94,11 +184,47 @@ SDL_GPUTextureUsageFlags sdlvram_ToSDLUsageFlags( u32 UsageFlags )
 //==============================================================================
 
 static
+xbool sdlvram_IsASTCFormat( vram_texture_format Format )
+{
+    return ( Format >= VRAM_TEXTURE_FORMAT_ASTC_4X4 ) &&
+           ( Format <= VRAM_TEXTURE_FORMAT_ASTC_12X12_SRGB );
+}
+
+//==============================================================================
+
+static
+xbitmap::format sdlvram_ASTCBitmapFormat( vram_texture_format Format )
+{
+    const s32 First = ( Format >= VRAM_TEXTURE_FORMAT_ASTC_4X4_SRGB ) ? VRAM_TEXTURE_FORMAT_ASTC_4X4_SRGB : VRAM_TEXTURE_FORMAT_ASTC_4X4;
+
+    return (xbitmap::format)( xbitmap::FMT_ASTC_4X4 + Format - First );
+}
+
+//==============================================================================
+
+static
+u32 sdlvram_GetBlockWidth( vram_texture_format Format )
+{
+    return sdlvram_IsASTCFormat( Format ) ? xbitmap::GetBlockWidth( sdlvram_ASTCBitmapFormat( Format ) ) : 4;
+}
+
+//==============================================================================
+
+static
+u32 sdlvram_GetBlockHeight( vram_texture_format Format )
+{
+    return sdlvram_IsASTCFormat( Format ) ? xbitmap::GetBlockHeight( sdlvram_ASTCBitmapFormat( Format ) ) : 4;
+}
+
+//==============================================================================
+
+static
 xbool sdlvram_IsCompressedFormat( vram_texture_format Format )
 {
-    return (Format == VRAM_TEXTURE_FORMAT_BC1_RGBA) ||
-           (Format == VRAM_TEXTURE_FORMAT_BC2_RGBA) ||
-           (Format == VRAM_TEXTURE_FORMAT_BC3_RGBA);
+    return ( Format == VRAM_TEXTURE_FORMAT_BC1_RGBA ) ||
+           ( Format == VRAM_TEXTURE_FORMAT_BC2_RGBA ) ||
+           ( Format == VRAM_TEXTURE_FORMAT_BC3_RGBA ) ||
+           sdlvram_IsASTCFormat( Format );
 }
 
 //==============================================================================
@@ -106,7 +232,7 @@ xbool sdlvram_IsCompressedFormat( vram_texture_format Format )
 static
 xbool sdlvram_CanGenerateMipmaps( const vram_texture_desc& Desc )
 {
-    return ((Desc.UsageFlags & VRAM_TEXTURE_USAGE_COLOR_TARGET) != 0) &&
+    return ( ( Desc.UsageFlags & VRAM_TEXTURE_USAGE_COLOR_TARGET ) != 0 ) &&
            !sdlvram_IsCompressedFormat( Desc.Format ) &&
            !sdleng_IsDepthFormat( Desc.Format );
 }
@@ -116,12 +242,17 @@ xbool sdlvram_CanGenerateMipmaps( const vram_texture_desc& Desc )
 static
 u32 sdlvram_GetBlockSize( vram_texture_format Format )
 {
+    if( sdlvram_IsASTCFormat( Format ) )
+    {
+        return 16;
+    }
+
     switch( Format )
     {
-        case VRAM_TEXTURE_FORMAT_BC1_RGBA: return 8;
-        case VRAM_TEXTURE_FORMAT_BC2_RGBA: return 16;
-        case VRAM_TEXTURE_FORMAT_BC3_RGBA: return 16;
-        default:                           return 0;
+        case VRAM_TEXTURE_FORMAT_BC1_RGBA: return 8;  break;
+        case VRAM_TEXTURE_FORMAT_BC2_RGBA: return 16; break;
+        case VRAM_TEXTURE_FORMAT_BC3_RGBA: return 16; break;
+        default:                           return 0;  break;
     }
 }
 
@@ -132,18 +263,18 @@ u32 sdlvram_GetBytesPerPixel( vram_texture_format Format )
 {
     switch( Format )
     {
-        case VRAM_TEXTURE_FORMAT_R8:       return 1;
-        case VRAM_TEXTURE_FORMAT_B5G6R5:   return 2;
-        case VRAM_TEXTURE_FORMAT_B5G5R5A1: return 2;
-        case VRAM_TEXTURE_FORMAT_B4G4R4A4: return 2;
-        case VRAM_TEXTURE_FORMAT_RG16F:    return 4;
-        case VRAM_TEXTURE_FORMAT_R32F:     return 4;
-        case VRAM_TEXTURE_FORMAT_RGBA8:    return 4;
-        case VRAM_TEXTURE_FORMAT_BGRA8:    return 4;
-        case VRAM_TEXTURE_FORMAT_RGB10A2:  return 4;
-        case VRAM_TEXTURE_FORMAT_RGBA16F:  return 8;
-        case VRAM_TEXTURE_FORMAT_RGBA32F:  return 16;
-        default:                           return 0;
+        case VRAM_TEXTURE_FORMAT_R8:       return 1;  break;
+        case VRAM_TEXTURE_FORMAT_B5G6R5:   return 2;  break;
+        case VRAM_TEXTURE_FORMAT_B5G5R5A1: return 2;  break;
+        case VRAM_TEXTURE_FORMAT_B4G4R4A4: return 2;  break;
+        case VRAM_TEXTURE_FORMAT_RG16F:    return 4;  break;
+        case VRAM_TEXTURE_FORMAT_R32F:     return 4;  break;
+        case VRAM_TEXTURE_FORMAT_RGBA8:    return 4;  break;
+        case VRAM_TEXTURE_FORMAT_BGRA8:    return 4;  break;
+        case VRAM_TEXTURE_FORMAT_RGB10A2:  return 4;  break;
+        case VRAM_TEXTURE_FORMAT_RGBA16F:  return 8;  break;
+        case VRAM_TEXTURE_FORMAT_RGBA32F:  return 16; break;
+        default:                           return 0;  break;
     }
 }
 
@@ -152,13 +283,19 @@ u32 sdlvram_GetBytesPerPixel( vram_texture_format Format )
 static
 u32 sdlvram_CalcRowPitch( vram_texture_format Format, u32 Width )
 {
+    u64 Pitch;
+
     if( sdlvram_IsCompressedFormat( Format ) )
     {
-        const u32 BlocksWide = sdlvram_MaxU32( 1, (Width + 3) / 4 );
-        return BlocksWide * sdlvram_GetBlockSize( Format );
+        const u64 BlocksWide = ( (u64)Width + sdlvram_GetBlockWidth( Format ) - 1 ) / sdlvram_GetBlockWidth( Format );
+        Pitch                = BlocksWide * sdlvram_GetBlockSize( Format );
+    }
+    else
+    {
+        Pitch = (u64)Width * sdlvram_GetBytesPerPixel( Format );
     }
 
-    return Width * sdlvram_GetBytesPerPixel( Format );
+    return ( Pitch <= 0xffffffffULL ) ? (u32)Pitch : 0;
 }
 
 //==============================================================================
@@ -166,25 +303,64 @@ u32 sdlvram_CalcRowPitch( vram_texture_format Format, u32 Width )
 static
 u32 sdlvram_CalcSlicePitch( vram_texture_format Format, u32 Width, u32 Height )
 {
-    const u32 RowPitch = sdlvram_CalcRowPitch( Format, Width );
+    const u64 RowPitch = sdlvram_CalcRowPitch( Format, Width );
+    u64       SlicePitch;
 
     if( sdlvram_IsCompressedFormat( Format ) )
-        return RowPitch * sdlvram_MaxU32( 1, (Height + 3) / 4 );
+    {
+        SlicePitch = RowPitch * ( ( (u64)Height + sdlvram_GetBlockHeight( Format ) - 1 ) / sdlvram_GetBlockHeight( Format ) );
+    }
+    else
+    {
+        SlicePitch = RowPitch * Height;
+    }
 
-    return RowPitch * Height;
+    return ( SlicePitch <= 0xffffffffULL ) ? (u32)SlicePitch : 0;
 }
 
 //==============================================================================
 
 static
-xbool sdlvram_ValidateTextureDesc( const vram_texture_desc& Desc,
-                                   SDL_GPUTextureType&      TextureType,
-                                   SDL_GPUTextureFormat&    Format,
-                                   SDL_GPUSampleCount&      SampleCount,
+xbool sdlvram_CalcBitmapUploadLayout( const xbitmap& Bitmap,
+                                      s32            Mip,
+                                      u32&           RowPitch,
+                                      u32&           UploadSize )
+{
+    const s32 PWidth = Bitmap.GetPWidth( Mip );
+    const s32 Height = Bitmap.GetHeight( Mip );
+    const u32 BPP    = Bitmap.GetFormatInfo().BPP;
+
+    if( ( PWidth <= 0 ) || ( Height <= 0 ) || ( BPP == 0 ) || ( ( BPP & 7 ) != 0 ) )
+    {
+        return FALSE;
+    }
+
+    const u64 RowPitch64   = (u64)(u32)PWidth * (u64)BPP / 8;
+    const u64 UploadSize64 = RowPitch64 * (u64)(u32)Height;
+
+    if( ( RowPitch64 == 0 ) || ( UploadSize64 == 0 ) ||
+        ( RowPitch64 > 0xffffffffULL ) || ( UploadSize64 > 0xffffffffULL ) )
+    {
+        return FALSE;
+    }
+
+    RowPitch   = (u32)RowPitch64;
+    UploadSize = (u32)UploadSize64;
+
+    return TRUE;
+}
+
+//==============================================================================
+
+static
+xbool sdlvram_ValidateTextureDesc( const vram_texture_desc&  Desc,
+                                   SDL_GPUTextureType&       TextureType,
+                                   SDL_GPUTextureFormat&     Format,
+                                   SDL_GPUSampleCount&       SampleCount,
                                    SDL_GPUTextureUsageFlags& UsageFlags )
 {
-    if( !g_pSDLGPUDevice || (Desc.Width == 0) || (Desc.Height == 0) ||
-        (Desc.Depth == 0) || (Desc.LayerCount == 0) || (Desc.MipCount == 0) )
+    if( !g_pSDLGPUDevice || ( Desc.Width == 0 ) || ( Desc.Height == 0 ) ||
+        ( Desc.Depth == 0 ) || ( Desc.LayerCount == 0 ) || ( Desc.MipCount == 0 ) )
     {
         return FALSE;
     }
@@ -197,20 +373,25 @@ xbool sdlvram_ValidateTextureDesc( const vram_texture_desc& Desc,
 
     Format = sdleng_ToSDLTextureFormat( Desc.Format );
     if( Format == SDL_GPU_TEXTUREFORMAT_INVALID )
+    {
         return FALSE;
+    }
 
-    const u32 KnownUsageFlags = VRAM_TEXTURE_USAGE_SAMPLED                    |
-                                VRAM_TEXTURE_USAGE_COLOR_TARGET               |
-                                VRAM_TEXTURE_USAGE_DEPTH_STENCIL_TARGET       |
-                                VRAM_TEXTURE_USAGE_GRAPHICS_STORAGE_READ      |
-                                VRAM_TEXTURE_USAGE_COMPUTE_STORAGE_READ       |
-                                VRAM_TEXTURE_USAGE_COMPUTE_STORAGE_WRITE      |
+    const u32 KnownUsageFlags = VRAM_TEXTURE_USAGE_SAMPLED |
+                                VRAM_TEXTURE_USAGE_COLOR_TARGET |
+                                VRAM_TEXTURE_USAGE_DEPTH_STENCIL_TARGET |
+                                VRAM_TEXTURE_USAGE_GRAPHICS_STORAGE_READ |
+                                VRAM_TEXTURE_USAGE_COMPUTE_STORAGE_READ |
+                                VRAM_TEXTURE_USAGE_COMPUTE_STORAGE_WRITE |
                                 VRAM_TEXTURE_USAGE_COMPUTE_STORAGE_READ_WRITE;
-    if( (Desc.UsageFlags == 0) || (Desc.UsageFlags & ~KnownUsageFlags) )
-        return FALSE;
 
-    if( (Desc.UsageFlags & VRAM_TEXTURE_USAGE_SAMPLED) &&
-        (Desc.UsageFlags & VRAM_TEXTURE_USAGE_GRAPHICS_STORAGE_READ) )
+    if( ( Desc.UsageFlags == 0 ) || ( Desc.UsageFlags & ~KnownUsageFlags ) )
+    {
+        return FALSE;
+    }
+
+    if( ( Desc.UsageFlags & VRAM_TEXTURE_USAGE_SAMPLED ) &&
+        ( Desc.UsageFlags & VRAM_TEXTURE_USAGE_GRAPHICS_STORAGE_READ ) )
     {
         return FALSE;
     }
@@ -219,61 +400,107 @@ xbool sdlvram_ValidateTextureDesc( const vram_texture_desc& Desc,
     {
         const u32 AllowedDepthUsage = VRAM_TEXTURE_USAGE_SAMPLED |
                                       VRAM_TEXTURE_USAGE_DEPTH_STENCIL_TARGET;
+
         if( Desc.UsageFlags & ~AllowedDepthUsage )
+        {
             return FALSE;
+        }
+    }
+    else if( Desc.UsageFlags & VRAM_TEXTURE_USAGE_DEPTH_STENCIL_TARGET )
+    {
+        return FALSE;
     }
 
     switch( Desc.Type )
     {
         case VRAM_TEXTURE_TYPE_2D:
-            if( (Desc.Depth != 1) || (Desc.LayerCount != 1) )
-                return FALSE;
-            break;
-
-        case VRAM_TEXTURE_TYPE_2D_ARRAY:
-            if( Desc.Depth != 1 )
-                return FALSE;
-            break;
-
-        case VRAM_TEXTURE_TYPE_3D:
-            if( (Desc.LayerCount != 1) ||
-                (Desc.UsageFlags & VRAM_TEXTURE_USAGE_DEPTH_STENCIL_TARGET) )
+        {
+            if( ( Desc.Width > SDLENG_MAX_2D_TEXTURE_DIMENSION ) ||
+                ( Desc.Height > SDLENG_MAX_2D_TEXTURE_DIMENSION ) ||
+                ( Desc.Depth != 1 ) || ( Desc.LayerCount != 1 ) )
             {
                 return FALSE;
             }
-            break;
+        }
+
+        break;
+
+        case VRAM_TEXTURE_TYPE_2D_ARRAY:
+        {
+            if( ( Desc.Width > SDLENG_MAX_2D_TEXTURE_DIMENSION ) ||
+                ( Desc.Height > SDLENG_MAX_2D_TEXTURE_DIMENSION ) || ( Desc.Depth != 1 ) )
+            {
+                return FALSE;
+            }
+        }
+
+        break;
+
+        case VRAM_TEXTURE_TYPE_3D:
+        {
+            if( ( Desc.Width > SDLENG_MAX_3D_TEXTURE_DIMENSION ) ||
+                ( Desc.Height > SDLENG_MAX_3D_TEXTURE_DIMENSION ) ||
+                ( Desc.Depth > SDLENG_MAX_3D_TEXTURE_DIMENSION ) ||
+                ( Desc.LayerCount != 1 ) ||
+                ( Desc.UsageFlags & VRAM_TEXTURE_USAGE_DEPTH_STENCIL_TARGET ) )
+            {
+                return FALSE;
+            }
+        }
+
+        break;
 
         case VRAM_TEXTURE_TYPE_CUBE:
-            if( (Desc.Width != Desc.Height) || (Desc.Depth != 1) || (Desc.LayerCount != 6) )
+        {
+            if( ( Desc.Width > SDLENG_MAX_2D_TEXTURE_DIMENSION ) ||
+                ( Desc.Height > SDLENG_MAX_2D_TEXTURE_DIMENSION ) ||
+                ( Desc.Width != Desc.Height ) || ( Desc.Depth != 1 ) || ( Desc.LayerCount != 6 ) )
+            {
                 return FALSE;
-            break;
+            }
+        }
+
+        break;
 
         case VRAM_TEXTURE_TYPE_CUBE_ARRAY:
-            if( (Desc.Width != Desc.Height) || (Desc.Depth != 1) || ((Desc.LayerCount % 6) != 0) )
+        {
+            if( ( Desc.Width > SDLENG_MAX_2D_TEXTURE_DIMENSION ) ||
+                ( Desc.Height > SDLENG_MAX_2D_TEXTURE_DIMENSION ) ||
+                ( Desc.Width != Desc.Height ) || ( Desc.Depth != 1 ) || ( ( Desc.LayerCount % 6 ) != 0 ) )
+            {
                 return FALSE;
-            break;
+            }
+        }
+
+        break;
 
         default:
+        {
             return FALSE;
+        }
+
+        break;
     }
 
     const u32 MaxMipCount = vram_CalcMipCount( Desc.Width,
-                                                Desc.Height,
-                                                (Desc.Type == VRAM_TEXTURE_TYPE_3D) ? Desc.Depth : 1 );
+                                               Desc.Height,
+                                               ( Desc.Type == VRAM_TEXTURE_TYPE_3D ) ? Desc.Depth : 1 );
+
     if( Desc.MipCount > MaxMipCount )
+    {
         return FALSE;
+    }
 
     if( Desc.SampleCount > 1 )
     {
-        const u32 InvalidMSAAUsage = VRAM_TEXTURE_USAGE_SAMPLED                    |
-                                     VRAM_TEXTURE_USAGE_GRAPHICS_STORAGE_READ      |
-                                     VRAM_TEXTURE_USAGE_COMPUTE_STORAGE_READ       |
-                                     VRAM_TEXTURE_USAGE_COMPUTE_STORAGE_WRITE      |
+        const u32 InvalidMSAAUsage = VRAM_TEXTURE_USAGE_SAMPLED |
+                                     VRAM_TEXTURE_USAGE_COMPUTE_STORAGE_WRITE |
                                      VRAM_TEXTURE_USAGE_COMPUTE_STORAGE_READ_WRITE;
-        if( (Desc.Type != VRAM_TEXTURE_TYPE_2D) || (Desc.MipCount != 1) ||
-            (Desc.UsageFlags & InvalidMSAAUsage) ||
-            !(Desc.UsageFlags & (VRAM_TEXTURE_USAGE_COLOR_TARGET |
-                                 VRAM_TEXTURE_USAGE_DEPTH_STENCIL_TARGET)) )
+
+        if( ( Desc.Type != VRAM_TEXTURE_TYPE_2D ) || ( Desc.MipCount != 1 ) ||
+            ( Desc.UsageFlags & InvalidMSAAUsage ) ||
+            !( Desc.UsageFlags & ( VRAM_TEXTURE_USAGE_COLOR_TARGET |
+                                   VRAM_TEXTURE_USAGE_DEPTH_STENCIL_TARGET ) ) )
         {
             return FALSE;
         }
@@ -297,20 +524,27 @@ xbool sdlvram_ValidateTextureDesc( const vram_texture_desc& Desc,
 //==============================================================================
 
 static
-vram_texture_format sdlvram_FromBitmapFormat( xbitmap::format Format )
+vram_texture_format sdlvram_FromBitmapFormat( const xbitmap& Bitmap )
 {
+    const xbitmap::format Format = Bitmap.GetFormat();
+    if( Bitmap.IsASTC() )
+    {
+        const s32 First = Bitmap.IsSRGB() ? VRAM_TEXTURE_FORMAT_ASTC_4X4_SRGB : VRAM_TEXTURE_FORMAT_ASTC_4X4;
+        return (vram_texture_format)( First + Format - xbitmap::FMT_ASTC_4X4 );
+    }
+
     switch( Format )
     {
-        case xbitmap::FMT_32_ARGB_8888: return VRAM_TEXTURE_FORMAT_BGRA8;
-        case xbitmap::FMT_32_URGB_8888: return VRAM_TEXTURE_FORMAT_BGRA8;
-        case xbitmap::FMT_16_ARGB_4444: return VRAM_TEXTURE_FORMAT_B4G4R4A4;
-        case xbitmap::FMT_16_ARGB_1555: return VRAM_TEXTURE_FORMAT_B5G5R5A1;
-        case xbitmap::FMT_16_URGB_1555: return VRAM_TEXTURE_FORMAT_B5G5R5A1;
-        case xbitmap::FMT_16_RGB_565:   return VRAM_TEXTURE_FORMAT_B5G6R5;
-        case xbitmap::FMT_DXT1:         return VRAM_TEXTURE_FORMAT_BC1_RGBA;
-        case xbitmap::FMT_DXT3:         return VRAM_TEXTURE_FORMAT_BC2_RGBA;
-        case xbitmap::FMT_DXT5:         return VRAM_TEXTURE_FORMAT_BC3_RGBA;
-        default:                        return VRAM_TEXTURE_FORMAT_COUNT;
+        case xbitmap::FMT_32_ARGB_8888: return VRAM_TEXTURE_FORMAT_BGRA8;    break;
+        case xbitmap::FMT_32_URGB_8888: return VRAM_TEXTURE_FORMAT_BGRA8;    break;
+        case xbitmap::FMT_16_ARGB_4444: return VRAM_TEXTURE_FORMAT_B4G4R4A4; break;
+        case xbitmap::FMT_16_ARGB_1555: return VRAM_TEXTURE_FORMAT_B5G5R5A1; break;
+        case xbitmap::FMT_16_URGB_1555: return VRAM_TEXTURE_FORMAT_B5G5R5A1; break;
+        case xbitmap::FMT_16_RGB_565:   return VRAM_TEXTURE_FORMAT_B5G6R5;   break;
+        case xbitmap::FMT_DXT1:         return VRAM_TEXTURE_FORMAT_BC1_RGBA; break;
+        case xbitmap::FMT_DXT3:         return VRAM_TEXTURE_FORMAT_BC2_RGBA; break;
+        case xbitmap::FMT_DXT5:         return VRAM_TEXTURE_FORMAT_BC3_RGBA; break;
+        default:                        return VRAM_TEXTURE_FORMAT_COUNT;    break;
     }
 }
 
@@ -320,10 +554,14 @@ static
 void sdlvram_ReleaseBackend( vram_texture_backend* pBackend )
 {
     if( !pBackend )
+    {
         return;
+    }
 
     if( pBackend->pTexture && g_pSDLGPUDevice )
+    {
         SDL_ReleaseGPUTexture( g_pSDLGPUDevice, pBackend->pTexture );
+    }
 
     pBackend->pTexture                 = NULL;
     pBackend->Resource.pBackend        = NULL;
@@ -335,40 +573,74 @@ void sdlvram_ReleaseBackend( vram_texture_backend* pBackend )
 //==============================================================================
 
 static
-xbool sdlvram_FillRegionFromTexture( const vram_texture& Texture,
-                                     vram_texture_region Region,
+void sdlvram_AdoptTexture( vram_texture& Destination, vram_texture& Source )
+{
+    vram_texture_backend* pNewBackend = Source.pBackend;
+    vram_texture_backend* pOldBackend = Destination.pBackend;
+    ASSERT( pNewBackend != NULL );
+
+    if( pOldBackend )
+    {
+        sdleng_ResetShaderBindings();
+        sdleng_UnlinkBackend( s_pTextureList, pOldBackend, s_TextureCount );
+        sdlvram_ReleaseBackend( pOldBackend );
+        delete pOldBackend;
+    }
+
+    Destination.Desc                           = Source.Desc;
+    Destination.pBackend                       = pNewBackend;
+    pNewBackend->pOwner                        = &Destination;
+    pNewBackend->ResourceBackend.pTextureOwner = &Destination;
+    Source.Desc                                = vram_texture_desc();
+    Source.pBackend                            = NULL;
+}
+
+//==============================================================================
+
+static
+xbool sdlvram_FillRegionFromTexture( const vram_texture&  Texture,
+                                     vram_texture_region  Region,
                                      vram_texture_region& OutRegion )
 {
     if( !Texture.pBackend )
+    {
         return FALSE;
+    }
 
     if( Region.MipLevel >= Texture.Desc.MipCount )
+    {
         return FALSE;
+    }
 
     OutRegion = Region;
-
     if( OutRegion.Width == 0 )
+    {
         OutRegion.Width = sdlvram_MipExtent( Texture.Desc.Width, OutRegion.MipLevel );
+    }
 
     if( OutRegion.Height == 0 )
+    {
         OutRegion.Height = sdlvram_MipExtent( Texture.Desc.Height, OutRegion.MipLevel );
+    }
 
     if( OutRegion.Depth == 0 )
-        OutRegion.Depth = (Texture.Desc.Type == VRAM_TEXTURE_TYPE_3D)
-                        ? sdlvram_MipExtent( Texture.Desc.Depth, OutRegion.MipLevel )
-                        : 1;
+    {
+        OutRegion.Depth = ( Texture.Desc.Type == VRAM_TEXTURE_TYPE_3D )
+                              ? sdlvram_MipExtent( Texture.Desc.Depth, OutRegion.MipLevel )
+                              : 1;
+    }
 
-    const u32 MipWidth  = sdlvram_MipExtent( Texture.Desc.Width,  OutRegion.MipLevel );
+    const u32 MipWidth  = sdlvram_MipExtent( Texture.Desc.Width, OutRegion.MipLevel );
     const u32 MipHeight = sdlvram_MipExtent( Texture.Desc.Height, OutRegion.MipLevel );
-    const u32 MipDepth  = (Texture.Desc.Type == VRAM_TEXTURE_TYPE_3D)
-                        ? sdlvram_MipExtent( Texture.Desc.Depth, OutRegion.MipLevel )
-                        : 1;
+    const u32 MipDepth  = ( Texture.Desc.Type == VRAM_TEXTURE_TYPE_3D )
+                              ? sdlvram_MipExtent( Texture.Desc.Depth, OutRegion.MipLevel )
+                              : 1;
 
-    if( (OutRegion.Width == 0) || (OutRegion.Height == 0) || (OutRegion.Depth == 0) ||
-        (OutRegion.X >= MipWidth) || (OutRegion.Y >= MipHeight) || (OutRegion.Z >= MipDepth) ||
-        (OutRegion.Width > (MipWidth - OutRegion.X)) ||
-        (OutRegion.Height > (MipHeight - OutRegion.Y)) ||
-        (OutRegion.Depth > (MipDepth - OutRegion.Z)) )
+    if( ( OutRegion.Width == 0 ) || ( OutRegion.Height == 0 ) || ( OutRegion.Depth == 0 ) ||
+        ( OutRegion.X >= MipWidth ) || ( OutRegion.Y >= MipHeight ) || ( OutRegion.Z >= MipDepth ) ||
+        ( OutRegion.Width > ( MipWidth - OutRegion.X ) ) ||
+        ( OutRegion.Height > ( MipHeight - OutRegion.Y ) ) ||
+        ( OutRegion.Depth > ( MipDepth - OutRegion.Z ) ) )
     {
         return FALSE;
     }
@@ -376,7 +648,9 @@ xbool sdlvram_FillRegionFromTexture( const vram_texture& Texture,
     if( Texture.Desc.Type == VRAM_TEXTURE_TYPE_3D )
     {
         if( OutRegion.Layer != 0 )
+        {
             return FALSE;
+        }
     }
     else if( OutRegion.Layer >= Texture.Desc.LayerCount )
     {
@@ -385,11 +659,12 @@ xbool sdlvram_FillRegionFromTexture( const vram_texture& Texture,
 
     if( sdlvram_IsCompressedFormat( Texture.Desc.Format ) )
     {
-        const xbool bWidthReachesEdge  = (OutRegion.X + OutRegion.Width) == MipWidth;
-        const xbool bHeightReachesEdge = (OutRegion.Y + OutRegion.Height) == MipHeight;
-        if( (OutRegion.X & 3) || (OutRegion.Y & 3) ||
-            (!bWidthReachesEdge && (OutRegion.Width & 3)) ||
-            (!bHeightReachesEdge && (OutRegion.Height & 3)) )
+        const xbool bWidthReachesEdge  = ( OutRegion.X + OutRegion.Width ) == MipWidth;
+        const xbool bHeightReachesEdge = ( OutRegion.Y + OutRegion.Height ) == MipHeight;
+
+        if( ( OutRegion.X % sdlvram_GetBlockWidth( Texture.Desc.Format ) ) || ( OutRegion.Y % sdlvram_GetBlockHeight( Texture.Desc.Format ) ) ||
+            ( !bWidthReachesEdge && ( OutRegion.Width % sdlvram_GetBlockWidth( Texture.Desc.Format ) ) ) ||
+            ( !bHeightReachesEdge && ( OutRegion.Height % sdlvram_GetBlockHeight( Texture.Desc.Format ) ) ) )
         {
             return FALSE;
         }
@@ -401,139 +676,330 @@ xbool sdlvram_FillRegionFromTexture( const vram_texture& Texture,
 //==============================================================================
 
 static
-xbool sdlvram_SubmitUpload( vram_texture& Texture, const vram_texture_upload_desc& Upload )
+u32 sdlvram_AlignUploadOffset( u32 Offset )
 {
-    vram_texture_region Region;
-    if( !sdlvram_FillRegionFromTexture( Texture, Upload.Region, Region ) )
-        return FALSE;
+    const u32 Alignment = 512;
 
-    if( !g_pSDLGPUDevice || !Texture.pBackend || !Texture.pBackend->pTexture || !Upload.pData )
-        return FALSE;
-
-    const xbool bCompressed = sdlvram_IsCompressedFormat( Texture.Desc.Format );
-    if( bCompressed && (Upload.RowPitch || Upload.SlicePitch) )
+    if( Offset > ( 0xffffffffu - ( Alignment - 1 ) ) )
     {
-        x_DebugMsg( "SDLVRAM: custom row/slice pitch for compressed uploads is not supported yet\n" );
+        return 0xffffffffu;
+    }
+
+    return ( Offset + ( Alignment - 1 ) ) & ~( Alignment - 1 );
+}
+
+//==============================================================================
+
+static
+xbool sdlvram_PrepareUpload( const vram_texture&             Texture,
+                             const vram_texture_upload_desc& Upload,
+                             sdlvram_prepared_upload&        Prepared )
+{
+    if( !Texture.pBackend ||
+        !shader_ValidateResourceAccess( Texture.pBackend->Resource, SHADER_RESOURCE_ACCESS_UPLOAD ) )
+    {
         return FALSE;
     }
 
-    const xbool bGenerateMips = Upload.bGenerateMips && (Texture.Desc.MipCount > 1);
-    if( bGenerateMips && !sdlvram_CanGenerateMipmaps( Texture.Desc ) )
+    if( !Texture.pBackend || !Texture.pBackend->pTexture || !Upload.pData )
+    {
+        return FALSE;
+    }
+
+    if( !sdlvram_FillRegionFromTexture( Texture, Upload.Region, Prepared.Region ) )
+    {
+        return FALSE;
+    }
+
+    const xbool bCompressed = sdlvram_IsCompressedFormat( Texture.Desc.Format );
+    Prepared.bGenerateMips  = Upload.bGenerateMips && ( Texture.Desc.MipCount > 1 );
+
+    if( Prepared.bGenerateMips && !sdlvram_CanGenerateMipmaps( Texture.Desc ) )
     {
         x_DebugMsg( "SDLVRAM: texture was not created for GPU mip generation\n" );
         return FALSE;
     }
 
-    const u32 RowPitch   = Upload.RowPitch   ? Upload.RowPitch   : sdlvram_CalcRowPitch  ( Texture.Desc.Format, Region.Width );
-    const u32 SlicePitch = Upload.SlicePitch ? Upload.SlicePitch : sdlvram_CalcSlicePitch( Texture.Desc.Format, Region.Width, Region.Height );
-    const u64 RequiredSize = (u64)SlicePitch * Region.Depth;
-    if( RequiredSize > 0xffffffffULL )
-        return FALSE;
+    Prepared.RowBytes = sdlvram_CalcRowPitch( Texture.Desc.Format, Prepared.Region.Width );
+    Prepared.RowCount = bCompressed ? ( Prepared.Region.Height + sdlvram_GetBlockHeight( Texture.Desc.Format ) - 1 ) / sdlvram_GetBlockHeight( Texture.Desc.Format ) : Prepared.Region.Height;
+    Prepared.RowPitch = Upload.RowPitch ? Upload.RowPitch : Prepared.RowBytes;
 
-    const u32 UploadSize = Upload.Size ? Upload.Size : (u32)RequiredSize;
-
-    if( (RowPitch == 0) || (SlicePitch == 0) || (UploadSize < RequiredSize) )
-        return FALSE;
-
-    if( !bCompressed )
+    if( Upload.SlicePitch )
     {
-        const u32 BytesPerPixel = sdlvram_GetBytesPerPixel( Texture.Desc.Format );
-        const u64 MinimumRowPitch = (u64)Region.Width * BytesPerPixel;
-        const u64 MinimumSlicePitch = (u64)RowPitch * Region.Height;
-        if( !BytesPerPixel || (RowPitch < MinimumRowPitch) ||
-            (RowPitch % BytesPerPixel) || (SlicePitch < MinimumSlicePitch) )
+        Prepared.SlicePitch = Upload.SlicePitch;
+    }
+    else if( Upload.RowPitch )
+    {
+        const u64 SlicePitch = static_cast<u64>( Prepared.RowPitch ) * Prepared.RowCount;
+        Prepared.SlicePitch  = ( SlicePitch <= 0xffffffffULL ) ? static_cast<u32>( SlicePitch ) : 0;
+    }
+    else
+    {
+        Prepared.SlicePitch = sdlvram_CalcSlicePitch( Texture.Desc.Format, Prepared.Region.Width, Prepared.Region.Height );
+    }
+
+    const u64 RequiredSize = (u64)Prepared.SlicePitch * Prepared.Region.Depth;
+
+    if( RequiredSize > 0xffffffffULL )
+    {
+        return FALSE;
+    }
+
+    Prepared.UploadSize = (u32)RequiredSize;
+
+    if( ( Prepared.RowPitch == 0 ) || ( Prepared.SlicePitch == 0 ) ||
+        ( Upload.Size && ( Upload.Size < RequiredSize ) ) )
+    {
+        return FALSE;
+    }
+
+    const u32 BytesPerUnit = bCompressed ? sdlvram_GetBlockSize( Texture.Desc.Format ) : sdlvram_GetBytesPerPixel( Texture.Desc.Format );
+
+    if( !BytesPerUnit || ( Prepared.RowPitch < Prepared.RowBytes ) ||
+        ( Prepared.RowPitch % BytesPerUnit ) ||
+        ( Prepared.SlicePitch < (u64)Prepared.RowPitch * Prepared.RowCount ) ||
+        ( Prepared.SlicePitch % Prepared.RowPitch ) )
+    {
+        return FALSE;
+    }
+
+    Prepared.SourceRowPitch   = Prepared.RowPitch;
+    Prepared.SourceSlicePitch = Prepared.SlicePitch;
+    const char* pDriver       = SDL_GetGPUDeviceDriver( g_pSDLGPUDevice );
+
+    if( pDriver && ( x_strcmp( pDriver, "direct3d12" ) == 0 ) )
+    {
+        const u64 RowPitch   = ( (u64)Prepared.RowBytes + 255 ) & ~255ULL;
+        const u64 SlicePitch = RowPitch * Prepared.RowCount;
+        const u64 UploadSize = SlicePitch * Prepared.Region.Depth;
+
+        if( UploadSize > 0xffffffffULL )
         {
+            return FALSE;
+        }
+
+        Prepared.RowPitch   = (u32)RowPitch;
+        Prepared.SlicePitch = (u32)SlicePitch;
+        Prepared.UploadSize = (u32)UploadSize;
+    }
+
+    return TRUE;
+}
+
+//==============================================================================
+
+static
+xbool sdlvram_SubmitUploadBatch( const vram_texture_upload_batch_item* pItems, u32 Count )
+{
+    if( Count == 0 )
+    {
+        return TRUE;
+    }
+
+    if( !pItems || ( Count > SDLENG_MAX_TEXTURE_UPLOAD_BATCH ) ||
+        !g_pSDLGPUDevice || sdleng_InRenderPass() || sdleng_InComputePass() )
+    {
+        return FALSE;
+    }
+
+    sdlvram_prepared_upload PreparedUploads[SDLENG_MAX_TEXTURE_UPLOAD_BATCH];
+
+    u64 TotalSize64 = 0;
+    u32 UploadBytes = 0;
+
+    for( u32 i = 0; i < Count; ++i )
+    {
+        if( !pItems[i].pTexture ||
+            !sdlvram_PrepareUpload( *pItems[i].pTexture, pItems[i].Upload, PreparedUploads[i] ) )
+        {
+            return FALSE;
+        }
+
+        if( TotalSize64 > 0xffffffffULL )
+        {
+            return FALSE;
+        }
+
+        const u32 Offset = sdlvram_AlignUploadOffset( (u32)TotalSize64 );
+
+        if( ( Offset == 0xffffffffu ) ||
+            ( PreparedUploads[i].UploadSize > ( 0xffffffffu - Offset ) ) )
+        {
+            return FALSE;
+        }
+
+        TotalSize64 = (u64)Offset + PreparedUploads[i].UploadSize;
+
+        if( UploadBytes > ( 0xffffffffu - PreparedUploads[i].UploadSize ) )
+        {
+            return FALSE;
+        }
+
+        UploadBytes += PreparedUploads[i].UploadSize;
+    }
+
+    if( ( TotalSize64 == 0 ) || ( TotalSize64 > 0xffffffffULL ) )
+    {
+        return FALSE;
+    }
+
+    if( !sdleng_BeginTransfer( (u32)TotalSize64, 512, "SDLVRAM" ) )
+    {
+        return FALSE;
+    }
+
+    for( u32 i = 0; i < Count; ++i )
+    {
+        if( !sdleng_ReserveTransfer( PreparedUploads[i].UploadSize,
+                                     512,
+                                     PreparedUploads[i].Offset ) )
+        {
+            sdleng_CancelTransfer();
             return FALSE;
         }
     }
 
-    SDL_GPUTransferBufferCreateInfo TransferDesc;
-    x_memset( &TransferDesc, 0, sizeof(TransferDesc) );
-    TransferDesc.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
-    TransferDesc.size  = UploadSize;
+    void* pMapped = NULL;
 
-    SDL_GPUTransferBuffer* pTransferBuffer = SDL_CreateGPUTransferBuffer( g_pSDLGPUDevice, &TransferDesc );
-    if( !pTransferBuffer )
+    if( !sdleng_MapTransferBuffer( pMapped, "SDLVRAM" ) )
     {
-        sdleng_LogError( "SDLVRAM", "SDL_CreateGPUTransferBuffer" );
+        sdleng_CancelTransfer();
         return FALSE;
     }
 
-    void* pMapped = SDL_MapGPUTransferBuffer( g_pSDLGPUDevice, pTransferBuffer, Upload.bCycle ? true : false );
-    if( !pMapped )
+    SDL_GPUTransferBuffer* pTransferBuffer = sdleng_GetTransferBuffer();
+
+    for( u32 i = 0; i < Count; ++i )
     {
-        sdleng_LogError( "SDLVRAM", "SDL_MapGPUTransferBuffer" );
-        SDL_ReleaseGPUTransferBuffer( g_pSDLGPUDevice, pTransferBuffer );
+        const sdlvram_prepared_upload& Prepared     = PreparedUploads[i];
+        u8*                            pDestination = (u8*)pMapped + Prepared.Offset;
+        const u8*                      pSource      = (const u8*)pItems[i].Upload.pData;
+
+        if( ( Prepared.RowPitch == Prepared.SourceRowPitch ) &&
+            ( Prepared.SlicePitch == Prepared.SourceSlicePitch ) )
+        {
+            x_memcpy( pDestination, pSource, Prepared.UploadSize );
+        }
+        else
+        {
+            for( u32 z = 0; z < Prepared.Region.Depth; ++z )
+            {
+                for( u32 y = 0; y < Prepared.RowCount; ++y )
+                {
+                    x_memcpy( pDestination + z * Prepared.SlicePitch + y * Prepared.RowPitch,
+                              pSource + z * Prepared.SourceSlicePitch + y * Prepared.SourceRowPitch,
+                              Prepared.RowBytes );
+                }
+            }
+        }
+    }
+
+    sdleng_UnmapTransferBuffer();
+
+    SDL_GPUCopyPass* pCopyPass = sdleng_GetTransferCopyPass();
+
+    if( !pTransferBuffer || !pCopyPass )
+    {
+        sdleng_CancelTransfer();
         return FALSE;
     }
 
-    x_memcpy( pMapped, Upload.pData, UploadSize );
-    SDL_UnmapGPUTransferBuffer( g_pSDLGPUDevice, pTransferBuffer );
-
-    if( sdleng_InRenderPass() )
+    for( u32 i = 0; i < Count; ++i )
     {
-        x_DebugMsg( "SDLVRAM: texture upload cannot run inside a render pass\n" );
-        SDL_ReleaseGPUTransferBuffer( g_pSDLGPUDevice, pTransferBuffer );
-        return FALSE;
+        SDL_GPUTextureTransferInfo Source;
+        x_memset( &Source, 0, sizeof( Source ) );
+        Source.transfer_buffer = pTransferBuffer;
+        Source.offset          = PreparedUploads[i].Offset;
+
+        const xbool                    bCompressed = sdlvram_IsCompressedFormat( pItems[i].pTexture->Desc.Format );
+        const sdlvram_prepared_upload& Prepared    = PreparedUploads[i];
+
+        if( Prepared.RowPitch != Prepared.RowBytes )
+        {
+            Source.pixels_per_row = bCompressed ? Prepared.RowPitch / sdlvram_GetBlockSize( pItems[i].pTexture->Desc.Format ) * sdlvram_GetBlockWidth( pItems[i].pTexture->Desc.Format ) : Prepared.RowPitch / sdlvram_GetBytesPerPixel( pItems[i].pTexture->Desc.Format );
+        }
+
+        if( Prepared.SlicePitch != Prepared.RowPitch * Prepared.RowCount )
+        {
+            Source.rows_per_layer = Prepared.SlicePitch / Prepared.RowPitch * ( bCompressed ? sdlvram_GetBlockHeight( pItems[i].pTexture->Desc.Format ) : 1 );
+        }
+
+        SDL_GPUTextureRegion Destination;
+        x_memset( &Destination, 0, sizeof( Destination ) );
+        Destination.texture   = pItems[i].pTexture->pBackend->pTexture;
+        Destination.mip_level = PreparedUploads[i].Region.MipLevel;
+        Destination.layer     = PreparedUploads[i].Region.Layer;
+        Destination.x         = PreparedUploads[i].Region.X;
+        Destination.y         = PreparedUploads[i].Region.Y;
+        Destination.z         = PreparedUploads[i].Region.Z;
+        Destination.w         = PreparedUploads[i].Region.Width;
+        Destination.h         = PreparedUploads[i].Region.Height;
+        Destination.d         = PreparedUploads[i].Region.Depth;
+
+        xbool bCycle       = FALSE;
+        xbool bFirstUpload = TRUE;
+
+        for( u32 j = 0; j < Count; ++j )
+        {
+            if( pItems[j].pTexture == pItems[i].pTexture )
+            {
+                bCycle |= pItems[j].Upload.bCycle;
+
+                if( j < i )
+                {
+                    bFirstUpload = FALSE;
+                }
+            }
+        }
+
+        SDL_UploadToGPUTexture( pCopyPass, &Source, &Destination, bFirstUpload && bCycle );
     }
 
-    SDL_GPUCommandBuffer* pCommandBuffer = NULL;
-    xbool bOwnCommandBuffer = FALSE;
-    if( !sdleng_AcquireTransientCommandBuffer( pCommandBuffer,
-                                                bOwnCommandBuffer,
-                                                "SDLVRAM" ) )
+    xbool bGenerateMips = FALSE;
+
+    for( u32 i = 0; i < Count; ++i )
     {
-        SDL_ReleaseGPUTransferBuffer( g_pSDLGPUDevice, pTransferBuffer );
-        return FALSE;
+        if( PreparedUploads[i].bGenerateMips )
+        {
+            bGenerateMips = TRUE;
+            break;
+        }
     }
-
-    SDL_GPUCopyPass* pCopyPass = SDL_BeginGPUCopyPass( pCommandBuffer );
-    if( !pCopyPass )
-    {
-        sdleng_LogError( "SDLVRAM", "SDL_BeginGPUCopyPass" );
-        sdleng_CancelTransientCommandBuffer( pCommandBuffer, bOwnCommandBuffer );
-        SDL_ReleaseGPUTransferBuffer( g_pSDLGPUDevice, pTransferBuffer );
-        return FALSE;
-    }
-
-    SDL_GPUTextureTransferInfo Source;
-    x_memset( &Source, 0, sizeof(Source) );
-    Source.transfer_buffer = pTransferBuffer;
-
-    if( !bCompressed && Upload.RowPitch )
-        Source.pixels_per_row = RowPitch / sdlvram_GetBytesPerPixel( Texture.Desc.Format );
-
-    if( !bCompressed && Upload.SlicePitch && RowPitch )
-        Source.rows_per_layer = SlicePitch / RowPitch;
-
-    SDL_GPUTextureRegion Destination;
-    x_memset( &Destination, 0, sizeof(Destination) );
-    Destination.texture = Texture.pBackend->pTexture;
-    Destination.mip_level = Region.MipLevel;
-    Destination.layer = Region.Layer;
-    Destination.x = Region.X;
-    Destination.y = Region.Y;
-    Destination.z = Region.Z;
-    Destination.w = Region.Width;
-    Destination.h = Region.Height;
-    Destination.d = Region.Depth;
-
-    SDL_UploadToGPUTexture( pCopyPass, &Source, &Destination, Upload.bCycle ? true : false );
-    SDL_EndGPUCopyPass( pCopyPass );
 
     if( bGenerateMips )
-        SDL_GenerateMipmapsForGPUTexture( pCommandBuffer, Texture.pBackend->pTexture );
-
-    if( !sdleng_SubmitTransientCommandBuffer( pCommandBuffer,
-                                               bOwnCommandBuffer,
-                                               "SDLVRAM" ) )
     {
-        SDL_ReleaseGPUTransferBuffer( g_pSDLGPUDevice, pTransferBuffer );
-        return FALSE;
+        sdleng_EndTransferPass();
+
+        for( u32 i = 0; i < Count; ++i )
+        {
+            xbool bAlreadyGenerated = FALSE;
+
+            for( u32 j = 0; j < i; ++j )
+            {
+                if( PreparedUploads[j].bGenerateMips && ( pItems[j].pTexture == pItems[i].pTexture ) )
+                {
+                    bAlreadyGenerated = TRUE;
+                }
+            }
+
+            if( PreparedUploads[i].bGenerateMips && !bAlreadyGenerated )
+            {
+                SDL_GenerateMipmapsForGPUTexture( sdleng_GetTransferCommandBuffer(),
+                                                  pItems[i].pTexture->pBackend->pTexture );
+            }
+        }
     }
 
-    SDL_ReleaseGPUTransferBuffer( g_pSDLGPUDevice, pTransferBuffer );
-    return TRUE;
+    static xprofile_counter TextureUploadRequests =
+        x_GetProfiler().RegisterCounter( "TextureUploadRequests", "RenderCounter" );
+
+    static xprofile_counter TextureUploadBytes =
+        x_GetProfiler().RegisterCounter( "TextureUploadBytes", "RenderCounter" );
+
+    TextureUploadRequests.Add( Count );
+    TextureUploadBytes.Add( UploadBytes );
+
+    return sdleng_CommitTransfer();
 }
 
 //==============================================================================
@@ -573,7 +1039,10 @@ void vram_Kill( void )
 
 xbool vram_CreateTexture( vram_texture& Texture, const vram_texture_desc& Desc )
 {
-    vram_DestroyTexture( Texture );
+    if( Texture.pBackend && ( sdleng_InRenderPass() || sdleng_InComputePass() ) )
+    {
+        return FALSE;
+    }
 
     SDL_GPUTextureType       TextureType;
     SDL_GPUTextureFormat     Format;
@@ -583,17 +1052,18 @@ xbool vram_CreateTexture( vram_texture& Texture, const vram_texture_desc& Desc )
     {
         x_DebugMsg( "SDLVRAM: invalid or unsupported texture descriptor for '%s'\n",
                     Desc.pDebugName ? Desc.pDebugName : "unnamed" );
+
         return FALSE;
     }
 
     SDL_GPUTextureCreateInfo CreateInfo;
-    x_memset( &CreateInfo, 0, sizeof(CreateInfo) );
+    x_memset( &CreateInfo, 0, sizeof( CreateInfo ) );
     CreateInfo.type                 = TextureType;
     CreateInfo.format               = Format;
     CreateInfo.usage                = UsageFlags;
     CreateInfo.width                = Desc.Width;
     CreateInfo.height               = Desc.Height;
-    CreateInfo.layer_count_or_depth = (Desc.Type == VRAM_TEXTURE_TYPE_3D) ? Desc.Depth : Desc.LayerCount;
+    CreateInfo.layer_count_or_depth = ( Desc.Type == VRAM_TEXTURE_TYPE_3D ) ? Desc.Depth : Desc.LayerCount;
     CreateInfo.num_levels           = Desc.MipCount;
     CreateInfo.sample_count         = SampleCount;
 
@@ -605,7 +1075,9 @@ xbool vram_CreateTexture( vram_texture& Texture, const vram_texture_desc& Desc )
     }
 
     if( Desc.pDebugName )
+    {
         SDL_SetGPUTextureName( g_pSDLGPUDevice, pTexture, Desc.pDebugName );
+    }
 
     vram_texture_backend* pBackend = new vram_texture_backend;
     if( !pBackend )
@@ -614,17 +1086,31 @@ xbool vram_CreateTexture( vram_texture& Texture, const vram_texture_desc& Desc )
         return FALSE;
     }
 
-    pBackend->pOwner                  = &Texture;
-    pBackend->pTexture                = pTexture;
-    pBackend->Resource.pBackend       = &pBackend->ResourceBackend;
-    pBackend->ResourceBackend.Kind    = SDLENG_SHADER_RESOURCE_TEXTURE;
-    pBackend->ResourceBackend.pTexture= pTexture;
-    pBackend->ResourceBackend.pBuffer = NULL;
+    vram_texture_backend* pOldBackend       = Texture.pBackend;
+    pBackend->pOwner                        = &Texture;
+    pBackend->pTexture                      = pTexture;
+    pBackend->Resource.pBackend             = &pBackend->ResourceBackend;
+    pBackend->ResourceBackend.Kind          = SDLENG_SHADER_RESOURCE_TEXTURE;
+    pBackend->ResourceBackend.pTexture      = pTexture;
+    pBackend->ResourceBackend.UsageFlags    = UsageFlags;
+    pBackend->ResourceBackend.MipCount      = Desc.MipCount;
+    pBackend->ResourceBackend.LayerCount    = Desc.LayerCount;
+    pBackend->ResourceBackend.pTextureOwner = &Texture;
+    pBackend->ResourceBackend.pBuffer       = NULL;
 
     Texture.Desc     = Desc;
     Texture.pBackend = pBackend;
 
+    if( pOldBackend )
+    {
+        sdleng_ResetShaderBindings();
+        sdleng_UnlinkBackend( s_pTextureList, pOldBackend, s_TextureCount );
+        sdlvram_ReleaseBackend( pOldBackend );
+        delete pOldBackend;
+    }
+
     sdleng_LinkBackend( s_pTextureList, pBackend, s_TextureCount );
+
     return TRUE;
 }
 
@@ -632,39 +1118,49 @@ xbool vram_CreateTexture( vram_texture& Texture, const vram_texture_desc& Desc )
 
 xbool vram_CreateTexture( vram_texture& Texture, const xbitmap& Bitmap, xbool bGenerateMips, const char* pDebugName )
 {
-    vram_texture_format Format = sdlvram_FromBitmapFormat( Bitmap.GetFormat() );
-    if( Format == VRAM_TEXTURE_FORMAT_COUNT )
-        return FALSE;
-
-    if( bGenerateMips && sdlvram_IsCompressedFormat( Format ) )
+    if( Texture.pBackend && ( sdleng_InRenderPass() || sdleng_InComputePass() ) )
     {
-        x_DebugMsg( "SDLVRAM: compressed textures use uploaded mip data, not GPU-generated mipmaps\n" );
-        bGenerateMips = FALSE;
+        return FALSE;
     }
+
+    vram_texture_format Format = sdlvram_FromBitmapFormat( Bitmap );
+    if( Format == VRAM_TEXTURE_FORMAT_COUNT )
+    {
+        return FALSE;
+    }
+
+    bGenerateMips = bGenerateMips && ( Bitmap.GetNMips() == 0 ) && !sdlvram_IsCompressedFormat( Format );
 
     vram_texture_desc Desc;
-    Desc.Type       = VRAM_TEXTURE_TYPE_2D;
-    Desc.Width      = Bitmap.GetWidth();
-    Desc.Height     = Bitmap.GetHeight();
-    Desc.Depth      = 1;
-    Desc.LayerCount = 1;
-    Desc.MipCount   = bGenerateMips ? vram_CalcMipCount( Desc.Width, Desc.Height ) : 1;
-    Desc.Format     = Format;
-    Desc.UsageFlags = VRAM_TEXTURE_USAGE_SAMPLED;
-    Desc.SampleCount= 1;
-    Desc.pDebugName = pDebugName;
+    Desc.Type        = VRAM_TEXTURE_TYPE_2D;
+    Desc.Width       = Bitmap.GetWidth();
+    Desc.Height      = Bitmap.GetHeight();
+    Desc.Depth       = 1;
+    Desc.LayerCount  = 1;
+    Desc.MipCount    = bGenerateMips ? vram_CalcMipCount( Desc.Width, Desc.Height ) : Bitmap.GetNMips() + 1;
+    Desc.Format      = Format;
+    Desc.UsageFlags  = VRAM_TEXTURE_USAGE_SAMPLED;
+    Desc.SampleCount = 1;
+    Desc.pDebugName  = pDebugName;
 
     if( bGenerateMips )
-        Desc.UsageFlags |= VRAM_TEXTURE_USAGE_COLOR_TARGET;
-
-    if( !vram_CreateTexture( Texture, Desc ) )
-        return FALSE;
-
-    if( !vram_UploadTexture( Texture, Bitmap, bGenerateMips ) )
     {
-        vram_DestroyTexture( Texture );
+        Desc.UsageFlags |= VRAM_TEXTURE_USAGE_COLOR_TARGET;
+    }
+
+    vram_texture Replacement;
+    if( !vram_CreateTexture( Replacement, Desc ) )
+    {
         return FALSE;
     }
+
+    if( !vram_UploadTexture( Replacement, Bitmap, bGenerateMips ) )
+    {
+        vram_DestroyTexture( Replacement );
+        return FALSE;
+    }
+
+    sdlvram_AdoptTexture( Texture, Replacement );
 
     return TRUE;
 }
@@ -673,52 +1169,65 @@ xbool vram_CreateTexture( vram_texture& Texture, const xbitmap& Bitmap, xbool bG
 
 xbool vram_CreateTextureCube( vram_texture& Texture, const xbitmap* pFaces, s32 nFaces, xbool bGenerateMips, const char* pDebugName )
 {
-    if( !pFaces || (nFaces != 6) )
-        return FALSE;
-
-    vram_texture_format Format = sdlvram_FromBitmapFormat( pFaces[0].GetFormat() );
-    if( Format == VRAM_TEXTURE_FORMAT_COUNT )
-        return FALSE;
-
-    if( bGenerateMips && sdlvram_IsCompressedFormat( Format ) )
+    if( Texture.pBackend && ( sdleng_InRenderPass() || sdleng_InComputePass() ) )
     {
-        x_DebugMsg( "SDLVRAM: compressed cube textures use uploaded mip data, not GPU-generated mipmaps\n" );
-        bGenerateMips = FALSE;
+        return FALSE;
     }
+
+    if( !pFaces || ( nFaces != 6 ) )
+    {
+        return FALSE;
+    }
+
+    vram_texture_format Format = sdlvram_FromBitmapFormat( pFaces[0] );
+    if( Format == VRAM_TEXTURE_FORMAT_COUNT )
+    {
+        return FALSE;
+    }
+
+    bGenerateMips = bGenerateMips && ( pFaces[0].GetNMips() == 0 ) && !sdlvram_IsCompressedFormat( Format );
 
     for( s32 i = 1; i < nFaces; i++ )
     {
-        if( (pFaces[i].GetWidth()  != pFaces[0].GetWidth()) ||
-            (pFaces[i].GetHeight() != pFaces[0].GetHeight()) ||
-            (pFaces[i].GetFormat() != pFaces[0].GetFormat()) )
+        if( ( pFaces[i].GetWidth() != pFaces[0].GetWidth() ) ||
+            ( pFaces[i].GetHeight() != pFaces[0].GetHeight() ) ||
+            ( sdlvram_FromBitmapFormat( pFaces[i] ) != Format ) ||
+            ( pFaces[i].GetNMips() != pFaces[0].GetNMips() ) )
         {
             return FALSE;
         }
     }
 
     vram_texture_desc Desc;
-    Desc.Type       = VRAM_TEXTURE_TYPE_CUBE;
-    Desc.Width      = pFaces[0].GetWidth();
-    Desc.Height     = pFaces[0].GetHeight();
-    Desc.Depth      = 1;
-    Desc.LayerCount = 6;
-    Desc.MipCount   = bGenerateMips ? vram_CalcMipCount( Desc.Width, Desc.Height ) : 1;
-    Desc.Format     = Format;
-    Desc.UsageFlags = VRAM_TEXTURE_USAGE_SAMPLED;
-    Desc.SampleCount= 1;
-    Desc.pDebugName = pDebugName;
+    Desc.Type        = VRAM_TEXTURE_TYPE_CUBE;
+    Desc.Width       = pFaces[0].GetWidth();
+    Desc.Height      = pFaces[0].GetHeight();
+    Desc.Depth       = 1;
+    Desc.LayerCount  = 6;
+    Desc.MipCount    = bGenerateMips ? vram_CalcMipCount( Desc.Width, Desc.Height ) : pFaces[0].GetNMips() + 1;
+    Desc.Format      = Format;
+    Desc.UsageFlags  = VRAM_TEXTURE_USAGE_SAMPLED;
+    Desc.SampleCount = 1;
+    Desc.pDebugName  = pDebugName;
 
     if( bGenerateMips )
-        Desc.UsageFlags |= VRAM_TEXTURE_USAGE_COLOR_TARGET;
-
-    if( !vram_CreateTexture( Texture, Desc ) )
-        return FALSE;
-
-    if( !vram_UploadTextureCube( Texture, pFaces, nFaces, bGenerateMips ) )
     {
-        vram_DestroyTexture( Texture );
+        Desc.UsageFlags |= VRAM_TEXTURE_USAGE_COLOR_TARGET;
+    }
+
+    vram_texture Replacement;
+    if( !vram_CreateTexture( Replacement, Desc ) )
+    {
         return FALSE;
     }
+
+    if( !vram_UploadTextureCube( Replacement, pFaces, nFaces, bGenerateMips ) )
+    {
+        vram_DestroyTexture( Replacement );
+        return FALSE;
+    }
+
+    sdlvram_AdoptTexture( Texture, Replacement );
 
     return TRUE;
 }
@@ -729,8 +1238,17 @@ void vram_DestroyTexture( vram_texture& Texture )
 {
     vram_texture_backend* pBackend = Texture.pBackend;
     if( !pBackend )
+    {
         return;
+    }
 
+    if( sdleng_InRenderPass() || sdleng_InComputePass() )
+    {
+        ASSERTS( FALSE, "Cannot destroy a texture during an active GPU pass" );
+        return;
+    }
+
+    sdleng_ResetShaderBindings();
     sdleng_UnlinkBackend( s_pTextureList, pBackend, s_TextureCount );
     sdlvram_ReleaseBackend( pBackend );
     delete pBackend;
@@ -745,69 +1263,128 @@ void vram_DestroyTexture( vram_texture& Texture )
 
 xbool vram_UploadTexture( vram_texture& Texture, const vram_texture_upload_desc& Upload )
 {
-    return sdlvram_SubmitUpload( Texture, Upload );
+    vram_texture_upload_batch_item Item;
+    Item.pTexture = &Texture;
+    Item.Upload   = Upload;
+
+    return sdlvram_SubmitUploadBatch( &Item, 1 );
+}
+
+//==============================================================================
+
+xbool vram_UploadTextureBatch( const vram_texture_upload_batch_item* pItems, u32 Count )
+{
+    return sdlvram_SubmitUploadBatch( pItems, Count );
 }
 
 //==============================================================================
 
 xbool vram_UploadTexture( vram_texture& Texture, const xbitmap& Bitmap, xbool bGenerateMips )
 {
-    if( !Texture.pBackend )
+    if( !Texture.pBackend || ( Texture.Desc.Type != VRAM_TEXTURE_TYPE_2D ) ||
+        ( sdlvram_FromBitmapFormat( Bitmap ) != Texture.Desc.Format ) ||
+        ( Bitmap.GetWidth() != (s32)Texture.Desc.Width ) ||
+        ( Bitmap.GetHeight() != (s32)Texture.Desc.Height ) )
+    {
         return FALSE;
-
-    vram_texture_upload_desc Upload;
-    Upload.Region.Width  = Bitmap.GetWidth();
-    Upload.Region.Height = Bitmap.GetHeight();
-    Upload.Region.Depth  = 1;
-    Upload.pData         = Bitmap.GetPixelData();
-    Upload.bGenerateMips = bGenerateMips;
-
-    if( sdlvram_IsCompressedFormat( Texture.Desc.Format ) )
-    {
-        Upload.Size = sdlvram_CalcSlicePitch( Texture.Desc.Format, Bitmap.GetWidth(), Bitmap.GetHeight() );
-    }
-    else
-    {
-        Upload.RowPitch = (Bitmap.GetPWidth() * Bitmap.GetFormatInfo().BPP) / 8;
-        Upload.Size     = Upload.RowPitch * Bitmap.GetHeight();
     }
 
-    return vram_UploadTexture( Texture, Upload );
+    const u32 MipCount = Bitmap.GetNMips() + 1;
+    if( ( MipCount > Texture.Desc.MipCount ) || ( MipCount > SDLENG_MAX_TEXTURE_UPLOAD_BATCH ) )
+    {
+        return FALSE;
+    }
+
+    vram_texture_upload_batch_item Uploads[SDLENG_MAX_TEXTURE_UPLOAD_BATCH];
+    for( u32 i = 0; i < MipCount; ++i )
+    {
+        vram_texture_upload_desc& Upload = Uploads[i].Upload;
+        Uploads[i].pTexture              = &Texture;
+        Upload.Region.MipLevel           = i;
+        Upload.Region.Width              = Bitmap.GetWidth( i );
+        Upload.Region.Height             = Bitmap.GetHeight( i );
+        Upload.Region.Depth              = 1;
+        Upload.pData                     = Bitmap.GetPixelData( i );
+        Upload.bGenerateMips             = bGenerateMips && ( MipCount == 1 );
+
+        if( sdlvram_IsCompressedFormat( Texture.Desc.Format ) )
+        {
+            Upload.Size = sdlvram_CalcSlicePitch( Texture.Desc.Format, Upload.Region.Width, Upload.Region.Height );
+        }
+        else if( !sdlvram_CalcBitmapUploadLayout( Bitmap, i, Upload.RowPitch, Upload.Size ) )
+        {
+            return FALSE;
+        }
+
+        if( Upload.Size > (u32)Bitmap.GetMipDataSize( i ) )
+        {
+            return FALSE;
+        }
+    }
+
+    return vram_UploadTextureBatch( Uploads, MipCount );
 }
 
 //==============================================================================
 
 xbool vram_UploadTextureCube( vram_texture& Texture, const xbitmap* pFaces, s32 nFaces, xbool bGenerateMips )
 {
-    if( !Texture.pBackend || !pFaces || (nFaces != 6) )
-        return FALSE;
-
-    for( s32 i = 0; i < nFaces; i++ )
+    if( !Texture.pBackend || !pFaces || ( nFaces != 6 ) || ( Texture.Desc.Type != VRAM_TEXTURE_TYPE_CUBE ) )
     {
-        vram_texture_upload_desc Upload;
-        Upload.Region.Layer  = i;
-        Upload.Region.Width  = pFaces[i].GetWidth();
-        Upload.Region.Height = pFaces[i].GetHeight();
-        Upload.Region.Depth  = 1;
-        Upload.pData         = pFaces[i].GetPixelData();
-        Upload.bGenerateMips = FALSE;
-
-        if( sdlvram_IsCompressedFormat( Texture.Desc.Format ) )
-        {
-            Upload.Size = sdlvram_CalcSlicePitch( Texture.Desc.Format, pFaces[i].GetWidth(), pFaces[i].GetHeight() );
-        }
-        else
-        {
-            Upload.RowPitch = (pFaces[i].GetPWidth() * pFaces[i].GetFormatInfo().BPP) / 8;
-            Upload.Size     = Upload.RowPitch * pFaces[i].GetHeight();
-        }
-
-        if( !vram_UploadTexture( Texture, Upload ) )
-            return FALSE;
+        return FALSE;
     }
 
-    if( bGenerateMips )
-        return vram_GenerateMipmaps( Texture );
+    const u32 MipCount = pFaces[0].GetNMips() + 1;
+    if( ( MipCount > Texture.Desc.MipCount ) || ( MipCount > SDLENG_MAX_TEXTURE_UPLOAD_BATCH / 6 ) )
+    {
+        return FALSE;
+    }
+
+    vram_texture_upload_batch_item Uploads[SDLENG_MAX_TEXTURE_UPLOAD_BATCH];
+    for( s32 i = 0; i < nFaces; i++ )
+    {
+        if( ( sdlvram_FromBitmapFormat( pFaces[i] ) != Texture.Desc.Format ) ||
+            ( pFaces[i].GetWidth() != (s32)Texture.Desc.Width ) ||
+            ( pFaces[i].GetHeight() != (s32)Texture.Desc.Height ) ||
+            ( pFaces[i].GetNMips() + 1 != (s32)MipCount ) )
+        {
+            return FALSE;
+        }
+
+        for( u32 j = 0; j < MipCount; ++j )
+        {
+            vram_texture_upload_batch_item& Item   = Uploads[i * MipCount + j];
+            vram_texture_upload_desc&       Upload = Item.Upload;
+            Item.pTexture                          = &Texture;
+            Upload.Region.Layer                    = i;
+            Upload.Region.MipLevel                 = j;
+            Upload.Region.Width                    = pFaces[i].GetWidth( j );
+            Upload.Region.Height                   = pFaces[i].GetHeight( j );
+            Upload.Region.Depth                    = 1;
+            Upload.pData                           = pFaces[i].GetPixelData( j );
+
+            if( sdlvram_IsCompressedFormat( Texture.Desc.Format ) )
+            {
+                Upload.Size = sdlvram_CalcSlicePitch( Texture.Desc.Format, Upload.Region.Width, Upload.Region.Height );
+            }
+            else if( !sdlvram_CalcBitmapUploadLayout( pFaces[i], j, Upload.RowPitch, Upload.Size ) )
+            {
+                return FALSE;
+            }
+
+            if( Upload.Size > (u32)pFaces[i].GetMipDataSize( j ) )
+            {
+                return FALSE;
+            }
+        }
+    }
+
+    Uploads[0].Upload.bGenerateMips = bGenerateMips && ( MipCount == 1 );
+
+    if( !vram_UploadTextureBatch( Uploads, 6 * MipCount ) )
+    {
+        return FALSE;
+    }
 
     return TRUE;
 }
@@ -817,10 +1394,19 @@ xbool vram_UploadTextureCube( vram_texture& Texture, const xbitmap* pFaces, s32 
 xbool vram_GenerateMipmaps( vram_texture& Texture )
 {
     if( !g_pSDLGPUDevice || !Texture.pBackend || !Texture.pBackend->pTexture )
+    {
         return FALSE;
+    }
+
+    if( !shader_ValidateResourceAccess( Texture.pBackend->Resource, SHADER_RESOURCE_ACCESS_UPLOAD ) )
+    {
+        return FALSE;
+    }
 
     if( Texture.Desc.MipCount <= 1 )
+    {
         return TRUE;
+    }
 
     if( !sdlvram_CanGenerateMipmaps( Texture.Desc ) )
     {
@@ -828,27 +1414,21 @@ xbool vram_GenerateMipmaps( vram_texture& Texture )
         return FALSE;
     }
 
-    if( sdleng_InRenderPass() )
+    if( sdleng_InRenderPass() || sdleng_InComputePass() )
     {
         x_DebugMsg( "SDLVRAM: mip generation cannot run inside a render pass\n" );
         return FALSE;
     }
 
-    SDL_GPUCommandBuffer* pCommandBuffer = NULL;
-    xbool bOwnCommandBuffer = FALSE;
-    if( !sdleng_AcquireTransientCommandBuffer( pCommandBuffer,
-                                                bOwnCommandBuffer,
-                                                "SDLVRAM" ) )
+    if( !sdleng_BeginTransferCommands( "SDLVRAM" ) )
+    {
         return FALSE;
+    }
 
-    SDL_GenerateMipmapsForGPUTexture( pCommandBuffer, Texture.pBackend->pTexture );
+    SDL_GenerateMipmapsForGPUTexture( sdleng_GetTransferCommandBuffer(),
+                                      Texture.pBackend->pTexture );
 
-    if( !sdleng_SubmitTransientCommandBuffer( pCommandBuffer,
-                                               bOwnCommandBuffer,
-                                               "SDLVRAM" ) )
-        return FALSE;
-
-    return TRUE;
+    return sdleng_FlushTransferCommands();
 }
 
 //==============================================================================
@@ -857,7 +1437,7 @@ xbool vram_GenerateMipmaps( vram_texture& Texture )
 
 xbool vram_IsValid( const vram_texture& Texture )
 {
-    return (Texture.pBackend != NULL) && (Texture.pBackend->pTexture != NULL);
+    return ( Texture.pBackend != NULL ) && ( Texture.pBackend->pTexture != NULL );
 }
 
 //==============================================================================
@@ -872,7 +1452,9 @@ const vram_texture_desc* vram_GetDesc( const vram_texture& Texture )
 const shader_resource* vram_GetShaderResource( const vram_texture& Texture )
 {
     if( !vram_IsValid( Texture ) )
+    {
         return NULL;
+    }
 
     return &Texture.pBackend->Resource;
 }
@@ -922,10 +1504,14 @@ void vram_SanityCheck( void )
 SDL_GPUTexture* sdleng_GetGPUTexture( const shader_resource* pResource )
 {
     if( !pResource || !pResource->pBackend )
+    {
         return NULL;
+    }
 
     if( pResource->pBackend->Kind != SDLENG_SHADER_RESOURCE_TEXTURE )
+    {
         return NULL;
+    }
 
     return pResource->pBackend->pTexture;
 }
@@ -935,10 +1521,14 @@ SDL_GPUTexture* sdleng_GetGPUTexture( const shader_resource* pResource )
 SDL_GPUBuffer* sdleng_GetGPUBuffer( const shader_resource* pResource )
 {
     if( !pResource || !pResource->pBackend )
+    {
         return NULL;
+    }
 
     if( pResource->pBackend->Kind != SDLENG_SHADER_RESOURCE_BUFFER )
+    {
         return NULL;
+    }
 
     return pResource->pBackend->pBuffer;
 }

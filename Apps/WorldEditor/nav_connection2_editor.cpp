@@ -998,8 +998,7 @@ void nav_connection2_editor::Draw_Volume( xcolor aColor )
                                                 render::PRIMITIVE_BLEND_ALPHA,
                                                 render::PRIMITIVE_DEPTH_READ_ONLY,
                                                 render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                render::PRIMITIVE_LAYER_TRANSPARENT );
+                                                render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
     render::PrimitiveBatch Batch( Material );
     render::primitive_vertex Vertices[8];
 

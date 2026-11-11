@@ -9,6 +9,7 @@
 #include "Entropy.hpp"
 #include "dlg_LoadGame.hpp"
 #include "StateMgr/StateMgr.hpp"
+#include "InputMgr/GamePad.hpp"
 
 #include "UI/ui_font.hpp"
 #include "UI/ui_renderer.hpp"
@@ -109,6 +110,7 @@ xbool dlg_load_game::Create( s32                        UserID,
     m_StartTextAnim         = 0.0f;
     m_NameText              = xwstring( "" );
     m_SlideshowState        = STATE_IDLE;
+    m_AllowSkip             = FALSE;
     m_LoadingComplete       = FALSE;
     m_FinalFadeoutStarted   = FALSE;
     m_ElapsedTime           = 0.0f;
@@ -186,9 +188,9 @@ void dlg_load_game::AdvanceSlideshowClock( f32 DeltaTime )
     if( DeltaTime <= 0.0f )
         return;
 
-    if( g_AudioMgr.IsValidVoiceId( m_VoiceID ) )
+    if( g_AudioMgr.IsValidVoiceIdCached( m_VoiceID ) )
     {
-        f32 AudioTime = g_AudioMgr.GetCurrentPlayTime( m_VoiceID );
+        f32 AudioTime = g_AudioMgr.GetCurrentPlayTimeCached( m_VoiceID );
 
         if( AudioTime <= 0.0f )
         {
@@ -466,9 +468,9 @@ void dlg_load_game::OnAccept( ui_win* pWin )
 {
     (void)pWin;
 
-    if( m_SlideshowState == STATE_SLIDESHOW )
+    if( (m_SlideshowState == STATE_SLIDESHOW) && m_AllowSkip )
     {
-        if( g_AudioMgr.IsValidVoiceId( m_VoiceID ) )
+        if( g_AudioMgr.IsValidVoiceIdCached( m_VoiceID ) )
             g_AudioMgr.Release( m_VoiceID, 0.0f );
 
         m_SlideshowState = STATE_LOADING;
@@ -480,7 +482,26 @@ void dlg_load_game::OnAccept( ui_win* pWin )
 
 void dlg_load_game::OnUpdate( ui_win* pWin, f32 DeltaTime )
 {
-    (void)pWin;
+    if( m_SlideshowState == STATE_SLIDESHOW )
+    {
+        xbool AnyHeld = FALSE;
+        xbool SkipPressed = FALSE;
+        for( s32 i = 0; i < frontend_input::MAX_CONTROLLERS; i++ )
+        {
+            const frontend_pad& Pad = g_FrontendInput.GetPad( i );
+            AnyHeld |= (Pad.GetFrameLogical( frontend_pad::UI_SELECT   ).GetIsValue() > 0.25f) ||
+                       (Pad.GetFrameLogical( frontend_pad::UI_BACK     ).GetIsValue() > 0.25f) ||
+                       (Pad.GetFrameLogical( frontend_pad::UI_ACTIVATE ).GetIsValue() > 0.25f);
+            SkipPressed |= (Pad.GetFrameLogical( frontend_pad::UI_SELECT   ).GetWasValue() > 0.25f) ||
+                           (Pad.GetFrameLogical( frontend_pad::UI_BACK     ).GetWasValue() > 0.25f) ||
+                           (Pad.GetFrameLogical( frontend_pad::UI_ACTIVATE ).GetWasValue() > 0.25f);
+        }
+
+        if( m_AllowSkip && SkipPressed )
+            OnAccept( pWin );
+        else if( !AnyHeld )
+            m_AllowSkip = TRUE;
+    }
 
     if( m_SlideshowState == STATE_SLIDESHOW )
     {
@@ -501,7 +522,7 @@ void dlg_load_game::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
         if( m_ElapsedTime > EndTime )
         {
-            if( g_AudioMgr.IsValidVoiceId( m_VoiceID ) )
+            if( g_AudioMgr.IsValidVoiceIdCached( m_VoiceID ) )
                 g_AudioMgr.Release( m_VoiceID, 0.0f );
 
             m_SlideshowState = STATE_LOADING;
@@ -626,6 +647,7 @@ void dlg_load_game::StartSlideshow( void )
     ASSERT( m_SlideshowState == STATE_SETUP );
 
     m_SlideshowState = (m_nSlides > 0) ? STATE_SLIDESHOW : STATE_LOADING;
+    m_AllowSkip = FALSE;
     ResetSlideshowClock();
 }
 

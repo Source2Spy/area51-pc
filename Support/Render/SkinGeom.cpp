@@ -11,18 +11,20 @@
 #include "SkinGeom.hpp"
 #include "GeomFile.hpp"
 #include "ResourceMgr/ResourceMgr.hpp"
+#include "FrameGraph/RenderFailure.hpp"
 
 //=========================================================================
 //  RESOURCE LOADER
 //=========================================================================
 
-static struct skin_geom_loader : public rsc_loader
+static
+struct skin_geom_loader : public rsc_loader
 {
     skin_geom_loader( void ) : rsc_loader( "SKIN GEOM", ".skingeom" )
     {
     }
 
-    //--------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
 
     virtual void* PreLoad( X_FILE* pFile )
     {
@@ -32,21 +34,21 @@ static struct skin_geom_loader : public rsc_loader
         xstring    error;
         if ( !geom_file::LoadSkin( pFile, pGeom, error ) )
         {
-            x_DebugMsg( "SKINGEOM: load failed: %s\n", (char const*)error );
+            RENDER_THROW( "SkinGeom", "load failed: %s", (char const*)error );
             x_throw( (char const*)error );
         }
 
         return ( pGeom );
     }
 
-    //--------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
 
     virtual void* Resolve( void* pData )
     {
         return ( pData );
     }
 
-    //--------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
 
     virtual void Unload( void* pData )
     {

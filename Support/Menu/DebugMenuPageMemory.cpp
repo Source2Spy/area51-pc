@@ -17,20 +17,8 @@
 
 //==============================================================================
 
-extern xbool DISPLAY_SMEM_STATS;
-extern stats g_Stats;
-
-//==============================================================================
-
-debug_menu_page_memory::debug_menu_page_memory( ) : debug_menu_page()
-{
-    m_pTitle = "Memory";
-    m_pItemMemoryDump          = AddItemButton   ( "COMPLETE Memory dump to file" );
-}
-
-//==============================================================================
-
-bool FileExists( const xstring PathName )
+static
+xbool FileExists( const xstring& PathName )
 {
     X_FILE* pFile = x_fopen( PathName, "rb" );
     if( pFile )
@@ -38,6 +26,9 @@ bool FileExists( const xstring PathName )
     return( pFile != NULL );
 }
 
+//==============================================================================
+
+static
 xstring FindNextFileInSequence( const char* pFile, const char* pExtension )
 {
     s32 Index = 0;
@@ -56,14 +47,21 @@ xstring FindNextFileInSequence( const char* pFile, const char* pExtension )
     }
 }
 
+//==============================================================================
+
+debug_menu_page_memory::debug_menu_page_memory( ) : debug_menu_page()
+{
+    m_pTitle = "Memory";
+    m_pItemMemoryDump          = AddItemButton   ( "COMPLETE Memory dump to file" );
+}
+
+//==============================================================================
+
 void debug_menu_page_memory::OnChangeItem( debug_menu_item* pItem )
 {
-    char LevelName[32];
-    x_splitpath( g_ActiveConfig.GetLevelPath(),NULL,NULL,LevelName,NULL);
-
     if( pItem == m_pItemMemoryDump )
     {
-        xstring PathName = FindNextFileInSequence( xfs("c:\\MemoryDump_%s",LevelName), "csv" );
+        xstring PathName = FindNextFileInSequence( xfs("MemoryDump_%d", g_ActiveConfig.GetLevelID()), "csv" );
         x_MemDump( PathName, TRUE );
     }
 }

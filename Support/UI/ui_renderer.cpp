@@ -1,3 +1,4 @@
+#include "a51_shader_catalog.hpp"
 //==============================================================================
 //
 //  ui_renderer.cpp
@@ -7,14 +8,17 @@
 #include "ui_renderer.hpp"
 
 #include "Render/Texture.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 
 #include "e_Engine.hpp"
 #include "e_RenderTarget.hpp"
 #include "x_debug.hpp"
+#include "x_profile.hpp"
+#include "Font/FontMgr.hpp"
 
 #include <stddef.h>
 
-static_assert( sizeof(ui_vertex) == 20, "UI vertex layout must match HLSL" );
+static_assert( sizeof(ui_vertex)             == 20, "UI vertex layout must match HLSL" );
 static_assert( offsetof(ui_vertex, Position) == 0,  "UI position offset must match PSO" );
 static_assert( offsetof(ui_vertex, Color)    == 8,  "UI color offset must match PSO" );
 static_assert( offsetof(ui_vertex, UV)       == 12, "UI UV offset must match PSO" );
@@ -25,86 +29,64 @@ static_assert( offsetof(ui_vertex, UV)       == 12, "UI UV offset must match PSO
 
 ui_renderer g_UIRenderer;
 
-static void UIStage_BeginFrame( void )
-{
-    g_UIRenderer.BeginFrame();
-}
-
-static void UIStage_Prepare( void )
-{
-    g_UIRenderer.Prepare();
-}
-
-static void UIStage_Execute( void )
-{
-    g_UIRenderer.Execute();
-}
-
-static const eng_frame_stage s_UIPrepareStage =
-{
-    UIStage_BeginFrame,
-    UIStage_Prepare,
-    -100
-};
-
-static const eng_frame_stage s_UIExecuteStage =
-{
-    NULL,
-    UIStage_Execute,
-    1000
-};
-
 //==============================================================================
 //  HELPERS
 //==============================================================================
 
-namespace
+static
+u32 ui_PackColor( const xcolor& Color )
 {
-    static u32 ui_PackColor( const xcolor& Color )
-    {
-        return ((u32)Color.A << 24) |
-               ((u32)Color.R << 16) |
-               ((u32)Color.G <<  8) |
-               ((u32)Color.B      );
-    }
+    return ((u32)Color.A << 24) |
+           ((u32)Color.R << 16) |
+           ((u32)Color.G <<  8) |
+           ((u32)Color.B      );
+}
 
-    static s32 ui_NextCapacity( s32 Current, s32 Required )
-    {
-        s32 Capacity = (Current > 0) ? Current : 4096;
-        while( Capacity < Required )
-        {
-            if( Capacity > (0x7fffffff / 2) )
-                return Required;
-            Capacity *= 2;
-        }
-        return Capacity;
-    }
+//==============================================================================
 
-    static rstate_blend_preset ui_GetBlendPreset( ui_blend_mode Blend )
+static
+s32 ui_NextCapacity( s32 Current, s32 Required )
+{
+    s32 Capacity = (Current > 0) ? Current : 4096;
+    while( Capacity < Required )
     {
-        switch( Blend )
-        {
-        case UI_BLEND_OPAQUE:       return RSTATE_BLEND_PRESET_NONE;
-        case UI_BLEND_ALPHA:        return RSTATE_BLEND_PRESET_ALPHA;
-        case UI_BLEND_ADDITIVE:     return RSTATE_BLEND_PRESET_ADD;
-        case UI_BLEND_SUBTRACTIVE:  return RSTATE_BLEND_PRESET_SUB;
-        case UI_BLEND_MULTIPLY:     return RSTATE_BLEND_PRESET_MULTIPLY;
-        case UI_BLEND_INTENSITY:    return RSTATE_BLEND_PRESET_INTENSITY;
-        default:                    return RSTATE_BLEND_PRESET_ALPHA;
-        }
+        if( Capacity > (0x7fffffff / 2) )
+            return Required;
+        Capacity *= 2;
     }
+    return Capacity;
+}
 
-    static rstate_sampler_preset ui_GetSamplerPreset( ui_sampler_mode Sampler )
+//==============================================================================
+
+static
+rstate_blend_preset ui_GetBlendPreset( ui_blend_mode Blend )
+{
+    switch( Blend )
     {
-        switch( Sampler )
-        {
-        case UI_SAMPLER_LINEAR_CLAMP:       return RSTATE_SAMPLER_PRESET_LINEAR_CLAMP;
-        case UI_SAMPLER_LINEAR_CLAMP_ATLAS: return RSTATE_SAMPLER_PRESET_LINEAR_CLAMP;
-        case UI_SAMPLER_LINEAR_WRAP:        return RSTATE_SAMPLER_PRESET_LINEAR_WRAP;
-        case UI_SAMPLER_POINT_CLAMP:        return RSTATE_SAMPLER_PRESET_POINT_CLAMP;
-        case UI_SAMPLER_POINT_WRAP:         return RSTATE_SAMPLER_PRESET_POINT_WRAP;
-        default:                            return RSTATE_SAMPLER_PRESET_LINEAR_CLAMP;
-        }
+    case UI_BLEND_OPAQUE:       return RSTATE_BLEND_PRESET_NONE;
+    case UI_BLEND_ALPHA:        return RSTATE_BLEND_PRESET_ALPHA;
+    case UI_BLEND_ADDITIVE:     return RSTATE_BLEND_PRESET_ADD;
+    case UI_BLEND_SUBTRACTIVE:  return RSTATE_BLEND_PRESET_SUB;
+    case UI_BLEND_MULTIPLY:     return RSTATE_BLEND_PRESET_MULTIPLY;
+    case UI_BLEND_INTENSITY:    return RSTATE_BLEND_PRESET_INTENSITY;
+    default:                    return RSTATE_BLEND_PRESET_ALPHA;
+    }
+}
+
+//==============================================================================
+
+static
+rstate_sampler_preset ui_GetSamplerPreset( ui_sampler_mode Sampler )
+{
+    switch( Sampler )
+    {
+    case UI_SAMPLER_LINEAR_CLAMP:       return RSTATE_SAMPLER_PRESET_LINEAR_CLAMP;
+    case UI_SAMPLER_LINEAR_CLAMP_ATLAS: return RSTATE_SAMPLER_PRESET_LINEAR_CLAMP;
+    case UI_SAMPLER_LINEAR_WRAP:        return RSTATE_SAMPLER_PRESET_LINEAR_WRAP;
+    case UI_SAMPLER_POINT_CLAMP:        return RSTATE_SAMPLER_PRESET_POINT_CLAMP;
+    case UI_SAMPLER_POINT_WRAP:         return RSTATE_SAMPLER_PRESET_POINT_WRAP;
+    default:                            return RSTATE_SAMPLER_PRESET_LINEAR_CLAMP;
     }
 }
 
@@ -125,7 +107,7 @@ ui_viewport::ui_viewport( void ) :
 {
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_viewport::SetOutputSize( s32 Width, s32 Height )
 {
@@ -134,7 +116,7 @@ void ui_viewport::SetOutputSize( s32 Width, s32 Height )
     Recalculate();
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_viewport::SetUserScale( f32 Scale )
 {
@@ -145,7 +127,7 @@ void ui_viewport::SetUserScale( f32 Scale )
     Recalculate();
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_viewport::SetHudUserScale( f32 Scale )
 {
@@ -155,7 +137,7 @@ void ui_viewport::SetHudUserScale( f32 Scale )
     m_HudUserScale = x_clamp( Scale, 0.6f, 1.4f );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_viewport::Recalculate( void )
 {
@@ -186,42 +168,42 @@ void ui_viewport::Recalculate( void )
                          LogicalTop  + LogicalHeight );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 s32 ui_viewport::GetOutputWidth( void ) const
 {
     return m_OutputWidth;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 s32 ui_viewport::GetOutputHeight( void ) const
 {
     return m_OutputHeight;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 ui_viewport::GetScale( void ) const
 {
     return m_Scale;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 ui_viewport::GetUserScale( void ) const
 {
     return m_UserScale;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 ui_viewport::GetHudUserScale( void ) const
 {
     return m_HudUserScale;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 ui_viewport::GetHudScale( const irect& ScreenViewport ) const
 {
@@ -231,14 +213,14 @@ f32 ui_viewport::GetHudScale( const irect& ScreenViewport ) const
     return ((f32)ScreenViewport.GetHeight() / (f32)CONTENT_HEIGHT) * m_HudUserScale;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 rect const& ui_viewport::GetLogicalBounds( void ) const
 {
     return m_LogicalBounds;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 irect ui_viewport::GetLogicalClipBounds( void ) const
 {
@@ -248,14 +230,14 @@ irect ui_viewport::GetLogicalClipBounds( void ) const
                   (s32)x_ceil ( m_LogicalBounds.Max.Y ) );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 vector2 ui_viewport::ScreenDeltaToLogical( vector2 const& Delta ) const
 {
     return Delta / m_Scale;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 irect ui_viewport::LogicalToScreen( irect const& Rect ) const
 {
@@ -272,7 +254,7 @@ irect ui_viewport::LogicalToScreen( irect const& Rect ) const
     return ScreenRect;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 rect ui_viewport::GetHudBounds( const irect& ScreenViewport ) const
 {
@@ -287,7 +269,7 @@ rect ui_viewport::GetHudBounds( const irect& ScreenViewport ) const
     return rect( Left, Top, Left + Width, Top + Height );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 vector2 ui_viewport::ScreenToHud( const vector2& Position,
                                   const irect& ScreenViewport ) const
@@ -301,7 +283,7 @@ vector2 ui_viewport::ScreenToHud( const vector2& Position,
                     HudBounds.Min.Y + (Position.Y - (f32)ScreenViewport.t) / Scale );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 vector2 ui_viewport::HudToScreen( const vector2& Position,
                                   const irect& ScreenViewport ) const
@@ -315,7 +297,7 @@ vector2 ui_viewport::HudToScreen( const vector2& Position,
                     (f32)ScreenViewport.t + (Position.Y - HudBounds.Min.Y) * Scale );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 irect ui_viewport::HudToScreen( const irect& Rect,
                                 const irect& ScreenViewport ) const
@@ -333,8 +315,6 @@ irect ui_viewport::HudToScreen( const irect& Rect,
                   (s32)x_ceil ( BottomRight.Y ) );
 }
 
-//------------------------------------------------------------------------------
-
 //==============================================================================
 //  UI VERTEX / MATERIAL
 //==============================================================================
@@ -346,7 +326,7 @@ ui_vertex::ui_vertex( void ) :
 {
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 ui_vertex::ui_vertex( const vector2& InPosition,
                       const vector2& InUV,
@@ -357,37 +337,40 @@ ui_vertex::ui_vertex( const vector2& InPosition,
 {
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 ui_material::ui_material( void ) :
     Texture (),
     Blend   ( UI_BLEND_ALPHA ),
-    Sampler ( UI_SAMPLER_LINEAR_CLAMP )
+    Sampler ( UI_SAMPLER_LINEAR_CLAMP ),
+    Coverage( FALSE )
 {
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 ui_material::ui_material( const texture& InTexture,
                           ui_blend_mode BlendMode,
                           ui_sampler_mode SamplerMode ) :
     Texture (),
     Blend   ( BlendMode ),
-    Sampler ( SamplerMode )
+    Sampler ( SamplerMode ),
+    Coverage( FALSE )
 {
     const shader_resource* pResource = InTexture.GetShaderResource();
     if( pResource )
         Texture = *pResource;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 ui_material::ui_material( const shader_resource& InTexture,
                           ui_blend_mode BlendMode,
                           ui_sampler_mode SamplerMode ) :
     Texture ( InTexture ),
     Blend   ( BlendMode ),
-    Sampler ( SamplerMode )
+    Sampler ( SamplerMode ),
+    Coverage( FALSE )
 {
 }
 
@@ -405,7 +388,7 @@ ui_draw_list::command::command( void ) :
 {
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 ui_draw_list::coordinate_state::coordinate_state( void ) :
     Space    ( UI_COORDINATE_SPACE_LOGICAL ),
@@ -414,7 +397,7 @@ ui_draw_list::coordinate_state::coordinate_state( void ) :
 {
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 ui_draw_list::ui_draw_list( void ) :
     m_vertices(),
@@ -425,7 +408,7 @@ ui_draw_list::ui_draw_list( void ) :
 {
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_draw_list::BeginFrame( irect const& Bounds )
 {
@@ -448,7 +431,7 @@ void ui_draw_list::BeginFrame( irect const& Bounds )
     }
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_draw_list::Clear( void )
 {
@@ -459,7 +442,9 @@ void ui_draw_list::Clear( void )
     m_CoordinateStack.Clear();
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
+
+//==============================================================================
 
 void ui_draw_list::PushClipRect( const irect& Rect )
 {
@@ -483,7 +468,7 @@ void ui_draw_list::PushClipRect( const irect& Rect )
     m_ClipStack.Append() = Clipped;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_draw_list::PopClipRect( void )
 {
@@ -499,7 +484,7 @@ void ui_draw_list::PopClipRect( void )
         m_ClipStack.Delete( m_ClipStack.GetCount() - 1 );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 const irect& ui_draw_list::GetClipRect( void ) const
 {
@@ -507,7 +492,7 @@ const irect& ui_draw_list::GetClipRect( void ) const
     return m_ClipStack[m_ClipStack.GetCount() - 1];
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_draw_list::PushCoordinateSpace( ui_coordinate_space CoordinateSpace,
                                         const irect& Bounds,
@@ -529,7 +514,7 @@ void ui_draw_list::PushCoordinateSpace( ui_coordinate_space CoordinateSpace,
     State.ClipDepth = m_ClipStack.GetCount();
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_draw_list::PopCoordinateSpace( void )
 {
@@ -548,7 +533,7 @@ void ui_draw_list::PopCoordinateSpace( void )
     m_CoordinateStack.Delete( m_CoordinateStack.GetCount() - 1 );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 ui_coordinate_space ui_draw_list::GetCoordinateSpace( void ) const
 {
@@ -556,7 +541,7 @@ ui_coordinate_space ui_draw_list::GetCoordinateSpace( void ) const
     return m_CoordinateStack[m_CoordinateStack.GetCount() - 1].Space;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 const irect& ui_draw_list::GetCoordinateViewport( void ) const
 {
@@ -564,7 +549,7 @@ const irect& ui_draw_list::GetCoordinateViewport( void ) const
     return m_CoordinateStack[m_CoordinateStack.GetCount() - 1].Viewport;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 s32 ui_draw_list::GetCoordinateClipDepth( void ) const
 {
@@ -572,7 +557,7 @@ s32 ui_draw_list::GetCoordinateClipDepth( void ) const
     return m_CoordinateStack[m_CoordinateStack.GetCount() - 1].ClipDepth;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_draw_list::AreStacksBalanced( void ) const
 {
@@ -586,20 +571,21 @@ xbool ui_draw_list::AreStacksBalanced( void ) const
            (m_CoordinateStack[0].ClipDepth == 1);
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_draw_list::IsSameCommand( const command& A, const command& B ) const
 {
     return (A.Material.Texture.pBackend == B.Material.Texture.pBackend) &&
            (A.Material.Blend    == B.Material.Blend   ) &&
            (A.Material.Sampler  == B.Material.Sampler ) &&
+           (A.Material.Coverage == B.Material.Coverage) &&
            (A.CoordinateSpace   == B.CoordinateSpace  ) &&
            (A.CoordinateViewport == B.CoordinateViewport) &&
            (A.ClipRect          == B.ClipRect         ) &&
            ((A.StartIndex + A.IndexCount) == B.StartIndex);
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_draw_list::AppendCommand( const ui_material& Material,
                                   u32 StartIndex,
@@ -626,7 +612,7 @@ void ui_draw_list::AppendCommand( const ui_material& Material,
     m_Commands.Append() = NewCommand;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_draw_list::AddTriangles( const ui_material& Material,
                                   const ui_vertex*   pVertices,
@@ -634,6 +620,9 @@ xbool ui_draw_list::AddTriangles( const ui_material& Material,
                                   const u32*         pIndices,
                                   s32                IndexCount )
 {
+    if( render::GetActiveRenderScopeDesc().Purpose == render::RENDER_VIEW_SCENE_CAPTURE )
+        return TRUE;
+
     if( !pVertices || !pIndices || (VertexCount <= 0) || (IndexCount <= 0) )
         return FALSE;
 
@@ -674,7 +663,7 @@ xbool ui_draw_list::AddTriangles( const ui_material& Material,
     return TRUE;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_draw_list::AddImage( const ui_material& Material,
                               const vector2&     Position,
@@ -723,7 +712,7 @@ xbool ui_draw_list::AddImage( const ui_material& Material,
     return AddTriangles( Material, Vertices, 4, Indices, 6 );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_draw_list::AddRect( const irect& Rect,
                              const xcolor& Color,
@@ -732,7 +721,7 @@ xbool ui_draw_list::AddRect( const irect& Rect,
     return AddGradientRect( Rect, Color, Color, Color, Color, Blend );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_draw_list::AddGradientRect( const irect& Rect,
                                      const xcolor& TopLeft,
@@ -755,7 +744,47 @@ xbool ui_draw_list::AddGradientRect( const irect& Rect,
     return AddTriangles( Material, Vertices, 4, Indices, 6 );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
+
+xbool ui_draw_list::AddRectOutline( const rect& Rect,
+                                    f32 Width,
+                                    const xcolor& TopLeft,
+                                    const xcolor& TopRight,
+                                    const xcolor& BottomRight,
+                                    const xcolor& BottomLeft,
+                                    ui_blend_mode Blend )
+{
+    if( (Rect.GetWidth() <= 0.0f) || (Rect.GetHeight() <= 0.0f) || (Width <= 0.0f) )
+        return TRUE;
+
+    const ui_vertex Vertices[8] =
+    {
+        ui_vertex( vector2( Rect.Min.X,         Rect.Min.Y         ), vector2( 0.0f, 0.0f ), TopLeft     ),
+        ui_vertex( vector2( Rect.Max.X,         Rect.Min.Y         ), vector2( 1.0f, 0.0f ), TopRight    ),
+        ui_vertex( vector2( Rect.Max.X,         Rect.Max.Y         ), vector2( 1.0f, 1.0f ), BottomRight ),
+        ui_vertex( vector2( Rect.Min.X,         Rect.Max.Y         ), vector2( 0.0f, 1.0f ), BottomLeft  ),
+        ui_vertex( vector2( Rect.Min.X + Width, Rect.Min.Y + Width ), vector2( 0.0f, 0.0f ), TopLeft     ),
+        ui_vertex( vector2( Rect.Max.X - Width, Rect.Min.Y + Width ), vector2( 1.0f, 0.0f ), TopRight    ),
+        ui_vertex( vector2( Rect.Max.X - Width, Rect.Max.Y - Width ), vector2( 1.0f, 1.0f ), BottomRight ),
+        ui_vertex( vector2( Rect.Min.X + Width, Rect.Max.Y - Width ), vector2( 0.0f, 1.0f ), BottomLeft  )
+    };
+
+    static const u32 OutlineIndices[24] =
+    {
+        0, 1, 5, 5, 4, 0,
+        1, 2, 6, 6, 5, 1,
+        2, 3, 7, 7, 6, 2,
+        3, 0, 4, 4, 7, 3
+    };
+    static const u32 FillIndices[6] = { 0, 1, 2, 2, 3, 0 };
+    const xbool Filled = (Rect.GetWidth() <= Width * 2.0f) || (Rect.GetHeight() <= Width * 2.0f);
+    ui_material Material;
+    Material.Blend = Blend;
+    return AddTriangles( Material, Vertices, Filled ? 4 : 8,
+                         Filled ? FillIndices : OutlineIndices, Filled ? 6 : 24 );
+}
+
+//==============================================================================
 
 xbool ui_draw_list::AddLine( const vector2& Start,
                              const vector2& End,
@@ -785,7 +814,7 @@ xbool ui_draw_list::AddLine( const vector2& Start,
     return AddTriangles( Material, Vertices, 4, Indices, 6 );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_draw_list::AddPoint( const vector2& Position,
                               const xcolor& Color,
@@ -800,7 +829,7 @@ xbool ui_draw_list::AddPoint( const vector2& Position,
     return AddRect( Rect, Color, Blend );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 s32 ui_draw_list::GetVertexCount( void ) const { return m_vertices.GetCount(); }
 s32 ui_draw_list::GetIndexCount ( void ) const { return m_indices.GetCount();  }
@@ -822,17 +851,17 @@ ui_renderer::ui_renderer( void ) :
     m_vertexShader        (),
     m_pixelShader         (),
     m_DrawUniformSlot     ( 0xffffffffu ),
+    m_PixelDrawUniformSlot( 0xffffffffu ),
     m_textureSlot         ( 0xffffffffu ),
     m_whiteTexture        (),
     m_pipelines           (),
     m_prewarmedFormat     ( RTARGET_FORMAT_COUNT ),
     m_bPrepared           ( FALSE ),
-    m_bStagesRegistered   ( FALSE ),
     m_isInitialized        ( FALSE )
 {
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_renderer::Init( void )
 {
@@ -841,32 +870,21 @@ xbool ui_renderer::Init( void )
 
     if( !LoadShaders() ||
         !CreateSamplers() ||
-        !CreateWhiteTexture() ||
-        !PrewarmPipelines() )
+        !CreateWhiteTexture() )
     {
         Kill();
-        x_DebugMsg( "UIRenderer: failed to initialize\n" );
+        RENDER_THROW( "UIRenderer", "initialization failed" );
         return FALSE;
     }
 
-    eng_RegisterFrameStage( s_UIPrepareStage );
-    eng_RegisterFrameStage( s_UIExecuteStage );
-    m_bStagesRegistered = TRUE;
     m_isInitialized = TRUE;
     return TRUE;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_renderer::Kill( void )
 {
-    if( m_bStagesRegistered )
-    {
-        eng_UnregisterFrameStage( s_UIExecuteStage );
-        eng_UnregisterFrameStage( s_UIPrepareStage );
-        m_bStagesRegistered = FALSE;
-    }
-
     m_DrawList.Clear();
     DestroyBuffers();
     DestroyPipelines();
@@ -879,6 +897,7 @@ void ui_renderer::Kill( void )
     shader_Destroy( m_vertexShader );
 
     m_DrawUniformSlot  = 0xffffffffu;
+    m_PixelDrawUniformSlot = 0xffffffffu;
     m_textureSlot      = 0xffffffffu;
     m_PreparedVertices = 0;
     m_PreparedIndices  = 0;
@@ -886,14 +905,14 @@ void ui_renderer::Kill( void )
     m_isInitialized     = FALSE;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_renderer::IsInitialized( void ) const
 {
     return m_isInitialized;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_renderer::RefreshViewport( void )
 {
@@ -903,63 +922,63 @@ void ui_renderer::RefreshViewport( void )
     m_Viewport.SetOutputSize( Width, Height );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_renderer::SetUserScale( f32 Scale )
 {
     m_Viewport.SetUserScale( Scale );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_renderer::SetHudUserScale( f32 Scale )
 {
     m_Viewport.SetHudUserScale( Scale );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 ui_viewport const& ui_renderer::GetViewport( void ) const
 {
     return m_Viewport;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 ui_draw_list& ui_renderer::GetDrawList( void )
 {
     return m_DrawList;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_renderer::PushClipRect( const irect& Rect )
 {
     m_DrawList.PushClipRect( Rect );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_renderer::PopClipRect( void )
 {
     m_DrawList.PopClipRect();
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_renderer::PushScreenSpace( const irect& Bounds )
 {
     m_DrawList.PushCoordinateSpace( UI_COORDINATE_SPACE_SCREEN, Bounds, Bounds );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_renderer::PopScreenSpace( void )
 {
     m_DrawList.PopCoordinateSpace();
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_renderer::PushHudSpace( const irect& ScreenViewport )
 {
@@ -983,14 +1002,14 @@ void ui_renderer::PushHudSpace( const irect& ScreenViewport )
     m_DrawList.PushCoordinateSpace( UI_COORDINATE_SPACE_HUD, HudClip, ScreenViewport );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_renderer::PopHudSpace( void )
 {
     m_DrawList.PopCoordinateSpace();
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_renderer::DrawImage( const texture& Texture,
                               const vector2& Position,
@@ -1006,7 +1025,7 @@ xbool ui_renderer::DrawImage( const texture& Texture,
                                 Position, Size, UV0, UV1, Color, Rotation );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_renderer::DrawImage( const shader_resource& Texture,
                               const vector2& Position,
@@ -1022,7 +1041,7 @@ xbool ui_renderer::DrawImage( const shader_resource& Texture,
                                 Position, Size, UV0, UV1, Color, Rotation );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_renderer::DrawRect( const irect& Rect,
                              const xcolor& Color,
@@ -1032,17 +1051,10 @@ xbool ui_renderer::DrawRect( const irect& Rect,
     if( !Wire )
         return m_DrawList.AddRect( Rect, Color, Blend );
 
-    const vector2 TopLeft    ( (f32)Rect.l, (f32)Rect.t );
-    const vector2 TopRight   ( (f32)Rect.r, (f32)Rect.t );
-    const vector2 BottomRight( (f32)Rect.r, (f32)Rect.b );
-    const vector2 BottomLeft ( (f32)Rect.l, (f32)Rect.b );
-    return m_DrawList.AddLine( TopLeft,     TopRight,    Color, 1.0f, Blend ) &&
-           m_DrawList.AddLine( TopRight,    BottomRight, Color, 1.0f, Blend ) &&
-           m_DrawList.AddLine( BottomRight, BottomLeft,  Color, 1.0f, Blend ) &&
-           m_DrawList.AddLine( BottomLeft,  TopLeft,     Color, 1.0f, Blend );
+    return DrawRectOutline( Rect, Color, Color, Color, Color, Blend );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_renderer::DrawRect( const rect& Rect,
                              const xcolor& Color,
@@ -1058,7 +1070,7 @@ xbool ui_renderer::DrawRect( const rect& Rect,
                      Blend );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_renderer::DrawGradientRect( const irect& Rect,
                                      const xcolor& TopLeft,
@@ -1071,17 +1083,45 @@ xbool ui_renderer::DrawGradientRect( const irect& Rect,
     if( !Wire )
         return m_DrawList.AddGradientRect( Rect, TopLeft, TopRight, BottomRight, BottomLeft, Blend );
 
-    const vector2 P0( (f32)Rect.l, (f32)Rect.t );
-    const vector2 P1( (f32)Rect.r, (f32)Rect.t );
-    const vector2 P2( (f32)Rect.r, (f32)Rect.b );
-    const vector2 P3( (f32)Rect.l, (f32)Rect.b );
-    return m_DrawList.AddLine( P0, P1, TopLeft,     1.0f, Blend ) &&
-           m_DrawList.AddLine( P1, P2, TopRight,    1.0f, Blend ) &&
-           m_DrawList.AddLine( P2, P3, BottomRight, 1.0f, Blend ) &&
-           m_DrawList.AddLine( P3, P0, BottomLeft,  1.0f, Blend );
+    return DrawRectOutline( Rect, TopLeft, TopRight, BottomRight, BottomLeft, Blend );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
+
+xbool ui_renderer::DrawRectOutline( const irect& Rect,
+                                    const xcolor& TopLeft,
+                                    const xcolor& TopRight,
+                                    const xcolor& BottomRight,
+                                    const xcolor& BottomLeft,
+                                    ui_blend_mode Blend )
+{
+    if( (Rect.GetWidth() <= 0) || (Rect.GetHeight() <= 0) )
+        return TRUE;
+
+    f32 Scale = 1.0f;
+    vector2 Origin( 0.0f, 0.0f );
+    if( m_DrawList.GetCoordinateSpace() == UI_COORDINATE_SPACE_LOGICAL )
+    {
+        Scale = m_Viewport.GetScale();
+        Origin = m_Viewport.GetLogicalBounds().Min;
+    }
+    else if( m_DrawList.GetCoordinateSpace() == UI_COORDINATE_SPACE_HUD )
+    {
+        const irect& Viewport = m_DrawList.GetCoordinateViewport();
+        Scale = m_Viewport.GetHudScale( Viewport );
+        Origin = m_Viewport.GetHudBounds(Viewport).Min - vector2((f32)Viewport.l, (f32)Viewport.t) / Scale;
+    }
+
+    rect Aligned;
+    Aligned.Set( Origin.X + x_floor(((f32)Rect.l - Origin.X) * Scale + 0.5f) / Scale,
+                 Origin.Y + x_floor(((f32)Rect.t - Origin.Y) * Scale + 0.5f) / Scale,
+                 Origin.X + x_floor(((f32)Rect.r - Origin.X) * Scale + 0.5f) / Scale,
+                 Origin.Y + x_floor(((f32)Rect.b - Origin.Y) * Scale + 0.5f) / Scale );
+    const f32 Width = MAX( 1.0f, x_floor(Scale + 0.5f) ) / Scale;
+    return m_DrawList.AddRectOutline( Aligned, Width, TopLeft, TopRight, BottomRight, BottomLeft, Blend );
+}
+
+//==============================================================================
 
 xbool ui_renderer::DrawLine( const vector2& Start,
                               const vector2& End,
@@ -1092,7 +1132,7 @@ xbool ui_renderer::DrawLine( const vector2& Start,
     return m_DrawList.AddLine( Start, End, Color, Width, Blend );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_renderer::DrawPoint( const vector2& Position,
                               const xcolor& Color,
@@ -1102,16 +1142,12 @@ xbool ui_renderer::DrawPoint( const vector2& Position,
     return m_DrawList.AddPoint( Position, Color, Size, Blend );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_renderer::BeginFrame( void )
 {
     if( !m_isInitialized )
         return;
-
-    const rtarget* pBackBuffer = rtarget_GetBackBuffer();
-    if( pBackBuffer && (m_prewarmedFormat != pBackBuffer->Desc.Format) )
-        PrewarmPipelines();
 
     ASSERTS( !m_bPrepared, "Prepared UI data survived the previous frame" );
     RefreshViewport();
@@ -1121,73 +1157,112 @@ void ui_renderer::BeginFrame( void )
     m_bPrepared = FALSE;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
-void ui_renderer::Prepare( void )
+xbool ui_renderer::Prepare( void )
 {
-    if( !m_isInitialized || (m_DrawList.GetCommandCount() == 0) )
-        return;
+    X_PROFILE_SCOPE_CATEGORY( "UI", "UI/Prepare" );
+
+    if( !m_isInitialized )
+        return TRUE;
+
+    if( !g_FontMgr.Prepare() )
+    {
+        RENDER_THROW( "UIRenderer", "font atlas upload failed" );
+        return FALSE;
+    }
 
     ASSERTS( m_DrawList.AreStacksBalanced(),
              "UI coordinate or clip stack is unbalanced at prepare" );
+    if ( !m_DrawList.AreStacksBalanced() )
+    {
+        RENDER_THROW( "UIRenderer", "coordinate or clip stack is unbalanced" );
+        return FALSE;
+    }
+
+    if( m_DrawList.GetCommandCount() == 0 )
+        return TRUE;
 
     const s32 VertexCount = m_DrawList.GetVertexCount();
     const s32 IndexCount  = m_DrawList.GetIndexCount();
     if( (VertexCount <= 0) || (IndexCount <= 0) )
-        return;
-
-    rtarget_EndPass();
+    {
+        RENDER_THROW( "UIRenderer", "UI command list has no drawable geometry" );
+        return FALSE;
+    }
 
     if( !EnsureBufferCapacity( VertexCount, IndexCount ) )
-        return;
+    {
+        RENDER_THROW( "UIRenderer", "failed to allocate frame submission buffers" );
+        return FALSE;
+    }
 
     const u32 VertexBytes = (u32)VertexCount * (u32)sizeof(ui_vertex);
     const u32 IndexBytes  = (u32)IndexCount  * (u32)sizeof(u32);
 
-    if( !rbuffer_Upload( m_vertexBuffer,
-                         m_DrawList.m_vertices.GetPtr(),
-                         VertexBytes,
-                         0,
-                         TRUE ) ||
-        !rbuffer_Upload( m_indexBuffer,
-                         m_DrawList.m_indices.GetPtr(),
-                         IndexBytes,
-                         0,
-                         TRUE ) )
+    rbuffer_upload_batch_item Uploads[2];
+    Uploads[0].pBuffer       = &m_vertexBuffer;
+    Uploads[0].Upload.pData  = m_DrawList.m_vertices.GetPtr();
+    Uploads[0].Upload.Size   = VertexBytes;
+    Uploads[0].Upload.bCycle = TRUE;
+    Uploads[1].pBuffer       = &m_indexBuffer;
+    Uploads[1].Upload.pData  = m_DrawList.m_indices.GetPtr();
+    Uploads[1].Upload.Size   = IndexBytes;
+    Uploads[1].Upload.bCycle = TRUE;
+    if( !rbuffer_UploadBatch( Uploads, ARRAYSIZE( Uploads ) ) )
     {
-        return;
+        RENDER_THROW( "UIRenderer", "failed to upload frame submission" );
+        return FALSE;
     }
 
     m_PreparedVertices = VertexCount;
     m_PreparedIndices  = IndexCount;
     m_bPrepared        = TRUE;
+    return TRUE;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
-void ui_renderer::Execute( void )
+xbool ui_renderer::HasPendingCommands( void ) const
+{
+    return m_DrawList.GetCommandCount() > 0;
+}
+
+//==============================================================================
+
+xbool ui_renderer::DeclarePass( render::FrameGraphBuilder& Graph, render::RenderFrameContext const& Frame )
 {
     if( !m_isInitialized || !m_bPrepared )
-        return;
+        return TRUE;
+    render::RenderPassDesc desc;
+    desc.pDebugName = "UI";
+    desc.Color = Frame.FinalColor;
+    desc.ColorLoadOp = RTARGET_LOAD_LOAD;
+    render::RenderPassId const pass = Graph.AddPass( desc, ExecuteGraphPassThunk, this );
+    m_bPrepared = FALSE;
+    return pass != render::INVALID_RENDER_PASS;
+}
 
-    const xbool bOwnsBackBufferPass = !rtarget_IsBackBufferPassActive();
-    if( !rtarget_IsBackBufferPassActive() )
+//==============================================================================
+
+xbool ui_renderer::ExecuteGraphPassThunk( render::RenderPassContext& Context, ui_renderer* pRenderer )
+{
+    if ( !pRenderer )
     {
-        rtarget_EndPass();
-
-        // No earlier stage produced the backbuffer this frame, so UI owns its
-        // initial contents instead of inheriting an old swapchain image.
-        rtarget_backbuffer_pass_desc PassDesc;
-        PassDesc.bUseDepth   = FALSE;
-        PassDesc.ColorLoadOp = RTARGET_LOAD_CLEAR;
-        if( !rtarget_BeginBackBufferPass( PassDesc ) )
-        {
-            m_bPrepared = FALSE;
-            return;
-        }
+        RENDER_THROW( "UIRenderer", "UI pass received a null payload" );
+        return FALSE;
     }
+    return pRenderer->ExecuteGraphPass( Context );
+}
 
-    const rtarget* pBackBuffer = rtarget_GetBackBuffer();
+//=============================================================================
+
+xbool ui_renderer::ExecuteGraphPass( render::RenderPassContext& Context )
+{
+    X_PROFILE_SCOPE_CATEGORY( "UI", "UI/ExecuteGraphPass" );
+
+    const rtarget* pBackBuffer = Context.Write( Context.GetFrame().FinalColor );
+
     if( !pBackBuffer ||
         (m_Viewport.GetOutputWidth() <= 0) ||
         (m_Viewport.GetOutputHeight() <= 0) ||
@@ -1195,14 +1270,26 @@ void ui_renderer::Execute( void )
         !rbuffer_BindIndex( m_indexBuffer, RBUFFER_INDEX_FORMAT_U32 ) )
     {
         m_bPrepared = FALSE;
-        if( bOwnsBackBufferPass )
-            rtarget_EndPass();
-        return;
+        RENDER_THROW( "UIRenderer", "UI pass target, viewport, or buffers are unavailable" );
+        return FALSE;
+    }
+
+    if( !PrewarmPipelinesForFormat( pBackBuffer->Desc.Format ) )
+    {
+        RENDER_THROW( "UIRenderer", "failed to prewarm UI pipelines for format=%d",
+                      pBackBuffer->Desc.Format );
+        return FALSE;
     }
 
     ui_coordinate_space ActiveCoordinateSpace = UI_COORDINATE_SPACE_COUNT;
     irect ActiveCoordinateViewport;
     ActiveCoordinateViewport.Clear();
+    ui_blend_mode ActiveBlend = UI_BLEND_COUNT;
+    s32 ActiveCoverage = -1;
+    const shader_resource* pActiveTexture = NULL;
+    const rstate_sampler* pActiveSampler = NULL;
+    xbool bHaveScissor = FALSE;
+    rdraw_scissor ActiveScissor;
 
     for( s32 i = 0; i < m_DrawList.m_Commands.GetCount(); i++ )
     {
@@ -1210,13 +1297,17 @@ void ui_renderer::Execute( void )
         if( (Command.IndexCount == 0) ||
             (Command.StartIndex + Command.IndexCount > (u32)m_PreparedIndices) )
         {
-            continue;
+            RENDER_THROW( "UIRenderer", "invalid draw command index=%d start=%u count=%u prepared=%d",
+                          i, Command.StartIndex, Command.IndexCount, m_PreparedIndices );
+            return FALSE;
         }
 
         if( (Command.CoordinateSpace != ActiveCoordinateSpace) ||
-            (Command.CoordinateViewport != ActiveCoordinateViewport) )
+            (Command.CoordinateViewport != ActiveCoordinateViewport) ||
+            ((s32)Command.Material.Coverage != ActiveCoverage) )
         {
-            DrawConstants Constants;
+            UIDrawConstants Constants = {};
+            Constants.Coverage = Command.Material.Coverage ? 1 : 0;
             if( Command.CoordinateSpace == UI_COORDINATE_SPACE_HUD )
             {
                 const irect& ScreenViewport = Command.CoordinateViewport;
@@ -1246,11 +1337,14 @@ void ui_renderer::Execute( void )
             if( !shader_PushUniformData( SHADER_STAGE_VERTEX,
                                          m_DrawUniformSlot,
                                          &Constants,
-                                         sizeof(Constants) ) )
+                                         sizeof(Constants) ) ||
+                !shader_PushUniformData( SHADER_STAGE_PIXEL, m_PixelDrawUniformSlot, &Constants, sizeof(Constants) ) )
             {
-                continue;
+                RENDER_THROW( "UIRenderer", "failed to upload draw constants command=%d", i );
+                return FALSE;
             }
 
+            ActiveCoverage = Command.Material.Coverage;
             ActiveCoordinateSpace = Command.CoordinateSpace;
             ActiveCoordinateViewport = Command.CoordinateViewport;
         }
@@ -1280,30 +1374,58 @@ void ui_renderer::Execute( void )
         if( (Clip.r <= Clip.l) || (Clip.b <= Clip.t) )
             continue;
 
-        if( !BindPipeline( pBackBuffer->Desc.Format, Command.Material.Blend ) )
-            continue;
+        if( Command.Material.Blend != ActiveBlend )
+        {
+            if( !BindPipeline( pBackBuffer->Desc.Format, Command.Material.Blend ) )
+            {
+                RENDER_THROW( "UIRenderer", "failed to bind pipeline command=%d format=%d blend=%d", i,
+                              pBackBuffer->Desc.Format, Command.Material.Blend );
+                return FALSE;
+            }
+            pActiveTexture = NULL;
+            pActiveSampler = NULL;
+        }
+        ActiveBlend = Command.Material.Blend;
 
         const shader_resource* pTexture = &Command.Material.Texture;
         if( !*pTexture )
             pTexture = vram_GetShaderResource( m_whiteTexture );
 
         const rstate_sampler* pSampler = GetSampler( Command.Material.Sampler );
-        if( !pTexture || !pSampler ||
+        if( !pTexture || !pSampler )
+        {
+            RENDER_THROW( "UIRenderer", "failed to bind texture command=%d", i );
+            return FALSE;
+        }
+        if( ( !pActiveTexture || ( pActiveTexture->pBackend != pTexture->pBackend ) ||
+              ( pActiveSampler != pSampler ) ) &&
             !shader_BindSampler( shader_sampler_binding( SHADER_STAGE_PIXEL,
                                                          m_textureSlot,
                                                          pTexture,
                                                          pSampler ) ) )
         {
-            continue;
+            RENDER_THROW( "UIRenderer", "failed to bind texture command=%d", i );
+            return FALSE;
         }
+        pActiveTexture = pTexture;
+        pActiveSampler = pSampler;
 
         rdraw_scissor Scissor;
         Scissor.X      = Clip.l;
         Scissor.Y      = Clip.t;
         Scissor.Width  = Clip.r - Clip.l;
         Scissor.Height = Clip.b - Clip.t;
-        if( !rdraw_SetScissor( Scissor ) )
-            continue;
+        if( !bHaveScissor || ( Scissor.X != ActiveScissor.X ) || ( Scissor.Y != ActiveScissor.Y ) ||
+            ( Scissor.Width != ActiveScissor.Width ) || ( Scissor.Height != ActiveScissor.Height ) )
+        {
+            if( !rdraw_SetScissor( Scissor ) )
+            {
+                RENDER_THROW( "UIRenderer", "failed to set scissor command=%d", i );
+                return FALSE;
+            }
+            ActiveScissor = Scissor;
+            bHaveScissor = TRUE;
+        }
 
         rdraw_DrawIndexed( (s32)Command.IndexCount, (s32)Command.StartIndex, 0 );
     }
@@ -1313,36 +1435,36 @@ void ui_renderer::Execute( void )
     FullScissor.Y      = 0;
     FullScissor.Width  = (s32)pBackBuffer->Desc.Width;
     FullScissor.Height = (s32)pBackBuffer->Desc.Height;
-    rdraw_SetScissor( FullScissor );
+    if ( !rdraw_SetScissor( FullScissor ) )
+    {
+        RENDER_THROW( "UIRenderer", "failed to restore full scissor" );
+        return FALSE;
+    }
 
     m_bPrepared = FALSE;
-    if( bOwnsBackBufferPass )
-        rtarget_EndPass();
+    return TRUE;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_renderer::LoadShaders( void )
 {
-    shader_LoadFromEcs( m_vertexShader, "ui_vs.vs.ecs" );
-    shader_LoadFromEcs( m_pixelShader,  "ui_ps.ps.ecs" );
+    shader_LoadComboStage( m_vertexShader, A51FixedPrograms[A51FixedProgram_ui].PackageFile, SHADER_COMBO_FIXED, A51FixedPrograms[A51FixedProgram_ui].Key, SHADER_STAGE_VERTEX );
+    shader_LoadComboStage( m_pixelShader, A51FixedPrograms[A51FixedProgram_ui].PackageFile, SHADER_COMBO_FIXED, A51FixedPrograms[A51FixedProgram_ui].Key, SHADER_STAGE_PIXEL );
 
     if( !m_vertexShader || !m_pixelShader )
         return FALSE;
 
-    if( !shader_FindUniformSlot( m_vertexShader,
-                                 "cbUIDraw",
-                                 m_DrawUniformSlot ) )
+    if( !shader_GetResourceSlot( m_vertexShader, A51Resource_cbUIDraw, m_DrawUniformSlot ) )
     {
         return FALSE;
     }
 
-    return shader_FindSampledTextureSlot( m_pixelShader,
-                                          "txUI",
-                                          m_textureSlot );
+    return shader_GetResourceSlot( m_pixelShader, A51Resource_cbUIDraw, m_PixelDrawUniformSlot ) &&
+           shader_GetResourceSlot( m_pixelShader, A51Resource_txUI, m_textureSlot );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_renderer::CreateSamplers( void )
 {
@@ -1370,7 +1492,7 @@ xbool ui_renderer::CreateSamplers( void )
     return TRUE;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_renderer::CreateWhiteTexture( void )
 {
@@ -1396,7 +1518,7 @@ xbool ui_renderer::CreateWhiteTexture( void )
     return vram_UploadTexture( m_whiteTexture, Upload );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_renderer::DestroyPipelines( void )
 {
@@ -1404,34 +1526,33 @@ void ui_renderer::DestroyPipelines( void )
     m_prewarmedFormat = RTARGET_FORMAT_COUNT;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
-xbool ui_renderer::PrewarmPipelines( void )
+xbool ui_renderer::PrewarmPipelinesForFormat( rtarget_format Format )
 {
-    const rtarget* pBackBuffer = rtarget_GetBackBuffer();
-    if( !pBackBuffer )
-    {
-        x_DebugMsg( "UIRenderer: backbuffer is unavailable during pipeline prewarm\n" );
+    if( Format == RTARGET_FORMAT_COUNT )
+        return FALSE;
+
+    if( m_prewarmedFormat == Format )
         return TRUE;
-    }
 
     for( s32 Blend = 0; Blend < UI_BLEND_COUNT; ++Blend )
     {
-        if( !GetOrCreatePipeline( pBackBuffer->Desc.Format,
+        if( !GetOrCreatePipeline( Format,
                                   (ui_blend_mode)Blend,
                                   TRUE ) )
             return FALSE;
     }
 
-    m_prewarmedFormat = pBackBuffer->Desc.Format;
+    m_prewarmedFormat = Format;
 
-    x_DebugMsg( "UIRenderer: prewarmed %d graphics pipeline variants for backbuffer format %d\n",
+    x_DebugMsg( "UIRenderer: prewarmed %d graphics pipeline variants for format %d\n",
                 UI_BLEND_COUNT,
-                pBackBuffer->Desc.Format );
+                Format );
     return TRUE;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void ui_renderer::DestroyBuffers( void )
 {
@@ -1443,7 +1564,7 @@ void ui_renderer::DestroyBuffers( void )
     m_PreparedIndices  = 0;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_renderer::EnsureBufferCapacity( s32 VertexCount, s32 IndexCount )
 {
@@ -1454,7 +1575,7 @@ xbool ui_renderer::EnsureBufferCapacity( s32 VertexCount, s32 IndexCount )
                           ui_NextCapacity( m_IndexCapacity,  IndexCount  ) );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_renderer::CreateBuffers( s32 VertexCapacity, s32 IndexCapacity )
 {
@@ -1491,7 +1612,7 @@ xbool ui_renderer::CreateBuffers( s32 VertexCapacity, s32 IndexCapacity )
     return TRUE;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 render_pipeline* ui_renderer::GetOrCreatePipeline( rtarget_format Format,
                                                    ui_blend_mode  Blend,
@@ -1501,13 +1622,12 @@ render_pipeline* ui_renderer::GetOrCreatePipeline( rtarget_format Format,
     if( !BuildPipelineDesc( Desc, Format, Blend ) )
         return NULL;
 
-    const u64 Key = (u64)(u8)Format | ((u64)(u8)Blend << 8);
     return isPrewarm
-         ? m_pipelines.Prewarm    ( Key, Desc )
-         : m_pipelines.GetOrCreate( Key, Desc );
+         ? m_pipelines.Prewarm( Desc )
+         : m_pipelines.GetOrCreate( Desc );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_renderer::BindPipeline( rtarget_format Format, ui_blend_mode Blend )
 {
@@ -1515,7 +1635,7 @@ xbool ui_renderer::BindPipeline( rtarget_format Format, ui_blend_mode Blend )
     return pPipeline && render_BindPipeline( *pPipeline );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool ui_renderer::BuildPipelineDesc( render_pipeline_desc& Desc,
                                       rtarget_format       Format,
@@ -1561,7 +1681,7 @@ xbool ui_renderer::BuildPipelineDesc( render_pipeline_desc& Desc,
     return TRUE;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 const rstate_sampler* ui_renderer::GetSampler( ui_sampler_mode Sampler ) const
 {
@@ -1569,5 +1689,3 @@ const rstate_sampler* ui_renderer::GetSampler( ui_sampler_mode Sampler ) const
         return NULL;
     return &m_samplers[Sampler];
 }
-
-//==============================================================================

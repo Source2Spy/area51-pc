@@ -12,6 +12,7 @@
 //==============================================================================
 
 #include "Audio/audio_types.hpp"
+#include "e_Audio.hpp"
 #include "Audio/audio_package.hpp"
 
 //==============================================================================
@@ -21,6 +22,7 @@
 enum audio_command_type
 {
     AUDIO_CMD_NONE,
+    AUDIO_CMD_GET_DEBUG_STATS,
     AUDIO_CMD_UPDATE,
     AUDIO_CMD_PERIODIC_UPDATE,
     AUDIO_CMD_STREAM_READ_COMPLETE,
@@ -34,6 +36,7 @@ enum audio_command_type
     AUDIO_CMD_SET_RELEASE_TIME,
     AUDIO_CMD_IS_RELEASING,
     AUDIO_CMD_IS_VALID_VOICE_ID,
+    AUDIO_CMD_GET_VOICE_STATE,
     AUDIO_CMD_IS_VOICE_READY,
     AUDIO_CMD_GET_VOICE_DESCRIPTOR,
     AUDIO_CMD_GET_LENGTH_SECONDS_VOICE,
@@ -89,12 +92,14 @@ enum audio_command_type
 
 struct audio_command_result
 {
-    xbool       Bool;
-    voice_id    VoiceID;
-    s32         S32;
-    const char* pText;
-    f32*        pF32;
-    f32         F32;
+    audio_debug_stats DebugStats;
+    audio_voice_state VoiceState;
+    xbool             Bool;
+    voice_id          VoiceID;
+    s32               S32;
+    const char*       pText;
+    f32*              pF32;
+    f32               F32;
 };
 
 //------------------------------------------------------------------------------
@@ -107,8 +112,14 @@ struct audio_command
     xmesgq*                 pCompletion;
     audio_command_result*   pResult;
 
-    io_request* pIoRequest;
-    char        Text[AUDIO_PACKAGE_FILENAME_LENGTH];
+    audio_request* pRequest;
+    io_request*    pIoRequest;
+
+    union
+    {
+        char Text[AUDIO_PACKAGE_FILENAME_LENGTH];
+        f32  ZoneVolumes[MAX_ZONES];
+    };
     voice_id    VoiceID;
     voice_id    VoiceID2;
     ear_id      EarID;

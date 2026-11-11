@@ -9,6 +9,8 @@
 
 #include "DebugMenu2.hpp"
 #include <cstring>
+#include "UI/ui_manager.hpp"
+#include "UI/ui_renderer.hpp"
 
 //==============================================================================
 
@@ -16,22 +18,19 @@
 
 //==============================================================================
 
-static s32 DEBUG_MENU_ITEM_START       = 34;
-static s32 DEBUG_MENU_SEPERATOR_HEIGHT = 14;
-static s32 DEBUG_MENU_TEXT_HEIGHT      = 18;
-
-//==============================================================================
-
 debug_menu_page::debug_menu_page( void )
 {
     m_pTitle        = "<null>";
     m_iActiveItem   = 0;
+    m_iFirstVisibleItem = 0;
 }
 
 //==============================================================================
 
 debug_menu_page::~debug_menu_page( void )
 {
+    for( s32 i = 0; i < m_Items.GetCount(); i++ )
+        delete m_Items[i];
 }
 
 //==============================================================================
@@ -111,42 +110,79 @@ const char* debug_menu_page::GetTitle( void )
 
 void debug_menu_page::Render( void )
 {
-    const s32 PAGE_TITLE_FONT = 0;
-    s32 CursorX = 150;
-    s32 CursorY = 30;
+    const s32 Font = g_UiMgr->FindFont( "large" );
+    if( Font < 0 )
+        return;
+    const irect Bounds = g_UIRenderer.GetViewport().GetLogicalClipBounds();
+    const s32 LineHeight = g_UiMgr->GetLineHeight( Font );
+    const s32 RowHeight = MAX( 18, LineHeight );
+    const s32 TitleGap = 34;
+    const s32 Margin = 30;
+    const s32 AvailableHeight = MAX( RowHeight, Bounds.GetHeight() - LineHeight - TitleGap - Margin * 2 );
+    m_iFirstVisibleItem = MIN( m_iFirstVisibleItem, m_iActiveItem );
+    s32 ActiveBottom = 0;
+    for( s32 i = m_iFirstVisibleItem; i <= m_iActiveItem && i < m_Items.GetCount(); i++ )
+        ActiveBottom += m_Items[i]->GetType() == debug_menu_item::TYPE_SEPERATOR &&
+                        !x_strlen( m_Items[i]->GetName() ) ? 14 : RowHeight;
+    while( ActiveBottom > AvailableHeight && m_iFirstVisibleItem < m_iActiveItem )
+    {
+        debug_menu_item* pItem = m_Items[m_iFirstVisibleItem++];
+        ActiveBottom -= pItem->GetType() == debug_menu_item::TYPE_SEPERATOR &&
+                        !x_strlen( pItem->GetName() ) ? 14 : RowHeight;
+    }
 
-    // Display page title.
-    irect TextPos;
-    // TODO: make this better.
-    TextPos.l = CursorX;
-    TextPos.t = CursorY;
-    TextPos.r = TextPos.l + 400;
-    TextPos.b = TextPos.t + 20;
+    s32 BodyHeight = 0;
+    s32 LastItem = m_iFirstVisibleItem;
+    while( LastItem < m_Items.GetCount() )
+    {
+        debug_menu_item* pItem = m_Items[LastItem];
+        const s32 Height = pItem->GetType() == debug_menu_item::TYPE_SEPERATOR &&
+                           !x_strlen( pItem->GetName() ) ? 14 : RowHeight;
+        if( BodyHeight + Height > AvailableHeight )
+            break;
+        BodyHeight += Height;
+        LastItem++;
+    }
 
-    ASSERT( m_pTitle != NULL );
-    debug_menu2::RenderLine( PAGE_TITLE_FONT, m_pTitle, TextPos );
+    while( LastItem > m_iFirstVisibleItem )
+    {
+        debug_menu_item* pItem = m_Items[LastItem - 1];
+        if( pItem->GetType() != debug_menu_item::TYPE_SEPERATOR || x_strlen( pItem->GetName() ) )
+            break;
+        BodyHeight -= 14;
+        LastItem--;
+    }
 
-    // Update Cursor position for first menu item.
-    CursorX = 50;
-    CursorY += DEBUG_MENU_ITEM_START;  //TODO: fix this too... 
-
-    for( s32 i=0; i<m_Items.GetCount(); i++ )
+    s32 BodyWidth = 0;
+    for( s32 i = m_iFirstVisibleItem; i < LastItem; i++ )
     {
         debug_menu_item* pItem = m_Items[i];
-        ASSERT( pItem );
-        
-        pItem->Render( CursorX, CursorY, (i == m_iActiveItem) );
-        
-        // Blank line?
-        if(     ( pItem->GetType() == debug_menu_item::TYPE_SEPERATOR )
-            &&  ( !pItem->GetName() || !x_strlen( pItem->GetName() ) ) )
+        irect TextBounds;
+        const xwstring Label( pItem->GetName() );
+        g_UiMgr->TextSize( Font, TextBounds, Label, Label.GetLength() );
+        BodyWidth = MAX( BodyWidth, TextBounds.GetWidth() );
+        const xwstring Value( pItem->GetValueAsString() );
+        if( Value.GetLength() )
         {
-            CursorY += DEBUG_MENU_SEPERATOR_HEIGHT;   // Blank line
-        }            
-        else
-        {
-            CursorY += DEBUG_MENU_TEXT_HEIGHT;  //TODO: make line height...
-        }            
+            g_UiMgr->TextSize( Font, TextBounds, Value, Value.GetLength() );
+            BodyWidth = MAX( BodyWidth, 300 + TextBounds.GetWidth() );
+        }
+    }
+
+    const s32 Left = Bounds.l + ( Bounds.GetWidth() - BodyWidth ) / 2;
+    const s32 Top = Bounds.t + ( Bounds.GetHeight() - LineHeight - TitleGap - BodyHeight ) / 2;
+    const xwstring TitleText( m_pTitle );
+    irect Title;
+    g_UiMgr->TextSize( Font, Title, TitleText, TitleText.GetLength() );
+    Title.Translate( Bounds.l + ( Bounds.GetWidth() - Title.GetWidth() ) / 2, Top );
+    debug_menu2::RenderLine( Font, m_pTitle, Title );
+    s32 Y = Top + LineHeight + TitleGap;
+    for( s32 i = m_iFirstVisibleItem; i < LastItem; i++ )
+    {
+        debug_menu_item* pItem = m_Items[i];
+        pItem->Render( Left, Y, i == m_iActiveItem );
+        Y += pItem->GetType() == debug_menu_item::TYPE_SEPERATOR &&
+             !x_strlen( pItem->GetName() ) ? 14 : RowHeight;
     }
 }
 

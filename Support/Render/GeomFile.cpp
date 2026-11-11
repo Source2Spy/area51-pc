@@ -24,7 +24,7 @@ enum
     MaxStringDataSize  = ( 1 << 27 ),
 };
 
-//---------------------------------------------------------------------------
+//-------------------------------------------------------------------------
 
 static bitsery_io::file_format const RigidFileFormat =
 {
@@ -32,7 +32,7 @@ static bitsery_io::file_format const RigidFileFormat =
     geom_file::VERSION,
 };
 
-//---------------------------------------------------------------------------
+//-------------------------------------------------------------------------
 
 static bitsery_io::file_format const SkinFileFormat =
 {
@@ -66,12 +66,12 @@ static xbool IsIndexOrMinusOne( s32 Index, s32 ArrayCount )
 
 static xbool HasString( geom const& Geom, s32 Offset )
 {
-    if( ( Offset < 0 ) || ( Offset >= Geom.m_stringDataSize ) )
+    if( ( Offset < 0 ) || ( Offset >= Geom.m_StringDataSize ) )
     {
         return FALSE;
     }
 
-    for( s32 Index = Offset; Index < Geom.m_stringDataSize; Index++ )
+    for( s32 Index = Offset; Index < Geom.m_StringDataSize; Index++ )
     {
         if( Geom.m_pStringData[Index] == 0 )
         {
@@ -406,37 +406,37 @@ static void serialize( SERIALIZER& Serializer, skin_geom::section& Value )
 template <class SERIALIZER>
 static void ReadBoneMasks( SERIALIZER& Serializer, geom& Geom )
 {
-    u32 maskCount = 0;
-    Serializer.value4b( maskCount );
+    u32 MaskCount = 0;
+    Serializer.value4b( MaskCount );
 
-    if( maskCount > MaxSmallArrayCount )
+    if( MaskCount > MaxSmallArrayCount )
     {
         bitsery_io::SetInvalidData( Serializer );
         return;
     }
 
-    Geom.m_nBoneMasks = static_cast<s32>( maskCount );
+    Geom.m_nBoneMasks = static_cast<s32>( MaskCount );
     Geom.m_pBoneMasks = Geom.m_nBoneMasks > 0 ? new geom::bone_masks[Geom.m_nBoneMasks] : nullptr;
 
-    xarray<u32> firstWeights;
-    xarray<u32> weightCounts;
-    firstWeights.SetCount( Geom.m_nBoneMasks );
-    weightCounts.SetCount( Geom.m_nBoneMasks );
+    xarray<u32> FirstWeights;
+    xarray<u32> WeightCounts;
+    FirstWeights.SetCount( Geom.m_nBoneMasks );
+    WeightCounts.SetCount( Geom.m_nBoneMasks );
 
     for( s32 i = 0; i < Geom.m_nBoneMasks; i++ )
     {
-        u32 nameOffset = 0;
-        Serializer.value4b( nameOffset );
-        Serializer.value4b( firstWeights[i] );
-        Serializer.value4b( weightCounts[i] );
+        u32 NameOffset = 0;
+        Serializer.value4b( NameOffset );
+        Serializer.value4b( FirstWeights[i] );
+        Serializer.value4b( WeightCounts[i] );
 
-        if( nameOffset > 0x7fffffffu )
+        if( NameOffset > 0x7fffffffu )
         {
             bitsery_io::SetInvalidData( Serializer );
             return;
         }
 
-        Geom.m_pBoneMasks[i].NameOffset = static_cast<s32>( nameOffset );
+        Geom.m_pBoneMasks[i].NameOffset = static_cast<s32>( NameOffset );
         Geom.m_pBoneMasks[i].nBones = 0;
         x_memset( Geom.m_pBoneMasks[i].Weights, 0, sizeof( Geom.m_pBoneMasks[i].Weights ) );
     }
@@ -447,18 +447,18 @@ static void ReadBoneMasks( SERIALIZER& Serializer, geom& Geom )
 
     for( s32 i = 0; i < Geom.m_nBoneMasks; i++ )
     {
-        if( ( weightCounts[i] > MAX_ANIM_BONES ) || ( firstWeights[i] > static_cast<u32>( nWeights ) ) ||
-             ( weightCounts[i] > ( static_cast<u32>( nWeights ) - firstWeights[i] ) ) )
+        if( ( WeightCounts[i] > MAX_ANIM_BONES ) || ( FirstWeights[i] > static_cast<u32>( nWeights ) ) ||
+             ( WeightCounts[i] > ( static_cast<u32>( nWeights ) - FirstWeights[i] ) ) )
         {
             delete[] pWeights;
             bitsery_io::SetInvalidData( Serializer );
             return;
         }
 
-        Geom.m_pBoneMasks[i].nBones = static_cast<s32>( weightCounts[i] );
+        Geom.m_pBoneMasks[i].nBones = static_cast<s32>( WeightCounts[i] );
         for( s32 j = 0; j < Geom.m_pBoneMasks[i].nBones; j++ )
         {
-            Geom.m_pBoneMasks[i].Weights[j] = pWeights[firstWeights[i] + j];
+            Geom.m_pBoneMasks[i].Weights[j] = pWeights[FirstWeights[i] + j];
         }
     }
 
@@ -491,10 +491,10 @@ static void ReadCommonGeom( SERIALIZER& Serializer, geom& Geom )
     bitsery_io::ReadObjectArray( Serializer, Geom.m_pTexture, Geom.m_nTextures, MaxSmallArrayCount );
     bitsery_io::ReadObjectArray( Serializer, Geom.m_pUVKey, Geom.m_nUVKeys, MaxLargeArrayCount );
 
-    s32 lodMaskCount = 0;
+    s32 LodMaskCount = 0;
     bitsery_io::ReadValueArray<2>( Serializer, Geom.m_pLODSizes, Geom.m_nLODs, MaxSmallArrayCount );
-    bitsery_io::ReadValueArray<8>( Serializer, Geom.m_pLODMasks, lodMaskCount, MaxSmallArrayCount );
-    if( lodMaskCount != Geom.m_nLODs )
+    bitsery_io::ReadValueArray<8>( Serializer, Geom.m_pLODMasks, LodMaskCount, MaxSmallArrayCount );
+    if( LodMaskCount != Geom.m_nLODs )
     {
         bitsery_io::SetInvalidData( Serializer );
         return;
@@ -502,7 +502,7 @@ static void ReadCommonGeom( SERIALIZER& Serializer, geom& Geom )
 
     bitsery_io::ReadObjectArray( Serializer, Geom.m_pVirtualMeshes, Geom.m_nVirtualMeshes, MaxSmallArrayCount );
     bitsery_io::ReadObjectArray( Serializer, Geom.m_pVirtualTextures, Geom.m_nVirtualTextures, MaxSmallArrayCount );
-    bitsery_io::ReadValueArray<1>( Serializer, Geom.m_pStringData, Geom.m_stringDataSize, MaxStringDataSize );
+    bitsery_io::ReadValueArray<1>( Serializer, Geom.m_pStringData, Geom.m_StringDataSize, MaxStringDataSize );
 }
 
 //=========================================================================
@@ -675,20 +675,20 @@ static xbool ValidateRigid( rigid_geom const& Geom )
 
         for( s32 j = 0; j < section.nIndices; j++ )
         {
-            u32 const vertexIndex = Geom.m_pIndex[section.FirstIndex + j];
-            if( ( vertexIndex < static_cast<u32>( section.FirstVertex ) ) ||
-                 ( vertexIndex >= static_cast<u32>( section.FirstVertex + section.nVertices ) ) )
+            u32 const VertexIndex = Geom.m_pIndex[section.FirstIndex + j];
+            if( ( VertexIndex < static_cast<u32>( section.FirstVertex ) ) ||
+                 ( VertexIndex >= static_cast<u32>( section.FirstVertex + section.nVertices ) ) )
             {
                 return FALSE;
             }
         }
     }
 
-    for( s32 i = 0; i < Geom.m_collision.nHighClusters; i++ )
+    for( s32 i = 0; i < Geom.m_Collision.nHighClusters; i++ )
     {
-        collision_data::high_cluster const& cluster = Geom.m_collision.pHighCluster[i];
+        collision_data::high_cluster const& cluster = Geom.m_Collision.pHighCluster[i];
 
-        if( !RangeIsValid( cluster.iOffset, cluster.nTris, Geom.m_collision.nHighIndices ) ||
+        if( !RangeIsValid( cluster.iOffset, cluster.nTris, Geom.m_Collision.nHighIndices ) ||
              !IsIndexOrMinusOne( cluster.iMesh, Geom.m_nMeshes ) ||
              !IsIndexOrMinusOne( cluster.iBone, Geom.m_nBones ) ||
              !IsIndexOrMinusOne( cluster.iSection, Geom.m_nSections ) )
@@ -697,14 +697,14 @@ static xbool ValidateRigid( rigid_geom const& Geom )
         }
     }
 
-    for( s32 i = 0; i < Geom.m_collision.nLowClusters; i++ )
+    for( s32 i = 0; i < Geom.m_Collision.nLowClusters; i++ )
     {
-        collision_data::low_cluster const& cluster = Geom.m_collision.pLowCluster[i];
-        u64 const vectorCount = static_cast<u64>( cluster.nPoints ) + static_cast<u64>( cluster.nNormals );
+        collision_data::low_cluster const& cluster = Geom.m_Collision.pLowCluster[i];
+        u64 const VectorCount = static_cast<u64>( cluster.nPoints ) + static_cast<u64>( cluster.nNormals );
 
-        if( ( vectorCount > 0x7fffffffu ) ||
-             !RangeIsValid( cluster.iVectorOffset, static_cast<s32>( vectorCount ), Geom.m_collision.nLowVectors ) ||
-             !RangeIsValid( cluster.iQuadOffset, cluster.nQuads, Geom.m_collision.nLowQuads ) ||
+        if( ( VectorCount > 0x7fffffffu ) ||
+             !RangeIsValid( cluster.iVectorOffset, static_cast<s32>( VectorCount ), Geom.m_Collision.nLowVectors ) ||
+             !RangeIsValid( cluster.iQuadOffset, cluster.nQuads, Geom.m_Collision.nLowQuads ) ||
              !IsIndexOrMinusOne( cluster.iMesh, Geom.m_nMeshes ) || !IsIndexOrMinusOne( cluster.iBone, Geom.m_nBones ) )
         {
             return FALSE;
@@ -745,24 +745,24 @@ static xbool ValidateSkin( skin_geom const& Geom )
 
         for( s32 j = 0; j < section.nIndices; j++ )
         {
-            u32 const vertexIndex = Geom.m_pIndex[section.FirstIndex + j];
-            if( ( vertexIndex < static_cast<u32>( section.FirstVertex ) ) ||
-                 ( vertexIndex >= static_cast<u32>( section.FirstVertex + section.nVertices ) ) )
+            u32 const VertexIndex = Geom.m_pIndex[section.FirstIndex + j];
+            if( ( VertexIndex < static_cast<u32>( section.FirstVertex ) ) ||
+                 ( VertexIndex >= static_cast<u32>( section.FirstVertex + section.nVertices ) ) )
             {
                 return FALSE;
             }
 
-            skin_geom::vertex const& vertex = Geom.m_pVertex[vertexIndex];
-            for( s32 weightIndex = 0; weightIndex < 2; weightIndex++ )
+            skin_geom::vertex const& vertex = Geom.m_pVertex[VertexIndex];
+            for( s32 WeightIndex = 0; WeightIndex < 2; WeightIndex++ )
             {
-                if( vertex.Weights[weightIndex] == 0.0f )
+                if( vertex.Weights[WeightIndex] == 0.0f )
                 {
                     continue;
                 }
 
-                u16 const paletteIndex = vertex.Bones[weightIndex];
-                if( ( paletteIndex >= section.nBones ) ||
-                     ( Geom.m_pBonePalette[section.FirstBone + paletteIndex] == 0xffffu ) )
+                u16 const PaletteIndex = vertex.Bones[WeightIndex];
+                if( ( PaletteIndex >= section.nBones ) ||
+                     ( Geom.m_pBonePalette[section.FirstBone + PaletteIndex] == 0xffffu ) )
                 {
                     return FALSE;
                 }
@@ -779,17 +779,17 @@ static xbool ValidateSkin( skin_geom const& Geom )
 
 static void WriteS32( output_serializer& Serializer, s32 Value )
 {
-    u32 wireValue = static_cast<u32>( Value );
-    Serializer.value4b( wireValue );
+    u32 WireValue = static_cast<u32>( Value );
+    Serializer.value4b( WireValue );
 }
 
 //=========================================================================
 
-template <size_t SIZE, class TYPE>
+template <usize SIZE, class TYPE>
 static void WriteValueArray( output_serializer& Serializer, TYPE* pArray, s32 count )
 {
-    u32 wireCount = static_cast<u32>( count );
-    Serializer.value4b( wireCount );
+    u32 WireCount = static_cast<u32>( count );
+    Serializer.value4b( WireCount );
 
     for( s32 i = 0; i < count; i++ )
     {
@@ -802,8 +802,8 @@ static void WriteValueArray( output_serializer& Serializer, TYPE* pArray, s32 co
 template <class TYPE>
 static void WriteObjectArray( output_serializer& Serializer, TYPE* pArray, s32 count )
 {
-    u32 wireCount = static_cast<u32>( count );
-    Serializer.value4b( wireCount );
+    u32 WireCount = static_cast<u32>( count );
+    Serializer.value4b( WireCount );
 
     for( s32 i = 0; i < count; i++ )
     {
@@ -823,23 +823,23 @@ static void WriteEmptyArray( output_serializer& Serializer )
 
 static void WriteBoneMasks( output_serializer& Serializer, geom& Geom )
 {
-    u32 maskCount = static_cast<u32>( Geom.m_nBoneMasks );
-    Serializer.value4b( maskCount );
+    u32 MaskCount = static_cast<u32>( Geom.m_nBoneMasks );
+    Serializer.value4b( MaskCount );
 
-    u32 firstWeight = 0;
+    u32 FirstWeight = 0;
     for( s32 i = 0; i < Geom.m_nBoneMasks; i++ )
     {
         geom::bone_masks& mask = Geom.m_pBoneMasks[i];
-        u32               nameOffset = static_cast<u32>( mask.NameOffset );
-        u32               weightCount = static_cast<u32>( mask.nBones );
+        u32               NameOffset = static_cast<u32>( mask.NameOffset );
+        u32               WeightCount = static_cast<u32>( mask.nBones );
 
-        Serializer.value4b( nameOffset );
-        Serializer.value4b( firstWeight );
-        Serializer.value4b( weightCount );
-        firstWeight += weightCount;
+        Serializer.value4b( NameOffset );
+        Serializer.value4b( FirstWeight );
+        Serializer.value4b( WeightCount );
+        FirstWeight += WeightCount;
     }
 
-    Serializer.value4b( firstWeight );
+    Serializer.value4b( FirstWeight );
     for( s32 i = 0; i < Geom.m_nBoneMasks; i++ )
     {
         geom::bone_masks& mask = Geom.m_pBoneMasks[i];
@@ -873,7 +873,7 @@ static void WriteCommonGeom( output_serializer& Serializer, geom& Geom )
     WriteValueArray<8>( Serializer, Geom.m_pLODMasks, Geom.m_nLODs );
     WriteObjectArray( Serializer, Geom.m_pVirtualMeshes, Geom.m_nVirtualMeshes );
     WriteObjectArray( Serializer, Geom.m_pVirtualTextures, Geom.m_nVirtualTextures );
-    WriteValueArray<1>( Serializer, Geom.m_pStringData, Geom.m_stringDataSize );
+    WriteValueArray<1>( Serializer, Geom.m_pStringData, Geom.m_StringDataSize );
 }
 
 //=========================================================================
@@ -892,10 +892,10 @@ static void WriteCollision( output_serializer& Serializer, collision_data& Colli
 
 static void WriteEmptyCollision( output_serializer& Serializer )
 {
-    bbox emptyBBox;
-    emptyBBox.Min.Set( 0.0f, 0.0f, 0.0f );
-    emptyBBox.Max.Set( 0.0f, 0.0f, 0.0f );
-    Serializer.object( emptyBBox );
+    bbox EmptyBBox;
+    EmptyBBox.Min.Set( 0.0f, 0.0f, 0.0f );
+    EmptyBBox.Max.Set( 0.0f, 0.0f, 0.0f );
+    Serializer.object( EmptyBBox );
     WriteEmptyArray( Serializer );
     WriteEmptyArray( Serializer );
     WriteEmptyArray( Serializer );
@@ -1080,7 +1080,7 @@ static void serialize( output_serializer& Serializer, skin_geom::section& Value 
 static void serialize( output_serializer& Serializer, rigid_geom& Geom )
 {
     WriteCommonGeom( Serializer, Geom );
-    WriteCollision( Serializer, Geom.m_collision );
+    WriteCollision( Serializer, Geom.m_Collision );
     WriteValueArray<4>( Serializer, Geom.m_pIndex, Geom.m_nIndices );
     WriteObjectArray( Serializer, Geom.m_pVertex, Geom.m_nVertexData );
     WriteEmptyArray( Serializer );
@@ -1111,7 +1111,7 @@ template <class SERIALIZER>
 static void serialize( SERIALIZER& Serializer, rigid_geom& Geom )
 {
     ReadCommonGeom( Serializer, Geom );
-    ReadCollision( Serializer, Geom.m_collision );
+    ReadCollision( Serializer, Geom.m_Collision );
     bitsery_io::ReadValueArray<4>( Serializer, Geom.m_pIndex, Geom.m_nIndices, MaxLargeArrayCount );
     bitsery_io::ReadObjectArray( Serializer, Geom.m_pVertex, Geom.m_nVertexData, MaxLargeArrayCount );
     bitsery_io::ReadEmptyArray( Serializer );
@@ -1178,7 +1178,7 @@ xbool geom_file::LoadRigid( X_FILE* pFile, rigid_geom*& pGeom, xstring& Error )
         return FALSE;
     }
 
-    if( !ValidateRigid( *pGeom ) )
+    if( !ValidateRigid( *pGeom ) || !pGeom->PrepareMaterials() )
     {
         delete pGeom;
         pGeom = nullptr;
@@ -1203,7 +1203,7 @@ xbool geom_file::LoadSkin( X_FILE* pFile, skin_geom*& pGeom, xstring& Error )
         return FALSE;
     }
 
-    if( !ValidateSkin( *pGeom ) )
+    if( !ValidateSkin( *pGeom ) || !pGeom->PrepareMaterials() )
     {
         delete pGeom;
         pGeom = nullptr;
@@ -1235,6 +1235,13 @@ xbool geom_file::SaveSkin( X_FILE* pFile, skin_geom const& Geom, xstring& Error 
     }
 
     return bitsery_io::Write( pFile, SkinFileFormat, Geom, Error );
+}
+
+//=========================================================================
+
+xbool geom_file::EncodeSkin( skin_geom const& Geom, xarray<u8>& Bytes, xstring& Error )
+{
+    return Validate( Geom, Error ) && bitsery_io::EncodeFile( SkinFileFormat, Geom, Bytes, Error );
 }
 
 //=========================================================================

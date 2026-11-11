@@ -8,7 +8,7 @@
 #include "Objects/Actor/Actor.hpp"
 #include "Dictionary/Global_Dictionary.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/NetObj.hpp"
+#include "NetworkMgr/Replication/NetObj.hpp"
 
 //=========================================================================
 
@@ -82,6 +82,19 @@ void template_mgr::DisplayTemplates( void )
         x_DebugMsg("%3d] %s\n",i,pName);
         CLOG_MESSAGE( LOGGING_ENABLED, "template_mgr::DisplayTemplates", pName );
     }
+}
+
+//=========================================================================
+
+xbool template_mgr::VisitObjectTypes( object_type_fn* pFunction, void* pContext ) const
+{
+    ASSERT( pFunction );
+    for( s32 i = 0; i < m_nObjects; ++i )
+    {
+        if( !pFunction( m_pDictionary->GetString( m_pObject[i].TypeIndex ), pContext ) )
+            return FALSE;
+    }
+    return TRUE;
 }
 
 //=========================================================================
@@ -577,7 +590,8 @@ void template_mgr::AddPropertyToObject( prop_entry& pe, object* pObject )
     case PROP_TYPE_EXTERNAL:
         {
             char cData[256];
-            m_BitStream.ReadString(cData);
+            if( !m_BitStream.ReadString( cData, sizeof(cData) ) )
+                return;
             pq.WQueryExternal( m_pDictionary->GetString(pe.NameIndex), cData);
             pObject->OnProperty(pq);
         }
@@ -585,7 +599,8 @@ void template_mgr::AddPropertyToObject( prop_entry& pe, object* pObject )
     case PROP_TYPE_BUTTON:  
         {
             char cData[256];
-            m_BitStream.ReadString(cData);
+            if( !m_BitStream.ReadString( cData, sizeof(cData) ) )
+                return;
             pq.WQueryButton( m_pDictionary->GetString(pe.NameIndex), cData);
             pObject->OnProperty(pq);
         }
@@ -593,7 +608,8 @@ void template_mgr::AddPropertyToObject( prop_entry& pe, object* pObject )
     case PROP_TYPE_FILENAME:     
         {
             char cData[256];
-            m_BitStream.ReadString(cData);
+            if( !m_BitStream.ReadString( cData, sizeof(cData) ) )
+                return;
             pq.WQueryFileName( m_pDictionary->GetString(pe.NameIndex), cData);
             pObject->OnProperty(pq);
         }
@@ -601,7 +617,8 @@ void template_mgr::AddPropertyToObject( prop_entry& pe, object* pObject )
     case PROP_TYPE_ENUM:  
         {
             char cData[256];
-            m_BitStream.ReadString(cData);
+            if( !m_BitStream.ReadString( cData, sizeof(cData) ) )
+                return;
             pq.WQueryEnum( m_pDictionary->GetString(pe.NameIndex), cData);
             pObject->OnProperty(pq);
         }
@@ -609,7 +626,8 @@ void template_mgr::AddPropertyToObject( prop_entry& pe, object* pObject )
     case PROP_TYPE_STRING:   
         {
             char cData[256];
-            m_BitStream.ReadString(cData);
+            if( !m_BitStream.ReadString( cData, sizeof(cData) ) )
+                return;
             pq.WQueryString( m_pDictionary->GetString(pe.NameIndex), cData);
             pObject->OnProperty(pq);
         }

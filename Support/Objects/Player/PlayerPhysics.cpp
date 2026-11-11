@@ -26,50 +26,6 @@ tweak_handle MP_RunSpeedFactor_MutantTweak    ( "MP_RunSpeedFactor_Mutant" );
 //  IMPLEMENTATION
 //=========================================================================
 
-static
-void ScaleVelocityComponent( const vector3& PlaneNormal, 
-                             f32            PerpScale, 
-                             f32            ParaScale, 
-                             vector3&       Velocity, 
-                             f32&           Speed )
-{
-    // Compute current speed squared, and exit if not moving
-    f32 PrevSpeedSqr = Velocity.LengthSquared();
-    if( PrevSpeedSqr < 0.0001f )
-        return;
-
-    // Compute components into and along collision plane
-    vector3 PerpVel = PlaneNormal * v3_Dot( PlaneNormal, Velocity );
-    vector3 ParaVel = Velocity - PerpVel;
-
-    // Compute new velocity, taking scaling into account
-    Velocity = ( PerpScale * PerpVel ) + ( ParaScale * ParaVel);
-
-    // Scale speed in proportion with velocity change
-    f32 CurrSpeedSqr = Velocity.LengthSquared();
-    if( CurrSpeedSqr >= 0.0001f )
-    {
-        f32 PrevSpeed = x_sqrt( PrevSpeedSqr );
-        f32 CurrSpeed = x_sqrt( CurrSpeedSqr );
-        Speed *= CurrSpeed / PrevSpeed;
-    }    
-    else
-    {
-        Speed = 0.0f;    
-    }        
-}
-
-//=========================================================================
-
-void player::ScaleVelocity( const vector3& PlaneNormal, f32 PerpScale, f32 ParaScale )
-{
-    // Apply to forward and side components
-    ScaleVelocityComponent( PlaneNormal, PerpScale, ParaScale, m_ForwardVelocity, m_fForwardSpeed );
-    ScaleVelocityComponent( PlaneNormal, PerpScale, ParaScale, m_StrafeVelocity,  m_fStrafeSpeed );
-}
-
-//==============================================================================
-
 void player::EvaluateMovementSpeeds( f32 DeltaTime )
 {
     PlayerMovementSettings Settings;
@@ -127,15 +83,15 @@ void player::CalculateStrafeVelocity( const vector3& ViewX )
 
 f32 player::GetSpeed( void )
 {
-    return m_fStrafeSpeed + m_fForwardSpeed;
+    return m_Physics.GetMotionVelocity().Length();
 }
 
 //==============================================================================
 
 f32 player::GetCurrentVelocity( void )
 {
-    //return highest of these two
-    return MAX(x_abs(m_fStrafeSpeed), x_abs(m_fForwardSpeed));
+    const vector3 Velocity = m_Physics.GetMotionVelocity();
+    return x_sqrt( x_sqr( Velocity.GetX() ) + x_sqr( Velocity.GetZ() ) );
 }
 
 //==============================================================================

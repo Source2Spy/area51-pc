@@ -18,11 +18,7 @@
 #include "StringMgr/StringMgr.hpp"
 #include "StateMgr/MapList.hpp"
 
-#ifdef CONFIG_VIEWER
-#include "../../Apps/ArtistViewer/Config.hpp"
-#else
 #include "../../Apps/GameApp/Config.hpp"    
-#endif
 
 #include "Configuration/GameConfig.hpp"
 
@@ -51,18 +47,6 @@ ui_manager::dialog_tem CampaignMenuDialog =
     &CampaignMenuControls[0],
     0
 };
-
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
 
 //=========================================================================
 //  Registration function
@@ -144,13 +128,6 @@ xbool dlg_campaign_menu::Create( s32                        UserID,
 #ifndef CONFIG_RETAIL
     m_pButtonLevelSelect    ->SetFlag(ui_win::WF_VISIBLE, FALSE);
 #endif
-#ifdef LAN_PARTY_BUILD
-    m_pButtonNewCampaign    ->SetFlag( ui_win::WF_DISABLED, TRUE );
-    m_pButtonResumeCampaign ->SetFlag( ui_win::WF_DISABLED, TRUE );
-    m_pButtonLore           ->SetFlag( ui_win::WF_DISABLED, TRUE );
-    m_pButtonSecrets        ->SetFlag( ui_win::WF_DISABLED, TRUE );
-    m_pButtonExtras         ->SetFlag( ui_win::WF_DISABLED, TRUE );
-#else
     // We cannot resume a campaign if we have no checkpoints
     player_profile& Profile = g_StateMgr.GetActiveProfile(0);
     xbool DisableCheckpoints=TRUE;
@@ -233,18 +210,11 @@ xbool dlg_campaign_menu::Create( s32                        UserID,
 
 #endif // OPM
 
-#endif // LAN
 
 
     s32 iControl = g_StateMgr.GetCurrentControl();
     if( (iControl == -1) || (GotoControl( iControl )==NULL) )
     {
-#ifdef LAN_PARTY_BUILD
-        GotoControl( (ui_control*)m_pButtonLevelSelect );
-#ifndef CONFIG_RETAIL
-        m_CurrentControl =  IDC_CAMPAIGN_MENU_LEVEL_SELECT;
-#endif
-#else
         if( DisableCheckpoints )
         {
             GotoControl( (ui_control*)m_pButtonNewCampaign );
@@ -255,7 +225,6 @@ xbool dlg_campaign_menu::Create( s32                        UserID,
             GotoControl( (ui_control*)m_pButtonResumeCampaign );
             m_CurrentControl =  IDC_CAMPAIGN_MENU_RESUME_CAMPAIGN;
         }
-#endif
     }
     else
     {
@@ -275,7 +244,7 @@ xbool dlg_campaign_menu::Create( s32                        UserID,
     if( !(CONFIG_IS_AUTOSERVER || CONFIG_IS_AUTOCLIENT) )
     {
         // clear in-use controller flags
-        for( int i=0; i<MAX_LOCAL_PLAYERS; i++)
+        for( s32 i=0; i<MAX_LOCAL_PLAYERS; i++)
         {
             g_StateMgr.SetControllerRequested(i, FALSE);
         }
@@ -478,13 +447,6 @@ void dlg_campaign_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             s32 iControl = g_StateMgr.GetCurrentControl();
             if( (iControl == -1) || (GotoControl( iControl )==NULL) )
             {
-#ifdef LAN_PARTY_BUILD
-                GotoControl( (ui_control*)m_pButtonLevelSelect );
-                g_UiMgr->SetScreenHighlight( m_pButtonLevelSelect->GetPosition() );
-#ifndef CONFIG_RETAIL
-                m_CurrentControl =  IDC_CAMPAIGN_MENU_LEVEL_SELECT;
-#endif
-#else
                 if( m_pButtonResumeCampaign->GetFlags() & ui_win::WF_DISABLED )
                 {
                     GotoControl( (ui_control*)m_pButtonNewCampaign );
@@ -497,7 +459,6 @@ void dlg_campaign_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                     g_UiMgr->SetScreenHighlight( m_pButtonResumeCampaign->GetPosition() );
                     m_CurrentControl = IDC_CAMPAIGN_MENU_RESUME_CAMPAIGN;
                 }
-#endif
             }
             else
             {

@@ -7,7 +7,7 @@
 //==============================================================================
 #include "hud_Player.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "NetworkMgr/Voice/VoiceMgr.hpp"
 #include "../SaveData/SaveDataMgr.hpp"
 #include "HudObject.hpp"
@@ -16,7 +16,7 @@
 #include "UI/ui_renderer.hpp"
 
 #ifndef X_EDITOR
-#include "NetworkMgr/MatchMgr.hpp"
+#include "NetworkMgr/Match/MatchMgr.hpp"
 #include "NetGhost.hpp"
 #include "UI/ui_manager.hpp"
 #include "UI/ui_font.hpp"
@@ -40,30 +40,22 @@ player_hud::player_hud( void )
     m_ViewDimensions.Clear();
     m_Type       = 0;
 
-    m_NotificationIcon   = HUD_NOTIFICATION_NONE;
-    m_ReceivedFriendReq  = FALSE;
-    m_ReceivedGameInvite = FALSE;
     m_AutoSaveing        = FALSE;
-    m_InvitationAlpha    = 0;
     m_AutoSaveingAlpha   = 0;
-    m_InvitationState    = 0;
     m_AutoSaveState      = 0;
-    m_InvitationHoldTime = 0.0f;
     m_AutoSaveHoldTime   = 0.0f;
 
     m_HowTextTimer = 0.0f;
     m_HowLastMode = -1;
     m_HowTextAlpha = 0;
 
-    m_HowGlobalBMP.SetName  ( PRELOAD_FILE( "hud_multiplayer_headset_global.xbmp"   ) );
-    m_HowTeamBMP.SetName    ( PRELOAD_FILE( "hud_multiplayer_headset_team.xbmp"     ) );
-    m_HowLocalBMP.SetName   ( PRELOAD_FILE( "hud_multiplayer_headset_local.xbmp"    ) );
+    m_HowGlobalBMP.SetName  ( PRELOAD_FILE( "HUD/MULTIPLAYER/HUD_MULTIPLAYER_HEADSET_GLOBAL.XBMP"   ) );
+    m_HowTeamBMP.SetName    ( PRELOAD_FILE( "HUD/MULTIPLAYER/HUD_MULTIPLAYER_HEADSET_TEAM.XBMP"     ) );
+    m_HowLocalBMP.SetName   ( PRELOAD_FILE( "HUD/MULTIPLAYER/HUD_MULTIPLAYER_HEADSET_LOCAL.XBMP"    ) );
 
-    m_WhoBMP.SetName        ( PRELOAD_FILE( "hud_multiplayer_player_speakr.xbmp"    ) );
+    m_WhoBMP.SetName        ( PRELOAD_FILE( "HUD/MULTIPLAYER/HUD_MULTIPLAYER_PLAYER_SPEAKR.XBMP"    ) );
 
-    m_FriendReqBMP.SetName  ( PRELOAD_PS2_FILE( "UI_PS2_Icon_Friend_Req_Rcvd.xbmp"      ) ); // TODO: CHANGE THIS ON PC
-    m_GameInviteBMP.SetName ( PRELOAD_PS2_FILE( "UI_PS2_Icon_Invite_Rcvd.xbmp"          ) );
-    m_AutoSave.SetName      ( PRELOAD_PS2_FILE( "UI_PS2_autosave.xbmp"                  ) );
+    m_AutoSave.SetName      ( PRELOAD_PS2_FILE( "PLATFORM/PS2/UI_PS2_AUTOSAVE.XBMP"                  ) );
 
     x_memset( m_HudComponents,0,sizeof(hud_renderable*)*HUD_ELEMENT_NUM_ELEMENTS );
 
@@ -158,7 +150,7 @@ void player_hud::OnRender( void )
                 
                 RenderLine( HowString, 
                     Position, 
-                    m_HowTextAlpha, 
+                    (u8)m_HowTextAlpha,
                     g_HudColor,
                     0,
                     ui_font::h_left|ui_font::v_center, 
@@ -247,66 +239,6 @@ void player_hud::OnRender( void )
     }
 
     static s32 LORE_OFFSET = -102;
-
-    {
-        const s32 RCVD_X = (s32)m_Width - 36;
-        static s32 RCVD_Y = 320-22;
-        texture* pInviteTexture = NULL;
-
-        // Decide what icon we need here..
-        switch( m_NotificationIcon )
-        {
-            case HUD_NOTIFICATION_NONE          : break;
-            case HUD_NOTIFICATION_FRIEND_REQ    : pInviteTexture = m_FriendReqBMP.GetPointer();     break;
-            case HUD_NOTIFICATION_GAME_INVITE   : pInviteTexture = m_GameInviteBMP.GetPointer();    break;
-            default                             : ASSERT( FALSE );
-        }
-
-        xbool CanDraw = FALSE;
-#ifndef X_EDITOR
-        s32 LocalPlayerCount = g_NetworkMgr.GetLocalPlayerCount();
-        if( LocalPlayerCount == 1 )
-            CanDraw = TRUE;
-        else if( (g_RenderContext.LocalPlayerIndex==0) && (LocalPlayerCount==2) )
-            CanDraw = TRUE;
-        else if( (g_RenderContext.LocalPlayerIndex==1) && (LocalPlayerCount >2) )
-            CanDraw = TRUE;
-#else
-        s32 LocalPlayerCount = 1;
-#endif
-
-        if( (pInviteTexture != NULL) && CanDraw )
-        {
-            // If the scanner is up then lets shift the NotificationIcon up above the scanner.
-            s32 LoreScannerOffset = 0;
-            slot_id ID = g_ObjMgr.GetFirst( object::TYPE_HUD_OBJECT );
-            hud_object* pHudObject = (hud_object*)g_ObjMgr.GetObjectBySlot( ID );
-            if( pHudObject )
-            {
-                if( pHudObject->m_PlayerHuds[0].m_Scanner.GetLoreDetected() )
-                {
-                    LoreScannerOffset += LORE_OFFSET;
-                }
-            }
-
-            xcolor rcvdRenderColor = XCOLOR_WHITE;
-            rcvdRenderColor.A = m_InvitationAlpha;
- 
-            vector3 Position(m_XPos + RCVD_X,m_YPos + RCVD_Y + LoreScannerOffset,0);
-            if( LocalPlayerCount > 1 )
-                Position.GetY() -= 240;
-            const xbitmap& Bitmap = pInviteTexture->m_bitmap;
-            g_UIRenderer.DrawImage( *pInviteTexture,
-                                    vector2( Position.GetX(), Position.GetY() ),
-                                    vector2( (f32)Bitmap.GetWidth(), (f32)Bitmap.GetHeight() ),
-                                    vector2( 0.0f, 0.0f ),
-                                    vector2( 1.0f, 1.0f ),
-                                    rcvdRenderColor,
-                                    0.0f,
-                                    UI_BLEND_ALPHA,
-                                    UI_SAMPLER_LINEAR_CLAMP );
-        }
-    }
 
     if( m_AutoSaveing ) // Auto Save icon
     {
@@ -542,93 +474,15 @@ void player_hud::OnAdvanceSimulation( f32 DeltaTime )
     }
 
     // Update the (how) text lifecycle.
+    f32 FadeTime = DeltaTime;
     if( m_HowTextTimer > 0.0f )
     {
-        m_HowTextAlpha = 255;
-        m_HowTextTimer -= DeltaTime;
-        if( m_HowTextTimer < 0.0f )
-            m_HowTextTimer = 0.0f;
-    }
-    else
-    {
-        s32 Alpha = (s32)m_HowTextAlpha - 8;
-        m_HowTextAlpha = (u8)MAX( Alpha, 0 );
+        m_HowTextAlpha = 255.0f;
+        FadeTime = MAX( 0.0f, DeltaTime - m_HowTextTimer );
+        m_HowTextTimer = MAX( 0.0f, m_HowTextTimer - DeltaTime );
     }
 
-    // Invitations are persistent external state, but the HUD presentation is
-    // a finite state machine.  Without advancing it, the icon stays latched.
-    xbool NewReceivedFriendReq  = FALSE;
-    xbool NewReceivedGameInvite = FALSE;
-
-#ifndef X_EDITOR
-    for( s32 i = 0; i < g_MatchMgr.GetBuddyCount(); i++ )
-    {
-        buddy_info& Buddy = g_MatchMgr.GetBuddy( i );
-        if( Buddy.Flags & USER_REQUEST_RECEIVED )
-            NewReceivedFriendReq = TRUE;
-        if( Buddy.Flags & USER_HAS_INVITE )
-            NewReceivedGameInvite = TRUE;
-    }
-#endif
-
-    if( m_ReceivedFriendReq != NewReceivedFriendReq )
-    {
-        m_ReceivedFriendReq = NewReceivedFriendReq;
-        if( m_ReceivedFriendReq )
-        {
-            m_NotificationIcon = HUD_NOTIFICATION_FRIEND_REQ;
-            m_InvitationState  = 1;
-        }
-    }
-
-    if( m_ReceivedGameInvite != NewReceivedGameInvite )
-    {
-        m_ReceivedGameInvite = NewReceivedGameInvite;
-        if( m_ReceivedGameInvite )
-        {
-            m_NotificationIcon = HUD_NOTIFICATION_GAME_INVITE;
-            m_InvitationState  = 1;
-        }
-    }
-
-    switch( m_InvitationState )
-    {
-        case 0:
-            m_InvitationAlpha = 0;
-            break;
-
-        case 1:
-            m_InvitationAlpha = MIN( m_InvitationAlpha + 8, 255 );
-            if( m_InvitationAlpha >= 255 )
-            {
-                m_InvitationState   = 2;
-                m_InvitationHoldTime = 0.0f;
-            }
-            break;
-
-        case 2:
-            m_InvitationHoldTime += DeltaTime;
-            if( m_InvitationHoldTime >= 6.0f )
-                m_InvitationState = 3;
-            break;
-
-        case 3:
-            m_InvitationAlpha = MAX( m_InvitationAlpha - 8, 0 );
-            if( m_InvitationAlpha <= 0 )
-                m_InvitationState = 4;
-            break;
-
-        case 4:
-            m_InvitationState  = 0;
-            m_NotificationIcon = HUD_NOTIFICATION_NONE;
-            break;
-
-        default:
-            m_InvitationState  = 0;
-            m_InvitationAlpha  = 0;
-            m_NotificationIcon = HUD_NOTIFICATION_NONE;
-            break;
-    }
+    m_HowTextAlpha = MAX( m_HowTextAlpha - 240.0f * FadeTime, 0.0f );
 
     // Visibility, LOS, and snapshot submission remain simulation-update work.
     UpdateMPIcons( DeltaTime, pPlayer );

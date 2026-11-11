@@ -48,9 +48,8 @@ void netstream::Init(void)
 xbool   netstream::Receive( net_socket&  Socket,
                             net_address& Remote)
 {
-    s32 NBytes = GetNBytes();
-
-    return Socket.Receive( Remote, GetDataPtr(), NBytes );
+    Init();
+    return Socket.Receive( Remote, *this );
 }
 
 //=============================================================================
@@ -58,7 +57,10 @@ xbool   netstream::Receive( net_socket&  Socket,
 void    netstream::Send (       net_socket&  Socket, 
                           const net_address& Remote)
 {
-    Socket.Send( Remote, GetDataPtr(), GetNBytesUsed() );
+    if( !Overwrite() )
+    {
+        Socket.Send( Remote, GetDataPtr(), GetNBytesUsed() );
+    }
 }
 
 //=============================================================================
@@ -106,13 +108,17 @@ void netstream::Open( s32 Identifier, s32 PacketType )
 
 void netstream::Close( void )
 {
-    // We need to make sure we pad out the length of the bitstream to 8 byte alignment for
-    // the encryption routines.
-
-    while( GetNBytesUsed() & 0x07 )
+    if( Overwrite() )
     {
-        WriteU32( 0, 8 );
+        return;
     }
+
+    while( GetCursor() & 7 )
+    {
+        WriteFlag( FALSE );
+    }
+
+    Truncate();
 
     s32 Cursor      = GetCursor();
     s32 Checksum    = x_chksum(GetDataPtr()+2,GetNBytesUsed()-2);
@@ -120,5 +126,4 @@ void netstream::Close( void )
     SetCursor (0);
     WriteU16  ((u16)Checksum);
     SetCursor (Cursor);
-    // Is this where we would do the diffie hellman encryption?
 }

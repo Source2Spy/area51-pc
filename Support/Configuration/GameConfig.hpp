@@ -12,7 +12,7 @@
 #ifndef GAMECONFIG_HPP
 #define GAMECONFIG_HPP
 
-#include "NetworkMgr/MatchMgr.hpp"
+#include "NetworkMgr/Match/MatchMgr.hpp"
 
 enum exit_reason
 {
@@ -33,14 +33,17 @@ enum exit_reason
     GAME_EXIT_NETWORK_DOWN,
     GAME_EXIT_SERVER_BUSY,
     GAME_EXIT_SERVER_SHUTDOWN,
-    GAME_EXIT_FOLLOW_BUDDY,
-    GAME_EXIT_SECURITY_QUERY,
-    GAME_EXIT_SECURITY_FAILED,
     GAME_EXIT_SESSION_ENDED,
     GAME_EXIT_DUPLICATE_LOGIN,
     GAME_EXIT_INVALID_CAMPAIGN_MISSION,
     GAME_EXIT_CONTINUE=0,
 };
+
+inline xbool IsValidExitReason( s32 Reason )
+{
+    return (Reason >= GAME_EXIT_ADVANCE_LEVEL) &&
+           (Reason <= GAME_EXIT_INVALID_CAMPAIGN_MISSION);
+}
 
 class game_config
 {
@@ -116,6 +119,10 @@ static  void            Commit              ( const server_info& Config );
 
         void            SetPrivateServer    ( xbool bIsPrivate );
         xbool           GetPrivateServer    ( void );
+
+        void            SetLanOnly          ( xbool IsEnabled );
+        void            SetCheatsAllowed    ( xbool IsEnabled );
+        xbool           IsCheatsAllowed     ( void );
 
         void            SetSkillLevel       ( skill_level SkillLevel );
         skill_level     GetSkillLevel       ( void );

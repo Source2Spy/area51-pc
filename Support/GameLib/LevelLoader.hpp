@@ -1,26 +1,58 @@
+//=============================================================================
+//
+//  LevelLoader.hpp
+//
+//=============================================================================
+
 #ifndef LEVEL_LOADER_HPP
 #define LEVEL_LOADER_HPP
 
+//=============================================================================
+//  INCLUDES
+//=============================================================================
+
 #include "x_files.hpp"
+
+//=============================================================================
+//  FORWARD DECLARATIONS
+//=============================================================================
 
 class map_entry;
 class text_in;
 
+//=============================================================================
+//  CLASSES
+//=============================================================================
+
 class level_loader
 {
 public:
+
                 level_loader                ( void );
                ~level_loader                ( void );
+
     void        BeginLevelLoad              ( xbool         bFullLoad );
     void        UpdateLevelLoad             ( f32           TimeBudgetSeconds );
+
+    xbool       BeginPipelinePrewarm        ( void );
+    xbool       UpdatePipelinePrewarm       ( void );
+    xbool       IsPipelinePrewarmComplete   ( void ) const;
+    xbool       NeedsPipelinePrewarm        ( void ) const;
+
     xbool       IsLevelLoadComplete         ( void ) const;
     void        LoadLevelFinish             ( void );
     void        UnloadLevel                 ( xbool         bFullUnload );
     void        LoadDFS                     ( const char*   pDFS );
+    void        LoadResourceList            ( const char*   pFileName );
     void        MountDefaultFilesystems     ( void );
     void        UnmountDefaultFilesystems   ( void );
 
 private:
+
+    //-------------------------------------------------------------------------
+    //  LOAD STAGES
+    //-------------------------------------------------------------------------
+
     enum level_load_stage
     {
         LEVEL_LOAD_IDLE,
@@ -50,10 +82,16 @@ private:
         LEVEL_LOAD_FINALIZE_CORE,
         LEVEL_LOAD_FINALIZE_RUNTIME,
         LEVEL_LOAD_FINALIZE_OCCLUDERS,
+        LEVEL_LOAD_BEGIN_PREWARM,
+        LEVEL_LOAD_PREWARM,
         LEVEL_LOAD_UNMOUNT_FILESYSTEM,
         LEVEL_LOAD_COMPLETE,
         LEVEL_LOAD_FAILED
     };
+
+    //-------------------------------------------------------------------------
+    //  HELPERS
+    //-------------------------------------------------------------------------
 
     void        LoadInfo                    ( const char*   pPath );
     void        PrepareSlideshow            ( const char*   pSlideShowScriptFile );
@@ -63,7 +101,12 @@ private:
     void        BeginScriptDFSLoad          ( const char*   pDFS );
     void        UpdateScriptDFSLoad         ( void );
     void        CloseLoadScript             ( void );
+    void        CloseLevelLoad              ( void );
     void        FailLevelLoad               ( void );
+
+    //-------------------------------------------------------------------------
+    //  DATA
+    //-------------------------------------------------------------------------
 
     level_load_stage m_LevelLoadStage;
     const map_entry* m_pMapEntry;
@@ -80,8 +123,15 @@ private:
     xbool            m_bFullLoad;
     xbool            m_SlideshowPrepared;
     xbool            m_LevelFileSystemMounted;
+    u32              m_PipelineConfiguration;
 };
+
+//=============================================================================
+//  STORAGE
+//=============================================================================
 
 extern level_loader g_LevelLoader;
 
+//=============================================================================
 #endif // LEVEL_LOADER_HPP
+//=============================================================================

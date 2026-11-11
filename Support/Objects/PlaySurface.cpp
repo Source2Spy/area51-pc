@@ -247,7 +247,7 @@ xbool play_surface::GetColDetails( s32 Key, detail_tri& Tri )
     if( !pRigidGeom )
         return( FALSE );
 
-    if( !pRigidGeom->m_collision.nHighClusters )
+    if( !pRigidGeom->m_Collision.nHighClusters )
         return( FALSE );
 
     return RigidGeom_GetColDetails( pRigidGeom,

@@ -94,7 +94,7 @@ public:
     static rhandle<texture>     m_InnerBmp;
 
     rhandle<texture>            m_ScannerBarBmp;
-    s32                         m_ScannerBmpAlpha;
+    f32                         m_ScannerBmpAlpha;
     s32                         m_ScanPeak;
     xbool                       m_ScanPeakUpdate;
     f32                         m_ScanPeakUpdateTime;

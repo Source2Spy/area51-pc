@@ -56,8 +56,7 @@ void FramePacer::Configure( FrameRateLimit Limit, eng_present_mode PresentMode )
     }
 
     m_Limit            = EffectiveLimit;
-    m_FramePeriodTicks = static_cast<f64>( x_GetTicksPerSecond() ) /
-                         static_cast<f64>( FramesPerSecond );
+    m_FramePeriodTicks = static_cast<f64>( x_GetTicksPerSecond() ) / static_cast<f64>( FramesPerSecond );
 }
 
 //==============================================================================
@@ -90,16 +89,13 @@ void FramePacer::WaitForNextFrame( void )
 
     while( TRUE )
     {
-        f64 const RemainingTicks = m_NextDeadlineTicks -
-                                   static_cast<f64>( x_GetTime() );
+        f64 const RemainingTicks = m_NextDeadlineTicks - static_cast<f64>( x_GetTime() );
         if( RemainingTicks <= CoarseWaitGuardTicks )
         {
             break;
         }
 
-        s32 const DelayMilliseconds = static_cast<s32>(
-            (RemainingTicks - CoarseWaitGuardTicks) /
-            static_cast<f64>( TicksPerMillisecond ) );
+        s32 const DelayMilliseconds = static_cast<s32>( (RemainingTicks - CoarseWaitGuardTicks) / static_cast<f64>( TicksPerMillisecond ) );
         if( DelayMilliseconds <= 0 )
         {
             break;
@@ -113,13 +109,10 @@ void FramePacer::WaitForNextFrame( void )
         // The coarse wait leaves only the short final interval here.
     }
 #else
-    f64 const RemainingTicks = m_NextDeadlineTicks -
-                               static_cast<f64>( x_GetTime() );
+    f64 const RemainingTicks = m_NextDeadlineTicks - static_cast<f64>( x_GetTime() );
     if( RemainingTicks > 0.0 )
     {
-        u64 const RemainingNanoseconds = static_cast<u64>(
-            (RemainingTicks * static_cast<f64>( SDL_NS_PER_SECOND )) /
-            static_cast<f64>( x_GetTicksPerSecond() ) );
+        u64 const RemainingNanoseconds = static_cast<u64>( (RemainingTicks * static_cast<f64>( SDL_NS_PER_SECOND )) / static_cast<f64>( x_GetTicksPerSecond() ) );
         SDL_DelayPrecise( RemainingNanoseconds );
     }
 #endif

@@ -12,7 +12,7 @@
 //==============================================================================
 
 #include "Obj_mgr/obj_mgr.hpp"
-#include "NetworkMgr/NetObj.hpp"
+#include "NetworkMgr/Replication/NetObj.hpp"
 #include "Objects/Render/RigidInst.hpp"
 #include "CollisionMgr/CollisionMgr.hpp"
 #include "ZoneMgr/ZoneMgr.hpp"
@@ -20,6 +20,8 @@
 //==============================================================================
 //  TYPES
 //==============================================================================
+
+struct net_projectile_update;
 
 class net_proj : public netobj
 {
@@ -65,7 +67,7 @@ virtual         void            SetStart                ( const vector3& Positio
 virtual         bbox            GetLocalBBox            ( void ) const;
 virtual         s32             GetMaterial             ( void ) const;
 
-                u32             GetRenderMode           ( void );
+                f32             GetExplosionFade        ( void ) const;
 virtual         void            OnColCheck              ( void );
 virtual         void            OnMove                  ( const vector3& NewPos );
                 void            UpdateZoneTrack         ( void );
@@ -93,14 +95,14 @@ virtual         void            net_Logic               ( f32 DeltaTime );
 //rtual         void            net_Activate            ( void );
 virtual         void            net_Deactivate          ( void );
                 
-virtual         void            net_AcceptUpdate        ( const bitstream& BitStream );
+virtual         void            net_AcceptUpdate        ( const net_projectile_update& Update );
 virtual         void            net_ProvideUpdate       (       bitstream& BitStream, 
                                                                 u32&       DirtyBits );
 
-virtual         void            net_AcceptActivate      ( const bitstream& BitStream );
+virtual         void            net_AcceptActivate      ( const net_projectile_update& Update );
 virtual         void            net_ProvideActivate     (       bitstream& BitStream );
 
-virtual         void            net_AcceptStart         ( const bitstream& BitStream );
+virtual         void            net_AcceptStart         ( const net_projectile_update& Update );
 virtual         void            net_ProvideStart        (       bitstream& BitStream );
 
                 vector3         net_GetBlendOffset      ( void );

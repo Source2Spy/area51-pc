@@ -8,7 +8,7 @@
 #include "Render/PrimitiveDebug.hpp"
 #include "ProjectileMesonSeeker.hpp"
 #include "AudioMgr/AudioMgr.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "../Support/Tracers/TracerMgr.hpp"
 #include "Objects/Actor/Actor.hpp"
 #include "Decals/DecalMgr.hpp"
@@ -189,7 +189,7 @@ bbox mesonseeker_projectile::GetLocalBBox( void ) const
 
     if( pRigidGeom )
     {
-        return( pRigidGeom->m_collision.BBox );
+        return( pRigidGeom->m_Collision.BBox );
     }
     
     return( bbox( vector3( 10.0f, 10.0f, 10.0f),
@@ -325,7 +325,7 @@ void mesonseeker_projectile::OnExplode( void )
     DestroyParticles();
 
     //add a light where the explosion occurred
-    g_LightMgr.AddFadingLight( GetPosition(), xcolor(55, 55, 135, 255), 
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( GetPosition(), xcolor(55, 55, 135, 255), 
                                 g_MesonSeekerTweaks.g_LightRadius, 
                                 1.0f, 
                                 g_MesonSeekerTweaks.g_LightTime);

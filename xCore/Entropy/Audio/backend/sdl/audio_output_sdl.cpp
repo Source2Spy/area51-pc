@@ -57,23 +57,33 @@ void sdl_audio_device::AudioOutputStreamCallback( void* pUserData, SDL_AudioStre
 {
     sdl_audio_device* pDevice = (sdl_audio_device*)pUserData;
     if( !pDevice )
+    {
         return;
+    }
 
     while( AdditionalAmount > 0 )
     {
         s32 nSamples = AdditionalAmount / (sizeof(s16) * 2);
         if( nSamples <= 0 )
+        {
             nSamples = pDevice->m_FrameSamples;
+        }
 
         if( nSamples > pDevice->m_FrameSamples )
+        {
             nSamples = pDevice->m_FrameSamples;
+        }
 
         s32 nBytes = pDevice->MixFrame( nSamples );
         if( nBytes <= 0 )
+        {
             break;
+        }
 
         if( !SDL_PutAudioStreamData( pStream, pDevice->m_pOutput, nBytes ) )
+        {
             break;
+        }
 
         AdditionalAmount -= nBytes;
     }
@@ -84,7 +94,9 @@ void sdl_audio_device::AudioOutputStreamCallback( void* pUserData, SDL_AudioStre
 s32 sdl_audio_device::MixFrame( s32 nSamples )
 {
     if( !m_Initialized || !m_pAudioStream || !m_pRender || !m_pOutput || (nSamples <= 0) )
+    {
         return 0;
+    }
 
     return m_pRender( m_pRenderContext, m_pOutput, nSamples );
 }
@@ -158,7 +170,9 @@ xbool sdl_audio_device::Init( s32 SampleRate, s32 FrameSamples, sdl_audio_render
 void sdl_audio_device::Kill( void )
 {
     if( !m_Initialized && !m_pAudioStream && !m_SdlInitialized && !m_pOutput && !m_pRender )
+    {
         return;
+    }
 
     CLOG_MESSAGE( AUDIO_OUTPUT_LOGGING_ENABLED, "AudioOutput", "sdl_audio_device::Kill()" );
 
@@ -193,7 +207,9 @@ void sdl_audio_device::Kill( void )
 xbool sdl_audio_device::Lock( void )
 {
     if( !m_pAudioStream )
+    {
         return TRUE;
+    }
 
     return SDL_LockAudioStream( m_pAudioStream ) ? TRUE : FALSE;
 }
@@ -203,5 +219,7 @@ xbool sdl_audio_device::Lock( void )
 void sdl_audio_device::Unlock( void )
 {
     if( m_pAudioStream )
+    {
         SDL_UnlockAudioStream( m_pAudioStream );
+    }
 }

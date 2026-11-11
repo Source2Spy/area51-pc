@@ -121,8 +121,7 @@ namespace
 
 //=============================================================================
 
-render::primitive_draw_desc fx_CreateMaterial( const texture& Texture,
-                                                s32            CombineMode,
+render::primitive_draw_desc fx_BuildMaterial( s32            CombineMode,
                                                 xbool          ReadZ,
                                                 render::primitive_sampler_mode Sampler )
 {
@@ -171,21 +170,23 @@ render::primitive_draw_desc fx_CreateMaterial( const texture& Texture,
             break;
     }
 
-    const render::primitive_render_layer Layer =
-        (Output == render::PRIMITIVE_OUTPUT_DISTORTION)
-        ? render::PRIMITIVE_LAYER_DISTORTION
-        : ((Blend == render::PRIMITIVE_BLEND_ALPHA)
-           ? render::PRIMITIVE_LAYER_TRANSPARENT
-           : render::PRIMITIVE_LAYER_ADDITIVE);
-
-    return render::primitive_draw_desc( &Texture,
+    return render::primitive_draw_desc( NULL,
                                         render::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
                                         Blend,
                                         ReadZ ? render::PRIMITIVE_DEPTH_READ_ONLY : render::PRIMITIVE_DEPTH_DISABLED,
                                         render::PRIMITIVE_RASTER_SOLID_NO_CULL,
                                         Sampler,
-                                        Layer,
                                         Output );
+}
+
+//=============================================================================
+
+render::primitive_draw_desc fx_CreateMaterial( const texture& Texture, s32 CombineMode,
+                                                xbool ReadZ, render::primitive_sampler_mode Sampler )
+{
+    render::primitive_draw_desc Desc = fx_BuildMaterial( CombineMode, ReadZ, Sampler );
+    Desc.pTexture = &Texture;
+    return Desc;
 }
 
 //=============================================================================

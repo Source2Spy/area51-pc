@@ -18,10 +18,6 @@
 
 #include "dlg_PopUp.hpp"
 
-#ifdef TARGET_XBOX
-#include "UI/ui_bitmap.hpp"
-#endif
-
 //==============================================================================
 //  DEFINES
 //==============================================================================
@@ -32,19 +28,12 @@ enum pause_main_controls
     IDC_PAUSE_MENU_QUIT,
     IDC_PAUSE_MENU_OPTIONS,
     IDC_PAUSE_MENU_SETTINGS,
-#ifdef TARGET_XBOX
-    IDC_PAUSE_MENU_FRIENDS,
-#endif
     IDC_PAUSE_MENU_INVERTY,
     IDC_PAUSE_MENU_ZONE,  
     IDC_PAUSE_MENU_LEVEL,     
     IDC_PAUSE_MENU_CHANGE,    
     IDC_PAUSE_MENU_BUILDDATE, 
     IDC_PAUSE_MENU_VIBRATION,
-#ifdef TARGET_XBOX
-    IDC_PAUSE_MENU_FRIEND_INV, // friend invitation
-    IDC_PAUSE_MENU_GAME_INV,   // game invitation
-#endif
 };
 
 #ifndef CONFIG_RETAIL
@@ -84,12 +73,9 @@ public:
 protected:
     ui_frame*           m_pFrame1;
     ui_button*          m_pButtonResume;
-    ui_button*            m_pButtonQuit;
-    ui_button*            m_pButtonOptions;     
+    ui_button*          m_pButtonQuit;
+    ui_button*          m_pButtonOptions;
     ui_button*          m_pButtonSettings;
-#ifdef TARGET_XBOX
-    ui_button*          m_pButtonFriends;
-#endif
     s32                 m_CurrHL;
     ui_button*          m_pButtonInvert;
     ui_button*          m_pButtonVibration;
@@ -105,10 +91,6 @@ protected:
     dlg_popup*          m_PopUp;
     s32                 m_PopUpResult;
 
-#ifdef TARGET_XBOX
-    ui_bitmap*          m_pFriendInvite;
-    ui_bitmap*          m_pGameInvite;
-#endif
 };
 
 //==============================================================================

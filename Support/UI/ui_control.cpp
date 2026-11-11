@@ -135,3 +135,33 @@ xbool ui_control::ShouldRenderHighlight( void ) const
 }
 
 //=========================================================================
+
+void ui_control::RenderHighlightRect( const irect& Bounds, highlight_state State ) const
+{
+    xcolor Color( 79, 214, 60, 51 );
+
+    switch( State )
+    {
+    case HS_HOVERED:
+        break;
+
+    case HS_SELECTED:
+        Color = xcolor( 66, 158, 11, 128 );
+        break;
+
+    case HS_ACTIVE:
+        Color.A = (u8)(57 + m_pManager->GetHighlightAlpha());
+        break;
+
+    case HS_PRESSED:
+        Color.A = 224;
+        break;
+
+    case HS_NONE:
+        return;
+    }
+
+    m_pManager->RenderRect( Bounds, Color, FALSE );
+}
+
+//=========================================================================

@@ -33,9 +33,7 @@ PlayerCombatInput PlayerCombat::BuildInput( const PlayerInputState& Input,
     PlayerAction const SecondaryAction = IsMutated
                                        ? PlayerAction::FireContagion
                                        : PlayerAction::SecondaryFire;
-    PlayerAction const MeleeAction = IsMutated
-                                   ? PlayerAction::MutantMelee
-                                   : PlayerAction::MeleeAttack;
+    PlayerAction const MeleeAction = PlayerAction::MeleeAttack;
 
     CombatInput.PrimaryHeld      = Input.IsHeld( PrimaryAction );
     CombatInput.PrimaryPressed   = Input.WasPressed( PrimaryAction );

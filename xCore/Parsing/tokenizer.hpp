@@ -8,14 +8,24 @@
 #define TOKENIZER_HPP
 
 //==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "x_math.hpp"
-
 #include "x_types.hpp"
 #include "x_stdio.hpp"
+#include "x_string.hpp"
+
 //==============================================================================
+//  DEFINES
+//==============================================================================
+
 #define TOKEN_STRING_SIZE 1024
 #define TOKEN_DELIMITER_STR ",{}()<>;"
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class token_stream
 {   
@@ -28,6 +38,7 @@ public:
         TOKEN_DELIMITER,
         TOKEN_SYMBOL,
         TOKEN_STRING,
+        TOKEN_ERROR,
         TOKEN_EOF = 0x7FFFFFFF,
     };
 
@@ -39,13 +50,15 @@ public:
     // Start
     xbool               OpenFile            ( const char* pFileName );
     xbool               OpenFile            ( X_FILE* fp );
-    void                OpenText            ( const char* pText );
+    void                OpenText            ( const char* pText, const char* pFileName = "<internal string>" );
     void                CloseText           ( void );
     xbool               IsEOF               ( void ) const;
 
     void                CloseFile           ( void );
     char*               GetDelimeter        ( void );
     void                SetDelimeter        ( const char* pStr );
+    void                SetStringMode       ( xbool Escaping, xbool Multiline );
+    const char*         GetError            ( void ) const;
 
     // Move through tokens in file
     void                Rewind              ( void );
@@ -67,20 +80,26 @@ public:
     xbool               Find                ( const char* TokenStr, xbool FromBeginning=FALSE );
     s32                 GetCursor           ( void );
     void                SetCursor           ( s32 Pos );
-    s32                 GetLineNumber       ( void )                                        { return m_LineNumber;      }
-    char*               GetFilename         ( void )                                        { return m_Filename;        }
+    s32                 GetLineNumber       ( void ) const;
+    char*               GetFilename         ( void );
 
     // Interrogate about current token
-    type                Type                ( void )                                        { return m_type;            }
-    f32                 Float               ( void )                                        { return m_Float;           }
-    s32                 Int                 ( void )                                        { return m_Int;             }
-    char                Delimiter           ( void )                                        { return m_Delimiter;       }
-    char*               String              ( void )                                        { return m_String;          }
-    xbool               IsFloat             ( void )                                        { return m_IsFloat;         }
+    type                Type                ( void );
+    f32                 Float               ( void );
+    s32                 Int                 ( void );
+    char                Delimiter           ( void );
+    char*               String              ( void );
+    xbool               IsFloat             ( void );
 
 protected:
 
     void                SkipWhitespace      ( void );
+    xbool               PrepareRead         ( void );
+    type                ReportError         ( const char* pMessage );
+    type                ReadNumber          ( void );
+    type                ConvertNumber       ( const char* pText, xbool IntegerOnly );
+    type                ReadRawSymbol       ( void );
+    type                ReadQuotedString    ( void );
     char                CHAR                ( s32 FilePos );
 
 protected:
@@ -96,6 +115,10 @@ protected:
 
     type                m_type;
     char                m_String[TOKEN_STRING_SIZE];
+    xstring             m_QuotedString;
+    xstring             m_Error;
+    xbool               m_StringEscaping;
+    xbool               m_MultilineStrings;
     f32                 m_Float;
     s32                 m_Int;
     xbool               m_IsFloat;
@@ -111,4 +134,70 @@ protected:
 };
 
 //==============================================================================
+//  INLINE FUNCTIONS
+//==============================================================================
+
+inline char* token_stream::String( void )
+{
+    return m_type == TOKEN_STRING ? &m_QuotedString[0] : m_String;
+}
+
+//==============================================================================
+
+inline s32 token_stream::GetLineNumber( void ) const
+{
+    return m_LineNumber;
+}
+
+//==============================================================================
+
+inline const char* token_stream::GetError( void ) const
+{
+    return m_Error;
+}
+
+//==============================================================================
+
+inline char* token_stream::GetFilename( void )
+{
+    return m_Filename;
+}
+
+//==============================================================================
+
+inline token_stream::type token_stream::Type( void )
+{
+    return m_type;
+}
+
+//==============================================================================
+
+inline f32 token_stream::Float( void )
+{
+    return m_Float;
+}
+
+//==============================================================================
+
+inline s32 token_stream::Int( void )
+{
+    return m_Int;
+}
+
+//==============================================================================
+
+inline char token_stream::Delimiter( void )
+{
+    return m_Delimiter;
+}
+
+//==============================================================================
+
+inline xbool token_stream::IsFloat( void )
+{
+    return m_IsFloat;
+}
+
+//==============================================================================
 #endif
+//==============================================================================

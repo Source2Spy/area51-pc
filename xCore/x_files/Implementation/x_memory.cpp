@@ -529,9 +529,6 @@ void* x_debug_malloc( s32         NBytes,
     {
         x_EndAtomic();
 
-        #ifdef CONFIG_VIEWER
-        ((u32*)1)[0] = 0xBAADC0DE;
-        #endif
 
         x_MemDump( "AllocationFailure.txt", TRUE );
         x_MemSanity();
@@ -745,7 +742,7 @@ void* x_malloc( s32 NBytes )
         ASSERTS( pHeader, 
                  (const char*)xfs( "Heap exhuasted.  Malloc %d bytes.", NBytes ) );
 
-#if defined(CONFIG_VIEWER) || defined(CONFIG_QA)
+#if defined(CONFIG_QA)
         x_DebugSetCause( xfs( "OUT OF MEMORY - need: %d\n"
                               "                       free: %d\n"
                               "                    largest: %d\n"

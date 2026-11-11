@@ -19,7 +19,6 @@
 
 //==============================================================================
 
-#define MAX_NUM_SPHERES                  10
 #define MAX_COLLISION_MGR_COLLISIONS     32
 #define MAX_IGNORED_OBJECTS              32
 #define MAX_PERMEABLE_OBJECTS            32
@@ -39,7 +38,7 @@ enum primitive
     
     // moving primitives
     PRIMITIVE_DYNAMIC_START,
-    PRIMITIVE_DYNAMIC_CYLINDER = PRIMITIVE_DYNAMIC_START,
+    PRIMITIVE_DYNAMIC_CAPSULE = PRIMITIVE_DYNAMIC_START,
     PRIMITIVE_DYNAMIC_SPHERE,
     PRIMITIVE_DYNAMIC_RAY,
     PRIMITIVE_DYNAMIC_LOS,
@@ -50,7 +49,8 @@ enum primitive
     PRIMITIVE_STATIC_SPHERE = PRIMITIVE_STATIC_START,
     PRIMITIVE_STATIC_TRIANGLE,
     PRIMITIVE_STATIC_AA_BBOX,
-    PRIMITIVE_STATIC_END = PRIMITIVE_STATIC_AA_BBOX
+    PRIMITIVE_STATIC_CAPSULE,
+    PRIMITIVE_STATIC_END = PRIMITIVE_STATIC_CAPSULE
 };
 
 //==============================================================================
@@ -80,19 +80,14 @@ public:
     //
     // dynamic primitive structs
     //
-    struct dynamic_cylinder
+    struct dynamic_capsule
     {
-        vector3 BotStart;
-        vector3 BotEnd;
-        vector3 TopStart;
-        vector3 TopEnd;
+        vector3 AxisStartA;     // Lower hemisphere center at the start of the sweep.
+        vector3 AxisEndA;       // Lower hemisphere center at the end of the sweep.
+        vector3 AxisStartB;     // Upper hemisphere center at the start of the sweep.
+        vector3 AxisEndB;       // Upper hemisphere center at the end of the sweep.
         f32     Radius;
-        f32     Height;
-
-        vector3 StartSpherePositions[MAX_NUM_SPHERES];
-        vector3 EndSpherePositions[MAX_NUM_SPHERES];
-        s32     nStartSpheres;
-        s32     nEndSpheres;
+        f32     Height;         // Full height, including both hemispheres.
     };
     
     struct dynamic_sphere
@@ -112,7 +107,7 @@ public:
     // Statistic tracking
     struct stats
     {
-        // 0 - Cylinder
+        // 0 - Capsule
         // 1 - Sphere
         // 2 - Ray
         // 3 - LOS
@@ -201,7 +196,7 @@ public:
     //--------------------------------------------------
 
     //--------------------------------------------------
-    // CylinderSetup
+    // CapsuleSetup
     //--------------------------------------------------
     // MaxCollisions                    = 1
     // UseLowPoly                       = TRUE
@@ -211,11 +206,11 @@ public:
     // RemoveDuplicateGuids             = TRUE
     // Ignore list is emptied
     //--------------------------------------------------
-    void    CylinderSetup       (       guid        MovingObjGuid,
-                                  const vector3&    WorldStart,
-                                  const vector3&    WorldEnd,
-                                        f32         Radius,
-                                        f32         Height);
+    void    CapsuleSetup           ( guid           MovingObjGuid,
+                                     const vector3& WorldStart,
+                                     const vector3& WorldEnd,
+                                     f32            Radius,
+                                     f32            Height );
                                           
     //--------------------------------------------------
     // SphereSetup
@@ -331,6 +326,12 @@ public:
     void    EndApply            (       void );
 
 
+    void    ApplyCapsule           ( const vector3& A,
+                                     const vector3& B,
+                                     f32            Radius,
+                                     u32            Flags,
+                                     s32            PrimitiveKey = -1 );
+
     void    ApplySphere         ( const vector3&    WorldPos,
                                         f32         Radius,
                                         u32         Flags           =  0,
@@ -383,16 +384,9 @@ public:
     // Get moving object bounds
     primitive               GetDynamicPrimitive ( void ) const { return m_DynamicPrimitive; }
     const bbox&             GetDynamicBBox      ( void ) const;
-    const dynamic_cylinder& GetDynamicCylinder  ( void ) const;
+    const dynamic_capsule& GetDynamicCapsule  ( void ) const;
     const dynamic_ray&      GetDynamicRay       ( void ) const;
     
-    static s32 GetCylinderSpherePositions(  const vector3&  Bottom,
-                                            const vector3&  Top,
-                                                  f32       Radius,
-                                                  vector3*  SpherePositions,
-                                                  s32       MaxNSpheres );
-
-
     void    RecordCollision     ( const collision_mgr::collision&  Collision );
 
 #ifdef ENABLE_COLLISION_STATS
@@ -402,11 +396,11 @@ public:
 //------------------------------------------------------------------------------
 // Private Functions
 private:
-    // static sphere to dynamic cylinder
-    void    ApplySphereToCylinder(const vector3&        WorldPos,
-                                        f32             Radius,
-                                        u32             Flags,
-                                        s32             PrimitiveKey    = -1 );
+    // static sphere to dynamic capsule
+    void    ApplySphereToCapsule   ( const vector3& WorldPos,
+                                     f32            Radius,
+                                     u32            Flags,
+                                     s32            PrimitiveKey = -1 );
                                                         
     // static sphere to dynamic sphere                  
     void    ApplySphereToSphere  (const vector3&        WorldPos,
@@ -420,12 +414,12 @@ private:
                                         u32             Flags,
                                         s32             PrimitiveKey    = -1 );
 
-    // static triangle to dynamic cylinder
-    void    ApplyTriangleToCylinder(const   vector3&    P0,
-                                    const   vector3&    P1,
-                                    const   vector3&    P2,
-                                            u32         Flags,
-                                            s32         PrimitiveKey    = -1 );
+    // static triangle to dynamic capsule
+    void    ApplyTriangleToCapsule ( const vector3& P0,
+                                     const vector3& P1,
+                                     const vector3& P2,
+                                     u32            Flags,
+                                     s32            PrimitiveKey = -1 );
 
     // static triangle to dynamic sphere
     void    ApplyTriangleToSphere  (const   vector3&    P0,
@@ -441,10 +435,10 @@ private:
                                             u32         Flags,
                                             s32         PrimitiveKey    = -1 );
 
-    // static aabbox to dynamic cylinder
-    void    ApplyAABBoxToCylinder(  const   bbox&       AABBox,
-                                            u32         Flags,
-                                            s32         PrimitiveKey    = -1 );
+    // static aabbox to dynamic capsule
+    void    ApplyAABBoxToCapsule   ( const bbox& AABBox,
+                                     u32         Flags,
+                                     s32         PrimitiveKey = -1 );
 
     // static aabbox to dynamic sphere
     void    ApplyAABBoxToSphere  (  const   bbox&       AABBox,
@@ -456,14 +450,8 @@ private:
                                             u32         Flags,
                                             s32         PrimitiveKey    = -1 );
 
-    void    ApplyTriangleToStretchedSphere(const   vector3&    P0,
-                                    const   vector3&    P1,
-                                    const   vector3&    P2,
-                                            u32         Flags,
-                                            s32         PrimitiveKey    = -1 );
-
     void    ApplySphereToPolyCache      ( void );
-    void    ApplyCylinderToPolyCache    ( void );
+    void    ApplyCapsuleToPolyCache( void );
     void    ApplyRayToPolyCache         ( void );
 
 //------------------------------------------------------------------------------
@@ -517,7 +505,7 @@ private:
     // Other internals
     //
     xbool                   m_bApplyStarted;
-    dynamic_cylinder        m_CylinderInfo[2];
+    dynamic_capsule        m_CapsuleInfo[2];
     dynamic_sphere          m_SphereInfo[2];
     dynamic_ray             m_RayInfo[2];
     collision_context_info  m_ContextInfo;

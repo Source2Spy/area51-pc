@@ -42,6 +42,9 @@ public:
             byte*       GetDataPtr              ( void ) const;
             xbool       IsFull                  ( void ) const;
             void        Clear                   ( void );
+            void        Truncate                ( void );
+            s32         GetWriteLimit           ( void ) const;
+            void        SetWriteLimit           ( s32 NBits );
                         
             s32         GetCursor               ( void ) const;
             void        SetCursor               ( s32 BitIndex );
@@ -116,11 +119,11 @@ public:
 
             // String
             void        WriteString             ( const char* pBuf );
-            void        ReadString              ( char* pBuf, s32 MaxLength=0) const;
+            xbool       ReadString              ( char* pBuf, s32 MaxLength ) const;
 
             // Wide string
             void        WriteWString            ( const xwchar* pBuf );
-            void        ReadWString             ( xwchar* pBuf, s32 MaxLength=0 ) const;
+            xbool       ReadWString             ( xwchar* pBuf, s32 MaxLength ) const;
 
             // Handles a full matrix... full precision
             void        WriteMatrix4            ( const matrix4& M );
@@ -137,12 +140,18 @@ public:
             void        WriteMarker             ( void );
             void        ReadMarker              ( void ) const;
 
+            xbool       ReadStream              ( bitstream& Stream, s32 NBits ) const;
+            void        RequireFiniteFloats     ( void ) const;
+            xbool       CanRead                 ( s32 NBits ) const;
+            xbool       ReadError               ( void ) const;
+            void        SetReadError            ( void ) const;
+
             // Overwrite control 
             xbool       Overwrite               ( void )                            const;
             void        ClearOverwrite          ( void );                           
 
             // Section support
-            xbool       OpenSection             ( xbool Flag = TRUE );
+            xbool       OpenSection             ( xbool Flag = TRUE, s32 ReserveBits = 0 );
             xbool       CloseSection            ( void );
 
 
@@ -157,7 +166,11 @@ private:
 
         mutable s32     m_Cursor;
         s32             m_SectionCursor;
+        s32             m_SectionWriteLimit;
+        s32             m_WriteLimit;
         xbool           m_bOverwrite;
+        mutable xbool   m_bReadError;
+        mutable xbool   m_bReadFiniteFloats;
                         
         void            WriteRawBits            ( const void* pData, s32 NBits );
         void            ReadRawBits             ( void* pData, s32 NBits ) const;
@@ -217,6 +230,13 @@ inline void    bitstream::ReadU32         ( u32& Value, s32 NBits ) const
 
 inline void    bitstream::ReadU16         ( u16& Value, s32 NBits ) const
 {
+    if( (NBits < 0) || (NBits > 16) )
+    {
+        SetReadError();
+        Value = 0;
+        return;
+    }
+
     Value = ReadRaw32( NBits );
 }
 
@@ -224,13 +244,20 @@ inline void    bitstream::ReadU16         ( u16& Value, s32 NBits ) const
 
 inline void    bitstream::ReadS16         ( s16& Value, s32 NBits ) const
 {
+    if( (NBits < 0) || (NBits > 16) )
+    {
+        SetReadError();
+        Value = 0;
+        return;
+    }
+
     Value = ReadRaw32( NBits );
     
-    if( NBits==16 ) return;
+    if( (NBits <= 0) || (NBits >= 16) || ReadError() ) return;
     
     // extend sign bit
-    if( Value & (1<<(NBits-1)) )
-        Value |= (0xFFFF & (~((1<<NBits)-1)));
+    if( Value & (1u<<(NBits-1)) )
+        Value |= (0xFFFF & (~((1u<<NBits)-1u)));
 }
 
 //=========================================================================
@@ -239,11 +266,11 @@ inline void    bitstream::ReadS32         ( s32& Value, s32 NBits ) const
 {
     Value = ReadRaw32( NBits );
     
-    if( NBits==32 ) return;
+    if( (NBits <= 0) || (NBits >= 32) || ReadError() ) return;
     
     // extend sign bit
-    if( Value & (1<<(NBits-1)) )
-        Value |= (0xFFFFFFFF & (~((1<<NBits)-1)));
+    if( Value & (1u<<(NBits-1)) )
+        Value |= (0xFFFFFFFF & (~((1u<<NBits)-1u)));
 }
 
 //=============================================================================

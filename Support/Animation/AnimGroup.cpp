@@ -235,15 +235,18 @@ anim_prop::~anim_prop()
 //=========================================================================
 //=========================================================================
 
-static s32 s_nAnimGroupsExisting=0;
+static xarray<anim_group*>& GetAnimGroups( void )
+{
+    static xarray<anim_group*> Groups;
+    return Groups;
+}
 
 anim_group::anim_group( void )
 {
     x_memset( this, 0, sizeof(anim_group) );
     m_pEvent = NULL;
 
-    // Increment number of animgroups existing
-    s_nAnimGroupsExisting++;
+    GetAnimGroups().Append( this );
 }
 
 //=========================================================================
@@ -252,12 +255,40 @@ anim_group::~anim_group( void )
 {
     Clear();
 
-    // If the last animgroup to be destroyed then clean up global data
-    s_nAnimGroupsExisting--;
-    if( s_nAnimGroupsExisting==0 )
+    xarray<anim_group*>& Groups = GetAnimGroups();
+    s32 Index = Groups.Find( this );
+    ASSERT( Index >= 0 );
+    Groups.Delete( Index );
+    if( Groups.GetCount() == 0 )
     {
         ReleaseCompDataPool();
     }
+}
+
+//=========================================================================
+
+void anim_group::CompactEventData( void )
+{
+    xarray<anim_event*> Events;
+    xarray<event_data> Data;
+    xarray<anim_group*>& Groups = GetAnimGroups();
+
+    for( s32 i = 0; i < Groups.GetCount(); i++ )
+    {
+        anim_group& Group = *Groups[i];
+        for( s32 j = 0; j < Group.m_nEvents; j++ )
+        {
+            anim_event& Event = Group.m_pEvent[j];
+            Events.Append( &Event );
+            Data.Append( Event.GetData() );
+        }
+    }
+
+    anim_event::ResetByteStreams();
+    anim_event::Init();
+
+    for( s32 i = 0; i < Events.GetCount(); i++ )
+        Events[i]->SetData( Data[i] );
 }
 
 //=========================================================================

@@ -309,7 +309,7 @@ void alien_glob_mgr::RequestAudio( alien_glob* pGlob, glob_audio Type )
     // This is preferable to killing another voice before it is done.
     for (i=0;i<MAX_AUDIO_VOICES;i++)
     {
-        if (!g_AudioMgr.IsValidVoiceId( VD.VoiceID[ i ] ))
+        if (!g_AudioMgr.IsValidVoiceIdCached( VD.VoiceID[ i ] ))
         {
             iSlot = i;
             break;
@@ -330,7 +330,7 @@ void alien_glob_mgr::RequestAudio( alien_glob* pGlob, glob_audio Type )
     
     if ((iSlot >= 0) && (iSlot < MAX_AUDIO_VOICES))
     {
-        if (g_AudioMgr.IsValidVoiceId( VD.VoiceID[ iSlot ] ))
+        if (g_AudioMgr.IsValidVoiceIdCached( VD.VoiceID[ iSlot ] ))
         {
             g_AudioMgr.Release( VD.VoiceID[ iSlot ], 0 );
         }        
@@ -944,8 +944,7 @@ void alien_glob::Scatter( const vector3& Direction, xbool bDeleteSelf, s32 nStag
                                                   pGlob->m_ZoneTracker,
                                                   pGlob->GetPosition(),
                                                   pGlob->GetZone1(),
-                                                  pGlob->GetZone2(),
-                                                  zone_mgr::SeedSource::Object );
+                                                  pGlob->GetZone2() );
                     pGlob->OnMove( m_Position );
 
                     // Create random velocity
@@ -1405,14 +1404,14 @@ xbool alien_glob::OnProperty      ( prop_query&   I    )
     if( object::OnProperty( I ) )
     {
         // Initialize the zone tracker
-        if( I.IsVar( "Base\\Position" )) 
+        if( !I.IsRead() &&
+            (I.IsVar( "Base\\Position" ) || I.IsVar( "Base\\ZoneInfo" )) )
         {
             g_ZoneMgr.RebaseZoneTracking( *this,
                                           m_ZoneTracker,
                                           GetPosition(),
                                           GetZone1(),
-                                          GetZone2(),
-                                          zone_mgr::SeedSource::Object );
+                                          GetZone2() );
         }
     }
     else if ( I.VarGUID( "Glob\\Target", m_TargetGuid ))
@@ -1586,7 +1585,7 @@ void alien_glob::SetStage( s32 iNewStage )
         m_hNucleusFX.SetSuspended( FALSE );  
     }
 
-    m_FloorProperties.Init( Radius, 0.64f );
+    m_FloorProperties.Init( 1.0f, 0.64f );
     m_FloorProperties.ForceUpdate( GetPosition() );
 }
 

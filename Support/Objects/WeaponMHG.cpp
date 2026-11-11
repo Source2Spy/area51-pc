@@ -10,7 +10,7 @@
 #include "WeaponMHG.hpp"
 #include "Debris/debris_mgr.hpp"
 #include "Objects/Projector.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 
 //=========================================================================
 // STATIC DEFINTIONS AND CONSTANTS
@@ -251,7 +251,7 @@ xbool weapon_mhg::FireWeaponProtected( const vector3& InitPos , const vector3& B
         ((energy_projectile*)pBaseProjectile)->LoadEffect( m_PrimaryProjectileFx.GetName(), InitPos, Rot );
         
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
         
         // Decrement count of bullets in current clip
         DecrementAmmo();
@@ -309,7 +309,7 @@ xbool weapon_mhg::FireSecondaryProtected( const vector3& InitPos , const vector3
          ((energy_projectile*)pBaseProjectile)->LoadEffect( m_SecondayProjectileFx.GetName(), InitPos, Rot );
         
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
         // clear all ammo
         ClearAmmo();
@@ -359,7 +359,7 @@ xbool weapon_mhg::FireNPCWeaponProtected ( const vector3& BaseVelocity , const v
      ((energy_projectile*)pBaseProjectile)->LoadEffect( m_PrimaryProjectileFx.GetName(), InitPos, Rot );
 
     //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
     g_AudioManager.Play( "MHG_Primary_Fire", audio_manager::GUN_SHOT, GetPosition(), 
                                             GetZone1(), GetGuid() );

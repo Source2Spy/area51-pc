@@ -158,7 +158,7 @@ xbool player::UpdateLadderMovement( f32 DeltaTime )
     m_DeltaPos        = FinalVelocity * DeltaTime;
 
     // Clear velocity so player doesn't shoot up/down if no input
-    Physics.ZeroVelocity() ;
+    Physics.ClearMotionVelocity() ;
 
     // Turn off gravity
     Physics.SetUseGravity(FALSE) ;
@@ -169,7 +169,7 @@ xbool player::UpdateLadderMovement( f32 DeltaTime )
 
     // Record player is on a ladder
     m_bOnLadder         = TRUE ;
-    m_Physics.SetGroundTracking( FALSE );
+    m_Physics.DetachFromGround();
     m_LastLadderGuid    = LadderGuid;
     m_LadderOutDir      = LadderOut ;
 
@@ -189,9 +189,10 @@ xbool player::Jump( void )
     {
         m_bOnLadder = FALSE ;
         m_JumpedOffLadderGuid = m_LastLadderGuid;
-        vector3 Vel = Physics.GetVelocity();
+        vector3 Vel = Physics.GetMotionVelocity();
         Vel += m_LadderOutDir * LADDER_JUMP_OFF_VEL;
-        Physics.SetVelocity(Vel);
+        Physics.SetUseGravity( TRUE );
+        Physics.SetMotionVelocity( Vel );
         m_bJumpStarted = TRUE;
         return TRUE;
     }

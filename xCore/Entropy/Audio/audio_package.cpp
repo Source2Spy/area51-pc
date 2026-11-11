@@ -193,11 +193,17 @@ xbool audio_package::Init( audio_runtime& Runtime, const char* pFilename, const 
                 x_fread( &m_Header, sizeof(package_header), 1, f );
 
                 if( (m_Header.nDescriptors <= 0) || (m_Header.nDescriptors > 5000) )
+                {
                     goto Cleanup;
+                }
                 if( m_Header.nIdentifiers <= 0 )
+                {
                     goto Cleanup;
+                }
                 if( m_Header.DescriptorFootprint <= 0 )
+                {
                     goto Cleanup;
+                }
 
                 ASSERT( m_Header.nDescriptors > 0 );
                 ASSERT( m_Header.nIdentifiers > 0 );
@@ -206,7 +212,9 @@ xbool audio_package::Init( audio_runtime& Runtime, const char* pFilename, const 
                 if (m_Header.nDescriptors == 0 ||
                     m_Header.nIdentifiers == 0 ||
                     m_Header.DescriptorFootprint == 0)
+                {
                     goto Cleanup;
+                }
 
                 if( m_Header.nSampleHeaders[ WARM ] || m_Header.nSampleIndices[ WARM ] )
                 {
@@ -294,15 +302,21 @@ xbool audio_package::Init( audio_runtime& Runtime, const char* pFilename, const 
 
                 // Read in the music data.
                 if( m_MusicData )
+                {
                     x_fread( m_MusicData, m_Header.MusicDataFootprint, 1, f );
+                }
 
                 // Read in the lipsync data
                 if( m_LipSyncTable )
+                {
                     x_fread( m_LipSyncTable, m_Header.LipSyncTableFootprint, 1, f );
+                }
 
                 // Read in the breakpoint data
                 if( m_BreakPointTable )
+                {
                     x_fread( m_BreakPointTable, m_Header.BreakPointTableFootprint, 1, f );
+                }
 
                 // Read the 32-bit on-disk identifier records into native records.
                 for( i=0 ; i<m_Header.nIdentifiers ; i++ )
@@ -321,7 +335,9 @@ xbool audio_package::Init( audio_runtime& Runtime, const char* pFilename, const 
 
                 // Set the package for each identifier.
                 for( i=0 ; i<m_Header.nIdentifiers ; i++ )
+                {
                     m_IdentifierTable[ i ].pPackage = this;
+                }
 
                 // Read 32-bit on-disk descriptor offsets and resolve to native pointers.
                 for( i=0 ; i<m_Header.nDescriptors ; i++ )
@@ -347,12 +363,16 @@ xbool audio_package::Init( audio_runtime& Runtime, const char* pFilename, const 
 
                 // Read in the hot sample headers
                 if( m_HotSamples )
+                {
                     ReadSampleHeaders( f, (sample_header*)m_HotSamples, m_Header.nSampleHeaders[ HOT ], m_Header.HeaderSizes[ HOT ] );
+                }
 
                 // Read in the cold sample headers
                 if( m_ColdSamples )
+                {
                     ReadSampleHeaders( f, (sample_header*)m_ColdSamples, m_Header.nSampleHeaders[ COLD ], m_Header.HeaderSizes[ COLD ] );
-                
+                }
+
                 // TODO: Allocate individual aram for the samples.
                 // Load the hot samples.
                 N_ARAM_USED += m_Header.Aram;
@@ -422,8 +442,10 @@ xbool audio_package::Init( audio_runtime& Runtime, const char* pFilename, const 
 
 Cleanup:
     if( f )
+    {
         x_fclose( f );
-    
+    }
+
     if( Result == FALSE )
     {
         if( m_AudioRam )
@@ -474,24 +496,36 @@ void audio_package::Kill( void )
     x_free( m_DescriptorTable );
     x_free( m_DescriptorBuffer );
     if( m_MusicData )
+    {
         x_free( m_MusicData );
+    }
     if( m_LipSyncTable )
+    {
         x_free( m_LipSyncTable );
+    }
     if( m_BreakPointTable )
+    {
         x_free( m_BreakPointTable );
+    }
     for( s32 i=0 ; i<NUM_TEMPERATURES ; i++ )
     {
         if( m_SampleIndices[ i ] )
+        {
             x_free( (void*)m_SampleIndices[ i ] );
+        }
     }
     if( m_HotSamples )
     {
         x_free( m_HotSamples );
     }
     if( m_ColdSamples )
+    {
         x_free( m_ColdSamples );
+    }
     if( m_AudioRam )
+    {
         Runtime().Backend.FreeAudioRam( (void*)m_AudioRam );
+    }
 
     m_pRuntime = NULL;
 }
@@ -565,7 +599,9 @@ void audio_package::ComputeVolume( void )
 
     // Ducking enabled?
     if( Runtime().AudioDuckLevel > 0 )
+    {
         Volume *= m_Header.Params.VolumeDuck;
+    }
 
     // Was there a change?
     if( Volume != m_Volume )

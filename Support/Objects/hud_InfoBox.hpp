@@ -18,6 +18,7 @@
 #include "Objects/Player/Player.hpp"
 
 #include "hud_Renderable.hpp"
+#include "UI/ui_text_data.hpp"
 
 //==============================================================================
 // CLASS
@@ -36,7 +37,10 @@ public:
 
             void    OnRenderCTF_Flag        ( vector3& Pos );
             void    UpdateCFT_Flag          ( f32 DeltaTime, player* pPlayer );
-            void    SetScoreInfo            ( const xwchar* Col1, const xwchar* Col2, const xwchar* Col3, s32 Slot ); 
+            void    SetScoreInfo            ( const ui_text_data& Col1,
+                                               const ui_text_data& Col2,
+                                               const ui_text_data& Col3,
+                                               s32 Slot );
             s32     GetWidth                ( void ) const;
 
     //------------------------------------------------------------------------------
@@ -49,9 +53,9 @@ private:
                                                f32& Segment3Width,
                                                s32& NumBoxes ) const;
 
-    xwchar         m_ScoreString_Col1[2][32];
-    xwchar         m_ScoreString_Col2[2][32];
-    xwchar         m_ScoreString_Col3[2][32];
+    ui_text_data   m_ScoreString_Col1[2];
+    ui_text_data   m_ScoreString_Col2[2];
+    ui_text_data   m_ScoreString_Col3[2];
 
     f32                 m_CTFFlagAlpha;
     rhandle<texture>    m_CTFFlag;

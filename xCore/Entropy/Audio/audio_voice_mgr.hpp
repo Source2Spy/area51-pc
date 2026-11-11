@@ -1,5 +1,15 @@
+//==============================================================================
+//
+//  audio_voice_mgr.hpp
+//
+//==============================================================================
+
 #ifndef AUDIO_VOICE_MGR_HPP
 #define AUDIO_VOICE_MGR_HPP
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Audio/audio_element_channel_runtime.hpp"
 #include "Audio/audio_stream_voice_binder.hpp"
@@ -7,6 +17,7 @@
 
 class audio_mgr;
 struct audio_runtime;
+struct audio_voice_state;
 
 class audio_voice_mgr
 {
@@ -51,6 +62,12 @@ public:
         xbool           IsVoiceStarting             ( voice*            pVoice );
         xbool           IsVoiceReleasing            ( voice*            pVoice );
         xbool           IsVoiceReady                ( voice*            pVoice );
+        xbool           GetVoiceDescriptorCached    ( voice_id VoiceID, char* pName, s32 NameSize ) const;
+        f32             GetVolumeCached             ( voice_id VoiceID ) const;
+        s32             GetPriorityCached           ( voice_id VoiceID ) const;
+        xbool           GetVoiceStateCached         ( voice_id VoiceID, audio_voice_state& State ) const;
+        xbool           IsValidVoiceIdCached        ( voice_id VoiceID ) const;
+        xbool           IsVoiceReadyCached          ( voice_id VoiceID ) const;
 
         void            UpdateAllVoiceVolumes       ( void );
         
@@ -147,6 +164,8 @@ inline  element*        UsedElements            ( void )    { return &m_UsedElem
 inline  audio_runtime&  Runtime                 ( void )    { ASSERT( m_pRuntime ); return *m_pRuntime; }
         void            PrioritizeVoice         ( voice* pVoice, xbool RemoveFromList );
         xbool           FreeVoice               ( voice* pVoice, xbool PutInFreeList );
+        void            PublishVoiceId( voice* pVoice, voice_id VoiceID );
+        void            PublishVoiceReadiness       ( void );
         element*        AcquireElement          ( void );
         xbool           ReleaseElement          ( element* pElement, xbool ReleaseChannel );
 inline  void            StartElement            ( element* pElement );

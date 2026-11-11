@@ -1,716 +1,493 @@
-//=========================================================================
+//==============================================================================
 //
-//  dlg_online_host_options.cpp
+//  dlg_OnlineHostOptions.cpp
 //
-//=========================================================================
+//==============================================================================
 
 #include "Entropy.hpp"
-
-#include "UI/ui_font.hpp"
-#include "UI/ui_manager.hpp"
-#include "UI/ui_control.hpp"
-#include "UI/ui_combo.hpp"
-#include "UI/ui_button.hpp"
-#include "UI/ui_textbox.hpp"
-#include "UI/ui_edit.hpp"
-
 #include "dlg_OnlineHostOptions.hpp"
-#include "dlg_PopUp.hpp"
-
-#include "StateMgr/StateMgr.hpp"
+#include "UI/ui_button.hpp"
+#include "UI/ui_check.hpp"
+#include "UI/ui_combo.hpp"
+#include "UI/ui_edit.hpp"
+#include "UI/ui_font.hpp"
+#include "UI/ui_text.hpp"
 #include "StringMgr/StringMgr.hpp"
+#include "NetworkMgr/Match/MatchMgr.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
-#include "ResourceMgr/ResourceMgr.hpp"
-#include "Configuration/GameConfig.hpp"
 
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
 
-enum controls
+enum host_option_controls
 {
-    IDC_ONLINE_HOST_NUM_PLAYERS,
-    IDC_ONLINE_HOST_SCORE,
-    IDC_ONLINE_HOST_TIME_LIMIT,
-    IDC_ONLINE_HOST_VOTE,
-    IDC_ONLINE_HOST_MAP_SCALING,
-    IDC_ONLINE_HOST_FFIRE,
-
-    IDC_ONLINE_HOST_PLAYER_SELECTOR,
-    IDC_ONLINE_HOST_SCORE_SELECTOR,
-    IDC_ONLINE_HOST_TIME_SELECTOR,
-    IDC_ONLINE_HOST_VOTE_SELECTOR,
-    IDC_ONLINE_HOST_SCALING_SELECTOR,
-    IDC_ONLINE_HOST_FFIRE_SELECTOR,
-    IDC_ONLINE_HOST_CONTINUE,
-
+    IDC_MODE_LABEL,
+    IDC_PLAYERS_LABEL,
+    IDC_MODE,
+    IDC_PLAYERS,
+    IDC_SCORE_LABEL,
+    IDC_TIME_LABEL,
+    IDC_MUTATION_LABEL,
+    IDC_VOTE_LABEL,
+    IDC_FIRE_LABEL,
+    IDC_SCALING_LABEL,
+    IDC_SCORE,
+    IDC_TIME,
+    IDC_MUTATION,
+    IDC_VOTE,
+    IDC_FIRE,
+    IDC_SCALING,
+    IDC_ADDRESS_LABEL,
+    IDC_ADDRESS,
+    IDC_LAN_ONLY,
+    IDC_LAN_ONLY_LABEL,
+    IDC_CHEATS,
+    IDC_CHEATS_LABEL,
+    IDC_PASSWORD_LABEL,
+    IDC_PORT_LABEL,
+    IDC_DIRECTORY_LABEL,
+    IDC_PASSWORD,
+    IDC_PORT,
+    IDC_DIRECTORY,
+    IDC_VOICE,
+    IDC_PRIVATE,
+    IDC_VOICE_LABEL,
+    IDC_PRIVATE_LABEL,
+    IDC_STATUS,
+    IDC_RESET,
+    IDC_CANCEL,
+    IDC_APPLY,
 };
 
-//-------------------------------------------------------------------------
-
-ui_manager::control_tem OnlineHostOptionsControls[] = 
+static ui_manager::control_tem HostGameSetupControls[] =
 {
-    // Frames.
-    { IDC_ONLINE_HOST_NUM_PLAYERS,          "IDS_HOST_NUM_PLAYERS",     "text",    40,  40, 220, 40,  0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_ONLINE_HOST_SCORE,                "IDS_HOST_SCORE",           "text",    40,  75, 220, 40,  0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_ONLINE_HOST_TIME_LIMIT,           "IDS_HOST_TIME_LIMIT",      "text",    40, 110, 220, 40,  0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_ONLINE_HOST_VOTE,                 "IDS_HOST_VOTE_PASS",       "text",    40, 145, 220, 40,  0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_ONLINE_HOST_MAP_SCALING,          "IDS_HOST_MAP_SCALING",     "text",    40, 180, 220, 40,  0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_ONLINE_HOST_FFIRE,                "IDS_HOST_FRIENDLY_FIRE",   "text",    40, 215, 220, 40,  0, 0, 0, 0, ui_win::WF_VISIBLE },
-
-    { IDC_ONLINE_HOST_PLAYER_SELECTOR,      "IDS_NULL",                 "combo",  300,  40, 150, 40,  0, 0, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_ONLINE_HOST_SCORE_SELECTOR,       "IDS_NULL",                 "combo",  300,  75, 150, 40,  0, 1, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_ONLINE_HOST_TIME_SELECTOR,        "IDS_NULL",                 "combo",  300, 110, 150, 40,  0, 2, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_ONLINE_HOST_VOTE_SELECTOR,        "IDS_NULL",                 "combo",  300, 145, 150, 40,  0, 3, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_ONLINE_HOST_SCALING_SELECTOR,     "IDS_NULL",                 "combo",  300, 180, 150, 40,  0, 4, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_ONLINE_HOST_FFIRE_SELECTOR,       "IDS_NULL",                 "combo",  300, 215, 150, 40,  0, 5, 1, 1, ui_win::WF_VISIBLE },
-
-    { IDC_ONLINE_HOST_CONTINUE,             "IDS_HOST_CONTINUE",        "button",  40, 285, 220, 40,  0, 6, 1, 1, ui_win::WF_VISIBLE },
-
+    { IDC_MODE_LABEL    , "IDS_BROWSER_MODE"      , "text"  ,  24,  44, 124, 24, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_PLAYERS_LABEL , "IDS_HOST_NUM_PLAYERS"  , "text"  ,  24,  72, 124, 24, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_SCORE_LABEL   , "IDS_HOST_SCORE"        , "text"  ,  24, 100, 124, 24, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_TIME_LABEL    , "IDS_HOST_TIME_LIMIT"   , "text"  ,  24, 128, 124, 24, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_MUTATION_LABEL, "IDS_HOST_MUTATION"     , "text"  ,  24, 156, 124, 24, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_VOTE_LABEL    , "IDS_HOST_VOTE_PASS"    , "text"  ,  24, 184, 124, 24, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_FIRE_LABEL    , "IDS_HOST_FRIENDLY_FIRE", "text"  ,  24, 212, 124, 24, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_SCALING_LABEL , "IDS_HOST_MAP_SCALING"  , "text"  ,  48, 244, 288, 24, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_MODE          , "IDS_NULL"              , "combo" , 148,  44, 188, 24, 0, 0, 3, 1, ui_win::WF_VISIBLE },
+    { IDC_PLAYERS       , "IDS_NULL"              , "combo" , 148,  72, 188, 24, 0, 1, 3, 1, ui_win::WF_VISIBLE },
+    { IDC_SCORE         , "IDS_NULL"              , "combo" , 148, 100, 188, 24, 0, 2, 3, 1, ui_win::WF_VISIBLE },
+    { IDC_TIME          , "IDS_NULL"              , "combo" , 148, 128, 188, 24, 0, 3, 3, 1, ui_win::WF_VISIBLE },
+    { IDC_MUTATION      , "IDS_NULL"              , "combo" , 148, 156, 188, 24, 0, 4, 3, 1, ui_win::WF_VISIBLE },
+    { IDC_VOTE          , "IDS_NULL"              , "combo" , 148, 184, 188, 24, 0, 5, 3, 1, ui_win::WF_VISIBLE },
+    { IDC_FIRE          , "IDS_NULL"              , "combo" , 148, 212, 188, 24, 0, 6, 3, 1, ui_win::WF_VISIBLE },
+    { IDC_SCALING       , "IDS_NULL"              , "check" ,  24, 244,  20, 24, 0, 7, 3, 1, ui_win::WF_VISIBLE },
+    { IDC_RESET         , "IDS_BROWSER_RESET"     , "button",  24, 282,  96, 24, 0, 8, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_CANCEL        , "IDS_CANCEL"            , "button", 132, 282,  96, 24, 1, 8, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_APPLY         , "IDS_BROWSER_APPLY"     , "button", 240, 282,  96, 24, 2, 8, 1, 1, ui_win::WF_VISIBLE },
 };
 
-//-------------------------------------------------------------------------
-
-ui_manager::dialog_tem OnlineHostOptionsDialog =
+static ui_manager::dialog_tem HostGameSetupDialog =
 {
-    "IDS_ONLINE_HOST_TITLE",
-    1, 9,
-    sizeof(OnlineHostOptionsControls)/sizeof(ui_manager::control_tem),
-    &OnlineHostOptionsControls[0],
-    0
+    "IDS_HOST_GAME_SETUP", 3, 9,
+    sizeof( HostGameSetupControls ) / sizeof( ui_manager::control_tem ), HostGameSetupControls, 8
 };
 
-//=========================================================================
-//  Defines
-//=========================================================================
+static ui_manager::control_tem HostAdvancedControls[] =
+{
+    { IDC_ADDRESS_LABEL  , "IDS_HOST_LAN_ADDRESS"      , "text"  ,  24,  44, 124, 24, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_PORT_LABEL     , "IDS_HOST_PORT"             , "text"  ,  24,  76, 124, 24, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_PASSWORD_LABEL , "IDS_HOST_PASSWORD"         , "text"  ,  24, 108, 124, 24, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_DIRECTORY_LABEL, "IDS_BROWSER_MASTER_ADDRESS", "text"  ,  24, 144, 312, 20, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_ADDRESS        , "IDS_NULL"                  , "edit"  , 158,  44, 168, 24, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_STATIC },
+    { IDC_PORT           , "IDS_HOST_PORT"             , "edit"  , 158,  76, 168, 24, 0, 0, 4, 1, ui_win::WF_VISIBLE },
+    { IDC_PASSWORD       , "IDS_HOST_PASSWORD"         , "edit"  , 158, 108, 168, 24, 0, 1, 4, 1, ui_win::WF_VISIBLE },
+    { IDC_DIRECTORY      , "IDS_BROWSER_MASTER_TITLE"  , "edit"  ,  24, 168, 312, 24, 0, 2, 4, 1, ui_win::WF_VISIBLE },
+    { IDC_VOICE          , "IDS_NULL"                  , "check" ,  24, 206,  20, 24, 0, 3, 2, 1, ui_win::WF_VISIBLE },
+    { IDC_PRIVATE        , "IDS_NULL"                  , "check" , 180, 206,  20, 24, 2, 3, 2, 1, ui_win::WF_VISIBLE },
+    { IDC_LAN_ONLY       , "IDS_NULL"                  , "check" ,  24, 236,  20, 24, 0, 4, 2, 1, ui_win::WF_VISIBLE },
+    { IDC_CHEATS         , "IDS_NULL"                  , "check" , 180, 236,  20, 24, 2, 4, 2, 1, ui_win::WF_VISIBLE },
+    { IDC_VOICE_LABEL    , "IDS_HOST_VOICE_ENABLED"    , "text"  ,  48, 206, 126, 24, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_PRIVATE_LABEL  , "IDS_HOST_PRIVATE_SERVER"   , "text"  , 204, 206, 132, 24, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_LAN_ONLY_LABEL , "IDS_HOST_LAN_ONLY"         , "text"  ,  48, 236, 126, 24, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_CHEATS_LABEL   , "IDS_HOST_ALLOW_CHEATS"     , "text"  , 204, 236, 132, 24, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_STATUS         , "IDS_NULL"                  , "text"  ,  24, 266, 312, 24, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_RESET          , "IDS_BROWSER_RESET"         , "button",  24, 298,  96, 24, 0, 5, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_CANCEL         , "IDS_CANCEL"                , "button", 132, 298,  96, 24, 1, 5, 2, 1, ui_win::WF_VISIBLE },
+    { IDC_APPLY          , "IDS_BROWSER_APPLY"         , "button", 240, 298,  96, 24, 3, 5, 1, 1, ui_win::WF_VISIBLE },
+};
 
-//=========================================================================
-//  Structs
-//=========================================================================
+static ui_manager::dialog_tem HostAdvancedDialog =
+{
+    "IDS_BROWSER_ADVANCED", 4, 6,
+    sizeof( HostAdvancedControls ) / sizeof( ui_manager::control_tem ), HostAdvancedControls, 5
+};
 
-//=========================================================================
-//  Data
-//=========================================================================
+//==============================================================================
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+static ui_win* dlg_online_host_options_factory( s32                       UserID,
+                                               ui_manager*               pManager,
+                                               ui_manager::dialog_tem*   pDialogTem,
+                                               const irect&              Position,
+                                               ui_win*                   pParent,
+                                               s32                       Flags,
+                                               void*                     pUserData )
+{
+    dlg_online_host_options* pDialog = new dlg_online_host_options;
+
+    if( !pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData ) )
+    {
+        delete pDialog;
+        return NULL;
+    }
+
+    return pDialog;
+}
+
+//==============================================================================
 
 void dlg_online_host_options_register( ui_manager* pManager )
 {
-    pManager->RegisterDialogClass( "host options", &OnlineHostOptionsDialog, &dlg_online_host_options_factory );
+    pManager->RegisterDialogClass( "host game setup", &HostGameSetupDialog, dlg_online_host_options_factory );
+    pManager->RegisterDialogClass( "host advanced", &HostAdvancedDialog, dlg_online_host_options_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
-ui_win* dlg_online_host_options_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
+xbool dlg_online_host_options::Create( s32                       UserID,
+                                       ui_manager*               pManager,
+                                       ui_manager::dialog_tem*   pDialogTem,
+                                       const irect&              Position,
+                                       ui_win*                   pParent,
+                                       s32                       Flags,
+                                       void*                     pUserData )
 {
-    dlg_online_host_options* pDialog = new dlg_online_host_options;
-    pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
+    if( !ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags & ~WF_BORDER ) )
+        return FALSE;
 
-    return (ui_win*)pDialog;
-}
+    m_Rebuilding = TRUE;
+    m_pOptions = (host_options*)pUserData;
+    m_Advanced = pDialogTem == &HostAdvancedDialog;
+    ASSERT( m_pOptions );
 
-//=========================================================================
-//  dlg_online_host_options
-//=========================================================================
-
-dlg_online_host_options::dlg_online_host_options( void )
-{
-}
-
-//=========================================================================
-
-dlg_online_host_options::~dlg_online_host_options( void )
-{
-    Destroy();
-}
-
-//=========================================================================
-
-xbool dlg_online_host_options::Create( s32                        UserID,
-                                       ui_manager*                pManager,
-                                       ui_manager::dialog_tem*    pDialogTem,
-                                       const irect&               Position,
-                                       ui_win*                    pParent,
-                                       s32                        Flags,
-                                       void*                      pUserData )
-{
-    xbool   Success = FALSE;
-
-    (void)pUserData;
-
-    ASSERT( pManager );
-
-    // get pending game settings
-    host_settings& Settings = g_StateMgr.GetPendingSettings().GetHostSettings();
-
-    // Do dialog creation
-    Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
-
-    m_pNumPlayerText    = (ui_text*)FindChildByID( IDC_ONLINE_HOST_NUM_PLAYERS );
-    m_pScoreText        = (ui_text*)FindChildByID( IDC_ONLINE_HOST_SCORE       );
-    m_pTimeLimitText    = (ui_text*)FindChildByID( IDC_ONLINE_HOST_TIME_LIMIT  );
-    m_pVoteText         = (ui_text*)FindChildByID( IDC_ONLINE_HOST_VOTE        );
-    m_pMapScalingText   = (ui_text*)FindChildByID( IDC_ONLINE_HOST_MAP_SCALING );
-    m_pFriendlyFireText = (ui_text*)FindChildByID( IDC_ONLINE_HOST_FFIRE       );
-
-    m_pNumPlayerSelect  = (ui_combo*)FindChildByID( IDC_ONLINE_HOST_PLAYER_SELECTOR  );
-    m_pScoreSelect      = (ui_combo*)FindChildByID( IDC_ONLINE_HOST_SCORE_SELECTOR   );
-    m_pTimeSelect       = (ui_combo*)FindChildByID( IDC_ONLINE_HOST_TIME_SELECTOR    );
-    m_pVoteSelect       = (ui_combo*)FindChildByID( IDC_ONLINE_HOST_VOTE_SELECTOR    );
-    m_pMapScalingSelect = (ui_combo*)FindChildByID( IDC_ONLINE_HOST_SCALING_SELECTOR );
-    m_pFireSelect       = (ui_combo*)FindChildByID( IDC_ONLINE_HOST_FFIRE_SELECTOR   );
-
-    m_pContinueButton   = (ui_button*)FindChildByID( IDC_ONLINE_HOST_CONTINUE );
-
-    // set some text flags
-    m_pNumPlayerText    ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
-    m_pScoreText        ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
-    m_pTimeLimitText    ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
-    m_pVoteText         ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
-    m_pMapScalingText   ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
-    m_pFriendlyFireText ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
-   
-    // set up nav text
-    xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_SELECT" ));
-    navText += g_StringTableMgr( "ui", "IDS_NAV_BACK" );
-    SetNavText( navText );
-    // set up num player selector 
-    m_pNumPlayerSelect->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV | ui_combo::CB_CHANGE_ON_SELECT );
-    s32 i;
-    for( i = 2; i <= 16; i++ )
+    for( s32 i = 0; i < m_Children.GetCount(); i++ )
     {
-        m_pNumPlayerSelect->AddItem( (const char*)xfs("%d",i), i );
-    }
-    /*
-    m_pNumPlayerSelect->AddItem  (  "2",   2 );
-    m_pNumPlayerSelect->AddItem  (  "3",   3 );
-    m_pNumPlayerSelect->AddItem  (  "4",   4 );
-    m_pNumPlayerSelect->AddItem  (  "5",   5 );
-    m_pNumPlayerSelect->AddItem  (  "6",   6 );
-    m_pNumPlayerSelect->AddItem  (  "7",   7 );
-    m_pNumPlayerSelect->AddItem  (  "8",   8 );
-    m_pNumPlayerSelect->AddItem  (  "9",   9 );
-    m_pNumPlayerSelect->AddItem  ( "10",  10 );
-    m_pNumPlayerSelect->AddItem  ( "11",  11 );
-    m_pNumPlayerSelect->AddItem  ( "12",  12 );
-    m_pNumPlayerSelect->AddItem  ( "13",  13 );
-    m_pNumPlayerSelect->AddItem  ( "14",  14 );
-    m_pNumPlayerSelect->AddItem  ( "15",  15 );
-    m_pNumPlayerSelect->AddItem  ( "16",  16 );
-//  m_pNumPlayerSelect->AddItem  ( "32",  32 );
-    */
-
-    // set up score selector
-    m_pScoreSelect->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV | ui_combo::CB_CHANGE_ON_SELECT );
-    {
-        s32 Type = Settings.m_GameTypeID;
-        s32 Limit[6][16] = 
+        const char* pClass = pDialogTem->pControls[i].pClass;
+        if( x_strcmp( pClass, "button" ) == 0 )
         {
-        /*DM  0*/  {   5,  10,  15,  20,  25,   30,   35,   40,   45,   50,   -1,   -1,   -1,   -1,   -1, -1 },
-        /*TDM 1*/  {  10,  20,  30,  40,  50,   60,   70,   80,   90,  100,  110,  120,  130,  140,  150, -1 },
-        /*CTF 2*/  {   1,   2,   3,   4,   5,    6,    7,    8,    9,   10,   -1,   -1,   -1,   -1,   -1, -1 },
-        /*TAG 3*/  {  10,  20,  30,  40,  50,   60,   70,   80,   90,  100,  110,  120,  130,  140,  150, -1 },
-        /*INF 4*/  {  50,  60,  70,  80,  90,  100,  120,  140,  160,  180,  200,   -1,   -1,   -1,   -1, -1 },
-        /*CNH 5*/  { 500, 600, 700, 800, 900, 1000, 1200, 1400, 1600, 1800, 2000,   -1,   -1,   -1,   -1, -1 },
-        };
-        m_pScoreSelect->AddItem( g_StringTableMgr( "ui", "IDS_NO_LIMIT" ), -1 );
-        for( s32 i = 0; Limit[Type][i] != -1; i++ )
+            ui_button* pButton = (ui_button*)m_Children[i];
+            pButton->UseSmallText( TRUE );
+            pButton->SetButtonStyle( ui_button::BUTTON_STYLE_FLAT );
+        }
+        else if( x_strcmp( pClass, "combo" ) == 0 )
         {
-            m_pScoreSelect->AddItem( (const char*)xfs( "%d", Limit[Type][i] ), Limit[Type][i] );
+            ui_combo* pCombo = (ui_combo*)m_Children[i];
+            pCombo->SetLabelWidth( 0 );
+            pCombo->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV | ui_combo::CB_CHANGE_ON_SELECT );
+        }
+        else if( x_strcmp( pClass, "text" ) == 0 )
+        {
+            ui_text* pText = (ui_text*)m_Children[i];
+            pText->UseSmallText( TRUE );
+            pText->UseShadow( TRUE );
+            pText->SetLabelFlags( ui_font::h_left | ui_font::v_center | ui_font::clip_ellipsis );
+            pText->SetLabelColor( xcolor( 255, 252, 204, 255 ) );
         }
     }
-    /*
-    m_pScoreSelect->AddItem  (   "5",    5 );
-    m_pScoreSelect->AddItem  (  "10",   10 );
-    m_pScoreSelect->AddItem  (  "15",   15 );
-    m_pScoreSelect->AddItem  (  "20",   20 );
-    m_pScoreSelect->AddItem  (  "25",   25 );
-    m_pScoreSelect->AddItem  (  "30",   30 );
-    m_pScoreSelect->AddItem  (  "35",   35 );
-    m_pScoreSelect->AddItem  (  "40",   40 );
-    m_pScoreSelect->AddItem  (  "45",   45 );
-    m_pScoreSelect->AddItem  (  "50",   50 );
-    m_pScoreSelect->AddItem  (  "60",   60 );
-    m_pScoreSelect->AddItem  (  "70",   70 );
-    m_pScoreSelect->AddItem  (  "80",   80 );
-    m_pScoreSelect->AddItem  (  "90",   90 );
-    m_pScoreSelect->AddItem  ( "100",  100 );
-    m_pScoreSelect->AddItem  ( "125",  125 );
-    m_pScoreSelect->AddItem  ( "150",  150 );
-    m_pScoreSelect->AddItem  ( "175",  175 );
-    m_pScoreSelect->AddItem  ( "200",  200 );
-    m_pScoreSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_NO_LIMIT" ), -1 );
-    */
 
-    // set up time selector
-    m_pTimeSelect->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV | ui_combo::CB_CHANGE_ON_SELECT );
-    m_pTimeSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_NO_LIMIT" ), -1 );
-    #ifndef CONFIG_RETAIL
-    for( i = 1; i < 5; i++ )
+    if( m_Advanced )
     {
-        m_pTimeSelect->AddItem( (const char*)xfs("%d:00",i), i * 60 );
-    }
-    #endif
-    for( i = 5; i <= 60; i += 5 )
-    {
-        m_pTimeSelect->AddItem( (const char*)xfs("%d:00",i), i * 60 );
-    }
-    /*
-    m_pTimeSelect->AddItem  (  "1:00",  1 * OneMin );
-    m_pTimeSelect->AddItem  (  "2:00",  2 * OneMin );
-    m_pTimeSelect->AddItem  (  "3:00",  3 * OneMin );
-    m_pTimeSelect->AddItem  (  "4:00",  4 * OneMin );
-    m_pTimeSelect->AddItem  (  "5:00",  5 * OneMin );
-    m_pTimeSelect->AddItem  ( "10:00", 10 * OneMin );
-    m_pTimeSelect->AddItem  ( "15:00", 15 * OneMin );
-    m_pTimeSelect->AddItem  ( "20:00", 20 * OneMin );
-    m_pTimeSelect->AddItem  ( "25:00", 25 * OneMin );
-    m_pTimeSelect->AddItem  ( "30:00", 30 * OneMin );
-    m_pTimeSelect->AddItem  ( "45:00", 45 * OneMin );
-    m_pTimeSelect->AddItem  ( "60:00", 60 * OneMin );
-    */
+        m_pAddress   = (ui_edit*)FindChildByID( IDC_ADDRESS );
+        m_pLanOnly   = (ui_check*)FindChildByID( IDC_LAN_ONLY );
+        m_pCheats    = (ui_check*)FindChildByID( IDC_CHEATS );
+        m_pPassword  = (ui_edit*)FindChildByID( IDC_PASSWORD );
+        m_pPort      = (ui_edit*)FindChildByID( IDC_PORT );
+        m_pDirectory = (ui_edit*)FindChildByID( IDC_DIRECTORY );
+        m_pVoice     = (ui_check*)FindChildByID( IDC_VOICE );
+        m_pPrivate   = (ui_check*)FindChildByID( IDC_PRIVATE );
+        m_pStatus    = (ui_text*)FindChildByID( IDC_STATUS );
 
-    // set up vote selector
-    m_pVoteSelect->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV | ui_combo::CB_CHANGE_ON_SELECT );
-    m_pVoteSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_VOTE_DISABLED" ), 0 );
-
-    for( i = 5; i <= 100; i += 5 )
-    {
-        m_pVoteSelect->AddItem( (const char*)xfs("%d%%",i), i );
-    }
-    /*
-    m_pVoteSelect->AddItem  (   "5%",   5 );
-    m_pVoteSelect->AddItem  (  "10%",  10 );
-    m_pVoteSelect->AddItem  (  "15%",  15 );
-    m_pVoteSelect->AddItem  (  "20%",  20 );
-    m_pVoteSelect->AddItem  (  "25%",  25 );
-    m_pVoteSelect->AddItem  (  "30%",  30 );
-    m_pVoteSelect->AddItem  (  "35%",  35 );
-    m_pVoteSelect->AddItem  (  "40%",  40 );
-    m_pVoteSelect->AddItem  (  "45%",  45 );
-    m_pVoteSelect->AddItem  (  "50%",  50 );
-    m_pVoteSelect->AddItem  (  "55%",  55 );
-    m_pVoteSelect->AddItem  (  "60%",  60 );
-    m_pVoteSelect->AddItem  (  "65%",  65 );
-    m_pVoteSelect->AddItem  (  "70%",  70 );
-    m_pVoteSelect->AddItem  (  "75%",  75 );
-    m_pVoteSelect->AddItem  (  "80%",  80 );
-    m_pVoteSelect->AddItem  (  "85%",  85 );
-    m_pVoteSelect->AddItem  (  "90%",  90 );
-    m_pVoteSelect->AddItem  (  "95%",  95 );
-    m_pVoteSelect->AddItem  ( "100%", 100 );
-    */
-
-    // set up map scaling selector
-    m_pMapScalingSelect->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV | ui_combo::CB_CHANGE_ON_SELECT );
-    m_pMapScalingSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_OFF" ), 0 );
-    m_pMapScalingSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_ON" ),  1 );
-    
-    // set up friendly fire selector
-    m_pFireSelect->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV | ui_combo::CB_CHANGE_ON_SELECT );
-    for( i = 0; i <= 100; i += 5 )
-    {
-        m_pFireSelect->AddItem( (const char*)xfs("%d%%",i), i );
-    }
-    /*
-    m_pFireSelect->AddItem(   "0%",   0 );
-    m_pFireSelect->AddItem(   "5%",   5 );
-    m_pFireSelect->AddItem(  "10%",  10 );
-    m_pFireSelect->AddItem(  "15%",  15 );
-    m_pFireSelect->AddItem(  "20%",  20 );
-    m_pFireSelect->AddItem(  "25%",  25 );
-    m_pFireSelect->AddItem(  "30%",  30 );
-    m_pFireSelect->AddItem(  "35%",  35 );
-    m_pFireSelect->AddItem(  "40%",  40 );
-    m_pFireSelect->AddItem(  "45%",  45 );
-    m_pFireSelect->AddItem(  "50%",  50 );
-    m_pFireSelect->AddItem(  "55%",  55 );
-    m_pFireSelect->AddItem(  "60%",  60 );
-    m_pFireSelect->AddItem(  "65%",  65 );
-    m_pFireSelect->AddItem(  "70%",  70 );
-    m_pFireSelect->AddItem(  "75%",  75 );
-    m_pFireSelect->AddItem(  "80%",  80 );
-    m_pFireSelect->AddItem(  "85%",  85 );
-    m_pFireSelect->AddItem(  "90%",  90 );
-    m_pFireSelect->AddItem(  "95%",  95 );
-    m_pFireSelect->AddItem( "100%", 100 );
-    */
-
-    // switch off the buttons to start
-    m_pNumPlayerText    ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-    m_pScoreText        ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-    m_pTimeLimitText    ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-    m_pVoteText         ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-    m_pMapScalingText   ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-    m_pFriendlyFireText ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-
-    m_pNumPlayerSelect  ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-    m_pScoreSelect      ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-    m_pTimeSelect       ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-    m_pVoteSelect       ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-    m_pMapScalingSelect ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-    m_pFireSelect       ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-    m_pContinueButton   ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-
-    // set continue button alignment
-    m_pContinueButton   ->SetFlag( ui_win::WF_BUTTON_LEFT, TRUE );
-
-    // set initial highlight/control
-    m_CurrHL = 5;
-    m_pContinueButton->SetActive( TRUE );
-    GotoControl( (ui_control*)m_pContinueButton );
-
-    // initialize num players
-    s32 Sel = 0;
-    for( s32 i=0; i< m_pNumPlayerSelect->GetItemCount(); i++ )
-    {
-        //if( g_PendingConfig.GetMaxPlayerCount() == m_pNumPlayerSelect->GetItemData( i, 0 ) )
-        if( Settings.m_MaxPlayers == m_pNumPlayerSelect->GetItemData(i) )
-        {
-            Sel = i;
-            break;
-        }
-    }
-    m_pNumPlayerSelect->SetSelection( Sel );
-
-    // initialize score select
-    Sel = 0;
-    for( s32 i=0; i<m_pScoreSelect->GetItemCount(); i++ )
-    {    
-        //if( g_PendingConfig.GetScoreLimit() == m_pScoreSelect->GetItemData( i, 0 ) )
-        if( Settings.m_ScoreLimit == m_pScoreSelect->GetItemData(i) )
-        {
-            Sel = i;
-            break;
-        }
-    }
-    m_pScoreSelect->SetSelection( Sel );
-   
-    // initialize time limit
-    Sel = 0;
-    for( s32 i=0; i< m_pTimeSelect->GetItemCount(); i++ )
-    {
-        //if( g_PendingConfig.GetGameTime() == m_pTimeSelect->GetItemData( i, 0 ) )
-        if( Settings.m_TimeLimit == m_pTimeSelect->GetItemData(i) )
-        {
-            Sel = i;
-            break;
-        }
-    }
-    m_pTimeSelect->SetSelection( Sel );
-
-    // initialize vote pass percentage
-    Sel = 0;
-    for( s32 i=0; i< m_pVoteSelect->GetItemCount(); i++ )
-    {
-        //if( g_PendingConfig.GetVotePercent() == m_pVoteSelect->GetItemData( i, 0 ) )
-        if( Settings.m_VotePassPct == m_pVoteSelect->GetItemData(i) )
-        {
-            Sel = i;
-            break;
-        }
-    }
-    m_pVoteSelect->SetSelection( Sel );
-
-    // initialize map scaling
-    if ( Settings.m_Flags & SERVER_ENABLE_MAP_SCALING )
-    {
-        m_pMapScalingSelect->SetSelection( 1 );
+        m_pPassword->Configure( FALSE );
+        m_pPassword->SetBufferSize( NET_PASSWORD_LENGTH );
+        m_pPort->Configure( FALSE );
+        m_pPort->SetBufferSize( 6 );
+        m_pPort->SetFlag( WF_DISABLED, m_pOptions->Reconfigure );
+        m_pDirectory->Configure( FALSE );
+        m_pDirectory->SetBufferSize( MATCH_ENDPOINT_LENGTH );
+        m_pStatus->SetLabelColor( xcolor( 255, 180, 96, 255 ) );
     }
     else
     {
-        m_pMapScalingSelect->SetSelection( 0 );
+        m_pMode     = (ui_combo*)FindChildByID( IDC_MODE );
+        m_pPlayers  = (ui_combo*)FindChildByID( IDC_PLAYERS );
+        m_pScore    = (ui_combo*)FindChildByID( IDC_SCORE );
+        m_pTime     = (ui_combo*)FindChildByID( IDC_TIME );
+        m_pMutation = (ui_combo*)FindChildByID( IDC_MUTATION );
+        m_pVote     = (ui_combo*)FindChildByID( IDC_VOTE );
+        m_pFire     = (ui_combo*)FindChildByID( IDC_FIRE );
+        m_pScaling  = (ui_check*)FindChildByID( IDC_SCALING );
+
+        const char* Modes[] = { "IDS_GAMETYPE_DM", "IDS_GAMETYPE_TDM", "IDS_GAMETYPE_CTF",
+                               "IDS_GAMETYPE_TAG", "IDS_GAMETYPE_INF", "IDS_GAMETYPE_CNH" };
+        const s32 Types[] = { GAME_DM, GAME_TDM, GAME_CTF, GAME_INF, GAME_CNH };
+        for( s32 i = 0; i < 5; i++ )
+            m_pMode->AddItem( g_StringTableMgr( "ui", Modes[Types[i]] ), Types[i] );
+        m_pMode->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV | ui_combo::CB_CHANGE_ON_SELECT | ui_combo::CB_NOTIFY_PARENT );
+
+        for( s32 i = 2; i <= 16; i++ )
+            m_pPlayers->AddItem( xwstring( xfs( "%d", i ) ), i );
+
+        m_pTime->AddItem( g_StringTableMgr( "ui", "IDS_NO_LIMIT" ), (uaddr)-1 );
+        for( s32 i = 1; i <= 60; i += (i < 5) ? 1 : 5 )
+            m_pTime->AddItem( xwstring( xfs( "%d:00", i ) ), i * 60 );
+
+        m_pVote->AddItem( g_StringTableMgr( "ui", "IDS_VOTE_DISABLED" ), 0 );
+        for( s32 i = 5; i <= 100; i += 5 )
+            m_pVote->AddItem( xwstring( xfs( "%d%%", i ) ), i );
+        for( s32 i = 0; i <= 100; i += 5 )
+            m_pFire->AddItem( xwstring( xfs( "%d%%", i ) ), i );
     }
 
-    // initialize friendly fire
-    Sel = 0;
-    for( s32 i=0; i<m_pFireSelect->GetItemCount(); i++ )
-    {
-        //if( g_PendingConfig.GetFirePercent() == m_pFireSelect->GetItemData( i, 0 ) )
-        if( Settings.m_FFirePct == m_pFireSelect->GetItemData(i) )
-        {
-            Sel = i;
-            break;
-        }
-    }
-    m_pFireSelect->SetSelection( Sel );
-
-    // update available options based on game type
-    //switch( g_PendingConfig.GetGameTypeID() )
-    switch( Settings.m_GameTypeID )
-    {
-        case GAME_DM:
-            m_pFriendlyFireText ->SetFlag(ui_win::WF_DISABLED, TRUE);
-            m_pFireSelect       ->SetFlag(ui_win::WF_DISABLED, TRUE);
-            break;
-
-        default:
-            break;
-    }
-
-    // initialize controls
-    m_CurrGameType    = -1;
-    m_bRenderBlackout = FALSE;
-
-    // initialize screen scaling
-    InitScreenScaling( Position );
-
-    // make the dialog active
+    ReadSettings( m_pOptions->Settings );
+    m_Rebuilding = FALSE;
+    SetNavText( xwstring( g_StringTableMgr( "ui", "IDS_NAV_SELECT" ) ) + g_StringTableMgr( "ui", "IDS_NAV_BACK" ) );
     m_State = DIALOG_STATE_ACTIVE;
 
-    // Return success code
-    return Success;
+    return TRUE;
 }
 
-//=========================================================================
+//==============================================================================
 
-void dlg_online_host_options::Destroy( void )
+void dlg_online_host_options::ConfigureGameType( s32 Type )
 {
-    ui_dialog::Destroy();
+    m_pScore->DeleteAllItems();
+    m_pMutation->DeleteAllItems();
 
-    // kill screen wipe
-    g_UiMgr->ResetScreenWipe();
+    const s32 Limits[6][16] =
+    {
+        {   5,  10,  15,  20,  25,   30,   35,   40,   45,   50,   -1 },
+        {  10,  20,  30,  40,  50,   60,   70,   80,   90,  100,  110, 120, 130, 140, 150, -1 },
+        {   1,   2,   3,   4,   5,    6,    7,    8,    9,   10,   -1 },
+        {  10,  20,  30,  40,  50,   60,   70,   80,   90,  100,  110, 120, 130, 140, 150, -1 },
+        {  50,  60,  70,  80,  90,  100,  120,  140,  160,  180,  200,  -1 },
+        { 500, 600, 700, 800, 900, 1000, 1200, 1400, 1600, 1800, 2000,  -1 },
+    };
+    m_pScore->AddItem( g_StringTableMgr( "ui", "IDS_NO_LIMIT" ), (uaddr)-1 );
+    for( s32 i = 0; Limits[Type][i] != -1; i++ )
+        m_pScore->AddItem( xwstring( xfs( "%d", Limits[Type][i] ) ), Limits[Type][i] );
+
+    if( Type != GAME_INF )
+    {
+        m_pMutation->AddItem( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_CHANGE_AT_WILL" ), MUTATE_CHANGE_AT_WILL );
+        m_pMutation->AddItem( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_LOCK" ), MUTATE_HUMAN_LOCK );
+        m_pMutation->AddItem( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_LOCK" ), MUTATE_MUTANT_LOCK );
+    }
+    if( Type != GAME_DM )
+        m_pMutation->AddItem( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_VS_MUTANT" ), MUTATE_HUMAN_VS_MUTANT );
+    m_pMutation->SetFlag( WF_DISABLED, m_pMutation->GetItemCount() <= 1 );
+
+    m_pFire->SetFlag( WF_DISABLED, Type == GAME_DM );
 }
 
-//=========================================================================
+//==============================================================================
+
+void dlg_online_host_options::OnNotify( ui_notification const& Event )
+{
+    if( m_Rebuilding )
+        return;
+
+    if( m_Advanced )
+    {
+        if( (Event.m_pSender == m_pLanOnly) && (Event.m_Type == ui_notification_type::CheckChanged) )
+            UpdateDirectoryControl();
+        return;
+    }
+
+    if( (Event.m_pSender == m_pMode) && (Event.m_Type == ui_notification_type::ComboSelectionChanged) )
+    {
+        s32 Score = (s32)m_pScore->GetSelectedItemData();
+        s32 Mutation = (s32)m_pMutation->GetSelectedItemData();
+        ConfigureGameType( (s32)m_pMode->GetSelectedItemData() );
+
+        s32 Selection = m_pScore->FindItemByData( (uaddr)Score );
+        m_pScore->SetSelection( Selection >= 0 ? Selection : 0 );
+        Selection = m_pMutation->FindItemByData( (uaddr)Mutation );
+        m_pMutation->SetSelection( Selection >= 0 ? Selection : 0 );
+    }
+    else
+        ui_dialog::OnNotify( Event );
+}
+
+//==============================================================================
+
+void dlg_online_host_options::UpdateDirectoryControl( void )
+{
+    m_pDirectory->SetFlag( WF_DISABLED, m_pLanOnly->IsChecked() ||
+                          !(g_MatchMgr.GetCapabilities() & MATCH_CAP_DIRECTORY) );
+}
+
+//==============================================================================
+
+void dlg_online_host_options::ReadSettings( const host_settings& Settings )
+{
+    if( m_Advanced )
+    {
+        interface_info Info;
+        net_GetInterfaceInfo( -1, Info );
+        net_address Address( Info.Address, 0 );
+        m_pAddress->SetLabel( xwstring( Info.IsAvailable ? Address.GetStrIP() : "--" ) );
+        m_pLanOnly->SetChecked( (Settings.m_Flags & SERVER_LAN_ONLY) != 0 );
+        m_pCheats->SetChecked( (Settings.m_Flags & SERVER_ALLOW_CHEATS) != 0 );
+        UpdateDirectoryControl();
+
+        m_pPassword->SetLabel( xwstring( Settings.m_Password ) );
+        m_pVoice->SetChecked( (Settings.m_Flags & SERVER_VOICE_ENABLED) != 0 );
+        m_pPrivate->SetChecked( (Settings.m_Flags & SERVER_IS_PRIVATE) != 0 );
+        m_pPort->SetLabel( xwstring( xfs( "%d", m_pOptions->Port ) ) );
+        m_pDirectory->SetLabel( xwstring( m_pOptions->Directory ) );
+        m_pStatus->SetLabel( xwstring( "" ) );
+    }
+    else
+    {
+        m_Rebuilding = TRUE;
+        s32 Mode = m_pMode->FindItemByData( Settings.m_GameTypeID );
+        m_pMode->SetSelection( Mode >= 0 ? Mode : 0 );
+        s32 Players = m_pPlayers->FindItemByData( Settings.m_MaxPlayers );
+        m_pPlayers->SetSelection( Players >= 0 ? Players : 14 );
+        ConfigureGameType( (s32)m_pMode->GetSelectedItemData() );
+
+        ui_combo* Combos[] = { m_pScore, m_pTime, m_pMutation, m_pVote, m_pFire };
+        const s32 Values[] = { Settings.m_ScoreLimit, Settings.m_TimeLimit, Settings.m_MutationMode,
+                               Settings.m_VotePassPct, Settings.m_FFirePct };
+        for( s32 i = 0; i < 5; i++ )
+        {
+            s32 Selection = Combos[i]->FindItemByData( (uaddr)Values[i] );
+            Combos[i]->SetSelection( Selection >= 0 ? Selection : 0 );
+        }
+        m_pScaling->SetChecked( (Settings.m_Flags & SERVER_ENABLE_MAP_SCALING) != 0 );
+        m_Rebuilding = FALSE;
+    }
+}
+
+//==============================================================================
 
 void dlg_online_host_options::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
-    static s32 gap      =  9;
-    static s32 width    =  4;
+    if( !(m_Flags & WF_VISIBLE) )
+        return;
 
-    irect rb;
-    
-    if( m_bRenderBlackout )
-    {
-        rb = g_UiMgr->GetUserBounds( m_UserID );
-        g_UiMgr->RenderGouraudRect(rb, xcolor(0,0,0,180),
-            xcolor(0,0,0,180),
-            xcolor(0,0,0,180),
-            xcolor(0,0,0,180),FALSE);
-    }
+    m_pManager->RenderRect( m_pManager->GetUserBounds( m_UserID ), xcolor( 0, 16, 0, 112 ), FALSE );
 
-    // render transparent screen
-    rb.l = m_CurrPos.l + 22;
-    rb.t = m_CurrPos.t;
-    rb.r = m_CurrPos.r - 23;
-    rb.b = m_CurrPos.b;
+    irect r = m_Position;
+    r.Translate( ox, oy );
+    m_pManager->RenderRect( r, xcolor( 19, 59, 14, 248 ), FALSE );
 
-    g_UiMgr->RenderGouraudRect(rb, xcolor(56,115,58,64),
-                                   xcolor(56,115,58,64),
-                                   xcolor(56,115,58,64),
-                                   xcolor(56,115,58,64),FALSE);
+    irect Title = r;
+    Title.Deflate( 1, 1 );
+    Title.SetHeight( 32 );
+    m_pManager->RenderGouraudRect( Title, xcolor( 39, 117, 28, 255 ), xcolor( 39, 117, 28, 255 ),
+                                 xcolor( 19, 59, 14, 255 ), xcolor( 19, 59, 14, 255 ), FALSE );
+    Title.Deflate( 12, 2 );
+    m_pManager->RenderText( m_pManager->FindFont( "large" ), Title,
+                            ui_font::h_left | ui_font::v_center | ui_font::clip_ellipsis,
+                            xcolor( 255, 252, 204, 255 ), m_Label );
 
-
-    // render the screen bars
-    s32 y = rb.t + offset;    
-
-    while (y < rb.b)
-    {
-        irect bar;
-
-        if ((y+width) > rb.b)
-        {
-            bar.Set(rb.l, y, rb.r, rb.b);
-        }
-        else
-        {
-            bar.Set(rb.l, y, rb.r, y+width);
-        }
-
-        // draw the bar
-        g_UiMgr->RenderGouraudRect(bar, xcolor(56,115,58,30),
-                                        xcolor(56,115,58,30),
-                                        xcolor(56,115,58,30),
-                                        xcolor(56,115,58,30),FALSE);
-
-        y+=gap;
-    }
-
-    // render the normal dialog stuff
     ui_dialog::Render( ox, oy );
-
-    // render the glow bar
-    g_UiMgr->RenderGlowBar();
+    m_pManager->RenderRect( r, xcolor( 79, 214, 60, 224 ), TRUE );
 }
 
-//=========================================================================
-
-void dlg_online_host_options::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
-{
-    ui_dialog::OnNavigate( pWin, Code, Presses, Repeats, WrapX, WrapY );
-}
-
-//=========================================================================
+//==============================================================================
 
 void dlg_online_host_options::OnCancel( ui_win* pWin )
 {
     (void)pWin;
 
-    if ( m_State == DIALOG_STATE_ACTIVE )
-    {
-        g_AudioMgr.Play("Backup");
+    if( m_State == DIALOG_STATE_ACTIVE )
         m_State = DIALOG_STATE_BACK;
-    }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_host_options::OnAccept( ui_win* pWin )
 {
-    if ( m_State == DIALOG_STATE_ACTIVE )
-    {
-        if( pWin == (ui_win*)m_pContinueButton )
-        {
-            g_AudioMgr.Play("Select_Norm");
+    if( m_State != DIALOG_STATE_ACTIVE )
+        return;
 
-            // launch the game!
-            if ( m_State == DIALOG_STATE_ACTIVE )
+    switch( pWin->GetControlID() )
+    {
+    case IDC_CANCEL:
+        OnCancel( pWin );
+        break;
+
+    case IDC_RESET:
+    {
+        global_settings Defaults;
+        ReadSettings( Defaults.GetHostSettings() );
+        if( m_Advanced )
+        {
+            m_pPort->SetLabel( xwstring( xfs( "%d", m_pOptions->Reconfigure ? m_pOptions->Port : NET_GAME_PORT ) ) );
+            m_pDirectory->SetLabel( xwstring( "" ) );
+        }
+        break;
+    }
+
+    case IDC_APPLY:
+    {
+        host_settings& Settings = m_pOptions->Settings;
+        if( m_Advanced )
+        {
+            xstring PortText( m_pPort->GetLabel() );
+            s32 Port = 0;
+            xbool Valid = PortText.GetLength() > 0;
+            for( s32 i = 0; i < PortText.GetLength(); i++ )
             {
-                // store game options 
-                g_PendingConfig.SetMaxPlayerCount    ( m_pNumPlayerSelect  ->GetSelectedItemData() );
-                g_PendingConfig.SetScoreLimit        ( m_pScoreSelect      ->GetSelectedItemData() );
-                g_PendingConfig.SetGameTime          ( m_pTimeSelect       ->GetSelectedItemData() );
-                g_PendingConfig.SetVotePercent       ( m_pVoteSelect       ->GetSelectedItemData() );
-                g_PendingConfig.SetMapScalingEnabled ( m_pMapScalingSelect ->GetSelectedItemData() );
-                g_PendingConfig.SetFirePercent       ( m_pFireSelect       ->GetSelectedItemData() );
-
-                // update game settings
-                host_settings& Settings = g_StateMgr.GetPendingSettings().GetHostSettings();
-
-                Settings.m_MaxPlayers   = m_pNumPlayerSelect ->GetSelectedItemData();
-                Settings.m_ScoreLimit   = m_pScoreSelect     ->GetSelectedItemData();
-                Settings.m_TimeLimit    = m_pTimeSelect      ->GetSelectedItemData();
-                Settings.m_VotePassPct  = m_pVoteSelect      ->GetSelectedItemData();
-                Settings.m_FFirePct     = m_pFireSelect      ->GetSelectedItemData();
-
-                if(m_pMapScalingSelect->GetSelectedItemData() == 1 )
-                    Settings.m_Flags |= SERVER_ENABLE_MAP_SCALING;
-                else
-                    Settings.m_Flags &= ~SERVER_ENABLE_MAP_SCALING;
-
-                g_AudioMgr.Play("Select_Norm");
-                m_State = DIALOG_STATE_SELECT;
+                if( (PortText[i] < '0') || (PortText[i] > '9') )
+                {
+                    Valid = FALSE;
+                    break;
+                }
+                Port = Port * 10 + PortText[i] - '0';
             }
-        }
-    }
-}
+            if( !Valid || (Port < 1) || (Port > 65535) )
+            {
+                m_pStatus->SetLabel( g_StringTableMgr( "ui", "IDS_HOST_INVALID_PORT" ) );
+                return;
+            }
 
-//=========================================================================
+            xstring Directory( m_pDirectory->GetLabel() );
+            match_endpoint Address;
+            if( !m_pLanOnly->IsChecked() && Directory.GetLength() && !Address.Parse( Directory, MATCH_DIRECTORY_PORT ) )
+            {
+                m_pStatus->SetLabel( g_StringTableMgr( "ui", "IDS_BROWSER_INVALID_ADDRESS" ) );
+                return;
+            }
 
-void dlg_online_host_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
-{
-    (void)pWin;
-    (void)DeltaTime;
-
-    s32 highLight = -1;
-
-    // scale window if necessary
-    if( g_UiMgr->IsScreenScaling() )
-    {
-        if( UpdateScreenScaling( DeltaTime ) == FALSE )
-        {
-            // turn on the buttons
-            m_pNumPlayerText    ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pScoreText        ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pTimeLimitText    ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pVoteText         ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pMapScalingText   ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pFriendlyFireText ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-
-            m_pNumPlayerSelect  ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pScoreSelect      ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pTimeSelect       ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pVoteSelect       ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pMapScalingSelect ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pFireSelect       ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pContinueButton   ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-    
-            GotoControl( (ui_control*)m_pContinueButton );
-            g_UiMgr->SetScreenHighlight( m_pContinueButton->GetPosition() );
-        }
-    }
-
-    // update the glow bar
-    g_UiMgr->UpdateGlowBar(DeltaTime);
-
-    // update labels  
-    if( m_pNumPlayerSelect->IsFocused() )
-    {
-        highLight = 0;
-        m_pNumPlayerText->SetLabelColor( xcolor(255,252,204,255) );
-        g_UiMgr->SetScreenHighlight( m_pNumPlayerText->GetPosition() );
-    }
-    else
-        m_pNumPlayerText->SetLabelColor( xcolor(126,220,60,255) );
-
-    if( m_pScoreSelect->IsFocused() )
-    {
-        highLight = 1;
-        m_pScoreText->SetLabelColor( xcolor(255,252,204,255) );
-        g_UiMgr->SetScreenHighlight( m_pScoreText->GetPosition() );
-    }
-    else
-        m_pScoreText->SetLabelColor( xcolor(126,220,60,255) );
-
-    if( m_pTimeSelect->IsFocused() )
-    {
-        highLight = 2;
-        m_pTimeLimitText->SetLabelColor( xcolor(255,252,204,255) );
-        g_UiMgr->SetScreenHighlight( m_pTimeLimitText->GetPosition() );
-    }
-    else
-        m_pTimeLimitText->SetLabelColor( xcolor(126,220,60,255) );
-
-    if( m_pVoteSelect->IsFocused() )
-    {
-        highLight = 3;
-        m_pVoteText->SetLabelColor( xcolor(255,252,204,255) );
-        g_UiMgr->SetScreenHighlight( m_pVoteText->GetPosition() );
-    }
-    else
-        m_pVoteText->SetLabelColor( xcolor(126,220,60,255) );
-
-    if( m_pMapScalingSelect->IsFocused() )
-    {
-        highLight = 4;
-        m_pMapScalingText->SetLabelColor( xcolor(255,252,204,255) );
-        g_UiMgr->SetScreenHighlight( m_pMapScalingText->GetPosition() );
-    }
-    else
-        m_pMapScalingText->SetLabelColor( xcolor(126,220,60,255) );
-
-    if( m_pFriendlyFireText->GetFlags(WF_DISABLED) == FALSE )
-    {
-        if( m_pFireSelect->IsFocused() )
-        {
-            highLight = 5;
-            m_pFriendlyFireText->SetLabelColor( xcolor(255,252,204,255) );
-            g_UiMgr->SetScreenHighlight( m_pFriendlyFireText->GetPosition() );
+            x_mstrcpy( Settings.m_Password, m_pPassword->GetLabel() );
+            Settings.m_Flags &= ~(SERVER_VOICE_ENABLED | SERVER_IS_PRIVATE | SERVER_LAN_ONLY | SERVER_ALLOW_CHEATS);
+            if( m_pVoice->IsChecked() )
+                Settings.m_Flags |= SERVER_VOICE_ENABLED;
+            if( m_pPrivate->IsChecked() )
+                Settings.m_Flags |= SERVER_IS_PRIVATE;
+            if( m_pLanOnly->IsChecked() )
+                Settings.m_Flags |= SERVER_LAN_ONLY;
+            if( m_pCheats->IsChecked() )
+                Settings.m_Flags |= SERVER_ALLOW_CHEATS;
+            m_pOptions->Port = Port;
+            m_pOptions->Directory = Directory;
         }
         else
-            m_pFriendlyFireText->SetLabelColor( xcolor(126,220,60,255) );
+        {
+            Settings.m_GameTypeID   = (s32)m_pMode->GetSelectedItemData();
+            Settings.m_MaxPlayers   = (s32)m_pPlayers->GetSelectedItemData();
+            Settings.m_ScoreLimit   = (s32)m_pScore->GetSelectedItemData();
+            Settings.m_TimeLimit    = (s32)m_pTime->GetSelectedItemData();
+            Settings.m_MutationMode = (mutation_mode)m_pMutation->GetSelectedItemData();
+            Settings.m_VotePassPct  = (s32)m_pVote->GetSelectedItemData();
+            Settings.m_FFirePct     = (s32)m_pFire->GetSelectedItemData();
+            Settings.m_Flags &= ~SERVER_ENABLE_MAP_SCALING;
+            if( m_pScaling->IsChecked() )
+                Settings.m_Flags |= SERVER_ENABLE_MAP_SCALING;
+        }
+
+        m_State = DIALOG_STATE_SELECT;
+        break;
     }
 
-    if( m_pContinueButton->IsFocused() )
-    {
-        highLight = 6;
-        g_UiMgr->SetScreenHighlight( m_pContinueButton->GetPosition() );
-    }
-
-    if( highLight != m_CurrHL )
-    {
-        if( highLight != -1 )
-            g_AudioMgr.Play("Cusor_Norm");
-
-        m_CurrHL = highLight;
+    default:
+        break;
     }
 }
-
-//=========================================================================

@@ -133,12 +133,12 @@ void debris_glass_cluster::TesselateIntoShards ( const play_surface*       pPlay
     f32     PainDamageRadiusSquared;
 
     const pain_profile* pPainProfile = m_SourcePain.GetPainHandle().GetPainProfile();
-    if( pPainProfile && pPainProfile->m_bSplash )
+    if( pPainProfile && m_SourcePain.IsExplosion() )
     {
         PainDamageRadius = pPainProfile->m_DamageFarDist;
     }
 
-    xbool  bSplash = (pPainProfile != NULL) && pPainProfile->m_bSplash;
+    xbool  bSplash = m_SourcePain.IsExplosion();
 
     
     // Do some setup based on hit type
@@ -445,9 +445,9 @@ void debris_glass_cluster::CreateFromRigidGeom ( play_surface* pPlaySurface, con
     rigid_geom* pRigidGeom = RigidInst.GetRigidGeom();
 
     ASSERT( pRigidGeom );    
-    ASSERT( pRigidGeom->m_collision.nHighClusters );
+    ASSERT( pRigidGeom->m_Collision.nHighClusters );
 
-    collision_data& Coll = pRigidGeom->m_collision;
+    collision_data& Coll = pRigidGeom->m_Collision;
 
     // Count the number of shards we need
     s32 iCluster, iTri;
@@ -680,6 +680,10 @@ void debris_glass_cluster::OnRenderTransparent ( void )
     //render::debug::Box( GetBBox(), XCOLOR_YELLOW );
     X_PROFILE_SCOPE_CATEGORY( "Context", "debris_glass_cluster::OnRenderTransparent");
 
+    // Skip empty clusters.
+    if ( m_nShards <= 0 )
+        return;
+
     const texture* pBrokenGlass = m_BrokenGlassTexture.GetPointer();
     if (!pBrokenGlass)
         return;
@@ -713,8 +717,7 @@ void debris_glass_cluster::OnRenderTransparent ( void )
                                                 render::PRIMITIVE_BLEND_ALPHA,
                                                 render::PRIMITIVE_DEPTH_READ_ONLY,
                                                 render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                render::PRIMITIVE_SAMPLER_ANISOTROPIC_WRAP,
-                                                render::PRIMITIVE_LAYER_TRANSPARENT );
+                                                render::PRIMITIVE_SAMPLER_ANISOTROPIC_WRAP);
     matrix4 Identity;
     Identity.Identity();
     render::SubmitPrimitives( Material, Identity, m_RenderVertices, m_nShards * 3,

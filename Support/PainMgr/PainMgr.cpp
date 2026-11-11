@@ -10,9 +10,10 @@
 
 #include "x_files.hpp"
 #include "PainMgr/PainMgr.hpp"
-#include "Parsing/tokenizer.hpp"
+#include "Parsing/TextIn.hpp"
+#include "Auxiliary/MiscUtils/dictionary.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 
 #define DO_LOG_PAIN
 
@@ -221,468 +222,409 @@ pain_health_profile::~pain_health_profile( void )
 
 
 //==============================================================================
-// LOAD PAIN PROFILES
+//  STRUCTURES
 //==============================================================================
 
-xbool LoadPainProfiles( const char* pFileName )
+struct pain_load_data
 {
-    s32 i;
-    xarray<pain_profile> PainProfileArray;
-    pain_profile         PainProfile;
-    xtimer              DeltaTime;
+    // Keep all tables local until loading and validation have completed.
+    xarray<pain_profile>        Sources;
+    xarray<health_profile>      Targets;
+    xarray<pain_health_profile> Pairs;
 
-    LOG_MESSAGE("LoadPainProfiles","Begin");
+    // Source-major lookup into Pairs. A value of -1 means no damage row exists.
+    xarray<s32>                 PairIndices;
 
-    // Open the file for reading
-    token_stream TOK;
-    if( !TOK.OpenFile( pFileName ) )
-        return FALSE;
+    // Dictionary indices match the corresponding source and target arrays.
+    dictionary                  SourceNames;
+    dictionary                  TargetNames;
+};
 
-    // Loop through the header tokens
+//------------------------------------------------------------------------------
+
+struct pain_damage_entry
+{
+    s32 Source;
+    s32 Target;
+    f32 Value;
+};
+
+//==============================================================================
+//  STORAGE
+//==============================================================================
+
+static xbool s_PainLoaded = FALSE;
+
+//==============================================================================
+//  HELPER FUNCTIONS
+//==============================================================================
+
+static xbool ReportPainError( text_in& Input, const char* pMessage )
+{
+    // The text reader already reports its own parse errors. Only add a message
+    // when the failure comes from table validation.
+    if( !Input.HasError() )
     {
-        TOK.SkipToNextLine();
+        x_DebugMsg( "%s(%d) : error : %s\n", Input.GetFileName(), Input.GetLineNumber(), pMessage );
     }
 
-    DeltaTime.Start();
-    // Loop through all the profiles and add them to the array
-    while( TOK.IsEOF() == FALSE )
-    {
-        TOK.ReadString();
-
-        // If this is a blank line then skip to next line
-        if( x_stricmp(TOK.String(),"")==0 )
-        {
-            TOK.SkipToNextLine();
-            continue;
-        }
-
-        // Load the pain_profile with its name
-        PainProfile.SetName( TOK.String() );
-
-        // Confirm there are no duplicate pain profiles
-        {
-            for( i=0; i<PainProfileArray.GetCount(); i++ )
-            {
-                if( PainProfile.GetDataID() == PainProfileArray[i].GetDataID() )
-                    break;
-            }
-            if( i!=PainProfileArray.GetCount() )
-            {
-                ASSERTS(FALSE,"PainProfile duplicate!\n");
-                TOK.SkipToNextLine();
-                continue;
-            }
-        }
-
-        // Skip Blank column
-        TOK.ReadString();
-
-        // Fill out the pain profile data
-        PainProfile.m_DamageNearDist   = TOK.ReadF32FromString();
-        PainProfile.m_DamageFarDist    = TOK.ReadF32FromString();
-        PainProfile.m_ForceNearDist    = TOK.ReadF32FromString();
-        PainProfile.m_ForceFarDist     = TOK.ReadF32FromString();
-        PainProfile.m_bCheckLOS        = TOK.ReadBoolFromString();
-        PainProfile.m_bSplash          = TOK.ReadBoolFromString();
-        PainProfile.m_iPainHealthTable  = PainProfileArray.GetCount();
-
-        if( PainProfile.m_DamageFarDist == PainProfile.m_DamageNearDist )
-            PainProfile.m_DamageFarDist += 1.0f;
-
-        if( PainProfile.m_ForceFarDist == PainProfile.m_ForceNearDist )
-            PainProfile.m_ForceFarDist += 1.0f;
-
-        // Build pain bbox
-        f32 MaxRadius = MAX(PainProfile.m_DamageFarDist,PainProfile.m_ForceFarDist);
-            MaxRadius = MAX(MaxRadius,10);
-        PainProfile.m_BBox = bbox( vector3(0,0,0), MaxRadius );
-
-        // Add profile to the array
-        PainProfileArray.Append( PainProfile );
-
-        // Fast forward to next line
-        TOK.SkipToNextLine();
-    }
-
-    TOK.CloseFile();
-
-    // Allocate final array of pain profiles 
-    pain_profile* pPP = new pain_profile[ PainProfileArray.GetCount() ];
-    for( i=0; i<PainProfileArray.GetCount(); i++ )
-        pPP[i] = PainProfileArray[i];
-
-    // Hand off to the data vault.  ..."Keep them out of trouble!"...
-    g_DataVault.AddDataBlocks("P_PROFILE",pPP,PainProfileArray.GetCount(),sizeof(pain_profile));
-
-    LOG_MESSAGE("LoadPainProfiles","End");
-    return TRUE;
+    return FALSE;
 }
 
 //==============================================================================
-// LOAD HEALTH PROFILES
-//==============================================================================
 
-xbool LoadHealthProfiles( const char* pFileName )
+static xbool OpenPainTable( text_in& Input, const char* pFileName, const char* pSection, s32 Fields )
 {
-    LOG_MESSAGE("LoadHealthProfiles","Begin");
-
-    s32 i;
-    xarray<health_profile> HealthProfileArray;
-    health_profile         HealthProfile;
-
-    // Open the file for reading
-    token_stream TOK;
-    if( !TOK.OpenFile( pFileName ) )
-        return FALSE;
-
-    // Loop through all the profiles and add them to the array
-    s32 LN = TOK.GetLineNumber();
-    while( 1 )
+    // Open the file for reading.
+    if( !Input.OpenFile( pFileName ) )
     {
-        TOK.ReadString();
-
-        if( TOK.GetLineNumber() != LN )
-            break;
-
-        // If this is a blank line then skip to next line
-        if( x_stricmp(TOK.String(),"")==0 )
-        {
-            continue;
-        }
-
-        // Load the health_profile with its name
-        HealthProfile.SetName( TOK.String() );
-
-        // Confirm there are no duplicate health profiles
-        {
-            for( i=0; i<HealthProfileArray.GetCount(); i++ )
-            {
-                if( HealthProfile.GetDataID() == HealthProfileArray[i].GetDataID() )
-                    break;
-            }
-            if( i!=HealthProfileArray.GetCount() )
-            {
-                ASSERTS(FALSE,"HealthProfile duplicate!\n");
-                continue;
-            }
-        }
-
-        // Fill out the health profile data
-        HealthProfile.m_iPainHealthTable  = HealthProfileArray.GetCount();
-
-        // Add profile to the array
-        HealthProfileArray.Append( HealthProfile );
+        return ReportPainError( Input, "Unable to open tweak file" );
     }
 
-    TOK.CloseFile();
+    s32 Version = 0;
 
-    // Allocate final array of health profiles 
-    health_profile* pHP = new health_profile[ HealthProfileArray.GetCount() ];
-    for( i=0; i<HealthProfileArray.GetCount(); i++ )
-        pHP[i] = HealthProfileArray[i];
-
-    // Hand off to the data vault.  ..."Keep them out of trouble!"...
-    g_DataVault.AddDataBlocks("H_PROFILE",pHP,HealthProfileArray.GetCount(),sizeof(health_profile));
-
-    LOG_MESSAGE("LoadHealthProfiles","End");
-    return TRUE;
-}
-
-//==============================================================================
-// LOAD PAIN_HEALTH PROFILES
-//==============================================================================
-
-xbool BuildPainHealthProfiles( const char* pFileName )
-{
-    LOG_MESSAGE("BuildPainHealthProfiles","Begin");
-
-    health_handle         BlankHealthHandle;
-    xarray<health_handle> HealthHandle;
-    xarray<pain_health_profile> PainHealthProfileArray;
-    pain_health_profile PainHealthProfile;
-    // Open the file for reading
-    token_stream TOK;
-    if( !TOK.OpenFile( pFileName ) )
-        return FALSE;
-
-    xtimer t;
-    xtimer Time;
-
-//#if defined(athyssen)
-//#error From Bisc:Hey Andy, hope all went well! Here is some notes about this function!
-    /*
-    I was looking in to why this was taking 60+ seconds to calculate the pain tables. It
-    all boiled down to the expansion of the PainHealthProfileArray. It was turning in to
-    an n^2 problem as xarray growing was limited, by Craig, to 1 entry at a time (apparently
-    to reduce the amount of wasted memory). I have used the number of health handles^2 
-    as a guesstimate to the size of the final array. This dropped calculation time from 
-    60+seconds to around 1.4 seconds. The guess is larger than the final array but not
-    by too much.
-
-    Couple of questions:
-
-    1. Can we predict with greater accuracy the size of the final array?
-    2. Can the inner loop of this code be sped up more?
-    */
-//#endif
-    HealthHandle.SetCapacity( 100 );
-
-    t.Start();
-    Time.Start();
-
-    // Read in the health_profile names
-    s32 LN = TOK.GetLineNumber();
-
-    while( 1 )
+    // Read the format header before accepting the requested table section.
+    if( !Input.ReadHeader() || x_strcmp( Input.GetHeaderName(), "TweakTable" ) ||
+        Input.GetFieldCount() != 1 || !Input.ReadFields() ||
+        !Input.GetS32( "Version", Version ) || Version != 1 )
     {
-        TOK.ReadString();
-        if( TOK.GetLineNumber() != LN )
-            break;
-
-        // Load the health_handle with its name
-        health_handle& HH = HealthHandle.Append();
-        if( x_stricmp(TOK.String(),"")!=0 )
-        {
-            HH.SetName( TOK.String() );
-        }
+        return ReportPainError( Input, "Expected TweakTable version 1" );
     }
 
-    // This initial capacity should match the final capacity recorded in the logger.
-    // If this matches or exceeds the logger value, we elimate any unnecessary
-    // resizing of the xarray.
-    PainHealthProfileArray.SetCapacity( 6785 );
-
-    // Rewind and go to second line where the pain listing starts
-    TOK.Rewind();
-    TOK.SkipToNextLine();
-
-    while( TOK.IsEOF() == FALSE )
+    // Each table has a fixed field count and must contain at least one entry.
+    if( !Input.ReadHeader() || x_strcmp( Input.GetHeaderName(), pSection ) ||
+        Input.GetFieldCount() != Fields || Input.GetHeaderCount() <= 0 )
     {
-        TOK.ReadString();
-
-        if( x_stricmp(TOK.String(),"")==0 )
-        {
-            TOK.SkipToNextLine();
-            continue;
-        }
-
-        // Load the handle with its name
-        pain_handle PainHandle( TOK.String() );
-
-        // If the profile doesn't exist then move to next line
-        const pain_profile* pPP = PainHandle.GetPainProfile();
-        if( pPP == NULL )
-        {
-            TOK.SkipToNextLine();
-            continue;
-        }
-
-        // Loop across reading in values for each health_handle
-        s32 iHealthHandle=1;
-        for( iHealthHandle=1; iHealthHandle<HealthHandle.GetCount(); iHealthHandle++ )
-        {
-            // If it's blank then just move on to next handle
-            if( HealthHandle[iHealthHandle].GetDataID() == BlankHealthHandle.GetDataID() )
-                continue;
-
-            // Is this a valid health_handle?
-            const health_profile* pHP = HealthHandle[iHealthHandle].GetHealthProfile();
-            if( pHP == NULL )
-                continue;
-
-            // Build a pain_health_profile for this combination
-            pain_health_handle PHHandle = PainHandle.BuildPainHealthProfileHandle( HealthHandle[iHealthHandle] );
-            PainHealthProfile.SetDataID( PHHandle.GetDataID() );
-            PainHealthProfile.m_Damage  = 0;
-            PainHealthProfile.m_Force   = 0;
-            PainHealthProfile.m_HitType = 0;
-
-            // Append the new profile to the list
-            PainHealthProfileArray.Append(PainHealthProfile);
-        }
-
-        // Fast forward to next line
-        TOK.SkipToNextLine();
+        return ReportPainError( Input, xfs( "Invalid %s table", pSection ) );
     }
 
-    TOK.CloseFile();
-
-    // Allocate final array
-    pain_health_profile* pPHP = new pain_health_profile[ PainHealthProfileArray.GetCount() ];
-    for( s32 i=0; i<PainHealthProfileArray.GetCount(); i++ )
-        pPHP[i] = PainHealthProfileArray[i];
-
-    // Hand off to the data vault.  ..."Keep them out of trouble!"...
-    g_DataVault.AddDataBlocks("PH_PROFILE",pPHP,PainHealthProfileArray.GetCount(),sizeof(pain_health_profile));
-
-    LOG_MESSAGE( "BuildPainHealthProfiles","PainHealthProfileArray Size : %d elements",PainHealthProfileArray.GetCount() );
-    LOG_MESSAGE( "BuildPainHealthProfiles","HealthHandle Size : %d elements",HealthHandle.GetCount() );
-    LOG_MESSAGE( "BuildPainHealthProfiles","End. Took %2.02f seconds.", Time.ReadSec() );
-    
-    
     return TRUE;
 }
 
 //==============================================================================
 
-xbool FillPainHealthProfileData( const char* pFileName, s32 DataOffset, xbool bFloat )
+static xbool FinishPainTable( text_in& Input )
 {
-    health_handle         BlankHealthHandle;
-    xarray<health_handle> HealthHandle;
-    
-    // Open the file for reading
-    token_stream TOK;
-    if( !TOK.OpenFile( pFileName ) )
-        return FALSE;
-
-    // Read in the health_profile names
-    s32 LN = TOK.GetLineNumber();
-    xtimer t;
-    xtimer Time;
-    t.Start();
-    Time.Start();
-    while( 1 )
+    // The declared rows must consume the file; extra sections are not allowed.
+    if( Input.ReadHeader() || Input.HasError() || !Input.IsEOF() )
     {
-        TOK.ReadString();
-        if( TOK.GetLineNumber() != LN )
-            break;
-
-        // Load the health_handle with its name
-        health_handle& HH = HealthHandle.Append();
-        if( x_stricmp(TOK.String(),"")!=0 )
-        {
-            HH.SetName( TOK.String() );
-        }
+        return ReportPainError( Input, "Unexpected data after tweak table" );
     }
 
-    // Rewind and go to second line where the pain listing starts
-    TOK.Rewind();
-    TOK.SkipToNextLine();
-
-    while( TOK.IsEOF() == FALSE )
-    {
-        TOK.ReadString();
-
-        if( x_stricmp(TOK.String(),"")==0 )
-        {
-            TOK.SkipToNextLine();
-            continue;
-        }
-
-        // Load the handle with its name
-        pain_handle PainHandle( TOK.String() );
-
-        // If the profile doesn't exist then move to next line
-        const pain_profile* pPP = PainHandle.GetPainProfile();
-        if( pPP == NULL )
-        {
-            TOK.SkipToNextLine();
-            continue;
-        }
-
-        // Loop across reading in values for each health_handle
-        s32 iHealthHandle=1;
-        for( iHealthHandle=1; iHealthHandle<HealthHandle.GetCount(); iHealthHandle++ )
-        {
-            // Read value
-            f32 V = TOK.ReadF32FromString();
-
-            // If the healthhandle is blank then just move on to next handle
-            if( HealthHandle[iHealthHandle].GetDataID() == BlankHealthHandle.GetDataID() )
-                continue;
-
-            // Is this a valid health_handle?
-            const health_profile* pHP = HealthHandle[iHealthHandle].GetHealthProfile();
-            if( pHP == NULL )
-                continue;
-
-            // Build a pain_health_profile for this combination
-            pain_health_handle PHHandle = PainHandle.BuildPainHealthProfileHandle( HealthHandle[iHealthHandle] );
-            pain_health_profile* pPHP = (pain_health_profile*)PHHandle.GetPainHealthProfile();
-            if( pPHP )
-            {
-                if( bFloat )    ((f32*)(((byte*)pPHP) + DataOffset))[0] = (f32)V;
-                else            ((s32*)(((byte*)pPHP) + DataOffset))[0] = (s32)V;
-            }
-        }
-
-        // Fast forward to next line
-        TOK.SkipToNextLine();
-    }
-
-    TOK.CloseFile();
-
-    LOG_MESSAGE("FillPainHealthProfileData","Took %2.02fms to build profile data", Time.ReadSec() );
     return TRUE;
 }
 
 //==============================================================================
+//  LOAD PAIN PROFILES
+//==============================================================================
 
-xbool LoadPainHealthProfiles( const char* pDirectory )
+static xbool ReadPainProfiles( const char* pFileName, pain_load_data& Data )
 {
-    // Go through damage table and build pain_health_profile entries
-#ifndef X_EDITOR
-    if( GameMgr.IsGameMultiplayer() )
-    {
-        if( !BuildPainHealthProfiles(xfs("%s\\Tweak_MP_DamageTable.txt",pDirectory)) )
-            return FALSE;
-    }
-    else
-#endif
-    {
-        if( !BuildPainHealthProfiles(xfs("%s\\Tweak_DamageTable.txt",pDirectory)) )
-            return FALSE;
-    }
+    text_in Input;
 
-
-
-    pain_health_profile PHP;
-
-#ifndef X_EDITOR
-    if( GameMgr.IsGameMultiplayer() )
+    if( !OpenPainTable( Input, pFileName, "PainProfiles", 7 ) )
     {
-        if( !FillPainHealthProfileData(xfs("%s\\Tweak_MP_DamageTable.txt",pDirectory),((uaddr)&PHP.m_Damage)-((uaddr)&PHP),TRUE) )
-            return FALSE;
-    }
-    else
-#endif
-    {
-        if( !FillPainHealthProfileData(xfs("%s\\Tweak_DamageTable.txt",pDirectory),((uaddr)&PHP.m_Damage)-((uaddr)&PHP),TRUE) )
-            return FALSE;
-    }
-    
-    if( !FillPainHealthProfileData(xfs("%s\\Tweak_ForceTable.txt",pDirectory),((uaddr)&PHP.m_Force)-((uaddr)&PHP),TRUE) )
         return FALSE;
+    }
 
-    if( !FillPainHealthProfileData(xfs("%s\\Tweak_HitTypeTable.txt",pDirectory),((uaddr)&PHP.m_HitType)-((uaddr)&PHP),FALSE) )
+    s32 Count = Input.GetHeaderCount();
+
+    // Profile indices are stored in the signed 16-bit pain/health table fields.
+    if( Count > 32767 )
+    {
+        return ReportPainError( Input, "Too many source profiles" );
+    }
+
+    Data.Sources.SetCapacity( Count );
+
+    // Loop through all the profiles and add them to the array.
+    for( s32 I = 0; I < Count; I++ )
+    {
+        pain_profile Profile;
+        xstring      Name;
+        xbool        CheckLOS;
+        xbool        IsSplash;
+
+        // Fill out the pain profile data from the named fields.
+        if( !Input.ReadFields() || !Input.GetString( "Name", Name ) ||
+            !Input.GetF32( "DamageNear", Profile.m_DamageNearDist ) ||
+            !Input.GetF32( "DamageFar", Profile.m_DamageFarDist ) ||
+            !Input.GetF32( "ForceNear", Profile.m_ForceNearDist ) ||
+            !Input.GetF32( "ForceFar", Profile.m_ForceFarDist ) ||
+            !Input.GetBool( "CheckLOS", CheckLOS ) || !Input.GetBool( "IsSplash", IsSplash ) )
+        {
+            return ReportPainError( Input, "Invalid source profile" );
+        }
+
+        if( Name.IsEmpty() )
+        {
+            return ReportPainError( Input, "Empty source profile name" );
+        }
+
+        // Normalize names before checking for duplicate pain profiles.
+        Name.MakeUpper();
+
+        if( Data.SourceNames.Find( Name ) >= 0 )
+        {
+            return ReportPainError( Input, xfs( "Duplicate source profile '%s'", (const char*)Name ) );
+        }
+
+        // Load the pain profile with its name and retain its table index.
+        Data.SourceNames.Add( Name );
+        Profile.SetName( Name );
+        Profile.m_iPainHealthTable = (s16)I;
+        Profile.m_bCheckLOS        = CheckLOS;
+        Profile.m_bSplash          = IsSplash;
+
+        // Keep zero-width falloff ranges usable by the damage calculation.
+        if( Profile.m_DamageFarDist == Profile.m_DamageNearDist )
+        {
+            Profile.m_DamageFarDist += 1.0f;
+        }
+
+        if( Profile.m_ForceFarDist == Profile.m_ForceNearDist )
+        {
+            Profile.m_ForceFarDist += 1.0f;
+        }
+
+        // Build pain bbox to cover both damage and force, with a minimum radius.
+        f32 Radius = MAX( MAX( Profile.m_DamageFarDist, Profile.m_ForceFarDist ), 10.0f );
+        Profile.m_BBox = bbox( vector3( 0, 0, 0 ), Radius );
+
+        // Add profile to the array.
+        Data.Sources.Append() = Profile;
+    }
+
+    return FinishPainTable( Input );
+}
+
+//==============================================================================
+//  LOAD HEALTH AND PAIN_HEALTH PROFILES
+//==============================================================================
+
+static xbool ReadDamageTable( const char* pFileName, pain_load_data& Data )
+{
+    text_in Input;
+
+    if( !OpenPainTable( Input, pFileName, "Damage", 3 ) )
+    {
         return FALSE;
+    }
+
+    s32 Count = Input.GetHeaderCount();
+    xarray<pain_damage_entry> Entries;
+    Entries.SetCapacity( Count );
+
+    // Read source/target damage entries first. This establishes the complete
+    // target list before allocating the source-major pair lookup.
+    for( s32 I = 0; I < Count; I++ )
+    {
+        xstring           Source;
+        xstring           Target;
+        pain_damage_entry Entry;
+
+        if( !Input.ReadFields() || !Input.GetString( "Source", Source ) ||
+            !Input.GetString( "Target", Target ) || !Input.GetF32( "Value", Entry.Value ) )
+        {
+            return ReportPainError( Input, "Invalid damage entry" );
+        }
+
+        Source.MakeUpper();
+        Target.MakeUpper();
+        Entry.Source = Data.SourceNames.Find( Source );
+
+        // A damage row must reference an existing pain profile and a named target.
+        if( Entry.Source < 0 || Target.IsEmpty() )
+        {
+            return ReportPainError( Input, xfs( "Invalid damage pair '%s' / '%s'",
+                                               (const char*)Source, (const char*)Target ) );
+        }
+
+        Entry.Target = Data.TargetNames.Find( Target );
+
+        // Load each health profile once, using its first appearance in the table.
+        if( Entry.Target < 0 )
+        {
+            if( Data.Targets.GetCount() >= 32767 )
+            {
+                return ReportPainError( Input, "Too many target profiles" );
+            }
+
+            Entry.Target = Data.TargetNames.Add( Target );
+            health_profile Profile;
+            Profile.SetName( Target );
+            Profile.m_iPainHealthTable = (s16)Entry.Target;
+            Data.Targets.Append() = Profile;
+        }
+
+        Entries.Append() = Entry;
+    }
+
+    if( !FinishPainTable( Input ) )
+    {
+        return FALSE;
+    }
+
+    // Index pairs once; force and hit-type rows then resolve without a scan.
+    s32 TargetCount = Data.Targets.GetCount();
+    Data.PairIndices.SetCount( Data.Sources.GetCount() * TargetCount );
+
+    for( s32 I = 0; I < Data.PairIndices.GetCount(); I++ )
+    {
+        Data.PairIndices[I] = -1;
+    }
+
+    // The original loader documented an O(n^2) slowdown when its profile array
+    // grew one entry at a time. Reserve enough space before appending pairs;
+    // the damage-row count is an upper bound even when pairs are repeated.
+    Data.Pairs.SetCapacity( Entries.GetCount() );
+
+    for( s32 I = 0; I < Entries.GetCount(); I++ )
+    {
+        const pain_damage_entry& Entry = Entries[I];
+        s32& Index = Data.PairIndices[Entry.Source * TargetCount + Entry.Target];
+
+        if( Index < 0 )
+        {
+            // Build a pain_health_profile for this combination. The generated
+            // name must match pain_handle::BuildPainHealthProfileHandle().
+            Index = Data.Pairs.GetCount();
+            pain_health_profile& Profile = Data.Pairs.Append();
+            Profile.SetName( xfs( "PH(%03d)(%03d)", Entry.Source, Entry.Target ) );
+            Profile.m_Force   = 0.0f;
+            Profile.m_HitType = 0;
+        }
+
+        // Repeated damage rows update the same pair instead of creating duplicates.
+        Data.Pairs[Index].m_Damage = Entry.Value;
+    }
 
     return TRUE;
 }
 
+//==============================================================================
+//  FILL PAIN_HEALTH PROFILE DATA
+//==============================================================================
+
+static xbool ReadPainValues( const char* pFileName, pain_load_data& Data, xbool HitType )
+{
+    text_in Input;
+
+    if( !OpenPainTable( Input, pFileName, HitType ? "HitType" : "Force", 3 ) )
+    {
+        return FALSE;
+    }
+
+    s32 Count = Input.GetHeaderCount();
+
+    for( s32 I = 0; I < Count; I++ )
+    {
+        xstring Source;
+        xstring Target;
+        f32     Force = 0.0f;
+        s32     Type  = 0;
+
+        if( !Input.ReadFields() || !Input.GetString( "Source", Source ) ||
+            !Input.GetString( "Target", Target ) ||
+            ( HitType ? !Input.GetS32( "Value", Type ) : !Input.GetF32( "Value", Force ) ) )
+        {
+            return ReportPainError( Input, "Invalid force or hit-type entry" );
+        }
+
+        // Resolve both profile names against the tables established by damage rows.
+        Source.MakeUpper();
+        Target.MakeUpper();
+        s32 SourceIndex = Data.SourceNames.Find( Source );
+        s32 TargetIndex = Data.TargetNames.Find( Target );
+
+        if( SourceIndex < 0 || TargetIndex < 0 )
+        {
+            return ReportPainError( Input, xfs( "Unknown profile pair '%s' / '%s'",
+                                               (const char*)Source, (const char*)Target ) );
+        }
+
+        s32 Index = Data.PairIndices[SourceIndex * Data.Targets.GetCount() + TargetIndex];
+
+        // Only damage entries define active source/target pairs.
+        if( Index < 0 )
+        {
+            continue;
+        }
+
+        // Fill only the requested field, preserving damage and the other value.
+        if( HitType )
+        {
+            Data.Pairs[Index].m_HitType = Type;
+        }
+        else
+        {
+            Data.Pairs[Index].m_Force = Force;
+        }
+    }
+
+    return FinishPainTable( Input );
+}
+
+//==============================================================================
+//  FUNCTIONS
 //==============================================================================
 
 xbool LoadPain( const char* pDirectory )
 {
-    if( !LoadPainProfiles( xfs("%s\\Tweak_PainProfile.txt",pDirectory) ) )
-        return FALSE;
-    
+    xtimer Time;
+    Time.Start();
+
+    pain_load_data Data;
+    const char* pDamageFile = "Tweak_DamageTable.tweak";
+
+    // Multiplayer supplies its own damage table; source, force and hit-type
+    // profiles are shared with the single-player configuration.
 #ifndef X_EDITOR
     if( GameMgr.IsGameMultiplayer() )
     {
-        if( !LoadHealthProfiles( xfs("%s\\Tweak_MP_DamageTable.txt",pDirectory) ) )
-            return FALSE;
-    }     
-    else 
+        pDamageFile = "Tweak_MP_DamageTable.tweak";
+    }
 #endif
+
+    // Build source and target profiles, then fill force and hit type for their pairs.
+    // A failure leaves these temporary arrays unpublished.
+    if( !ReadPainProfiles( xfs( "%s\\Tweak_PainProfile.tweak", pDirectory ), Data ) ||
+        !ReadDamageTable( xfs( "%s\\%s", pDirectory, pDamageFile ), Data ) ||
+        !ReadPainValues( xfs( "%s\\Tweak_ForceTable.tweak", pDirectory ), Data, FALSE ) ||
+        !ReadPainValues( xfs( "%s\\Tweak_HitTypeTable.tweak", pDirectory ), Data, TRUE ) )
     {
-        if( !LoadHealthProfiles( xfs("%s\\Tweak_DamageTable.txt",pDirectory) ) )
-            return FALSE;
+        return FALSE;
     }
 
-    if( !LoadPainHealthProfiles( pDirectory ) )
-        return FALSE;
+    // Allocate final arrays of pain, health and combined profiles.
+    pain_profile*        pSources = new pain_profile[Data.Sources.GetCount()];
+    health_profile*      pTargets = new health_profile[Data.Targets.GetCount()];
+    pain_health_profile* pPairs   = new pain_health_profile[Data.Pairs.GetCount()];
 
+    for( s32 I = 0; I < Data.Sources.GetCount(); I++ )
+    {
+        pSources[I] = Data.Sources[I];
+    }
+
+    for( s32 I = 0; I < Data.Targets.GetCount(); I++ )
+    {
+        pTargets[I] = Data.Targets[I];
+    }
+
+    for( s32 I = 0; I < Data.Pairs.GetCount(); I++ )
+    {
+        pPairs[I] = Data.Pairs[I];
+    }
+
+    // Publish only after every file has been read successfully.
+    // Hand off to the data vault. ..."Keep them out of trouble!"...
+    g_DataVault.AddDataBlocks( "P_PROFILE", pSources, Data.Sources.GetCount(), sizeof(pain_profile) );
+    g_DataVault.AddDataBlocks( "H_PROFILE", pTargets, Data.Targets.GetCount(), sizeof(health_profile) );
+    g_DataVault.AddDataBlocks( "PH_PROFILE", pPairs, Data.Pairs.GetCount(), sizeof(pain_health_profile) );
+    s_PainLoaded = TRUE;
+
+    LOG_MESSAGE( "LoadPain", "Loaded %d sources, %d targets and %d pairs in %2.02f seconds.",
+                 Data.Sources.GetCount(), Data.Targets.GetCount(), Data.Pairs.GetCount(), Time.ReadSec() );
     return TRUE;
 }
 
@@ -690,6 +632,11 @@ xbool LoadPain( const char* pDirectory )
 
 void UnloadPain( void )
 {
+    if( !s_PainLoaded )
+    {
+        return;
+    }
+
     // Remove data from the vault
     pain_profile*        pPP  = (pain_profile*)g_DataVault.DelDataBlocks("P_PROFILE");
     health_profile*      pHP  = (health_profile*)g_DataVault.DelDataBlocks("H_PROFILE");
@@ -699,6 +646,7 @@ void UnloadPain( void )
     delete[] pPP;
     delete[] pHP;
     delete[] pPHP;
+    s_PainLoaded = FALSE;
 }
 
 //==============================================================================

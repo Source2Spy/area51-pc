@@ -978,8 +978,8 @@ void loco_move::OnEnter( void )
     m_Timer      = 0 ;
     m_bFirstTime = TRUE ;
 
-    // Reset the delta pos array to track whether of not we are moving.
-    m_Base.m_Physics.ResetDeltaPos() ;
+    // Start a new movement progress interval.
+    m_Base.m_Physics.ResetMovementProgress() ;
     m_Base.m_bLocoIsStuck = FALSE ;
     m_Base.m_Physics.SetSolveActorCollisions(TRUE);
 
@@ -1154,7 +1154,7 @@ void loco_move::OnAdvance( f32 DeltaTime )
     m_Base.m_Player.ApplyCurrAnimDeltaYaw( DeltaYaw ) ;
 
     // Are we stuck?
-    if ( m_Base.m_Physics.GetRecentDeltaPos().LengthSquared() < 1.f )
+    if ( m_Base.m_Physics.IsMovementBlocked() )
     {
         m_Base.m_bLocoIsStuck = TRUE ;
     }
@@ -1629,7 +1629,7 @@ void loco::OnAdvance( f32 DeltaTime )
     // If controlling a ghost, then we are done!
     if( m_bGhostMode )
     {
-        m_Physics.ZeroVelocity() ;
+        m_Physics.ClearMotionVelocity() ;
 
         // Make sure aimer is accurate
         m_AimController.SetBlendFactor( x_MinAngleDiff( m_GhostYaw, GetYaw() ), m_GhostPitch, 0.0f );
@@ -1712,7 +1712,7 @@ void loco::OnAdvance( f32 DeltaTime )
     // Clear velocity if accumulating motion to stop huge Y vels at end of "accumulate vert" 
     // anims. eg. the mutant tank leaping down
     if (m_Player.GetCurrAnim().GetAccumVertMotion())
-        m_Physics.ZeroVelocity() ;
+        m_Physics.ClearMotionVelocity() ;
 
     // Compute new position
     vector3  NewPos = OldPos + m_DeltaPos ;
@@ -1762,17 +1762,7 @@ void loco::OnAdvance( f32 DeltaTime )
     // Running from an object?
     if( m_Physics.GetGuid() && m_bAdvancePhysics )
     {
-        // For fast and dumb characters
-/*
-        actor* pActor = (actor*)g_ObjMgr.GetObjectByGuid( m_Physics.GetGuid() );
-        if( pActor && pActor->IsDumbAndFast() )
-            m_Physics.AdvanceWithoutCollision(NewPos, DeltaTime) ;
-        else
-*/
-        {
-            // Update physics officially
-            m_Physics.Advance(NewPos, DeltaTime) ;
-        }
+        m_Physics.Advance( NewPos, DeltaTime );
 
         // Get position from physics incase a collision happened
         NewPos = m_Physics.GetPosition() ;
@@ -2498,8 +2488,8 @@ xbool loco::PlayAnim( const anim_group::handle& hAnimGroup, s32 iAnim, f32 Blend
         return FALSE ;
 
     // No anim?
-    if (iAnim == -1)
-        return FALSE ;
+    if( (iAnim < 0) || (iAnim >= hAnimGroup.GetPointer()->GetNAnims()) )
+        return FALSE;
 
     // If we are already playing this animation, don't start it over?
     if ((Flags & ANIM_FLAG_RESTART_IF_SAME_ANIM) == 0)

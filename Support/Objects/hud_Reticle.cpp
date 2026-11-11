@@ -82,7 +82,7 @@ hud_reticle::hud_reticle( void )
     m_UsesCardinalEdges     = FALSE;
     m_HasLiveEnemyTarget    = FALSE;
 
-    m_MutationReticle.SetName( PRELOAD_FILE("HUD_reticle_mutation.xbmp") );
+    m_MutationReticle.SetName( PRELOAD_FILE("HUD/GENERAL/HUD_RETICLE_MUTATION.XBMP") );
 }
 
 //==============================================================================

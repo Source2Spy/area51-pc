@@ -12,9 +12,13 @@
 //==============================================================================
 
 #include "x_types.hpp"
+#include "NetworkMgr/Game/PlayerStats.hpp"
 #include "GlobalSettings.hpp"
 #include "CheckPointMgr/CheckPointMgr.hpp"
 #include "LoreList.hpp"
+#include "InputMgr/GamePad.hpp"
+#include "NetworkMgr/Match/MatchBrowser.hpp"
+#include "NetworkMgr/Match/EndpointResolver.hpp"
 
 //==============================================================================
 //  DEFINES
@@ -67,18 +71,45 @@ enum class profile_control_axis
 };
 
 //==============================================================================
+//  MULTIPLAYER PREFERENCES
+//==============================================================================
+
+struct multiplayer_preferences
+{
+    void                Reset       ( void );
+    match_browser_filter GetFilter  ( void ) const;
+    void                SetFilter   ( const match_browser_filter& Filter );
+
+    host_settings       Host;
+    s32                 HostPort;
+    char                Directory[MATCH_ENDPOINT_LENGTH];
+    char                Address[MATCH_ENDPOINT_LENGTH];
+    xwchar              FilterName[64];
+    xwchar              FilterMap[32];
+    u32                 Source;
+    s32                 GameType;
+    s32                 MaxPing;
+    match_sort          Sort;
+    xbool               Descending;
+    xbool               HideFull;
+    xbool               HideEmpty;
+    xbool               HidePassword;
+};
+
+//==============================================================================
 //  PLAYER PROFILE
 //==============================================================================
 
 class player_profile
 {
-    friend class save_data_codec;
-    template<class SERIALIZER>
-    friend void save_data_serialize_profile( SERIALIZER&, player_profile& );
+    friend class SaveDataCodec;
 
 public:
                         player_profile          ( void );
     void                Reset                   ( void );
+
+    ingame_pad::keyboard_bindings& GetKeyboardBindings( void ) { return m_KeyboardBindings; }
+    const ingame_pad::keyboard_bindings& GetKeyboardBindings( void ) const { return m_KeyboardBindings; }
 
     void                RestoreControlDefaults  ( void );
     void                RestoreMouseControlDefaults
@@ -146,8 +177,6 @@ public:
     xbool               GetCrouchOn             ( void ) const;
     void                SetVibration            ( xbool Vibration );
     xbool               GetVibration            ( void ) const;
-    void                SetVisibleOnline        ( xbool VisibleOnline );
-    xbool               GetVisibleOnline        ( void ) const;
     void                SetAutosaveOn           ( xbool AutosaveOn );
     xbool               GetAutosaveOn           ( void ) const;
     void                SetAlienAvatarsOn       ( xbool AlienAvatarsOn );
@@ -156,13 +185,17 @@ public:
     xbool               GetHardUnlocked         ( void ) const;
     void                SetDifficultyChanged    ( xbool DifficultyChanged );
     xbool               GetDifficultyChanged    ( void ) const;
-    void                SetAgeVerified          ( xbool AgeVerified );
-    xbool               GetAgeVerified          ( void ) const;
     void                SetGameFinished         ( xbool GameFinished );
     xbool               GetGameFinished         ( void ) const;
  
     level_check_points& GetCheckpoint           ( s32 Index );
     level_check_points* GetCheckpointByMapID    ( s32 MapID );
+
+    const player_stats& GetCareerStats          ( void ) const { return m_CareerStats; }
+    void                AddCareerStats          ( const player_stats& Stats );
+
+    multiplayer_preferences& GetMultiplayerPreferences( void ) { return m_MultiplayerPreferences; }
+    const multiplayer_preferences& GetMultiplayerPreferences( void ) const { return m_MultiplayerPreferences; }
 
     void                Checksum                ( void );
     xbool               HasChanged              ( void );
@@ -173,10 +206,13 @@ public:
 #endif
 
 private:
+    multiplayer_preferences m_MultiplayerPreferences;
+    player_stats        m_CareerStats;
     s32                 m_Checksum;                                                     // CRC32 of the profile
     char                m_pProfileName[32];                                             // the nickname (MUST BE FIRST)
     u32                 m_HashString;                                                   // hash of the profile name and the time created
     s32                 m_AvatarID;                                                     // avatar
+    ingame_pad::keyboard_bindings m_KeyboardBindings;
     u8                  m_MouseSensitivity[2];
     u8                  m_GamepadSensitivity[2];
     u8                  m_Volume[5];                                                    // volume controls
@@ -199,13 +235,11 @@ private:
     u32                 m_bIsActive             : 1;  // is currently active 
     u32                 m_bGamepadInvertY       : 1;  // invert gamepad Y axis
     u32                 m_bVibration            : 1;  // Force feedback/vibration enabled
-    u32                 m_bIsVisibleOnline      : 1;  // Report full status when online
     u32                 m_bAutosaveOn           : 1;  // Autosave is enabled
     u32                 m_bAlienAvatarsOn       : 1;  // Alien avatars are selectable
     u32                 m_bSecretAwarded        : 1;  // Give a secret away after deep underground
     u32                 m_bHardUnlocked         : 1;  // Difficulty level hard is available
     u32                 m_bDifficultyChanged    : 1;  // Was the difficulty level changed during a campaign
-    u32                 m_bAgeVerified          : 1;  // The player's age has been verified for this profile (COPA requirement)
     u32                 m_bGameFinished         : 1;  // Player has finished the game.
     u32                 m_bMouseInvertX         : 1;  // invert mouse X axis
     u32                 m_bMouseInvertY         : 1;  // invert mouse Y axis
@@ -401,17 +435,9 @@ inline xbool player_profile::GetVibration( void ) const
 
 //==============================================================================
 
-inline void player_profile::SetVisibleOnline( xbool VisibleOnline )
-{
-    m_bIsVisibleOnline = VisibleOnline;
-}
 
 //==============================================================================
 
-inline xbool player_profile::GetVisibleOnline( void ) const
-{
-    return m_bIsVisibleOnline;
-}
 
 //==============================================================================
 
@@ -471,17 +497,9 @@ inline xbool player_profile::GetDifficultyChanged( void ) const
 
 //==============================================================================
 
-inline void player_profile::SetAgeVerified( xbool AgeVerified )
-{
-    m_bAgeVerified = AgeVerified;
-}
 
 //==============================================================================
 
-inline xbool player_profile::GetAgeVerified( void ) const
-{
-    return m_bAgeVerified;
-}
 
 //==============================================================================
 

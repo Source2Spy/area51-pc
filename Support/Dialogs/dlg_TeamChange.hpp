@@ -18,7 +18,7 @@
 #include "UI/ui_blankbox.hpp"
 
 #include "dlg_PopUp.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 
 //==============================================================================
 //  dlg_team_change

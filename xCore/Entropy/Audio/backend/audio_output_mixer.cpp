@@ -77,7 +77,9 @@ void audio_output_mixer::MixChannel( output_channel* pChannel, s32* pL, s32* pR,
                 StopAtSrcStop = TRUE;
 
                 if( SrcLoopTo < 0 )
+                {
                     SrcLoopTo = 0;
+                }
             }
             else
             {
@@ -107,7 +109,9 @@ void audio_output_mixer::MixChannel( output_channel* pChannel, s32* pL, s32* pR,
 
             s32 iSrc2 = iSrc+1;
             if( iSrc2 >= SrcStop )
+            {
                 iSrc2 = SrcLoopTo;
+            }
 
             s32 s1 = (pChannel->pData[iSrc ] * (65535-iSrcFrac)) >> 16;
             s32 s2 = (pChannel->pData[iSrc2] * iSrcFrac) >> 16;
@@ -177,11 +181,17 @@ s32 audio_output_mixer::HandleToIndex( audio_output_hchannel hChannel )
     s32 Sequence    = hChannel >> 16;
 
     if( Index < 0 )
+    {
         Index = MAX_CHANNELS;
+    }
     else if( Index >= MAX_CHANNELS )
+    {
         Index = MAX_CHANNELS;
+    }
     else if( m_OutputChannels[Index].Sequence != Sequence )
+    {
         Index = MAX_CHANNELS;
+    }
 
     return Index;
 }
@@ -193,13 +203,19 @@ s32 audio_output_mixer::HandleToSnapshotIndex( audio_output_hchannel hChannel ) 
     s32 Index = (hChannel & 65535) - 1;
 
     if( Index < 0 )
+    {
         return MAX_CHANNELS;
+    }
 
     if( Index >= MAX_CHANNELS )
+    {
         return MAX_CHANNELS;
+    }
 
     if( x_AtomicLoadAcquire( &m_ChannelSnapshots[Index].hChannel ) != hChannel )
+    {
         return MAX_CHANNELS;
+    }
 
     return Index;
 }
@@ -209,7 +225,9 @@ s32 audio_output_mixer::HandleToSnapshotIndex( audio_output_hchannel hChannel ) 
 void audio_output_mixer::PublishChannelSnapshot( s32 Index )
 {
     if( (Index < 0) || (Index >= MAX_CHANNELS) )
+    {
         return;
+    }
 
     output_channel& Channel = m_OutputChannels[Index];
     audio_output_hchannel hChannel = (Channel.Sequence << 16) + Index + 1;
@@ -218,9 +236,13 @@ void audio_output_mixer::PublishChannelSnapshot( s32 Index )
     x_AtomicStoreRelease( &m_ChannelSnapshots[Index].State,       (s32)Channel.State );
 
     if( Channel.Allocated )
+    {
         x_AtomicStoreRelease( &m_ChannelSnapshots[Index].hChannel, hChannel );
+    }
     else
+    {
         x_AtomicStoreRelease( &m_ChannelSnapshots[Index].hChannel, 0 );
+    }
 
     x_AtomicStoreRelease( &m_ChannelSnapshots[Index].StartSerial, Channel.StartSerial );
 }
@@ -338,7 +360,9 @@ void audio_output_mixer::ApplyRenderCommand( const audio_render_command& Command
     {
         s32 Index = HandleToIndex( Command.Pitch.hChannel );
         if( Index < MAX_CHANNELS )
+        {
             m_OutputChannels[Index].Pitch = Command.Pitch.Pitch;
+        }
         break;
     }
 
@@ -349,7 +373,9 @@ void audio_output_mixer::ApplyRenderCommand( const audio_render_command& Command
         {
             s32 nSamples = Command.StopLoop.nSamples;
             if( nSamples < 0 )
+            {
                 nSamples = 0;
+            }
 
             m_OutputChannels[Index].StopLoop   = TRUE;
             m_OutputChannels[Index].StopSample = nSamples;
@@ -359,7 +385,9 @@ void audio_output_mixer::ApplyRenderCommand( const audio_render_command& Command
 
     case AUDIO_RENDER_COMMAND_NONE:
     default:
+    {
         break;
+    }
     }
 }
 
@@ -372,10 +400,14 @@ s32 audio_output_mixer::MixFrame( s16* pOutput, s32 nSamples )
     s32 OutputLevel;
 
     if( !pOutput || (nSamples <= 0) )
+    {
         return 0;
+    }
 
     if( nSamples > AUDIO_OUTPUT_SAMPLES_PER_FRAME )
+    {
         nSamples = AUDIO_OUTPUT_SAMPLES_PER_FRAME;
+    }
 
     x_memset( m_MixL, 0, nSamples*sizeof(s32) );
     x_memset( m_MixR, 0, nSamples*sizeof(s32) );
@@ -395,14 +427,26 @@ s32 audio_output_mixer::MixFrame( s16* pOutput, s32 nSamples )
         s32 s;
 
         s = m_MixL[i];
-        if( s < -32768 ) s = -32768;
-        if( s >  32767 ) s =  32767;
+        if( s < -32768 )
+        {
+            s = -32768;
+        }
+        if( s >  32767 )
+        {
+            s =  32767;
+        }
         pOutput[i*2] = (s16)s;
         OutputLevel = x_max( OutputLevel, x_abs(s) );
 
         s = m_MixR[i];
-        if( s < -32768 ) s = -32768;
-        if( s >  32767 ) s =  32767;
+        if( s < -32768 )
+        {
+            s = -32768;
+        }
+        if( s >  32767 )
+        {
+            s =  32767;
+        }
         pOutput[i*2+1] = (s16)s;
         OutputLevel = x_max( OutputLevel, x_abs(s) );
     }
@@ -447,7 +491,9 @@ u32 audio_output_mixer::ChannelStartSerial( audio_output_hchannel hChannel )
 {
     s32 Index = HandleToSnapshotIndex( hChannel );
     if( Index >= MAX_CHANNELS )
+    {
         return 0;
+    }
 
     return x_AtomicLoadAcquire( &m_ChannelSnapshots[Index].StartSerial );
 }
@@ -458,7 +504,9 @@ audio_output_state audio_output_mixer::ChannelStatus( audio_output_hchannel hCha
 {
     s32 Index = HandleToSnapshotIndex( hChannel );
     if( Index >= MAX_CHANNELS )
+    {
         return AUDIO_OUTPUT_DONE;
+    }
 
     audio_output_state State = (audio_output_state)x_AtomicLoadAcquire( &m_ChannelSnapshots[Index].State );
 
@@ -473,7 +521,9 @@ s32 audio_output_mixer::ChannelPosition( audio_output_hchannel hChannel )
 {
     s32 Index = HandleToSnapshotIndex( hChannel );
     if( Index >= MAX_CHANNELS )
+    {
         return 0;
+    }
 
     s32 Position = x_AtomicLoadAcquire( &m_ChannelSnapshots[Index].Position );
 

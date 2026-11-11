@@ -42,7 +42,6 @@ public:
     virtual xbool           OnProperty      ( prop_query& I );
     virtual void            OnMove          ( const vector3& NewPos   );        
     virtual void            OnTransform     ( const matrix4& L2W      ); 
-    virtual zone_mgr::TrackingMode GetZoneTrackingMode ( void ) const;
 
     virtual const object_desc&  GetTypeDesc     ( void ) const;
     static  const object_desc&  GetObjectType   ( void );
@@ -66,10 +65,10 @@ protected:
 //=====================================================================
 
 public:
-    virtual void            UpdateTrackedTransform ( xbool bSendKeyEvents ) ;
+    virtual void            UpdateTrackedTransform ( xbool bSendKeyEvents, xbool bDiscontinuous = FALSE ) ;
             path*           GetPath                 ( void ) ;
             const path::key& GetCurrentKey          ( void ) const { return m_CurrentKey ;  }
-            const zone_mgr::tracker GetZoneTracker  ( void ) const { return m_ZoneTracker ; }
+            const zone_mgr::tracker& GetZoneTracker  ( void ) const { return m_ZoneTracker ; }
             xbool                  IsEditorSelected ( void );
             void            SetTime                 ( f32 Time );
             f32             GetTime                 ( void );

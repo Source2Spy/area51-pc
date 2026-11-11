@@ -16,16 +16,19 @@
 // Collision if performed as follows:
 // 1 ) Can collision:   Spheres of each can are kept a set distance from each other.
 // 2 ) World collision: Each sphere is just projected out of the colliding plane.
-// 3 ) Actor collision: Each sphere is kept a set distance from the actor cylinder.
+// 3 ) Actor collision: The can capsule is kept outside the actor capsule.
 //
 //==============================================================================
 
 #include "Render/PrimitiveDebug.hpp"
 #include "CokeCan.hpp"
+#include "CollisionMgr/CollisionPrimatives.hpp"
+#include "AudioMgr/AudioMgr.hpp"
 #include "Entropy/Entropy.hpp"
 #include "Objects/BaseProjectile.hpp"
+#include "Objects/NetProjectile.hpp"
 #include "Ragdoll/VerletCollision.hpp"
-#include "Objects/Player/Player.hpp"
+#include "Objects/Actor/Actor.hpp"
 
 #ifdef X_EDITOR
 #include "CollisionMgr/PolyCache.hpp"
@@ -39,8 +42,6 @@
 struct coke_can_profile
 {
     f32         m_InvMass;
-    f32         m_ActorNormalVelocityScale;
-    f32         m_ActorTangentVelocityScale;
     f32         m_ActorPushVelocityScale;
     f32         m_GravityCmPerSecondSquared;
     f32         m_SurfaceFriction;
@@ -70,12 +71,14 @@ struct coke_can_profile
 };
 
 static const f32 k_MaxSubstepSeconds = 1.0f / 30.0f;
+static const s32 k_VelocityIterations = 8;
+static const s32 k_PositionIterations = 4;
 
 static const coke_can_profile k_CokeCanProfiles[ coke_can::PROFILE_COUNT ] =
 {
     // Small can
     { 1.0f,
-      1.0f, 1.0f, 1.0f,
+      1.0f,
       -1960.0f,
       0.10f, 0.10f, 0.20f,
       0.1f, 0.1f, 20.0f,
@@ -92,7 +95,7 @@ static const coke_can_profile k_CokeCanProfiles[ coke_can::PROFILE_COUNT ] =
 
     // Barrel
     { 1.0f / 20.0f,
-      0.1f, 0.5f, 0.35f,
+      0.35f,
       -1960.0f,
       0.20f, 0.10f, 0.05f,
       0.1f, 0.1f, 20.0f,
@@ -352,7 +355,7 @@ coke_can::coke_can( void ) :
     m_RollAudioID       ( 0 ),      // Can rolling audio id
     m_iProfile          ( PROFILE_CAN )
 {
-    m_FloorProperties.Init( 100.0f, 0.128f );
+    m_FloorProperties.Init( 1.0f, 0.128f );
 }
 
 //=========================================================================
@@ -534,8 +537,11 @@ void coke_can::OnAdvanceSimulation( f32 DeltaTime )
     // Initialized physics?
     if( !m_isInitialized )
     {
-        m_isInitialized = TRUE;
         InitPhysics();
+        if( !m_isInitialized )
+        {
+            return;
+        }
     }
 
     // Lookup profile
@@ -545,7 +551,7 @@ void coke_can::OnAdvanceSimulation( f32 DeltaTime )
         m_ImpactAudioCooldownSeconds = MAX( 0.0f, m_ImpactAudioCooldownSeconds - DeltaTime );
     
     // Only update physics if can is active or moving
-    if( ( m_ActiveSeconds > 0.0f ) || ( GetSpeedSquaredSum() > Profile.m_SleepSpeedSquaredSum ) )
+    if( ( m_ActiveSeconds > 0.0f ) || IsMoving() )
     {
         ASSERTS( x_isvalid( DeltaTime ), "CokeCan received an invalid frame delta" );
         if( x_isvalid( DeltaTime ) && (DeltaTime > 0.0f) )
@@ -553,16 +559,23 @@ void coke_can::OnAdvanceSimulation( f32 DeltaTime )
             const s32 nSubsteps = x_max( 1, (s32)x_ceil( DeltaTime / k_MaxSubstepSeconds ) );
             const f32 SubstepSeconds = DeltaTime / (f32)nSubsteps;
 
+            xarray<guid> Neighbors;
             for( s32 i = 0; i < nSubsteps; i++ )
             {
+                const xbool WakeNeighbors = IsMoving();
+                CollectCanNeighbors( SubstepSeconds, Neighbors );
+                if( WakeNeighbors )
+                {
+                    WakeCanContacts( Neighbors );
+                }
                 Integrate( SubstepSeconds );
-                ApplyConstraints();
+                ApplyConstraints( Neighbors, WakeNeighbors );
                 ApplyDamping( SubstepSeconds );
 
                 m_Roll += m_RollRate * SubstepSeconds;
                 UpdateL2W();
 
-                if( GetSpeedSquaredSum() > Profile.m_SleepSpeedSquaredSum )
+                if( IsMoving() )
                 {
                     m_ActiveSeconds = Profile.m_ActiveHoldSeconds;
                 }
@@ -599,7 +612,8 @@ void coke_can::OnPain( const pain& Pain )
     const coke_can_profile& Profile = GetProfile();
 
     // Prepare pain
-    Pain.ComputeDamageAndForce( GetLogicalName(), GetGuid(), GetBBox().GetCenter() );
+    if( !Pain.ComputeDamageAndForce( GetLogicalName(), GetGuid(), GetBBox().GetCenter() ) )
+        return;
     
     // Lookup pain info
     const vector3& Pos   = Pain.GetPosition();
@@ -619,8 +633,8 @@ void coke_can::OnPain( const pain& Pain )
         T = Pos.GetClosestPToLSegRatio( S, E );
     }
 
-    // Hit by bullet?
-    if( Pain.IsDirectHit() )
+    // Direct impacts and explosions have different impulse models.
+    if( !Pain.IsExplosion() )
     {
         // Scale force
         DeltaSpeed *= Profile.m_PainBulletVelocityScale;
@@ -684,6 +698,25 @@ void coke_can::OnColCheck( void )
     // Get moving object
     guid    MovingGuid = g_CollisionMgr.GetMovingObjGuid() ;
     object* pObject    = g_ObjMgr.GetObjectByGuid(MovingGuid) ;
+
+    if( pObject && pObject->IsKindOf( actor::GetRTTI() ) &&
+        ( g_CollisionMgr.GetDynamicPrimitive() == PRIMITIVE_DYNAMIC_CAPSULE ) )
+    {
+        if( !m_isInitialized )
+        {
+            InitPhysics();
+            if( !m_isInitialized )
+            {
+                return;
+            }
+        }
+
+        g_CollisionMgr.StartApply( GetGuid() );
+        g_CollisionMgr.ApplyCapsule( m_Particles[0].m_Pos, m_Particles[1].m_Pos,
+                                     m_ParticleRadius, GetMaterial() );
+        g_CollisionMgr.EndApply();
+        return;
+    }
 
     // Collide with bullets, projectiles, or melee?
     if (        ( pObject ) 
@@ -911,6 +944,7 @@ s32 CompareAxisInfo( const void* pA, const void* pB )
 void coke_can::InitPhysics( void )
 {
     s32 i;
+    m_isInitialized = FALSE;
 
     // Lookup geometry
     geom* pGeom = m_SkinInst.GetGeom();
@@ -994,6 +1028,7 @@ void coke_can::InitPhysics( void )
 
     // Force local bbox to recompute
     SetFlagBits( GetFlagBits() | object::FLAG_DIRTY_TRANSFORM );
+    m_isInitialized = TRUE;
 }
 
 //===============================================================================
@@ -1009,6 +1044,13 @@ f32 coke_can::GetSpeedSquaredSum( void ) const
 }
 
 //===============================================================================
+
+xbool coke_can::IsMoving( void ) const
+{
+    return GetSpeedSquaredSum() > GetProfile().m_SleepSpeedSquaredSum;
+}
+
+//==============================================================================
 
 void coke_can::UpdateL2W( void )
 {
@@ -1102,67 +1144,80 @@ void coke_can::ApplyEqualDistConstraint( particle& ParticleA, particle& Particle
 //===============================================================================
 
 f32 coke_can::ApplyMinDistConstraint( particle& ParticleA, particle& ParticleB, f32 MinDist,
-                                      f32 InvMassA, f32 InvMassB,
-                                      f32 Elasticity, f32 Friction )
+                                      f32 InvMassA, f32 InvMassB, f32 Elasticity, f32 Friction )
 {
     const f32 TotalInvMass = InvMassA + InvMassB;
     ASSERT( TotalInvMass > 0.0f );
-    
-    // Get distance between particles
-    vector3 Delta   = ParticleB.m_Pos - ParticleA.m_Pos;
-    f32     DistSqr = Delta.LengthSquared();
+    const vector3 OtherVelocity = InvMassB > 0.0f ? ParticleB.m_Velocity : vector3( 0.0f, 0.0f, 0.0f );
 
-    // No collision
-    if( DistSqr < 0.001f )
-        return 0.0f;
-
-    // Particles too close?
-    f32 Dist = x_sqrt( DistSqr );
-    if( Dist < MinDist )
+    vector3   Normal   = ParticleA.m_Pos - ParticleB.m_Pos;
+    const f32 Distance = Normal.Length();
+    if( Distance > MinDist + CAPSULE_CAST_EPSILON )
     {
-        // Move apart
-        f32 Diff = ( Dist - MinDist ) / ( Dist * TotalInvMass );
-
-        // Scale
-        Delta *= Diff;
-
-        // Apply deltas
-        ParticleA.m_Pos += InvMassA * Delta;
-        ParticleB.m_Pos -= InvMassB * Delta;
-
-        vector3 Normal = ParticleB.m_Pos - ParticleA.m_Pos;
+        return 0.0f;
+    }
+    if( !Normal.SafeNormalize() )
+    {
+        Normal = ParticleA.m_Velocity - OtherVelocity;
         if( !Normal.SafeNormalize() )
-            return 0.0f;
-
-        vector3 RelativeVelocity = ParticleB.m_Velocity - ParticleA.m_Velocity;
-        const f32 NormalSpeed = RelativeVelocity.Dot( Normal );
-        const f32 ImpactSpeedSqr = x_sqr( x_min( NormalSpeed, 0.0f ) );
-
-        if( NormalSpeed < 0.0f )
         {
-            const f32 NormalImpulse = -( 1.0f + Elasticity ) * NormalSpeed / TotalInvMass;
-            const vector3 NormalDeltaVelocity = NormalImpulse * Normal;
-            ParticleA.m_Velocity -= InvMassA * NormalDeltaVelocity;
-            ParticleB.m_Velocity += InvMassB * NormalDeltaVelocity;
-
-            RelativeVelocity = ParticleB.m_Velocity - ParticleA.m_Velocity;
-            vector3 TangentVelocity = RelativeVelocity - Normal * RelativeVelocity.Dot( Normal );
-            const f32 TangentSpeed = TangentVelocity.Length();
-            if( TangentSpeed > 0.0001f )
-            {
-                const f32 MaxFrictionImpulse = Friction * NormalImpulse;
-                const f32 TangentImpulse = x_min( TangentSpeed / TotalInvMass, MaxFrictionImpulse );
-                TangentVelocity *= TangentImpulse / TangentSpeed;
-                ParticleA.m_Velocity += InvMassA * TangentVelocity;
-                ParticleB.m_Velocity -= InvMassB * TangentVelocity;
-            }
+            Normal.Set( 1.0f, 0.0f, 0.0f );
         }
-
-        return ImpactSpeedSqr;
     }
 
-    // No collision
-    return 0.0f;
+    const vector3 Correction = Normal * ( x_max( 0.0f, MinDist - Distance ) / TotalInvMass );
+    ParticleA.m_Pos += InvMassA * Correction;
+    ParticleB.m_Pos -= InvMassB * Correction;
+
+    velocity_constraint* pConstraint = NULL;
+    for( s32 i = 0; i < m_VelocityConstraints.GetCount(); i++ )
+    {
+        velocity_constraint& Constraint = m_VelocityConstraints[i];
+        if( ( Constraint.pParticleA == &ParticleA ) && ( Constraint.pParticleB == &ParticleB ) )
+        {
+            pConstraint = &Constraint;
+            break;
+        }
+    }
+    const xbool NewContact = pConstraint == NULL;
+    if( NewContact )
+    {
+        pConstraint = &m_VelocityConstraints.Append();
+    }
+    pConstraint->pParticleA = &ParticleA;
+    pConstraint->pParticleB = &ParticleB;
+    pConstraint->Plane.Setup( ParticleB.m_Pos, Normal );
+    pConstraint->Distance = MinDist;
+    pConstraint->InvMassA = InvMassA;
+    pConstraint->InvMassB = InvMassB;
+
+    vector3 RelativeVelocity = ParticleA.m_Velocity - OtherVelocity;
+    const f32 NormalSpeed    = RelativeVelocity.Dot( Normal );
+    const f32 ImpactSpeedSqr = x_sqr( x_min( NormalSpeed, 0.0f ) );
+    if( NormalSpeed < 0.0f )
+    {
+        const f32 Restitution = NewContact ? Elasticity : 0.0f;
+        const f32 NormalImpulse = -( 1.0f + Restitution ) * NormalSpeed / TotalInvMass;
+        const vector3 NormalDeltaVelocity = NormalImpulse * Normal;
+        ParticleA.m_Velocity += InvMassA * NormalDeltaVelocity;
+        ParticleB.m_Velocity -= InvMassB * NormalDeltaVelocity;
+
+        RelativeVelocity = ParticleA.m_Velocity;
+        if( InvMassB > 0.0f )
+        {
+            RelativeVelocity -= ParticleB.m_Velocity;
+        }
+        vector3 TangentVelocity = RelativeVelocity - Normal * RelativeVelocity.Dot( Normal );
+        const f32 TangentSpeed = TangentVelocity.Length();
+        if( TangentSpeed > 0.0001f )
+        {
+            const f32 TangentImpulse = x_min( TangentSpeed / TotalInvMass, Friction * NormalImpulse );
+            TangentVelocity *= TangentImpulse / TangentSpeed;
+            ParticleA.m_Velocity -= InvMassA * TangentVelocity;
+            ParticleB.m_Velocity += InvMassB * TangentVelocity;
+        }
+    }
+    return ImpactSpeedSqr;
 }
 
 //===============================================================================
@@ -1175,57 +1230,43 @@ void coke_can::ApplyDistConstraints( void )
 
 //==============================================================================
 
-xbool coke_can::ApplyCylinderConstraint( const vector3& Bottom, const vector3& Top, f32 Radius,
-                                         const vector3& CylinderVelocity, vector3& CollNorm )
+xbool coke_can::ApplyCapsuleConstraint( const vector3& Bottom, const vector3& Top, f32 Radius,
+                                        f32 ContactOffset, const vector3& Velocity )
 {
-    const coke_can_profile& Profile = GetProfile();
-
-    // Compute radius info taking particle radius into account
-    Radius += m_ParticleRadius;
-    f32 RadiusSqr = Radius * Radius;
-
-    // Loop through all particles looking for collision
-    xbool bCollision = FALSE;
-    for ( s32 i = 0; i < 2; i++ )
+    vector3 CoincidentNormal = Velocity;
+    if( !CoincidentNormal.SafeNormalize() )
     {
-        // Lookup particle
+        CoincidentNormal.Set( 1.0f, 0.0f, 0.0f );
+    }
+
+    vector3 Normal;
+    const f32 Separation = ComputeCapsuleCapsuleSeparation( m_Particles[0].m_Pos, m_Particles[1].m_Pos,
+                                                            m_ParticleRadius, Bottom, Top, Radius,
+                                                            CoincidentNormal, Normal );
+    if( Separation > ContactOffset + CAPSULE_CAST_EPSILON )
+    {
+        return FALSE;
+    }
+
+    const f32 CorrectionDepth = x_max( 0.0f, ContactOffset - Separation );
+    const f32 PushSpeed = x_max( 0.0f, Velocity.Dot( Normal ) ) * GetProfile().m_ActorPushVelocityScale;
+    xbool Changed = FALSE;
+    for( s32 i = 0; i < 2; i++ )
+    {
         particle& Particle = m_Particles[i];
-
-        // Get vector and distance to line down middle of cylinder
-        vector3 Delta   = Particle.m_Pos.GetClosestVToLSeg( Bottom, Top );
-        f32     DistSqr = Delta.LengthSquared();
-        if( DistSqr < 0.001f )
-            continue;
-
-        // Project out of capped cylinder?
-        if( DistSqr < RadiusSqr )
+        if( CorrectionDepth > CAPSULE_CAST_EPSILON )
         {
-            // Compute distance from cylinder
-            f32 Dist    = x_sqrt( DistSqr );
-            f32 InvDist = 1.0f / Dist;
-
-            // Record collision
-            bCollision = TRUE;
-            CollNorm   = Delta * InvDist;
-
-            // Compute the positional correction.
-            f32 Diff = ( Dist - Radius ) * InvDist;
-            Delta *= Diff;
-
-            // Project particle out
-            Particle.m_Pos += Delta;
-
-            // Apply actor velocity
-            const vector3 PushNormal = -CollNorm;
-            const f32 ActorPushSpeed = x_max( 0.0f, CylinderVelocity.Dot( PushNormal ) ) *
-                                       Profile.m_ActorPushVelocityScale;
-            const f32 ParticlePushSpeed = Particle.m_Velocity.Dot( PushNormal );
-            if( ActorPushSpeed > ParticlePushSpeed )
-                Particle.m_Velocity += ( ActorPushSpeed - ParticlePushSpeed ) * PushNormal;
+            Particle.m_Pos += Normal * CorrectionDepth;
+            Changed = TRUE;
+        }
+        const f32 Speed = Particle.m_Velocity.Dot( Normal );
+        if( PushSpeed > Speed )
+        {
+            Particle.m_Velocity += ( PushSpeed - Speed ) * Normal;
+            Changed = TRUE;
         }
     }
-    
-    return bCollision;
+    return Changed;
 }
 
 //==============================================================================
@@ -1303,6 +1344,9 @@ void coke_can::ApplyCollConstraints( void )
         // Collision?
         if( VerletCollision_SphereCast( S, E, m_ParticleRadius, Cast ) )
         {
+            const xbool NewContact = AddWorldConstraint( Particle, Cast.m_CollPlane );
+            const f32 Restitution = NewContact ? Profile.m_Elasticity : 0.0f;
+
             // Pull back from collision a tad
             f32     T     = Cast.m_CollT;
             f32     Dist  = x_sqrt( DistSq );
@@ -1334,7 +1378,7 @@ void coke_can::ApplyCollConstraints( void )
 
             if( IncomingSpeed > 0.0f )
             {
-                const f32 NormalDeltaSpeed = ( 1.0f + Profile.m_Elasticity ) * IncomingSpeed;
+                const f32 NormalDeltaSpeed = ( 1.0f + Restitution ) * IncomingSpeed;
 
                 // Apply surface friction
                 const f32 TangentSpeed = Para.Length();
@@ -1357,7 +1401,7 @@ void coke_can::ApplyCollConstraints( void )
                     Para = MajorParallel + MajorAxisVelocity;
                 }
 
-                Perp = Profile.m_Elasticity * IncomingSpeed * Cast.m_CollPlane.Normal;
+                Perp = Restitution * IncomingSpeed * Cast.m_CollPlane.Normal;
             }
 
             // Compute new vel
@@ -1374,6 +1418,8 @@ void coke_can::ApplyCollConstraints( void )
             // Now see how close we can get to the final projected pos
             if( VerletCollision_SphereCast( S, E, m_ParticleRadius, Cast ) )
             {
+                AddWorldConstraint( Particle, Cast.m_CollPlane );
+
                 // Pull back from collision a tad
                 T     = Cast.m_CollT;
                 Delta = E - S;
@@ -1451,14 +1497,24 @@ void coke_can::ApplyCollConstraints( void )
 
 //==============================================================================
 
-void coke_can::ApplyCanConstraints( coke_can& CokeCan )
+void coke_can::ApplyCanConstraints( coke_can& CokeCan, xbool WakeNeighbors )
 {
     // Lookup profile
     const coke_can_profile& Profile = GetProfile();
     const coke_can_profile& OtherProfile = CokeCan.GetProfile();
+    if( !HasCanContact( CokeCan ) )
+    {
+        return;
+    }
+    if( WakeNeighbors )
+    {
+        CokeCan.m_ActiveSeconds = OtherProfile.m_ActiveHoldSeconds;
+    }
+    const xbool OtherActive = ( CokeCan.m_ActiveSeconds > 0.0f ) || CokeCan.IsMoving();
 
     // Compute dist to keep particles away
-    f32 MinDist = m_ParticleRadius + CokeCan.m_ParticleRadius;
+    f32 MinDist = m_ParticleRadius + CokeCan.m_ParticleRadius +
+                  x_max( Profile.m_CollisionBackoffCm, OtherProfile.m_CollisionBackoffCm );
 
     // Make sure masses are valid
     ASSERT( Profile.m_InvMass > 0.0f );
@@ -1466,7 +1522,7 @@ void coke_can::ApplyCanConstraints( coke_can& CokeCan )
     
     // Compute mass info
     f32 InvMassA = Profile.m_InvMass;
-    f32 InvMassB = OtherProfile.m_InvMass;
+    f32 InvMassB = OtherActive ? OtherProfile.m_InvMass : 0.0f;
     f32 Elasticity = x_min( Profile.m_Elasticity, OtherProfile.m_Elasticity );
     f32 Friction = x_sqrt( Profile.m_SurfaceFriction * OtherProfile.m_SurfaceFriction );
     
@@ -1497,111 +1553,240 @@ void coke_can::ApplyCanConstraints( coke_can& CokeCan )
 
 //==============================================================================
 
-void coke_can::ApplyCanConstraints( void )
+void coke_can::CollectCanNeighbors( f32 DeltaTime, xarray<guid>& Neighbors )
 {
-    // Lookup profile
     const coke_can_profile& Profile = GetProfile();
-
-    // Are we still active?
-    xbool bActive = ( GetSpeedSquaredSum() > Profile.m_SleepSpeedSquaredSum );
-
-    // Find all cans
-    g_ObjMgr.SelectBBox( object::ATTR_COLLIDABLE, GetBBox(), object::TYPE_COKE_CAN );
-    slot_id SlotID = g_ObjMgr.StartLoop();
-    while( SlotID != SLOT_NULL )
+    const vector3 Gravity( 0.0f, Profile.m_GravityCmPerSecondSquared, 0.0f );
+    bbox Bounds;
+    Bounds.Clear();
+    for( s32 i = 0; i < 2; i++ )
     {
-        // Lookup object
-        coke_can* pCokeCan = ( coke_can* )g_ObjMgr.GetObjectBySlot( SlotID );
-        ASSERT( pCokeCan );
+        Bounds += m_Particles[i].m_Pos;
+        Bounds += m_Particles[i].m_Pos + ( m_Particles[i].m_Velocity + Gravity * DeltaTime ) * DeltaTime;
+    }
+    const f32 Radius = m_ParticleRadius + Profile.m_CollisionBackoffCm;
+    Bounds.Inflate( Radius, Radius, Radius );
 
-        // Collide with the coke can ( but not self )
-        if( this != pCokeCan )
+    Neighbors.Clear();
+    g_ObjMgr.SelectBBox( object::ATTR_COLLIDABLE, Bounds, object::TYPE_COKE_CAN );
+    for( slot_id Slot = g_ObjMgr.StartLoop(); Slot != SLOT_NULL; Slot = g_ObjMgr.GetNextResult( Slot ) )
+    {
+        object* pObject = g_ObjMgr.GetObjectBySlot( Slot );
+        if( pObject != this )
         {
-            // Make the other can active ( could be stacked on top )?
-            if( bActive ) 
-                pCokeCan->m_ActiveSeconds = pCokeCan->GetProfile().m_ActiveHoldSeconds;
+            Neighbors.Append( pObject->GetGuid() );
+        }
+    }
+    g_ObjMgr.EndLoop();
 
-            // Do collision
-            ApplyCanConstraints( *pCokeCan );
+    for( s32 i = 0; i < Neighbors.GetCount(); i++ )
+    {
+        object* pObject = g_ObjMgr.GetObjectByGuid( Neighbors[i] );
+        if( pObject )
+        {
+            coke_can& Can = coke_can::GetSafeType( *pObject );
+            if( !Can.m_isInitialized )
+            {
+                Can.InitPhysics();
+            }
+        }
+    }
+}
+
+//==============================================================================
+
+xbool coke_can::HasCanContact( const coke_can& CokeCan ) const
+{
+    if( !CokeCan.m_isInitialized )
+    {
+        return FALSE;
+    }
+    const f32 Distance = m_ParticleRadius + CokeCan.m_ParticleRadius +
+                         x_max( GetProfile().m_CollisionBackoffCm, CokeCan.GetProfile().m_CollisionBackoffCm ) +
+                         CAPSULE_CAST_EPSILON;
+    for( s32 i = 0; i < 2; i++ )
+    {
+        for( s32 j = 0; j < 2; j++ )
+        {
+            if( ( m_Particles[i].m_Pos - CokeCan.m_Particles[j].m_Pos ).LengthSquared() <= x_sqr( Distance ) )
+            {
+                return TRUE;
+            }
+        }
+    }
+    return FALSE;
+}
+
+//==============================================================================
+
+void coke_can::WakeCanContacts( const xarray<guid>& Neighbors )
+{
+    for( s32 i = 0; i < Neighbors.GetCount(); i++ )
+    {
+        object* pObject = g_ObjMgr.GetObjectByGuid( Neighbors[i] );
+        if( pObject )
+        {
+            coke_can& Can = coke_can::GetSafeType( *pObject );
+            if( HasCanContact( Can ) )
+            {
+                Can.m_ActiveSeconds = Can.GetProfile().m_ActiveHoldSeconds;
+            }
+        }
+    }
+}
+
+//==============================================================================
+
+xbool coke_can::ApplyActorConstraints( const vector3& Position, f32 Radius, f32 Height,
+                                       f32 ContactOffset, const vector3& Velocity )
+{
+    if( !m_isInitialized )
+    {
+        InitPhysics();
+        if( !m_isInitialized )
+        {
+            return FALSE;
+        }
+    }
+
+    Radius = x_min( Radius, Height * 0.5f );
+    if( ( Radius <= 0.0f ) || ( Height <= 0.0f ) )
+    {
+        return FALSE;
+    }
+
+    const vector3 Bottom = Position + vector3( 0.0f, Radius, 0.0f );
+    const vector3 Top    = Position + vector3( 0.0f, Height - Radius, 0.0f );
+    if( ApplyCapsuleConstraint( Bottom, Top, Radius, ContactOffset, Velocity ) )
+    {
+        m_ActiveSeconds = GetProfile().m_ActiveHoldSeconds;
+        m_VelocityConstraints.Clear();
+        ApplyCollConstraints();
+        SolveVelocityConstraints();
+        UpdateL2W();
+        return TRUE;
+    }
+    return FALSE;
+}
+
+//==============================================================================
+
+void coke_can::ApplyConstraints( const xarray<guid>& Neighbors, xbool WakeNeighbors )
+{
+    m_VelocityConstraints.Clear();
+    for( s32 Iteration = 0; Iteration < k_PositionIterations; Iteration++ )
+    {
+        const vector3 OldA = m_Particles[0].m_Pos;
+        const vector3 OldB = m_Particles[1].m_Pos;
+        ApplyDistConstraints();
+
+        for( s32 i = 0; i < Neighbors.GetCount(); i++ )
+        {
+            object* pObject = g_ObjMgr.GetObjectByGuid( Neighbors[i] );
+            if( pObject )
+            {
+                ApplyCanConstraints( coke_can::GetSafeType( *pObject ), WakeNeighbors );
+            }
         }
 
-        // Check next object
-        SlotID = g_ObjMgr.GetNextResult( SlotID );
+        ApplyDistConstraints();
+        ApplyCollConstraints();
+        if( ( m_Particles[0].m_Pos - OldA ).LengthSquared() +
+            ( m_Particles[1].m_Pos - OldB ).LengthSquared() <= x_sqr( CAPSULE_CAST_EPSILON ) )
+        {
+            break;
+        }
     }
-    g_ObjMgr.EndLoop();
+    SolveVelocityConstraints();
 }
 
 //==============================================================================
 
-void coke_can::ApplyActorConstraints( actor& Actor )
+xbool coke_can::AddWorldConstraint( particle& Particle, const plane& Plane )
 {
-    // Get loco
-    loco* pLoco = Actor.GetLocoPointer();
-    if( !pLoco )
-        return;
-
-    // Get physics
-    character_physics& Physics = pLoco->m_Physics;
-
-    // Compute capped collision cylinder
-    vector3 Bottom = Physics.GetPosition();
-    vector3 Top    = Bottom;
-    Top.GetY() += Physics.GetColHeight();
-    f32     Radius = Physics.GetColRadius();
-
-    // Collide with can?
-    vector3 CollNorm;
-    if( ApplyCylinderConstraint( Bottom, Top, Radius, Actor.GetVelocity(), CollNorm ) )
+    for( s32 i = 0; i < m_VelocityConstraints.GetCount(); i++ )
     {
-        // Lookup profile
-        const coke_can_profile& Profile = GetProfile();
-    
-        // Apply a fake impact response by slowing down the player
-        Actor.ScaleVelocity( CollNorm, 
-                             Profile.m_ActorNormalVelocityScale,
-                             Profile.m_ActorTangentVelocityScale );
-
-        m_ActiveSeconds = Profile.m_ActiveHoldSeconds;
+        velocity_constraint& Constraint = m_VelocityConstraints[i];
+        if( ( Constraint.pParticleA == &Particle ) && !Constraint.pParticleB &&
+            ( Constraint.Plane.Normal.Dot( Plane.Normal ) > 0.999f ) )
+        {
+            Constraint.Plane = Plane;
+            return FALSE;
+        }
     }
+    velocity_constraint& Constraint = m_VelocityConstraints.Append();
+    Constraint.pParticleA = &Particle;
+    Constraint.pParticleB = NULL;
+    Constraint.Plane      = Plane;
+    Constraint.Distance   = m_ParticleRadius + GetProfile().m_CollisionBackoffCm;
+    Constraint.InvMassA   = GetProfile().m_InvMass;
+    Constraint.InvMassB   = 0.0f;
+    return TRUE;
 }
 
 //==============================================================================
 
-void coke_can::ApplyActorConstraints( void )
+void coke_can::SolveVelocityConstraints( void )
 {
-    // Check all players
-    g_ObjMgr.SelectBBox( object::ATTR_COLLIDABLE, GetBBox(), object::TYPE_PLAYER );
-    slot_id SlotID = g_ObjMgr.StartLoop();
-    while( SlotID != SLOT_NULL )
+    vector3     Axis    = m_Particles[1].m_Pos - m_Particles[0].m_Pos;
+    const xbool HasAxis = Axis.SafeNormalize();
+    m_bOnGround         = FALSE;
+    for( s32 Iteration = 0; Iteration < k_VelocityIterations; Iteration++ )
     {
-        // Lookup object
-        player* pPlayer = ( player* )g_ObjMgr.GetObjectBySlot( SlotID );
-        ASSERT( pPlayer );
+        if( HasAxis )
+        {
+            const f32 Speed = ( m_Particles[1].m_Velocity - m_Particles[0].m_Velocity ).Dot( Axis );
+            const vector3 Correction = Axis * ( Speed * 0.5f );
+            m_Particles[0].m_Velocity += Correction;
+            m_Particles[1].m_Velocity -= Correction;
+        }
 
-        // Collide
-        ApplyActorConstraints( *pPlayer );
+        for( s32 i = 0; i < m_VelocityConstraints.GetCount(); i++ )
+        {
+            velocity_constraint& Constraint = m_VelocityConstraints[i];
+            particle& A        = *Constraint.pParticleA;
+            particle* pB       = Constraint.pParticleB;
+            vector3   Normal   = Constraint.Plane.Normal;
+            vector3   Velocity = A.m_Velocity;
+            if( pB )
+            {
+                const vector3 Delta    = A.m_Pos - pB->m_Pos;
+                const f32     Distance = Delta.Length();
+                if( Distance > Constraint.Distance + CAPSULE_CAST_EPSILON )
+                {
+                    continue;
+                }
+                if( Distance > CAPSULE_CAST_EPSILON )
+                {
+                    Normal = Delta / Distance;
+                }
+                if( Constraint.InvMassB > 0.0f )
+                {
+                    Velocity -= pB->m_Velocity;
+                }
+            }
+            else if( Constraint.Plane.Distance( A.m_Pos ) > Constraint.Distance + CAPSULE_CAST_EPSILON )
+            {
+                continue;
+            }
 
-        // Check next object
-        SlotID = g_ObjMgr.GetNextResult( SlotID );
+            if( Normal.GetY() > 0.5f )
+            {
+                m_bOnGround = TRUE;
+            }
+            const f32 Speed = Velocity.Dot( Normal );
+            if( Speed < 0.0f )
+            {
+                const vector3 Impulse = Normal * ( -Speed / ( Constraint.InvMassA + Constraint.InvMassB ) );
+                A.m_Velocity += Constraint.InvMassA * Impulse;
+                if( pB && ( Constraint.InvMassB > 0.0f ) )
+                {
+                    pB->m_Velocity -= Constraint.InvMassB * Impulse;
+                }
+            }
+        }
     }
-    g_ObjMgr.EndLoop();
-}
-
-//==============================================================================
-
-void coke_can::ApplyConstraints( void )
-{
-    // Restore rigid shape
-    ApplyDistConstraints();
-
-    // Collide with other cans
-    ApplyCanConstraints();
-
-    // Restore rigid shape after can contacts
-    ApplyDistConstraints();
-
-    // Finish with world collision
-    ApplyCollConstraints();
+    m_VelocityConstraints.Clear();
 }
 
 //==============================================================================
@@ -1675,21 +1860,6 @@ void coke_can::ApplyDamping( f32 DeltaTime )
     const f32 RollDecay = m_bOnGround ? Profile.m_GroundAngularDecayPerSecond
                                       : Profile.m_AirAngularDecayPerSecond;
     m_RollRate *= x_exp( -RollDecay * DeltaTime );
-}
-
-//==============================================================================
-
-void coke_can::OnColNotify( object& Obj )
-{
-    
-    if( Obj.IsKindOf( actor::GetRTTI() ) )
-    {
-        actor& Actor = actor::GetSafeType( Obj );
-        ApplyActorConstraints( Actor );
-    }
-    else
-    {
-    }
 }
 
 //==============================================================================

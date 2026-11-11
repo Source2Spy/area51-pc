@@ -5,10 +5,13 @@
 //=============================================================================================
 // INCLUDES
 //=============================================================================================
+#include "NetworkMgr/Replication/NetUpdate.hpp"
+
 #include "Render/PrimitiveDebug.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "ProjectileMutantParasite2.hpp"
 #include "AudioMgr/AudioMgr.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "Decals/DecalMgr.hpp"
 #include "Objects/ParticleEmiter.hpp"
 #include "Objects/Player/Player.hpp"
@@ -691,7 +694,7 @@ xbool mutant_parasite_projectile::HandleCollision( collision_mgr::collision& Col
                 g_AudioMgr.Play( s_ParasiteTweak[ m_TypeIndex ].m_AudioImpactLiving, 
                                  GetPosition(), GetZone1(), TRUE );
 
-                g_LightMgr.AddFadingLight( 
+                render::GetRenderPipeline().GetLightSystem().AddFadingLight( 
                     GetPosition(), 
                     xcolor(225,209,146),
                     300.0f,
@@ -1583,14 +1586,13 @@ void mutant_parasite_projectile::ResyncGhosts( void )
 
 //==============================================================================
 
-void mutant_parasite_projectile::net_AcceptActivate( const bitstream& BS )
+void mutant_parasite_projectile::net_AcceptActivate( const net_projectile_update& Update )
 {
-    BS.ReadFlag     ( m_bContagious );
-    BS.ReadRangedF32( m_WanderPhase,  8, 0.0f, 2*PI );
-    BS.ReadRangedF32( m_WanderOffset, 8, 0.7f, 1.4f );
-    BS.ReadRangedS32( m_OriginNetSlot, -1, 31 );  
-//  BS.ReadF32( m_BaseSpeed );
-    m_BaseSpeed = 1333.0f;      // It is always 1333, so don't net it.
+    m_bContagious   = Update.Contagious;
+    m_WanderPhase   = Update.WanderPhase;
+    m_WanderOffset  = Update.WanderOffset;
+    m_OriginNetSlot = Update.OriginNetSlot;
+    m_BaseSpeed     = 1333.0f;      // It is always 1333, so don't net it.
 
     if( m_OriginNetSlot != -1 )
     {
@@ -1609,7 +1611,6 @@ void mutant_parasite_projectile::net_ProvideActivate( bitstream& BS )
     BS.WriteFlag     ( m_bContagious );
     BS.WriteRangedF32( m_WanderPhase,  8, 0.0f, 2*PI );
     BS.WriteRangedF32( m_WanderOffset, 8, 0.7f, 1.4f );
-    BS.WriteRangedS32( m_OriginNetSlot, -1, 31 );  
 //  BS.WriteF32( m_BaseSpeed );     // It is always 1333, so don't net it.
 #ifdef X_DEBUG
     ASSERT( IN_RANGE( 1330.0f, m_BaseSpeed, 1335.0f ) );
@@ -1618,11 +1619,10 @@ void mutant_parasite_projectile::net_ProvideActivate( bitstream& BS )
 
 //==============================================================================
 
-void mutant_parasite_projectile::net_AcceptStart( const bitstream& BS )
+void mutant_parasite_projectile::net_AcceptStart( const net_projectile_update& Update )
 {    
-    s32 TargetNetSlot = -1;
+    s32 TargetNetSlot = Update.TargetNetSlot;
 
-    BS.ReadRangedS32( TargetNetSlot, -1, 31 );
        
     m_Target = NULL_GUID;
     if( TargetNetSlot != -1 )
@@ -1635,8 +1635,6 @@ void mutant_parasite_projectile::net_AcceptStart( const bitstream& BS )
         }    
     }
 
-//  BS.ReadF32( m_ActualSpeed );
-//  BS.ReadF32( m_DesiredSpeed );
 //  m_ActualSpeed  = 1333.0f;
 //  m_DesiredSpeed = 1333.0f;
 

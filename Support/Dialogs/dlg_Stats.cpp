@@ -16,7 +16,7 @@
 #include "StringMgr/StringMgr.hpp"
 #include "ResourceMgr/ResourceMgr.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 
 
 
@@ -34,10 +34,8 @@ enum controls
     IDC_STATS_GOLDS,
     IDC_STATS_SILVERS,
     IDC_STATS_BRONZES,
-#ifndef TARGET_XBOX
     IDC_STATS_KICKS,
     IDC_STATS_VOTES,
-#endif
     IDC_STATS_TIME_TEXT,
     IDC_STATS_KILLS_TEXT,
     IDC_STATS_DEATHS_TEXT,
@@ -46,10 +44,8 @@ enum controls
     IDC_STATS_GOLDS_TEXT,
     IDC_STATS_SILVERS_TEXT,
     IDC_STATS_BRONZES_TEXT,
-#ifndef TARGET_XBOX
     IDC_STATS_KICKS_TEXT,
     IDC_STATS_VOTES_TEXT,
-#endif
 };
 
 ui_manager::control_tem StatsControls[] = 
@@ -63,10 +59,8 @@ ui_manager::control_tem StatsControls[] =
     { IDC_STATS_GOLDS_TEXT,     "IDS_NULL",                 "text",  40, 185, 180,  25, 0, 0, 0, 0, ui_win::WF_VISIBLE },
     { IDC_STATS_SILVERS_TEXT,   "IDS_NULL",                 "text",  40, 210, 180,  25, 0, 0, 0, 0, ui_win::WF_VISIBLE },
     { IDC_STATS_BRONZES_TEXT,   "IDS_NULL",                 "text",  40, 235, 180,  25, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-#ifndef TARGET_XBOX
     { IDC_STATS_KICKS_TEXT,     "IDS_NULL",                 "text",  40, 260, 180,  25, 0, 0, 0, 0, ui_win::WF_VISIBLE },
     { IDC_STATS_VOTES_TEXT,     "IDS_NULL",                 "text",  40, 285, 180,  25, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-#endif
 
     { IDC_STATS_TIME,           "IDS_ONLINE_STATS_TIME",    "text", 240,  60, 180,  25, 0, 0, 0, 0, ui_win::WF_VISIBLE },
     { IDC_STATS_KILLS,          "IDS_ONLINE_STATS_KILLS",   "text", 240,  85, 180,  25, 0, 0, 0, 0, ui_win::WF_VISIBLE },
@@ -76,11 +70,8 @@ ui_manager::control_tem StatsControls[] =
     { IDC_STATS_GOLDS,          "IDS_ONLINE_STATS_GOLD",    "text", 240, 185, 180,  25, 0, 0, 0, 0, ui_win::WF_VISIBLE },
     { IDC_STATS_SILVERS,        "IDS_ONLINE_STATS_SILVER",  "text", 240, 210, 180,  25, 0, 0, 0, 0, ui_win::WF_VISIBLE },
     { IDC_STATS_BRONZES,        "IDS_ONLINE_STATS_BRONZE",  "text", 240, 235, 180,  25, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-#ifndef TARGET_XBOX
     { IDC_STATS_KICKS,          "IDS_ONLINE_STATS_KICKS",   "text", 240, 260, 180,  25, 0, 0, 0, 0, ui_win::WF_VISIBLE },
     { IDC_STATS_VOTES,          "IDS_ONLINE_STATS_VOTES",   "text", 240, 285, 180,  25, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-#endif
-  
 };
 
 ui_manager::dialog_tem StatsDialog =
@@ -91,18 +82,6 @@ ui_manager::dialog_tem StatsDialog =
     &StatsControls[0],
     0
 };
-
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
 
 //=========================================================================
 //  Registration function
@@ -168,10 +147,8 @@ xbool dlg_stats::Create( s32                        UserID,
     m_pLabelGolds   = (ui_text*)  FindChildByID( IDC_STATS_GOLDS   );
     m_pLabelSilvers = (ui_text*)  FindChildByID( IDC_STATS_SILVERS );
     m_pLabelBronzes = (ui_text*)  FindChildByID( IDC_STATS_BRONZES );
-#ifndef TARGET_XBOX
     m_pLabelKicks   = (ui_text*)  FindChildByID( IDC_STATS_KICKS   );
     m_pLabelVotes   = (ui_text*)  FindChildByID( IDC_STATS_VOTES   );
-#endif
     
     m_pTextTime     = (ui_text*)  FindChildByID( IDC_STATS_TIME_TEXT    );
     m_pTextKills    = (ui_text*)  FindChildByID( IDC_STATS_KILLS_TEXT   );
@@ -181,10 +158,8 @@ xbool dlg_stats::Create( s32                        UserID,
     m_pTextGolds    = (ui_text*)  FindChildByID( IDC_STATS_GOLDS_TEXT   );
     m_pTextSilvers  = (ui_text*)  FindChildByID( IDC_STATS_SILVERS_TEXT );
     m_pTextBronzes  = (ui_text*)  FindChildByID( IDC_STATS_BRONZES_TEXT );
-#ifndef TARGET_XBOX
     m_pTextKicks    = (ui_text*)  FindChildByID( IDC_STATS_KICKS_TEXT   );
     m_pTextVotes    = (ui_text*)  FindChildByID( IDC_STATS_VOTES_TEXT   );
-#endif
 
 
     // hide them
@@ -196,10 +171,8 @@ xbool dlg_stats::Create( s32                        UserID,
     m_pLabelGolds   ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pLabelSilvers ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pLabelBronzes ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-#ifndef TARGET_XBOX
     m_pLabelKicks   ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pLabelVotes   ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-#endif
 
     m_pTextTime     ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pTextKills    ->SetFlag(ui_win::WF_VISIBLE, FALSE);
@@ -209,10 +182,8 @@ xbool dlg_stats::Create( s32                        UserID,
     m_pTextGolds    ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pTextSilvers  ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pTextBronzes  ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-#ifndef TARGET_XBOX
     m_pTextKicks    ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pTextVotes    ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-#endif
 
     // set up text labels
     m_pLabelTime    ->UseSmallText( TRUE );
@@ -223,10 +194,8 @@ xbool dlg_stats::Create( s32                        UserID,
     m_pLabelGolds   ->UseSmallText( TRUE );
     m_pLabelSilvers ->UseSmallText( TRUE );
     m_pLabelBronzes ->UseSmallText( TRUE );
-#ifndef TARGET_XBOX
     m_pLabelKicks   ->UseSmallText( TRUE );
     m_pLabelVotes   ->UseSmallText( TRUE );
-#endif
 
     m_pLabelTime    ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
     m_pLabelKills   ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
@@ -236,10 +205,8 @@ xbool dlg_stats::Create( s32                        UserID,
     m_pLabelGolds   ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
     m_pLabelSilvers ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
     m_pLabelBronzes ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
-#ifndef TARGET_XBOX
     m_pLabelKicks   ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
     m_pLabelVotes   ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
-#endif
 
     m_pLabelTime    ->SetLabelColor( xcolor(126,220,60,255) );
     m_pLabelKills   ->SetLabelColor( xcolor(126,220,60,255) );
@@ -249,10 +216,8 @@ xbool dlg_stats::Create( s32                        UserID,
     m_pLabelGolds   ->SetLabelColor( xcolor(126,220,60,255) );
     m_pLabelSilvers ->SetLabelColor( xcolor(126,220,60,255) );
     m_pLabelBronzes ->SetLabelColor( xcolor(126,220,60,255) );
-#ifndef TARGET_XBOX
     m_pLabelKicks   ->SetLabelColor( xcolor(126,220,60,255) );
     m_pLabelVotes   ->SetLabelColor( xcolor(126,220,60,255) );
-#endif
 
     // set up text data
     m_pTextTime     ->UseSmallText( TRUE );
@@ -263,10 +228,8 @@ xbool dlg_stats::Create( s32                        UserID,
     m_pTextGolds    ->UseSmallText( TRUE );
     m_pTextSilvers  ->UseSmallText( TRUE );
     m_pTextBronzes  ->UseSmallText( TRUE );
-#ifndef TARGET_XBOX
     m_pTextKicks    ->UseSmallText( TRUE );
     m_pTextVotes    ->UseSmallText( TRUE );
-#endif
     m_pTextTime     ->SetLabelFlags( ui_font::h_right|ui_font::v_center );
     m_pTextKills    ->SetLabelFlags( ui_font::h_right|ui_font::v_center );
     m_pTextDeaths   ->SetLabelFlags( ui_font::h_right|ui_font::v_center );
@@ -275,10 +238,8 @@ xbool dlg_stats::Create( s32                        UserID,
     m_pTextGolds    ->SetLabelFlags( ui_font::h_right|ui_font::v_center );
     m_pTextSilvers  ->SetLabelFlags( ui_font::h_right|ui_font::v_center );
     m_pTextBronzes  ->SetLabelFlags( ui_font::h_right|ui_font::v_center );
-#ifndef TARGET_XBOX
     m_pTextKicks    ->SetLabelFlags( ui_font::h_right|ui_font::v_center );
     m_pTextVotes    ->SetLabelFlags( ui_font::h_right|ui_font::v_center );
-#endif
 
     m_pTextTime     ->SetLabelColor( xcolor(255,252,204,255) );
     m_pTextKills    ->SetLabelColor( xcolor(255,252,204,255) );
@@ -288,17 +249,15 @@ xbool dlg_stats::Create( s32                        UserID,
     m_pTextGolds    ->SetLabelColor( xcolor(255,252,204,255) );
     m_pTextSilvers  ->SetLabelColor( xcolor(255,252,204,255) );
     m_pTextBronzes  ->SetLabelColor( xcolor(255,252,204,255) );
-#ifndef TARGET_XBOX
     m_pTextKicks    ->SetLabelColor( xcolor(255,252,204,255) );
     m_pTextVotes    ->SetLabelColor( xcolor(255,252,204,255) );
-#endif
 
     // set up nav text
     xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_BACK" ));  
     SetNavText( navText );
 
     // Get stats data for player here!
-    player_stats MyStats = g_MatchMgr.GetAllCareerStats();
+    player_stats MyStats = g_StateMgr.GetActiveProfile( g_StateMgr.GetProfileListIndex(0) ).GetCareerStats();
     s32 Hours   = ( MyStats.PlayTime / 60 );
     s32 Minutes = ( MyStats.PlayTime % 60 );
     m_pTextTime     ->SetLabel( xwstring( xfs( (const char*)xstring(g_StringTableMgr( "ui", "IDS_ONLINE_STATS_HOURS_MINS" )), Hours, Minutes ) ) );
@@ -309,10 +268,8 @@ xbool dlg_stats::Create( s32                        UserID,
     m_pTextGolds    ->SetLabel( xwstring( xfs( "%d", MyStats.Gold         ) ) );
     m_pTextSilvers  ->SetLabel( xwstring( xfs( "%d", MyStats.Silver       ) ) );
     m_pTextBronzes  ->SetLabel( xwstring( xfs( "%d", MyStats.Bronze       ) ) );
-#ifndef TARGET_XBOX
     m_pTextKicks    ->SetLabel( xwstring( xfs( "%d", MyStats.Kicks        ) ) );
     m_pTextVotes    ->SetLabel( xwstring( xfs( "%d", MyStats.VotesStarted ) ) );
-#endif
 
     // Disable highlight
     g_UiMgr->DisableScreenHighlight();
@@ -402,12 +359,6 @@ void dlg_stats::Render( s32 ox, s32 oy )
     // render the normal dialog stuff
     ui_dialog::Render( ox, oy );
 
-    // render network logo
-    irect LogoPos = m_Position;
-    LogoPos.r -= 35;
-    LogoPos.l = LogoPos.r - 128;
-    LogoPos.b = LogoPos.t + 32;
-    g_UiMgr->RenderBitmap( g_UiMgr->FindBitmap( "gamespy_logo" ), LogoPos, XCOLOR_WHITE ); // GS: TODO: Please put something else here later.
 
     // render the glow bar
     g_UiMgr->RenderGlowBar();
@@ -448,10 +399,8 @@ void dlg_stats::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             m_pLabelGolds   ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pLabelSilvers ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pLabelBronzes ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-#ifndef TARGET_XBOX
             m_pLabelKicks   ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pLabelVotes   ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-#endif
 
             m_pTextTime     ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pTextKills    ->SetFlag(ui_win::WF_VISIBLE, TRUE);
@@ -461,11 +410,8 @@ void dlg_stats::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             m_pTextGolds    ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pTextSilvers  ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pTextBronzes  ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-#ifndef TARGET_XBOX
             m_pTextKicks    ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pTextVotes    ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-#endif
-
         }
     }
 

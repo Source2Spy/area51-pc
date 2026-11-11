@@ -21,6 +21,7 @@
 
 #include "x_types.hpp"
 #include "GameConfig.hpp"
+#include "Font/Font.hpp"
 #include "StateMgr/MapList.hpp"
 #include "StringMgr/StringMgr.hpp"
 
@@ -148,7 +149,16 @@ xbool game_config::SetLevelID ( s32 LevelID )
     {
         return FALSE;
     }
-    x_mstrcpy( m_Config.MissionName, pMapEntry->GetDisplayName() );
+
+    xwstring MissionName;
+    if( !DecodeFontText( pMapEntry->GetDisplayName(), MissionName ) )
+    {
+        x_DebugMsg( "game_config::SetLevelID: invalid UTF-8 map display name for map ID %d.\n", LevelID );
+        return FALSE;
+    }
+
+    x_wstrncpy( m_Config.MissionName, MissionName, NET_MISSION_NAME_LENGTH - 1 );
+    m_Config.MissionName[NET_MISSION_NAME_LENGTH - 1] = 0;
     return TRUE;
 }
 
@@ -488,6 +498,27 @@ xbool game_config::GetPrivateServer( void )
 
 //==============================================================================
 
+void game_config::SetLanOnly( xbool IsEnabled )
+{
+    SetFlag( SERVER_LAN_ONLY, IsEnabled );
+}
+
+//==============================================================================
+
+void game_config::SetCheatsAllowed( xbool IsEnabled )
+{
+    SetFlag( SERVER_ALLOW_CHEATS, IsEnabled );
+}
+
+//==============================================================================
+
+xbool game_config::IsCheatsAllowed( void )
+{
+    return GetFlag( SERVER_ALLOW_CHEATS );
+}
+
+//==============================================================================
+
 void game_config::SetSkillLevel( skill_level SkillLevel )
 {
     m_Config.SkillLevel = SkillLevel;
@@ -680,9 +711,6 @@ const char* GetExitReasonName(exit_reason Reason)
     case GAME_EXIT_NETWORK_DOWN:        return "GAME_EXIT_NETWORK_DOWN";
     case GAME_EXIT_SERVER_BUSY:         return "GAME_EXIT_SERVER_BUSY";
     case GAME_EXIT_SERVER_SHUTDOWN:     return "GAME_EXIT_SERVER_SHUTDOWN";
-    case GAME_EXIT_FOLLOW_BUDDY:        return "GAME_EXIT_FOLLOW_BUDDY";
-    case GAME_EXIT_SECURITY_QUERY:      return "GAME_EXIT_SECURITY_QUERY";
-    case GAME_EXIT_SECURITY_FAILED:     return "GAME_EXIT_SECURITY_FAILED";
     case GAME_EXIT_SESSION_ENDED:       return "GAME_EXIT_SESSION_ENDED";
     case GAME_EXIT_DUPLICATE_LOGIN:     return "GAME_EXIT_DUPLICATE_LOGIN";
     case GAME_EXIT_INVALID_CAMPAIGN_MISSION:

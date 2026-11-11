@@ -20,51 +20,63 @@
 #endif
 
 //==============================================================================
+//  CONSTANTS
+//==============================================================================
+
+static const char* s_DefaultTitle = "Dreamlnd 51";
+
+//==============================================================================
+//  TYPES
+//==============================================================================
+
+struct sdleng_window_state
+{
+    sdleng_native_instance_handle hInstance;
+    sdleng_native_window_handle   hWindow;
+    sdleng_native_window_handle   hParentWindow;
+    sdleng_native_window_handle   hDisplayWindow;
+    SDL_Window*                   pWindow;
+    s32                           ClientWidth;
+    s32                           ClientHeight;
+    s32                           ResolutionWidth;
+    s32                           ResolutionHeight;
+    sdleng_display_mode           DisplayMode;
+    xbool                         Active;
+    xbool                         Ready;
+    xbool                         ModeChange;
+    xbool                         CloseRequested;
+    xbool                         ResizePending;
+    xbool                         VideoInitialized;
+    xbool                         OwnVideoSubsystem;
+    xbool                         WrappedNativeWindow;
+    xbool                         OwnsWindow;
+    sdleng_window_resize_fn*      pResizeCallback;
+    void*                         pResizeContext;
+    sdleng_window_event_fn*       pEventCallback;
+    void*                         pEventContext;
+    u64                           EventFrameSerial;
+
+    sdleng_window_state( void )
+    {
+        x_memset( this, 0, sizeof( sdleng_window_state ) );
+        ResolutionWidth  = 1024;
+        ResolutionHeight = 768;
+        DisplayMode      = SDLENG_DISPLAY_WINDOWED;
+        Active           = TRUE;
+    }
+};
+
+//==============================================================================
 //  GLOBAL WINDOW HANDLE
 //==============================================================================
 
 SDL_Window* g_pSDLWindow = NULL;
 
 //==============================================================================
-//  STORAGE
+//  LOCAL STORAGE
 //==============================================================================
 
-static const char* s_DefaultTitle = "Dreamlnd 51";
-
-static struct sdleng_window_state
-{
-    sdleng_window_state( void )
-    {
-        x_memset( this, 0, sizeof(sdleng_window_state) );
-        ResolutionWidth  = 1024;
-        ResolutionHeight = 768;
-        DisplayMode      = SDLENG_DISPLAY_WINDOWED;
-        Active           = TRUE;
-    }
-
-    sdleng_native_instance_handle hInstance;
-    sdleng_native_window_handle   hWindow;
-    sdleng_native_window_handle   hParentWindow;
-    sdleng_native_window_handle   hDisplayWindow;
-    SDL_Window*              pWindow;
-    s32                      ClientWidth;
-    s32                      ClientHeight;
-    s32                      ResolutionWidth;
-    s32                      ResolutionHeight;
-    sdleng_display_mode      DisplayMode;
-    xbool                    Active;
-    xbool                    Ready;
-    xbool                    ModeChange;
-    xbool                    CloseRequested;
-    xbool                    VideoInitialized;
-    xbool                    OwnVideoSubsystem;
-    xbool                    WrappedNativeWindow;
-    xbool                    OwnsWindow;
-    sdleng_window_resize_fn* pResizeCallback;
-    void*                    pResizeContext;
-    sdleng_window_event_fn*  pEventCallback;
-    void*                    pEventContext;
-} s_Window;
+static sdleng_window_state s_Window;
 
 //==============================================================================
 //  LOCAL HELPERS
@@ -74,7 +86,8 @@ static
 xbool sdleng_WindowCanSetPosition( void )
 {
     const char* pDriver = SDL_GetCurrentVideoDriver();
-    return (pDriver == NULL) || (x_stricmp( pDriver, "wayland" ) != 0);
+
+    return ( pDriver == NULL ) || ( x_stricmp( pDriver, "wayland" ) != 0 );
 }
 
 //==============================================================================
@@ -83,11 +96,13 @@ static
 xbool sdleng_WindowInitVideo( void )
 {
     if( s_Window.VideoInitialized )
+    {
         return TRUE;
+    }
 
     if( SDL_WasInit( SDL_INIT_VIDEO ) & SDL_INIT_VIDEO )
     {
-        s_Window.VideoInitialized = TRUE;
+        s_Window.VideoInitialized  = TRUE;
         s_Window.OwnVideoSubsystem = FALSE;
         return TRUE;
     }
@@ -98,8 +113,9 @@ xbool sdleng_WindowInitVideo( void )
         return FALSE;
     }
 
-    s_Window.VideoInitialized = TRUE;
+    s_Window.VideoInitialized  = TRUE;
     s_Window.OwnVideoSubsystem = TRUE;
+
     return TRUE;
 }
 
@@ -109,12 +125,16 @@ static
 void sdleng_WindowUpdateNativeHandle( void )
 {
     if( !s_Window.pWindow )
+    {
         return;
+    }
 
 #if defined(TARGET_WINDOWS)
     SDL_PropertiesID Props = SDL_GetWindowProperties( s_Window.pWindow );
     if( !Props )
+    {
         return;
+    }
 
     HWND hWindow = (HWND)SDL_GetPointerProperty( Props,
                                                  SDL_PROP_WINDOW_WIN32_HWND_POINTER,
@@ -154,7 +174,9 @@ SDL_Window* sdleng_WindowCreateWrapped( sdleng_native_window_handle hWindow )
     SDL_DestroyProperties( Props );
 
     if( !pWindow )
+    {
         sdleng_LogError( "SDLWindow", "SDL_CreateWindowWithProperties" );
+    }
 
     return pWindow;
 #else
@@ -175,13 +197,13 @@ SDL_Window* sdleng_WindowCreateOwned( const sdleng_window_desc& Desc )
         return NULL;
     }
 
-    const s32 Width  = (Desc.Width  > 0) ? Desc.Width  : 1024;
-    const s32 Height = (Desc.Height > 0) ? Desc.Height : 768;
+    const s32 Width  = ( Desc.Width > 0 ) ? Desc.Width : 1024;
+    const s32 Height = ( Desc.Height > 0 ) ? Desc.Height : 768;
 
     if( !SDL_SetStringProperty( Props,
                                 SDL_PROP_WINDOW_CREATE_TITLE_STRING,
                                 Desc.pTitle ? Desc.pTitle : s_DefaultTitle ) ||
-        !SDL_SetNumberProperty( Props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER,  Width  ) ||
+        !SDL_SetNumberProperty( Props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, Width ) ||
         !SDL_SetNumberProperty( Props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, Height ) ||
         !SDL_SetBooleanProperty( Props,
                                  SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN,
@@ -196,7 +218,9 @@ SDL_Window* sdleng_WindowCreateOwned( const sdleng_window_desc& Desc )
     SDL_DestroyProperties( Props );
 
     if( !pWindow )
+    {
         sdleng_LogError( "SDLWindow", "SDL_CreateWindowWithProperties" );
+    }
 
     return pWindow;
 }
@@ -245,10 +269,10 @@ xbool sdleng_WindowGetDisplayBounds( SDL_Rect& Bounds )
 
 static
 void sdleng_WindowAddResolution( xarray<sdleng_display_resolution>& Resolutions,
-                                 s32                                  Width,
-                                 s32                                  Height )
+                                 s32                                Width,
+                                 s32                                Height )
 {
-    if( (Width <= 0) || (Height <= 0) )
+    if( ( Width <= 0 ) || ( Height <= 0 ) )
     {
         return;
     }
@@ -257,13 +281,13 @@ void sdleng_WindowAddResolution( xarray<sdleng_display_resolution>& Resolutions,
     while( InsertIndex < Resolutions.GetCount() )
     {
         sdleng_display_resolution const& Resolution = Resolutions[InsertIndex];
-        if( (Resolution.GetWidth() == Width) && (Resolution.GetHeight() == Height) )
+        if( ( Resolution.GetWidth() == Width ) && ( Resolution.GetHeight() == Height ) )
         {
             return;
         }
 
-        if( (Resolution.GetWidth() > Width) ||
-            ((Resolution.GetWidth() == Width) && (Resolution.GetHeight() > Height)) )
+        if( ( Resolution.GetWidth() > Width ) ||
+            ( ( Resolution.GetWidth() == Width ) && ( Resolution.GetHeight() > Height ) ) )
         {
             break;
         }
@@ -292,6 +316,8 @@ void sdleng_WindowNotifyResize( void )
 //==============================================================================
 //  IMPLEMENTATION
 //==============================================================================
+//  NATIVE INSTANCE ACCESS
+//==============================================================================
 
 void sdleng_WindowSetInstance( sdleng_native_instance_handle hInstance )
 {
@@ -306,31 +332,44 @@ sdleng_native_instance_handle sdleng_WindowGetInstance( void )
 }
 
 //==============================================================================
+//  WINDOW LIFETIME
+//==============================================================================
 
 xbool sdleng_WindowInit( const sdleng_window_desc& Desc )
 {
     if( s_Window.pWindow )
+    {
         return TRUE;
+    }
 
     if( !sdleng_WindowInitVideo() )
+    {
         return FALSE;
+    }
 
     if( Desc.hInstance )
+    {
         s_Window.hInstance = Desc.hInstance;
+    }
 
     if( Desc.hWindow )
+    {
         s_Window.hWindow = Desc.hWindow;
+    }
 
     if( Desc.hParentWindow )
+    {
         s_Window.hParentWindow = Desc.hParentWindow;
+    }
 
     s_Window.DisplayMode         = Desc.DisplayMode;
-    s_Window.ResolutionWidth     = (Desc.Width  > 0) ? Desc.Width  : 1024;
-    s_Window.ResolutionHeight    = (Desc.Height > 0) ? Desc.Height : 768;
+    s_Window.ResolutionWidth     = ( Desc.Width > 0 ) ? Desc.Width : 1024;
+    s_Window.ResolutionHeight    = ( Desc.Height > 0 ) ? Desc.Height : 768;
     s_Window.Ready               = FALSE;
     s_Window.CloseRequested      = FALSE;
-    s_Window.WrappedNativeWindow = (s_Window.hWindow != NULL);
-    s_Window.OwnsWindow           = FALSE;
+    s_Window.WrappedNativeWindow = ( s_Window.hWindow != NULL );
+    s_Window.OwnsWindow          = FALSE;
+    s_Window.EventFrameSerial    = 0;
 
     if( s_Window.hWindow )
     {
@@ -341,7 +380,7 @@ xbool sdleng_WindowInit( const sdleng_window_desc& Desc )
     }
     else
     {
-        s_Window.pWindow = sdleng_WindowCreateOwned( Desc );
+        s_Window.pWindow    = sdleng_WindowCreateOwned( Desc );
         s_Window.OwnsWindow = TRUE;
     }
 
@@ -387,6 +426,7 @@ void sdleng_WindowKill( void )
     {
         SDL_DestroyWindow( s_Window.pWindow );
     }
+
     s_Window.pWindow = NULL;
 
     g_pSDLWindow = NULL;
@@ -408,7 +448,8 @@ void sdleng_WindowKill( void )
     s_Window.ModeChange          = FALSE;
     s_Window.CloseRequested      = FALSE;
     s_Window.WrappedNativeWindow = FALSE;
-    s_Window.OwnsWindow            = FALSE;
+    s_Window.OwnsWindow          = FALSE;
+    s_Window.EventFrameSerial    = 0;
 }
 
 //==============================================================================
@@ -416,9 +457,13 @@ void sdleng_WindowKill( void )
 void sdleng_WindowShow( void )
 {
     if( s_Window.pWindow )
+    {
         SDL_ShowWindow( s_Window.pWindow );
+    }
 }
 
+//==============================================================================
+//  WINDOW EVENTS
 //==============================================================================
 
 void sdleng_WindowProcessEvent( const SDL_Event& Event, SDL_WindowID WindowID )
@@ -429,48 +474,52 @@ void sdleng_WindowProcessEvent( const SDL_Event& Event, SDL_WindowID WindowID )
         {
             s_Window.CloseRequested = TRUE;
         }
+
         break;
 
         case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
         {
-            if( !WindowID || (Event.window.windowID == WindowID) )
+            if( !WindowID || ( Event.window.windowID == WindowID ) )
             {
                 s_Window.CloseRequested = TRUE;
             }
         }
+
         break;
 
         case SDL_EVENT_WINDOW_MINIMIZED:
         case SDL_EVENT_WINDOW_FOCUS_LOST:
         {
-            if( !WindowID || (Event.window.windowID == WindowID) )
+            if( !WindowID || ( Event.window.windowID == WindowID ) )
             {
                 s_Window.Active = FALSE;
             }
         }
+
         break;
 
         case SDL_EVENT_WINDOW_SHOWN:
         case SDL_EVENT_WINDOW_RESTORED:
         case SDL_EVENT_WINDOW_FOCUS_GAINED:
         {
-            if( !WindowID || (Event.window.windowID == WindowID) )
+            if( !WindowID || ( Event.window.windowID == WindowID ) )
             {
                 s_Window.Active = TRUE;
             }
         }
+
         break;
 
         case SDL_EVENT_WINDOW_RESIZED:
         case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
         {
-            if( !WindowID || (Event.window.windowID == WindowID) )
+            if( !WindowID || ( Event.window.windowID == WindowID ) )
             {
-                s_Window.Active = TRUE;
-                sdleng_WindowRefreshClientSize();
-                sdleng_WindowNotifyResize();
+                s_Window.Active        = TRUE;
+                s_Window.ResizePending = TRUE;
             }
         }
+
         break;
     }
 }
@@ -483,28 +532,68 @@ void sdleng_WindowDispatchEvent( const SDL_Event& Event, SDL_WindowID WindowID )
     sdleng_WindowProcessEvent( Event, WindowID );
 
     if( s_Window.pEventCallback )
+    {
         s_Window.pEventCallback( s_Window.pEventContext, Event, WindowID );
+    }
 }
 
 //==============================================================================
 
-xbool sdleng_WindowPumpMessages( void )
+static
+xbool sdleng_WindowPollMessages( void )
 {
     if( !s_Window.VideoInitialized )
+    {
         return TRUE;
+    }
 
-    SDL_Event Event;
+    SDL_Event    Event;
     SDL_WindowID WindowID = 0;
 
     if( s_Window.pWindow )
+    {
         WindowID = SDL_GetWindowID( s_Window.pWindow );
+    }
 
     while( SDL_PollEvent( &Event ) )
     {
         sdleng_WindowDispatchEvent( Event, WindowID );
     }
 
+    if( s_Window.ResizePending )
+    {
+        s_Window.ResizePending = FALSE;
+        const s32 Width        = s_Window.ClientWidth;
+        const s32 Height       = s_Window.ClientHeight;
+        sdleng_WindowRefreshClientSize();
+
+        if( ( Width != s_Window.ClientWidth ) || ( Height != s_Window.ClientHeight ) )
+        {
+            sdleng_WindowNotifyResize();
+        }
+    }
+
     return !s_Window.CloseRequested;
+}
+
+//==============================================================================
+
+xbool sdleng_WindowPumpMessages( void )
+{
+    // Render-only frames still service the window; input consumes the same batch.
+    // Without an active frame (editor logic, for example), each call stays fresh.
+    const u64 FrameSerial = sdleng_GetCurrentFrameSerial();
+    if( sdleng_InFrame() && FrameSerial )
+    {
+        if( s_Window.EventFrameSerial == FrameSerial )
+        {
+            return !s_Window.CloseRequested;
+        }
+
+        s_Window.EventFrameSerial = FrameSerial;
+    }
+
+    return sdleng_WindowPollMessages();
 }
 
 //==============================================================================
@@ -528,9 +617,13 @@ xbool sdleng_WindowWaitForActivity( void )
         sdleng_WindowDispatchEvent( Event, WindowID );
     }
 
-    return sdleng_WindowPumpMessages();
+    // A suspended frame must keep receiving restore/resize/quit events even when
+    // its normal event batch has already been collected.
+    return sdleng_WindowPollMessages();
 }
 
+//==============================================================================
+//  NATIVE WINDOW ACCESS
 //==============================================================================
 
 SDL_Window* sdleng_WindowGetSDLWindow( void )
@@ -588,6 +681,8 @@ sdleng_native_window_handle sdleng_WindowGetDisplayHandle( void )
 }
 
 //==============================================================================
+//  CLIENT SIZE
+//==============================================================================
 
 void sdleng_WindowRefreshClientSize( void )
 {
@@ -598,8 +693,8 @@ void sdleng_WindowRefreshClientSize( void )
         return;
     }
 
-    int Width  = 0;
-    int Height = 0;
+    s32 Width  = 0;
+    s32 Height = 0;
     if( !SDL_GetWindowSizeInPixels( s_Window.pWindow, &Width, &Height ) )
     {
         sdleng_LogError( "SDLWindow", "SDL_GetWindowSizeInPixels" );
@@ -621,6 +716,8 @@ void sdleng_WindowGetClientSize( s32& Width, s32& Height )
 }
 
 //==============================================================================
+//  DISPLAY CONFIGURATION
+//==============================================================================
 
 void sdleng_WindowSetDisplayMode( sdleng_display_mode Mode )
 {
@@ -641,9 +738,9 @@ sdleng_display_mode sdleng_WindowGetDisplayMode( void )
     if( s_Window.pWindow )
     {
         SDL_WindowFlags const Flags = SDL_GetWindowFlags( s_Window.pWindow );
-        return (Flags & SDL_WINDOW_BORDERLESS)
-             ? SDLENG_DISPLAY_BORDERLESS
-             : SDLENG_DISPLAY_WINDOWED;
+        return ( Flags & ( SDL_WINDOW_BORDERLESS | SDL_WINDOW_FULLSCREEN ) )
+                   ? SDLENG_DISPLAY_BORDERLESS
+                   : SDLENG_DISPLAY_WINDOWED;
     }
 
     return s_Window.DisplayMode;
@@ -684,13 +781,13 @@ xbool sdleng_WindowGetResolutions( xarray<sdleng_display_resolution>& Resolution
         return FALSE;
     }
 
-    int ModeCount = 0;
-    SDL_DisplayMode** ppModes = SDL_GetFullscreenDisplayModes( DisplayID, &ModeCount );
+    s32               ModeCount = 0;
+    SDL_DisplayMode** ppModes   = SDL_GetFullscreenDisplayModes( DisplayID, &ModeCount );
     if( ppModes )
     {
         Resolutions.SetCapacity( ModeCount + 1 );
 
-        for( int iMode = 0; iMode < ModeCount; iMode++ )
+        for( s32 iMode = 0; iMode < ModeCount; iMode++ )
         {
             SDL_DisplayMode const* pMode = ppModes[iMode];
             if( !pMode )
@@ -698,9 +795,9 @@ xbool sdleng_WindowGetResolutions( xarray<sdleng_display_resolution>& Resolution
                 continue;
             }
 
-            f32 const PixelDensity = (pMode->pixel_density > 0.0f) ? pMode->pixel_density : 1.0f;
-            s32 const Width  = static_cast<s32>( (pMode->w * PixelDensity) + 0.5f );
-            s32 const Height = static_cast<s32>( (pMode->h * PixelDensity) + 0.5f );
+            f32 const PixelDensity = ( pMode->pixel_density > 0.0f ) ? pMode->pixel_density : 1.0f;
+            s32 const Width        = static_cast<s32>( ( pMode->w * PixelDensity ) + 0.5f );
+            s32 const Height       = static_cast<s32>( ( pMode->h * PixelDensity ) + 0.5f );
             sdleng_WindowAddResolution( Resolutions, Width, Height );
         }
 
@@ -710,9 +807,9 @@ xbool sdleng_WindowGetResolutions( xarray<sdleng_display_resolution>& Resolution
     SDL_DisplayMode const* pDesktopMode = SDL_GetDesktopDisplayMode( DisplayID );
     if( pDesktopMode )
     {
-        f32 const PixelDensity = (pDesktopMode->pixel_density > 0.0f) ? pDesktopMode->pixel_density : 1.0f;
-        s32 const Width  = static_cast<s32>( (pDesktopMode->w * PixelDensity) + 0.5f );
-        s32 const Height = static_cast<s32>( (pDesktopMode->h * PixelDensity) + 0.5f );
+        f32 const PixelDensity = ( pDesktopMode->pixel_density > 0.0f ) ? pDesktopMode->pixel_density : 1.0f;
+        s32 const Width        = static_cast<s32>( ( pDesktopMode->w * PixelDensity ) + 0.5f );
+        s32 const Height       = static_cast<s32>( ( pDesktopMode->h * PixelDensity ) + 0.5f );
         sdleng_WindowAddResolution( Resolutions, Width, Height );
     }
 
@@ -731,9 +828,9 @@ const char* sdleng_WindowGetDisplayModeName( sdleng_display_mode Mode )
 {
     switch( Mode )
     {
-        case SDLENG_DISPLAY_WINDOWED:     return "Windowed";
-        case SDLENG_DISPLAY_BORDERLESS:   return "Borderless";
-        default:                          return "Unknown";
+        case SDLENG_DISPLAY_WINDOWED:   return "Windowed";   break;
+        case SDLENG_DISPLAY_BORDERLESS: return "Borderless"; break;
+        default:                        return "Unknown";    break;
     }
 }
 
@@ -756,21 +853,22 @@ xbool sdleng_WindowApplyDisplayMode( s32                 Width,
     (void)Mode;
 
     sdleng_WindowRefreshClientSize();
-    ClientWidth  = s_Window.ClientWidth;
-    ClientHeight = s_Window.ClientHeight;
+    ClientWidth               = s_Window.ClientWidth;
+    ClientHeight              = s_Window.ClientHeight;
     s_Window.ResolutionWidth  = ClientWidth;
     s_Window.ResolutionHeight = ClientHeight;
     s_Window.DisplayMode      = SDLENG_DISPLAY_WINDOWED;
-    return (ClientWidth > 0) && (ClientHeight > 0);
+
+    return ( ClientWidth > 0 ) && ( ClientHeight > 0 );
 #endif
 
-    if( (Width <= 0) || (Height <= 0) ||
-        (Mode < SDLENG_DISPLAY_WINDOWED) || (Mode > SDLENG_DISPLAY_BORDERLESS) )
+    if( ( Width <= 0 ) || ( Height <= 0 ) ||
+        ( Mode < SDLENG_DISPLAY_WINDOWED ) || ( Mode > SDLENG_DISPLAY_BORDERLESS ) )
     {
         return FALSE;
     }
 
-    if( s_Window.WrappedNativeWindow && (Mode != SDLENG_DISPLAY_WINDOWED) )
+    if( s_Window.WrappedNativeWindow && ( Mode != SDLENG_DISPLAY_WINDOWED ) )
     {
         x_DebugMsg( "SDLWindow: wrapped native windows only support windowed display mode\n" );
         return FALSE;
@@ -795,9 +893,9 @@ xbool sdleng_WindowApplyDisplayMode( s32                 Width,
         const xbool bCanSetPosition = sdleng_WindowCanSetPosition();
 
         if( !SDL_SetWindowBordered( s_Window.pWindow, false ) ||
-            (bCanSetPosition &&
-             !SDL_SetWindowPosition( s_Window.pWindow, DisplayBounds.x, DisplayBounds.y )) ||
-             !SDL_SetWindowSize( s_Window.pWindow, DisplayBounds.w, DisplayBounds.h ) )
+            ( bCanSetPosition &&
+              !SDL_SetWindowPosition( s_Window.pWindow, DisplayBounds.x, DisplayBounds.y ) ) ||
+            !SDL_SetWindowSize( s_Window.pWindow, DisplayBounds.w, DisplayBounds.h ) )
         {
             sdleng_LogError( "SDLWindow", "SDL borderless display mode" );
             return FALSE;
@@ -811,10 +909,10 @@ xbool sdleng_WindowApplyDisplayMode( s32                 Width,
         if( !SDL_SetWindowFullscreen( s_Window.pWindow, false ) ||
             !SDL_SetWindowBordered( s_Window.pWindow, true ) ||
             !SDL_SetWindowSize( s_Window.pWindow, Width, Height ) ||
-            (bCanSetPosition &&
-             !SDL_SetWindowPosition( s_Window.pWindow,
+            ( bCanSetPosition &&
+              !SDL_SetWindowPosition( s_Window.pWindow,
                                       SDL_WINDOWPOS_CENTERED,
-                                      SDL_WINDOWPOS_CENTERED )) )
+                                      SDL_WINDOWPOS_CENTERED ) ) )
         {
             sdleng_LogError( "SDLWindow", "SDL windowed display mode" );
             return FALSE;
@@ -826,12 +924,12 @@ xbool sdleng_WindowApplyDisplayMode( s32                 Width,
             return FALSE;
         }
 
-        const xbool bCanSetPosition = sdleng_WindowCanSetPosition();
-        s32 const CenteredPosition = SDL_WINDOWPOS_CENTERED_DISPLAY( DisplayID );
+        const xbool bCanSetPosition  = sdleng_WindowCanSetPosition();
+        s32 const   CenteredPosition = SDL_WINDOWPOS_CENTERED_DISPLAY( DisplayID );
         if( !SDL_SetWindowBordered( s_Window.pWindow, true ) ||
             !SDL_SetWindowSize( s_Window.pWindow, Width, Height ) ||
-            (bCanSetPosition &&
-             !SDL_SetWindowPosition( s_Window.pWindow, CenteredPosition, CenteredPosition )) )
+            ( bCanSetPosition &&
+              !SDL_SetWindowPosition( s_Window.pWindow, CenteredPosition, CenteredPosition ) ) )
         {
             sdleng_LogError( "SDLWindow", "SDL windowed display mode" );
             return FALSE;
@@ -859,9 +957,12 @@ xbool sdleng_WindowApplyDisplayMode( s32                 Width,
 
     ClientWidth  = s_Window.ClientWidth;
     ClientHeight = s_Window.ClientHeight;
+
     return TRUE;
 }
 
+//==============================================================================
+//  WINDOW STATUS AND CALLBACKS
 //==============================================================================
 
 void sdleng_WindowSetReady( xbool Ready )

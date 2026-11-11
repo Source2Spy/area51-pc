@@ -60,7 +60,7 @@ namespace tracy
 
 int
 backtrace_open (const char *filename, backtrace_error_callback error_callback,
-        void *data, int *does_not_exist)
+		void *data, int *does_not_exist)
 {
   int descriptor;
 
@@ -71,13 +71,13 @@ backtrace_open (const char *filename, backtrace_error_callback error_callback,
   if (descriptor < 0)
     {
       /* If DOES_NOT_EXIST is not NULL, then don't call ERROR_CALLBACK
-     if the file does not exist.  We treat lacking permission to
-     open the file as the file not existing; this case arises when
-     running the libgo syscall package tests as root.  */
+	 if the file does not exist.  We treat lacking permission to
+	 open the file as the file not existing; this case arises when
+	 running the libgo syscall package tests as root.  */
       if (does_not_exist != NULL && (errno == ENOENT || errno == EACCES))
-    *does_not_exist = 1;
+	*does_not_exist = 1;
       else
-    error_callback (data, filename, errno);
+	error_callback (data, filename, errno);
       return -1;
     }
 
@@ -96,7 +96,7 @@ backtrace_open (const char *filename, backtrace_error_callback error_callback,
 
 int
 backtrace_close (int descriptor, backtrace_error_callback error_callback,
-         void *data)
+		 void *data)
 {
   if (close (descriptor) < 0)
     {

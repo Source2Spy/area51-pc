@@ -10,7 +10,7 @@
 #define GEOM_HPP
 
 //=========================================================================
-// INCLUDES
+//  INCLUDES
 //=========================================================================
 
 #include "x_files.hpp"
@@ -18,7 +18,7 @@
 #include "../Animation/AnimData.hpp"
 
 //=========================================================================
-// GEOM STRUCT
+//  GEOM STRUCT
 //=========================================================================
 
 //=========================================================================
@@ -34,6 +34,8 @@
 // There is a submesh for every material used by the mesh.
 //
 //=========================================================================
+
+class material;
 
 struct geom
 {
@@ -271,6 +273,8 @@ struct geom
 
     geom( void );
     ~geom( void );
+    xbool PrepareMaterials( void );
+    ::material const& GetPreparedMaterial( s32 VirtualMaterial ) const;
     s32   GetNFaces( void ) const;
     s32   GetNVerts( void ) const;
     xbool HasUVAnim( s32 iMaterial ) const;
@@ -285,7 +289,7 @@ struct geom
     char const* GetVTextureName( s32 iVTexture ) const;
     char const* GetTextureDesc( s32 iTexture ) const;
     char const* GetTextureName( s32 iTexture ) const;
-    u64         GetLODMask( u32 vMeshMask, u16 screenSize ) const;
+    u64         GetLODMask( u32 vMeshMask, u16 ScreenSize ) const;
 
     // Rigid body functions
     char const* GetRigidBodyName( s32 iRigidBody ) const;
@@ -325,7 +329,7 @@ struct geom
     s32  m_nVirtualMeshes;
     s32  m_nVirtualMaterials;
     s32  m_nVirtualTextures;
-    s32  m_stringDataSize;
+    s32  m_StringDataSize;
 
     bone*             m_pBone;
     bone_masks*       m_pBoneMasks;
@@ -335,6 +339,7 @@ struct geom
     mesh*             m_pMesh;
     submesh*          m_pSubMesh;
     material*         m_pMaterial;
+    ::material*       m_pPreparedMaterials;
     texture*          m_pTexture;
     uvkey*            m_pUVKey;
     u16*              m_pLODSizes;
@@ -345,7 +350,7 @@ struct geom
 };
 
 //=========================================================================
-// INLINE FUNCTIONS
+//  INLINE FUNCTIONS
 //=========================================================================
 
 inline s32 geom::GetNFaces( void ) const
@@ -529,7 +534,7 @@ inline char const* geom::GetTextureName( s32 iTexture ) const
 
 //=========================================================================
 
-inline u64 geom::GetLODMask( u32 vMeshMask, u16 screenSize ) const
+inline u64 geom::GetLODMask( u32 vMeshMask, u16 ScreenSize ) const
 {
     if ( m_nVirtualMeshes == 0 )
     {
@@ -546,7 +551,7 @@ inline u64 geom::GetLODMask( u32 vMeshMask, u16 screenSize ) const
             s32 Choice = 0;
             for ( s32 j = 1; j < m_pVirtualMeshes[i].nLODs; j++ )
             {
-                if ( screenSize < m_pLODSizes[j + m_pVirtualMeshes[i].iLOD] )
+                if ( ScreenSize < m_pLODSizes[j + m_pVirtualMeshes[i].iLOD] )
                 {
                     Choice = j;
                 }
@@ -561,5 +566,6 @@ inline u64 geom::GetLODMask( u32 vMeshMask, u16 screenSize ) const
 }
 
 //=========================================================================
+
 #endif // GEOM_HPP
 //=========================================================================

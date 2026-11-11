@@ -16,6 +16,7 @@
 #include "MouseMode.hpp"
 
 #include "x_profile.hpp"
+#include "e_Engine.hpp"
 #include "UI/ui_renderer.hpp"
 
 #ifdef _DEBUG
@@ -112,6 +113,8 @@ CMainFrame::~CMainFrame()
     // destroy texture manager
     delete fx_core::g_pTextureMgr;
 
+    eng_ResetAfterException();
+    eng_Sync();
     g_UIRenderer.Kill();
     eng_Kill();
     x_Kill();

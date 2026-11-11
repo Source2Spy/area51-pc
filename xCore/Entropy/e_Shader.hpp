@@ -119,7 +119,9 @@ enum shader_binding_kind
     SHADER_BINDING_SAMPLED_TEXTURE = 0,
     SHADER_BINDING_UNIFORM_BUFFER,
     SHADER_BINDING_STORAGE_TEXTURE,
-    SHADER_BINDING_STORAGE_BUFFER
+    SHADER_BINDING_STORAGE_BUFFER,
+    SHADER_BINDING_READ_WRITE_TEXTURE,
+    SHADER_BINDING_READ_WRITE_BUFFER
 };
 
 //------------------------------------------------------------------------------
@@ -142,24 +144,50 @@ struct shader_binding_desc
 
 //------------------------------------------------------------------------------
 
+struct ecs_package_layout;
+
+struct shader_compute_desc
+{
+    u32 ReadWriteTextureCount;
+    u32 ReadWriteBufferCount;
+    u32 ThreadCountX;
+    u32 ThreadCountY;
+    u32 ThreadCountZ;
+
+    shader_compute_desc( void ) :
+        ReadWriteTextureCount( 0 ),
+        ReadWriteBufferCount ( 0 ),
+        ThreadCountX         ( 0 ),
+        ThreadCountY         ( 0 ),
+        ThreadCountZ         ( 0 )
+    {
+    }
+};
+
+//------------------------------------------------------------------------------
+
 struct shader_desc
 {
+    const ecs_package_layout* pInterface;
     shader_stage           Stage;
     shader_format          Format;
     shader_blob            Blob;
     const char*            pEntryPoint;
     shader_resource_counts Resources;
+    shader_compute_desc    Compute;
     const shader_binding_desc*
                            pBindings;
     u32                    BindingCount;
     const char*            pDebugName;
 
     shader_desc( void ) :
+        pInterface ( NULL ),
         Stage      ( SHADER_STAGE_VERTEX ),
         Format     ( SHADER_FORMAT_UNKNOWN ),
         Blob       (),
         pEntryPoint( NULL ),
         Resources  (),
+        Compute    (),
         pBindings  ( NULL ),
         BindingCount( 0 ),
         pDebugName ( NULL )
@@ -176,6 +204,7 @@ struct shader_file_desc
     shader_format          Format;
     const char*            pEntryPoint;
     shader_resource_counts Resources;
+    shader_compute_desc    Compute;
     const shader_binding_desc*
                            pBindings;
     u32                    BindingCount;
@@ -187,6 +216,7 @@ struct shader_file_desc
         Format     ( SHADER_FORMAT_UNKNOWN ),
         pEntryPoint( NULL ),
         Resources  (),
+        Compute    (),
         pBindings  ( NULL ),
         BindingCount( 0 ),
         pDebugName ( NULL )
@@ -196,12 +226,20 @@ struct shader_file_desc
 
 //------------------------------------------------------------------------------
 
-struct shader_ecs_desc
+enum shader_combo_kind
 {
+    SHADER_COMBO_KEYED = 0,
+    SHADER_COMBO_FIXED = 1
+};
+
+struct shader_program_desc
+{
+    u64 ExpectedCatalogId = 0;
+    u64 ProgramId = 0;
     const char* pFileName;
     const char* pDebugName;
 
-    shader_ecs_desc( void ) :
+    shader_program_desc( void ) :
         pFileName ( NULL ),
         pDebugName( NULL )
     {
@@ -210,17 +248,33 @@ struct shader_ecs_desc
 
 //------------------------------------------------------------------------------
 
+struct shader_program_load;
+
+enum shader_program_load_status
+{
+    SHADER_PROGRAM_PENDING,
+    SHADER_PROGRAM_READY,
+    SHADER_PROGRAM_FAILED,
+    SHADER_PROGRAM_CANCELLED
+};
+
 struct shader
 {
     shader_stage    Stage;
     shader_format   Format;
     shader_backend* pBackend;
+    shader_program_load* pLoad;
+    u64 ProgramId;
+    u32 ResourceSlots[128];
 
     shader( void ) :
         Stage   ( SHADER_STAGE_VERTEX ),
         Format  ( SHADER_FORMAT_UNKNOWN ),
-        pBackend( NULL )
+        pBackend( NULL ),
+        pLoad   ( NULL ),
+        ProgramId( 0 )
     {
+        for( u32& Slot : ResourceSlots ) Slot = 0xFFFFFFFFu;
     }
 
     operator xbool( void ) const { return pBackend != NULL; }
@@ -231,6 +285,12 @@ struct shader
 //==============================================================================
 
 //------------------------------------------------------------------------------
+
+inline xbool shader_GetResourceSlot( shader const& Shader, u32 Semantic, u32& Slot )
+{
+    Slot = Semantic < 128 ? Shader.ResourceSlots[Semantic] : 0xFFFFFFFFu;
+    return Slot != 0xFFFFFFFFu;
+}
 
 struct shader_vertex_buffer_desc
 {
@@ -310,6 +370,35 @@ struct shader_resource
     shader_resource( void ) : pBackend( NULL ) {}
     operator xbool( void ) const { return pBackend != NULL; }
 };
+
+//------------------------------------------------------------------------------
+
+struct rbuffer;
+struct rtarget;
+struct vram_texture;
+
+//------------------------------------------------------------------------------
+
+enum shader_resource_access
+{
+    SHADER_RESOURCE_ACCESS_SAMPLED,
+    SHADER_RESOURCE_ACCESS_STORAGE,
+    SHADER_RESOURCE_ACCESS_VERTEX,
+    SHADER_RESOURCE_ACCESS_INDEX,
+    SHADER_RESOURCE_ACCESS_INDIRECT,
+    SHADER_RESOURCE_ACCESS_UPLOAD,
+};
+
+//------------------------------------------------------------------------------
+
+typedef xbool ( *shader_resource_access_validator )( const shader_resource& Resource,
+                                                     shader_resource_access Access, void* pContext );
+
+const rbuffer*      shader_GetResourceBuffer( const shader_resource& Resource );
+const rtarget*      shader_GetResourceTarget( const shader_resource& Resource );
+const vram_texture* shader_GetResourceTexture( const shader_resource& Resource );
+void                shader_SetResourceAccessValidator( shader_resource_access_validator Validator, void* pContext );
+xbool               shader_ValidateResourceAccess( const shader_resource& Resource, shader_resource_access Access );
 
 //==============================================================================
 //  RESOURCE BINDING
@@ -451,6 +540,68 @@ struct shader_binding_set_desc
 //  SHADER API
 //==============================================================================
 
+struct rbuffer;
+
+struct shader_compute_texture_binding
+{
+    const shader_resource* pTexture;
+    u32                    MipLevel;
+    u32                    Layer;
+    xbool                  bCycle;
+
+    shader_compute_texture_binding( void ) :
+        pTexture( NULL ),
+        MipLevel( 0 ),
+        Layer   ( 0 ),
+        bCycle  ( FALSE )
+    {
+    }
+};
+
+//------------------------------------------------------------------------------
+
+struct shader_compute_buffer_binding
+{
+    const rbuffer* pBuffer;
+    xbool          bCycle;
+
+    shader_compute_buffer_binding( void ) :
+        pBuffer( NULL ),
+        bCycle ( FALSE )
+    {
+    }
+};
+
+//------------------------------------------------------------------------------
+
+struct shader_compute_pass_desc
+{
+    const shader_compute_texture_binding* pTextures;
+    u32                                   TextureCount;
+    const shader_compute_buffer_binding*  pBuffers;
+    u32                                   BufferCount;
+
+    shader_compute_pass_desc( void ) :
+        pTextures   ( NULL ),
+        TextureCount( 0 ),
+        pBuffers    ( NULL ),
+        BufferCount ( 0 )
+    {
+    }
+};
+
+//------------------------------------------------------------------------------
+
+xbool               shader_BeginComputePass ( const shader&                   Shader,
+                                              const shader_compute_pass_desc& Desc );
+xbool               shader_EndComputePass   ( void );
+xbool               shader_Dispatch         ( u32 GroupCountX,
+                                              u32 GroupCountY = 1,
+                                              u32 GroupCountZ = 1 );
+xbool               shader_DispatchIndirect ( const rbuffer& Buffer, u32 Offset = 0 );
+
+void                shader_SetCatalogId     ( u64 CatalogId );
+shader_format       shader_GetPreferredFormat( void );
 void                shader_Init             ( void );
 void                shader_Kill             ( void );
 
@@ -458,11 +609,18 @@ xbool               shader_Create           ( shader&            Shader,
                                               const shader_desc& Desc );
 xbool               shader_LoadFromFile     ( shader&                 Shader,
                                               const shader_file_desc& Desc );
-xbool               shader_LoadFromEcs      ( shader&                Shader,
-                                              const shader_ecs_desc& Desc );
-xbool               shader_LoadFromEcs      ( shader&      Shader,
-                                              const char*  pEcsFileName );
-void                shader_Destroy          ( shader&            Shader );
+xbool               shader_LoadProgram      ( shader&                Shader,
+                                              const shader_program_desc& Desc );
+xbool               shader_LoadProgram      ( shader&      Shader,
+                                              const char*  pEcsFileName,
+                                              u64 ProgramId );
+xbool               shader_RequestProgram   ( shader& Shader, const shader_program_desc& Desc );
+shader_program_load_status shader_PollProgram( shader& Shader );
+xbool               shader_RequestComboStage( shader& Shader, const char* pFileName,
+                                               shader_combo_kind Kind, u64 Key, shader_stage Stage );
+xbool               shader_LoadComboStage   ( shader& Shader, const char* pFileName,
+                                              shader_combo_kind Kind, u64 Key, shader_stage Stage );
+xbool               shader_Destroy          ( shader&            Shader );
 
 xbool               shader_PushUniformData  ( shader_stage Stage,
                                               u32          Slot,

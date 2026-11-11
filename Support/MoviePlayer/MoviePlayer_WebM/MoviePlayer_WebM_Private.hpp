@@ -13,8 +13,6 @@
 //  PLATFORM CHECK
 //==============================================================================
 
-// Let it be only for PC, for now...
-
 #include "x_target.hpp"
 
 #if !defined( TARGET_DESKTOP ) && !defined( TARGET_MOBILE )
@@ -35,12 +33,15 @@
 #include "vpx/vpx_image.h"
 #include "vpx/vpx_decoder.h"
 #include "vpx/vp8dx.h"
+#include "SDL3/SDL_audio.h"
 #include "opus.h"
 #include "opus_multistream.h"
 #include "vorbis/codec.h"
 #include "ogg/ogg.h"
 
 struct SDL_AudioStream;
+struct SDL_Semaphore;
+struct SDL_Mutex;
 struct OpusDecoder;
 struct OpusMSDecoder;
 struct vorbis_info;
@@ -69,6 +70,27 @@ enum stream_Type
 
 //------------------------------------------------------------------------------
 
+enum sample_status
+{
+    SAMPLE_ERROR = -1,
+    SAMPLE_END,
+    SAMPLE_READY
+};
+
+//------------------------------------------------------------------------------
+
+enum decode_status
+{
+    DECODE_ERROR = -1,
+    DECODE_EMPTY,
+    DECODE_FRAME,
+    DECODE_DISCARDED
+};
+
+//------------------------------------------------------------------------------
+
+class sync_clock;
+
 struct player_config
 {
     player_config(void)
@@ -85,6 +107,8 @@ struct player_config
         AudioChannels   = 0;
         AudioSampleRate = 0;
         AudioBitDepth   = 16;
+        CodecDelay      = 0;
+        VideoFrameDuration = 0.0;
         AudioLanguage   = XL_LANG_ENGLISH;
         AudioCodecId.Clear();
         VideoCodecId.Clear();
@@ -105,6 +129,8 @@ struct player_config
     s32         AudioChannels;
     s32         AudioSampleRate;
     s32         AudioBitDepth;
+    s64         CodecDelay;
+    f64         VideoFrameDuration;
     x_language  AudioLanguage;
     xarray<u8>  AudioCodecPrivate;
 };
@@ -120,7 +146,10 @@ struct sample
         pBlock      = NULL;
         pCluster    = NULL;
         TimeSeconds = 0.0;
+        TimeNanoseconds = 0;
         IsKeyFrame  = FALSE;
+        DiscardPadding = 0;
+        FrameIndex = 0;
     }
 
     stream_Type                 Type;
@@ -128,7 +157,10 @@ struct sample
     const mkvparser::Block*     pBlock;
     const mkvparser::Cluster*   pCluster;
     f64                         TimeSeconds;
+    s64                         TimeNanoseconds;
     xbool                       IsKeyFrame;
+    s64                         DiscardPadding;
+    s32                         FrameIndex;
 };
 
 //------------------------------------------------------------------------------
@@ -191,13 +223,15 @@ public:
     void            Close           (void);
     void            Rewind          (void);
 
-    xbool           PeekSample      (sample& OutSample);
-    xbool           ReadSample      (sample& OutSample);
+    sample_status   PeekSample      (sample& OutSample);
+    sample_status   ReadSample      (sample& OutSample);
+
+    s32             GetError        (void) const { return m_Error; }
 
     mkvparser::IMkvReader* GetReader(void) { return &m_FileReader; }
 
 private:
-    xbool           AcquireSample   (sample& OutSample);
+    sample_status   AcquireSample   (sample& OutSample);
     xbool           InitializeSegment   (player_config& Config);
     xbool           SelectTracks        (player_config& Config);
     xbool           AdvanceCluster      (void);
@@ -214,6 +248,7 @@ private:
     s32                         m_VideoTrack;
     s32                         m_AudioTrack;
     xbool                       m_bEOF;
+    s32                         m_Error;
     xbool                       m_bHasPendingSample;
     sample                      m_PendingSample;
 };
@@ -231,7 +266,7 @@ public:
     xbool           Initialize      (const player_config& Config);
     void            Shutdown        (void);
 
-    xbool           DecodeSample    (const sample& Sample, mkvparser::IMkvReader* pReader);
+    decode_status   DecodeSample    (const sample& Sample, mkvparser::IMkvReader* pReader, xbool ConvertImage = TRUE);
 
     const u8*       GetFrameData    (void) const { return (m_FrameBuffer.GetCount() > 0) ? m_FrameBuffer.GetPtr() : NULL; }
     s32             GetFramePitch   (void) const { return m_FramePitch; }
@@ -265,12 +300,22 @@ public:
                     audio_decoder   (void);
                    ~audio_decoder   (void);
 
-    xbool           Initialize      (const player_config& Config);
+    xbool           Initialize      (const player_config& Config, sync_clock& Clock, SDL_Semaphore* pWakeSemaphore);
     void            Shutdown        (void);
-    void            Flush           (void);
-    xbool           DecodeSample    (const sample& Sample, mkvparser::IMkvReader* pReader);
+    xbool           Reset           (void);
+    xbool           BeginSample     (const sample& Sample, mkvparser::IMkvReader* pReader);
+    xbool           Pump            (void);
+    xbool           HasPendingSample(void) const { return m_bHasPendingSample; }
+    void            EndInput        (void);
+    xbool           IsDrained       (void);
+    xbool           HasError        (void) const { return x_AtomicLoadAcquire(&m_Error) != 0; }
+    const char*     GetError        (void) const { return m_ErrorText; }
+    f64             GetEndTime      (void) const { return (f64)m_EndSample / m_SampleRate; }
+    f64             GetDevicePeriod (void) const { return m_DevicePeriod; }
 
     void            SetVolume       (f32 Volume);
+    xbool           Pause           (void);
+    xbool           Resume          (void);
 
 private:
     enum codec_type
@@ -280,6 +325,10 @@ private:
         CODEC_VORBIS
     };
 
+    static void SDLCALL AudioCallback       (void* pData, SDL_AudioStream* pStream, int AdditionalAmount, int TotalAmount);
+    void            OutputPCM           (s32 Bytes);
+    void            ResetSync           (void);
+    void            SetError            (void);
     xbool           InitializeSDL       (void);
     void            ShutdownSDL         (void);
     xbool           InitializeOpus      (const player_config& Config);
@@ -289,42 +338,76 @@ private:
     xbool           ParseVorbisPrivate  (const player_config& Config);
     void            DestroyVorbis       (void);
     void            DestroyVorbisState  (xbool ClearHeaders);
-    void            ResetDecoders       (void);
-    xbool           SubmitPCM           (const s16* pSamples, s32 SampleCount);
+    xbool           ReadFrame           (s32 FrameIndex);
+    s32             GetPacketSamples    (s32& PreviousBlockSize);
     xbool           DecodeOpusFrame     (const u8* pData, s32 DataSize);
     xbool           DecodeVorbisPacket  (const u8* pData, s32 DataSize);
+    s64             TimeToSamples       (s64 Nanoseconds) const;
 
 private:
     f32                         m_Volume;
     codec_type                  m_CodecType;
     s32                         m_Channels;
     s32                         m_SampleRate;
-    s32                         m_BitsPerSample;
     xbool                       m_isInitialized;
     xbool                       m_SdlInitialized;
     SDL_AudioStream*            m_pAudioStream;
-    s32                         m_MaxQueuedBytes;
+    SDL_Semaphore*              m_pWakeSemaphore;
+    sync_clock*                 m_pClock;
+    x_atomic_s32                m_Error;
+    char                        m_ErrorText[256];
+    f64                         m_DevicePeriod;
+    s64                         m_CodecDelay;
+    s32                         m_TimestampTolerance;
 
+    sample                      m_PendingSample;
+    mkvparser::IMkvReader*       m_pReader;
+    xbool                       m_bHasPendingSample;
+    s32                         m_PendingFrame;
+    s64                         m_BlockOffset;
+    s64                         m_BlockStart;
+    s64                         m_TrimStart;
+    s64                         m_TrimEnd;
+    s64                         m_NextSample;
+    s64                         m_EndSample;
+    xbool                       m_bHasSampleTime;
+    s32                         m_PCMCount;
     xarray<u8>                  m_CompressedBuffer;
     xarray<s16>                 m_PCMBuffer;
+
+    xarray<s16>                 m_QueuePCM;
+    // Queue timestamps are in source sample frames.
+    xarray<s64>                 m_QueueTimes;
+    xarray<s16>                 m_OutputBuffer;
+    s32                         m_QueueRead;
+    s32                         m_QueueCount;
+    s32                         m_TargetFrames;
+    xbool                       m_bWaitingForSpace;
+    xbool                       m_bEndOfInput;
+    xbool                       m_bStreamFlushed;
+    xbool                       m_bSyncHold;
+    xbool                       m_bUnderrun;
+    s64                         m_OutputSample;
+    f64                         m_SyncError;
+    f64                         m_LastCallbackTime;
 
     // Opus
     OpusDecoder*                m_pOpusDecoder;
     OpusMSDecoder*              m_pOpusMSDecoder;
     xarray<u8>                  m_OpusMapping;
-    s32                         m_OpusStreams;
-    s32                         m_OpusCoupled;
     s32                         m_OpusPreSkip;
     s32                         m_OpusPreSkipRemaining;
     s32                         m_MaxFrameSamples;
-    s32                         m_OpusGain;
 
     // Vorbis
-    vorbis_info*                m_pVorbisInfo;
-    vorbis_comment*             m_pVorbisComment;
-    vorbis_dsp_state*           m_pVorbisDsp;
-    vorbis_block*               m_pVorbisBlock;
-    xbool                       m_VorbisInitialized;
+    vorbis_info                 m_VorbisInfo;
+    vorbis_comment              m_VorbisComment;
+    vorbis_dsp_state            m_VorbisDsp;
+    vorbis_block                m_VorbisBlock;
+    xbool                       m_bVorbisHeaders;
+    xbool                       m_bVorbisDsp;
+    xbool                       m_bVorbisBlock;
+    s32                         m_PreviousBlockSize;
     long long                   m_VorbisPacketIndex;
     xarray<u8>                  m_VorbisHeaders[3];
 };
@@ -337,6 +420,9 @@ class sync_clock
 {
 public:
                     sync_clock      (void);
+                   ~sync_clock      (void);
+
+    xbool           IsValid         (void) const { return m_pMutex != NULL; }
 
     void            Start           (void);
     void            Stop            (void);
@@ -345,10 +431,11 @@ public:
     void            Reset           (void);
 
     f64             GetTime         (void) const;
-    xbool           IsRunning       (void) const { return m_bRunning; }
-    xbool           IsPaused        (void) const { return m_bPaused; }
+    xbool           IsRunning       (void) const;
+    xbool           IsPaused        (void) const;
 
 private:
+    SDL_Mutex*      m_pMutex;
     xtick           m_StartTime;
     xtick           m_PauseTime;
     f64             m_PausedDuration;
@@ -379,8 +466,8 @@ public:
 
     s32             GetWidth            (void)      { return m_Width; }
     s32             GetHeight           (void)      { return m_Height; }
-    xbool           IsRunning           (void)      { return m_bThreadRunning; }
-    xbool           IsFinished          (void)      { return m_bThreadFinished; }
+    xbool           IsRunning           (void)      { return x_AtomicLoadAcquire(&m_bThreadRunning); }
+    xbool           IsFinished          (void)      { return x_AtomicLoadAcquire(&m_bThreadFinished); }
 
     void            SetVolume           (f32 Volume);
     void            Pause               (void);
@@ -393,16 +480,17 @@ private:
 
     static void     WorkerEntry         (void* pData);
     void            ThreadMain          (void);
-    void            ThreadLoop          (void);
+    f64             ThreadLoop          (void);
 
-    xbool           ProcessVideoSample  (const movie_webm::sample& Sample);
+    movie_webm::decode_status ProcessVideoSample(const movie_webm::sample& Sample);
+    movie_webm::sample GetVideoFrame    (const movie_webm::sample& Sample, s32 FrameIndex) const;
     void            UpdateRenderBuffer  (const movie_webm::sample& Sample);
     void            ResetPlayback       (void);
     xbool           PrimePlayback       (void);
-    void            PreloadAudio        (f64 TargetTime);    
-    void            PumpAudio           (f64 TargetTime);
+    void            FailPlayback        (const char* pOperation, s32 Code, const movie_webm::sample* pSample = NULL);
+    xbool           PumpAudio           (void);
     void            HandleEndOfStream   (void);
-    void            SleepMilliseconds   (f64 Seconds);
+    void            WaitForPlayback     (f64 Seconds);
 
     xbool           CreateVideoTexture  (void);
     void            DestroyVideoTexture (void);
@@ -418,17 +506,21 @@ private:
 
     // Threading
     x_worker_service            m_WorkerService;
-    volatile xbool              m_bThreadExit;
-    volatile xbool              m_bThreadRunning;
-    volatile xbool              m_bThreadFinished;
-    volatile xbool              m_bPaused;
-    volatile xbool              m_bPlaybackActive;
-    volatile xbool              m_bVideoEOF;
-    volatile xbool              m_bThreadBusy;
+    SDL_Semaphore*              m_pWakeSemaphore;
+    x_atomic_s32                m_bCloseRequested;
+    x_atomic_s32                m_bThreadExit;
+    x_atomic_s32                m_bThreadRunning;
+    x_atomic_s32                m_bThreadFinished;
+    xbool                       m_bPaused;
+    xbool                       m_bPlaybackActive;
+    xbool                       m_bInputEOF;
+    f64                         m_VideoEndTime;
+    f64                         m_VideoFrameDuration;
+    xmutex                      m_PlaybackMutex;
 
     // Rendering
     vram_texture                m_VideoTexture;
-    movie_webm::render_data     m_renderData;
+    movie_webm::render_data     m_RenderData;
     xarray<u8>                  m_RenderBuffer;
 
     // Playback helpers
@@ -438,8 +530,12 @@ private:
     movie_webm::sync_clock      m_Clock;
     movie_webm::player_config   m_Config;
     f64                         m_LastVideoTime;
+    movie_webm::sample          m_VideoSample;
+    s32                         m_VideoFrameIndex;
     movie_webm::sample          m_PendingVideoSample;
     xbool                       m_bHasPendingVideo;
+    xarray<movie_webm::sample>   m_AudioSamples;
+    s32                         m_AudioSampleRead;
 };
 
 #endif // MOVIEPLAYER_WEBM_PRIVATE_HPP

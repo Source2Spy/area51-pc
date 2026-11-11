@@ -2,6 +2,7 @@
 // WEAPON MESON CANNON
 //=========================================================================
 #include "Obj_mgr/obj_mgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "ProjectileEnergy.hpp"
 #include "ProjectileMesonSeeker.hpp"
 #include "WeaponMSN.hpp"
@@ -9,7 +10,7 @@
 #include "Objects/Projector.hpp"
 #include "AudioMgr/AudioMgr.hpp"
 #include "Debris/debris_mgr.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "Player/Player.hpp"
 #include "GravChargeProjectile.hpp"
 #include "Characters/Character.hpp"
@@ -182,16 +183,16 @@ void weapon_msn::OnEnumProp( prop_enum& PropEnumList )
     new_weapon::OnEnumProp( PropEnumList );    
 
     PropEnumList.PropEnumHeader  ( "Meson Cannon", "Meson Cannon Weapon", 0 );
-    PropEnumList.PropEnumExternal( "Meson Cannon\\Bullet Audio Package",   "Resource\0audiopkg", "The audio package associated with this weapon's bullets.", 0 );
+    PropEnumList.PropEnumExternal( "Meson Cannon\\Bullet Audio Package",   "Resource\0audiopkg\0", "The audio package associated with this weapon's bullets.", 0 );
 
-    PropEnumList.PropEnumExternal( "Meson Cannon\\Reload Effect",          "Resource\0fxo",      "The particle effect for the reload", 0 );
+    PropEnumList.PropEnumExternal( "Meson Cannon\\Reload Effect",          "Resource\0fxo\0",      "The particle effect for the reload", 0 );
 
-    PropEnumList.PropEnumExternal( "Meson Cannon\\ChargeUp Effect",        "Resource\0fxo",      "The particle effect for the chargeup", 0 );
-    PropEnumList.PropEnumExternal( "Meson Cannon\\ChargeUp Globe Effect",  "Resource\0fxo",      "The particle effect for the chargeup scalable globe", 0 );
+    PropEnumList.PropEnumExternal( "Meson Cannon\\ChargeUp Effect",        "Resource\0fxo\0",      "The particle effect for the chargeup", 0 );
+    PropEnumList.PropEnumExternal( "Meson Cannon\\ChargeUp Globe Effect",  "Resource\0fxo\0",      "The particle effect for the chargeup scalable globe", 0 );
 
-    PropEnumList.PropEnumExternal( "Meson Cannon\\Primary Fire Effect",    "Resource\0fxo",      "The particle effect for the primary fire", 0 );
-    PropEnumList.PropEnumExternal( "Meson Cannon\\Secondary Fire Effect",  "Resource\0fxo",      "The particle effect for the secondary fire", 0 );    
-    PropEnumList.PropEnumExternal( "Meson Cannon\\Wall Bounce Efect",      "Resource\0fxo",      "The particle effect for when primary projectile hits a wall", 0 );
+    PropEnumList.PropEnumExternal( "Meson Cannon\\Primary Fire Effect",    "Resource\0fxo\0",      "The particle effect for the primary fire", 0 );
+    PropEnumList.PropEnumExternal( "Meson Cannon\\Secondary Fire Effect",  "Resource\0fxo\0",      "The particle effect for the secondary fire", 0 );    
+    PropEnumList.PropEnumExternal( "Meson Cannon\\Wall Bounce Efect",      "Resource\0fxo\0",      "The particle effect for when primary projectile hits a wall", 0 );
 
     PropEnumList.PropEnumFloat   ( "Meson Cannon\\Reload Wait Time",           "How long to wait before the MSN starts reloading.", 0 );
     PropEnumList.PropEnumFloat   ( "Meson Cannon\\Secondary Fire Base Damage", "The minimum amount of damage the secondary fire will cause.", 0 );
@@ -610,7 +611,7 @@ xbool weapon_msn::FireWeaponProtected( const vector3& InitPos , const vector3& B
             pBullet->SetPainDegradation( PainDropDistTweak.GetF32(), PainDropScaleTweak.GetF32() );
 */
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        g_LightMgr.AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
         
         // Decrement count of bullets in current clip
         DecrementAmmo();
@@ -679,7 +680,7 @@ xbool weapon_msn::FireSecondaryProtected( const vector3& InitPos , const vector3
     pProjectile->SetTarget( m_TargetGuid );
 
     //add a muzzle light where the bullet was fired from (will fade out really quickly)
-    g_LightMgr.AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
     if( 1 )  // just a tap fire
     {
@@ -768,7 +769,7 @@ xbool weapon_msn::FireNPCWeaponProtected ( const vector3& BaseVelocity , const v
             PainHandle );
 
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        g_LightMgr.AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
         // Play the sound associated with this actor's faction.
         object* pObj = g_ObjMgr.GetObjectByGuid( Owner );
@@ -828,7 +829,7 @@ xbool weapon_msn::FireGhostPrimary( s32 iFirePoint, xbool, vector3& )
     }
 
     // add a muzzle light where the bullet was fired from (will fade out really quickly)
-    g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
     // Play the sound associated with this actor's faction.
     object* pObj = g_ObjMgr.GetObjectByGuid( m_ParentGuid );
@@ -877,7 +878,7 @@ xbool weapon_msn::FireGhostSecondary( s32 iFirePoint )
     }
 
     // add a muzzle light where the bullet was fired from (will fade out really quickly)
-    g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
     // Play the sound associated with this actor's faction.
     object* pObj = g_ObjMgr.GetObjectByGuid( m_ParentGuid );

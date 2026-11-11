@@ -15,12 +15,17 @@
 #include "x_bytestream.hpp"
 #include "../ResourceMgr/ResourceMgr.hpp"
 
+namespace resource_tool::animation_product_format
+{
+class animation_product_writer;
+}
+
 
 
 //=========================================================================
 // Use scale keys?
 //=========================================================================
-#ifdef ANIM_COMPILER
+#if defined(ANIM_COMPILER) || defined(RESOURCE_TOOL_ANIMATION_ENCODER)
 #define USE_SCALE_KEYS  TRUE    // Always put in data
 #else
 #define USE_SCALE_KEYS  FALSE   // A51 doesn't currently use scale keys
@@ -242,6 +247,7 @@ private:
 friend anim_info;
 friend anim_compiler;
 friend anim_group;
+friend class resource_tool::animation_product_format::animation_product_writer;
 };
 //=========================================================================
 // CLASS EVENT_FORMAT
@@ -386,6 +392,7 @@ public:
     s32         GetEndFrameOffset       ( void ) const;
 
     // Key
+    xbool       IsCameraCut             ( s32 iBone, s32 iFrame0, s32 iFrame1 ) const;
     void        GetRawKey               ( s32 iFrame, s32 iBone, anim_key& Key ) const;
     void        GetInterpKey            ( f32  Frame, s32 iBone, anim_key& Key ) const;
     void        GetRawKeys              ( s32 iFrame, anim_key* pKey ) const;
@@ -430,6 +437,7 @@ public:
     // Props
     s32         GetNProps               ( void ) const;
     s32         GetPropChannel          ( const char *pChannelName ) const;
+    const char* GetPropName             ( s32 iChannel ) const;
     void        GetPropRawKey           ( s32 iChannel, s32 iFrame, anim_key& Key ) const;
     void        GetPropInterpKey        ( s32 iChannel, f32 Frame,  anim_key& Key ) const;
     s32         GetPropParentBoneIndex  ( s32 iChannel ) const;
@@ -488,6 +496,7 @@ private:
 
 friend anim_compiler;
 friend anim_group;
+friend class resource_tool::animation_product_format::animation_product_writer;
 };
 
 
@@ -760,6 +769,7 @@ public:
 
     void                GetEventNames       ( xarray<xstring>& Names ) const;
     void                GetPropNames        ( xarray<xstring>& Names ) const;
+    static void         CompactEventData    ( void );
 
     // Anim key block refactoring
     void                RefactorAnimKeyBlocks               ( void );
@@ -829,6 +839,7 @@ private:
 friend anim_compiler;
 friend anim_info;
 friend anim_keys;
+friend class resource_tool::animation_product_format::animation_product_writer;
 
 public:
     typedef rhandle<anim_group> handle;
@@ -1098,6 +1109,15 @@ inline
 s32 anim_info::GetNProps( void ) const
 {
     return m_nProps;
+}
+
+//=========================================================================
+
+inline
+const char* anim_info::GetPropName( s32 iChannel ) const
+{
+    ASSERT( (iChannel >= 0) && (iChannel < m_nProps) );
+    return m_pAnimGroup->m_pProp[m_iProp + iChannel].m_Type;
 }
 
 //=========================================================================

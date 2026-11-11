@@ -15,8 +15,12 @@
 
 #include "dfs.hpp"
 
-#include <windows.h>
-#include <direct.h>
+#if defined(TARGET_WINDOWS)
+    #include <windows.h>
+    #include <direct.h>
+#else
+    #include <unistd.h>
+#endif
 
 //==============================================================================
 //  DATA
@@ -139,6 +143,11 @@ void DoVerify( void )
 
 int main( int argc, char** argv )
 {
+#if !defined(TARGET_WINDOWS)
+    // POSIX builds must initialize x_files explicitly.
+    x_Init( argc, argv );
+#endif
+
     command_line    CommandLine;
     s32             iOption;
     s32             Modes       = 0;
@@ -177,7 +186,11 @@ int main( int argc, char** argv )
         chdir( ".." );
 
         char Buffer[256];
-        GetCurrentDirectory( 256, &Buffer[0] );
+#if defined(TARGET_WINDOWS)
+        GetCurrentDirectory( sizeof(Buffer), &Buffer[0] );
+#else
+        getcwd( Buffer, sizeof(Buffer) );
+#endif
         x_printf( "%s", Buffer );
     }
 
@@ -231,9 +244,14 @@ int main( int argc, char** argv )
     {
         s_ExtractPath = CommandLine.GetOptionString( iOption );
         if( s_ExtractPath.GetLength() &&
-            (s_ExtractPath.GetAt(s_ExtractPath.GetLength() - 1) != '\\') )
+            (s_ExtractPath.GetAt(s_ExtractPath.GetLength() - 1) != '\\') &&
+            (s_ExtractPath.GetAt(s_ExtractPath.GetLength() - 1) != '/') )
         {
+#if defined(TARGET_WINDOWS)
             s_ExtractPath += '\\';
+#else
+            s_ExtractPath += '/';
+#endif
         }
     }
 
@@ -304,6 +322,9 @@ int main( int argc, char** argv )
         (bExtract  && s_ScriptFiles.GetCount() != 0) )
     {
         DisplayHelp();
+#if !defined(TARGET_WINDOWS)
+        x_Kill();
+#endif
         return 10;
     }
 
@@ -331,6 +352,10 @@ int main( int argc, char** argv )
         DoVerify();
 
     x_printf( "Time = %f\n", Timer.ReadMs() );
+
+#if !defined(TARGET_WINDOWS)
+    x_Kill();
+#endif
 
     // Return Success
     return 0;

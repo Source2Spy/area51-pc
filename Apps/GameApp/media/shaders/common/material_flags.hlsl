@@ -12,7 +12,6 @@
 #define MATERIAL_FLAG_ADDITIVE               ( 1u << 1 )
 #define MATERIAL_FLAG_SUBTRACTIVE            ( 1u << 2 )
 #define MATERIAL_FLAG_VERTEX_COLOR           ( 1u << 3 )
-#define MATERIAL_FLAG_TWO_SIDED              ( 1u << 4 )
 #define MATERIAL_FLAG_ENVIRONMENT            ( 1u << 5 )
 #define MATERIAL_FLAG_DISTORTION             ( 1u << 6 )
 #define MATERIAL_FLAG_DISTORTION_PERPOLY_ENV ( 1u << 7 )
@@ -25,20 +24,14 @@
 #define MATERIAL_FLAG_ENV_CUBEMAP            ( 1u << 14 )
 #define MATERIAL_FLAG_ENV_VIEWSPACE          ( 1u << 15 )
 #define MATERIAL_FLAG_ENV_WORLDSPACE         ( 1u << 16 )
-#define MATERIAL_FLAG_ALPHA_BLEND            ( 1u << 17 )
-#define MATERIAL_FLAG_ILLUM_USE_DIFFUSE      ( 1u << 18 )
 
 //------------------------------------------------------------------------------
 
-#define INSTANCE_FLAG_CLIPPED              ( 1u << 19 )
-#define INSTANCE_FLAG_GLOWING              ( 1u << 20 )
-#define INSTANCE_FLAG_RECEIVE_LOCAL_SHADOW ( 1u << 21 )
-#define INSTANCE_FLAG_FILTERLIGHT          ( 1u << 22 )
-#define INSTANCE_FLAG_PROJ_LIGHT           ( 1u << 23 )
-#define INSTANCE_FLAG_FADING_ALPHA         ( 1u << 24 )
-#define INSTANCE_FLAG_DYNAMIC_LIGHT        ( 1u << 25 )
-#define INSTANCE_FLAG_DETAIL               ( 1u << 26 )
-#define INSTANCE_FLAG_PROJ_SHADOW          ( 1u << 27 )
+#define GEOM_INST_FLAG_GLOWING                    ( 1u << 20 )
+#define GEOM_INST_FLAG_RECEIVE_LOCAL_SHADOW       ( 1u << 21 )
+#define GEOM_INST_FLAG_FILTER_LIGHT               ( 1u << 22 )
+#define GEOM_INST_FLAG_PROJ_LIGHT                 ( 1u << 23 )
+#define GEOM_INST_FLAG_PROJ_SHADOW                ( 1u << 27 )
 
 //------------------------------------------------------------------------------
 

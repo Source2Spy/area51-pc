@@ -44,9 +44,7 @@
 //  DEFINES
 //==============================================================================
 
-#ifdef TARGET_DESKTOP
 #define USE_ANSI_IO_TEXT
-#endif
 
 //#define CAPTURE_FILE_NAMES
 
@@ -395,7 +393,7 @@ s32 x_fread( void* pBuffer, s32 Size, s32 Count, X_FILE* pFile )
 
     s32 Bytes;
     
-    if( Size*Count == 0 )
+    if( Count*Size == 0 )
         return 0;
 
     ASSERT( pBuffer );
@@ -412,7 +410,7 @@ s32 x_fwrite( const void* pBuffer, s32 Size, s32 Count, X_FILE* pFile )
 
     s32 Bytes;
     
-    if( Count*Size == 0 )
+    if( Size*Count == 0 )
         return 0;
 
     ASSERT( pBuffer );

@@ -13,7 +13,7 @@
 #include "../MiscUtils/SimpleUtils.hpp"
 
 #ifndef X_EDITOR
-#include "NetworkMgr/MsgMgr.hpp"
+#include "NetworkMgr/Messages/MsgMgr.hpp"
 #endif
 
 //=========================================================================
@@ -26,26 +26,22 @@ game_text_mgr g_GameTextMgr;
 
 void game_text_mgr::DisplayMessage( const char* pTableName, const char* pTitleString )
 {
-    (void)pTableName;
-    (void)pTitleString;
-
     Reset();
 
-    m_Message.pMainString       = (xwchar*)g_StringTableMgr( pTableName, pTitleString );
-    m_Message.pSubTitleString   = (xwchar*)g_StringTableMgr.GetSubTitleSpeaker( pTableName, pTitleString );
-    m_Message.pSoundDescString  = (xwchar*)g_StringTableMgr.GetSoundDescString( pTableName, pTitleString );
+    m_Message.MainString       = g_StringTableMgr( pTableName, pTitleString );
+    m_Message.SubTitleString   = g_StringTableMgr.GetSubTitleSpeaker( pTableName, pTitleString );
+    m_Message.SoundDescString  = g_StringTableMgr.GetSoundDescString( pTableName, pTitleString );
     
     
     // If there is a sound specified start warming it up.
-    if( x_wstrlen( m_Message.pSoundDescString ) > 0 )
+    if( !m_Message.SoundDescString.IsEmpty() )
     {
         m_Message.Guid = g_ObjMgr.CreateObject( simple_sound_emitter::GetObjectType() );
         object* pObj = g_ObjMgr.GetObjectByGuid( m_Message.Guid );
         player* pPlayer = SMP_UTIL_GetActivePlayer();
         if( pObj && pPlayer )
         {
-            xwstring WideString( m_Message.pSoundDescString );
-            xstring  String( WideString );
+            xstring String( m_Message.SoundDescString );
         
             pObj->OnTransform( pPlayer->GetL2W() );
             
@@ -69,7 +65,7 @@ void game_text_mgr::DisplayMessage( const char* pTableName, const char* pTitleSt
         
         // Functionality moved to MsgClient
 #ifndef X_EDITOR
-        MsgMgr.Message( MSG_GOAL_STRING, 0, (saddr)m_Message.pMainString ); 
+        MsgMgr.Message( MSG_GOAL_STRING, 0, (saddr)(const xwchar*)m_Message.MainString );
 #endif
     }
 
@@ -80,9 +76,9 @@ void game_text_mgr::DisplayMessage( const char* pTableName, const char* pTitleSt
 
 void game_text_mgr::Init( void )
 {   
-    m_Message.pMainString       = NULL;
-    m_Message.pSoundDescString  = NULL;
-    m_Message.pSubTitleString   = NULL;
+    m_Message.MainString.Clear();
+    m_Message.SoundDescString.Clear();
+    m_Message.SubTitleString.Clear();
     m_Message.SoundID           = 0;
     m_Message.Guid              = 0;
     m_Message.State             = 0;
@@ -107,9 +103,9 @@ void game_text_mgr::Reset( void )
         m_Message.Guid = 0;
     }
 
-    m_Message.pMainString       = NULL;
-    m_Message.pSoundDescString  = NULL;
-    m_Message.pSubTitleString   = NULL;
+    m_Message.MainString.Clear();
+    m_Message.SoundDescString.Clear();
+    m_Message.SubTitleString.Clear();
     m_Message.State             = 0;
     m_Flags                     = 0;
 }
@@ -120,10 +116,10 @@ void game_text_mgr::Update( f32 DeltaTime )
 {
     (void)DeltaTime;
 
-    if( m_Message.pSoundDescString == NULL )
+    if( m_Message.SoundDescString.IsEmpty() )
         return;
 
-    if( x_wstrlen( m_Message.pSoundDescString ) > 0 )
+    if( !m_Message.SoundDescString.IsEmpty() )
     {
         // Once the audio start we are no longer dependent on it.
         if( (m_Message.State & AUDIO_PLAYING) || (m_Message.State & AUDIO_FINISHED) )

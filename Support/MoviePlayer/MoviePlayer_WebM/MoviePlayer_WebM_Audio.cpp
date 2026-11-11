@@ -10,8 +10,6 @@
 //  PLATFORM CHECK
 //==============================================================================
 
-// Let it be only for PC, for now...
-
 #include "x_target.hpp"
 
 #if !defined( TARGET_DESKTOP ) && !defined( TARGET_MOBILE )
@@ -39,13 +37,14 @@ using namespace movie_webm;
 
 namespace
 {
-    static const s32 MAX_OPUS_FRAME_MS       = 120;
-    static const s32 AUDIO_SUBMIT_TIMEOUT_MS = 500;
-    static const s32 AUDIO_MAX_QUEUED_MS     = 250;
+    constexpr s32 OPUS_SAMPLE_RATE    = 48000;
+    constexpr s32 MAX_OPUS_FRAME_MS   = 120;
+    constexpr s32 AUDIO_BUFFER_MS     = 250;
+    constexpr f64 AUDIO_SYNC_WINDOW   = 0.2;
+    constexpr f64 AUDIO_SYNC_RESPONSE = 1.0;
+    constexpr f64 AUDIO_SYNC_LIMIT    = 0.25;
 }
 
-//==============================================================================
-// CONSTRUCTION / DESTRUCTION
 //==============================================================================
 
 audio_decoder::audio_decoder(void)
@@ -54,32 +53,52 @@ audio_decoder::audio_decoder(void)
     m_CodecType            = CODEC_NONE;
     m_Channels             = 0;
     m_SampleRate           = 0;
-    m_BitsPerSample        = 16;
-    m_isInitialized         = FALSE;
+    m_isInitialized        = FALSE;
     m_SdlInitialized       = FALSE;
     m_pAudioStream         = NULL;
-    m_MaxQueuedBytes       = 0;
-
+    m_pWakeSemaphore       = NULL;
+    m_pClock               = NULL;
+    x_AtomicInit(&m_Error, 0);
+    m_ErrorText[0]         = 0;
+    m_DevicePeriod         = 0.0;
+    m_CodecDelay           = 0;
+    m_TimestampTolerance   = 0;
+    m_pReader              = NULL;
+    m_bHasPendingSample    = FALSE;
+    m_PendingFrame         = 0;
+    m_BlockOffset          = 0;
+    m_BlockStart           = 0;
+    m_TrimStart            = 0;
+    m_TrimEnd              = 0;
+    m_NextSample           = 0;
+    m_EndSample            = 0;
+    m_bHasSampleTime       = FALSE;
+    m_PCMCount             = 0;
+    m_QueueRead            = 0;
+    m_QueueCount           = 0;
+    m_TargetFrames         = 0;
+    m_bWaitingForSpace     = FALSE;
+    m_bEndOfInput          = FALSE;
+    m_bStreamFlushed       = FALSE;
+    m_bSyncHold            = FALSE;
+    m_bUnderrun            = FALSE;
+    m_OutputSample         = 0;
+    m_SyncError            = 0.0;
+    m_LastCallbackTime     = 0.0;
     m_pOpusDecoder         = NULL;
     m_pOpusMSDecoder       = NULL;
-    m_OpusStreams          = 0;
-    m_OpusCoupled          = 0;
     m_OpusPreSkip          = 0;
     m_OpusPreSkipRemaining = 0;
     m_MaxFrameSamples      = 0;
-    m_OpusGain             = 0;
-
-    m_pVorbisInfo          = NULL;
-    m_pVorbisComment       = NULL;
-    m_pVorbisDsp           = NULL;
-    m_pVorbisBlock         = NULL;
-    m_VorbisInitialized    = FALSE;
+    x_memset(&m_VorbisInfo, 0, sizeof(m_VorbisInfo));
+    x_memset(&m_VorbisComment, 0, sizeof(m_VorbisComment));
+    x_memset(&m_VorbisDsp, 0, sizeof(m_VorbisDsp));
+    x_memset(&m_VorbisBlock, 0, sizeof(m_VorbisBlock));
+    m_bVorbisHeaders       = FALSE;
+    m_bVorbisDsp           = FALSE;
+    m_bVorbisBlock         = FALSE;
+    m_PreviousBlockSize    = 0;
     m_VorbisPacketIndex    = 0;
-
-    for (s32 i = 0; i < 3; ++i)
-    {
-        m_VorbisHeaders[i].Clear();
-    }
 }
 
 //==============================================================================
@@ -90,67 +109,63 @@ audio_decoder::~audio_decoder(void)
 }
 
 //==============================================================================
-// INITIALIZATION / SHUTDOWN
-//==============================================================================
 
-xbool audio_decoder::Initialize(const player_config& Config)
+xbool audio_decoder::Initialize(const player_config& Config, sync_clock& Clock, SDL_Semaphore* pWakeSemaphore)
 {
     Shutdown();
+    m_pClock = &Clock;
+    m_pWakeSemaphore = pWakeSemaphore;
+    m_Volume = 1.0f;
+    m_Channels = Config.AudioChannels;
+    m_SampleRate = Config.AudioSampleRate;
+    x_AtomicStoreRelease(&m_Error, 0);
+    m_ErrorText[0] = 0;
 
-    if (!Config.HasAudio)
-        return TRUE;
-
-    m_Volume        = 1.0f;
-    m_CodecType     = CODEC_NONE;
-    m_Channels      = (Config.AudioChannels > 0) ? Config.AudioChannels : 2;
-    m_SampleRate    = (Config.AudioSampleRate > 0) ? Config.AudioSampleRate : 48000;
-    m_BitsPerSample = 16; //m_BitsPerSample = (Config.AudioBitDepth > 0) ? Config.AudioBitDepth : 16;  
-
-    m_MaxFrameSamples = (m_SampleRate * MAX_OPUS_FRAME_MS) / 1000;
-    if (m_MaxFrameSamples <= 0)
-        m_MaxFrameSamples = 5760;
-
-    xstring CodecId = Config.AudioCodecId;
-    CodecId.MakeUpper();
-
-    if (CodecId.Find("OPUS") != -1)
+    xbool initialized = FALSE;
+    if (Config.AudioCodecId == "A_OPUS")
     {
         m_CodecType = CODEC_OPUS;
+        initialized = InitializeOpus(Config);
     }
-    else if (CodecId.Find("VORBIS") != -1)
+    else if (Config.AudioCodecId == "A_VORBIS")
     {
         m_CodecType = CODEC_VORBIS;
-    }
-    else
-    {
-        x_DebugMsg("MoviePlayer_WebM: Unsupported audio codec '%s'\n", (const char*)CodecId);
-        return FALSE;
+        initialized = InitializeVorbis(Config);
     }
 
-    xbool codecInitialized = FALSE;
-    if (m_CodecType == CODEC_OPUS)
+    if (!initialized || (m_Channels <= 0) || (m_Channels > 255) ||
+        (m_SampleRate <= 0) || (Config.CodecDelay < 0))
     {
-        codecInitialized = InitializeOpus(Config);
-    }
-    else if (m_CodecType == CODEC_VORBIS)
-    {
-        codecInitialized = InitializeVorbis(Config);
-    }
-
-    if (!codecInitialized)
-    {
+        x_DebugMsg("MoviePlayer_WebM: Invalid audio configuration for '%s'.\n", (const char*)Config.AudioCodecId);
         Shutdown();
         return FALSE;
     }
 
+    m_CodecDelay = TimeToSamples(Config.CodecDelay);
+    m_TimestampTolerance = (s32)x_min((f64)INT_MAX, (Config.TimecodeScale * m_SampleRate + WEBM_NANOSEC - 1.0) / WEBM_NANOSEC);
+    const s64 capacity = ((s64)m_SampleRate * AUDIO_BUFFER_MS + 999) / 1000 + m_MaxFrameSamples;
+    if ((capacity <= 0) || (capacity > INT_MAX / (m_Channels * (s32)sizeof(s16))) ||
+        (capacity > INT_MAX / (s32)sizeof(s64)))
+    {
+        Shutdown();
+        return FALSE;
+    }
+    m_TargetFrames = (s32)capacity - m_MaxFrameSamples;
+    m_PCMBuffer.SetCount(m_MaxFrameSamples * m_Channels);
+    m_QueuePCM.SetCount((s32)capacity * m_Channels);
+    m_QueueTimes.SetCount((s32)capacity);
+    m_OutputBuffer.SetCount(m_MaxFrameSamples * m_Channels);
     if (!InitializeSDL())
     {
         Shutdown();
         return FALSE;
     }
-
     m_isInitialized = TRUE;
-    SetVolume(1.0f);
+    if (!Reset())
+    {
+        Shutdown();
+        return FALSE;
+    }
     return TRUE;
 }
 
@@ -158,140 +173,411 @@ xbool audio_decoder::Initialize(const player_config& Config)
 
 void audio_decoder::Shutdown(void)
 {
+    ShutdownSDL();
     DestroyOpus();
     DestroyVorbis();
-    ShutdownSDL();
-
+    m_CodecType = CODEC_NONE;
+    m_isInitialized = FALSE;
+    m_bHasPendingSample = FALSE;
+    m_pReader = NULL;
+    m_PendingSample = sample();
     m_CompressedBuffer.Clear();
     m_PCMBuffer.Clear();
-
-    m_CodecType      = CODEC_NONE;
-    m_isInitialized   = FALSE;
-    m_MaxFrameSamples= 0;
-    m_MaxQueuedBytes = 0;
+    m_QueuePCM.Clear();
+    m_QueueTimes.Clear();
+    m_OutputBuffer.Clear();
+    m_QueueCount = 0;
+    m_pClock = NULL;
+    m_pWakeSemaphore = NULL;
 }
 
 //==============================================================================
 
-void audio_decoder::Flush(void)
+xbool audio_decoder::Reset(void)
 {
-    if (m_pAudioStream)
-    {
-        SDL_ClearAudioStream(m_pAudioStream);
-    }
-
-    ResetDecoders();
-}
-
-//==============================================================================
-// DECODING
-//==============================================================================
-
-xbool audio_decoder::DecodeSample(const sample& Sample, mkvparser::IMkvReader* pReader)
-{
-    ASSERT(m_isInitialized);
-    ASSERT(Sample.pBlock);
-    ASSERT(pReader);
-
-    if (!m_isInitialized || !Sample.pBlock || !pReader)
+    if (!Pause() || !SDL_ClearAudioStream(m_pAudioStream))
         return FALSE;
 
-    const mkvparser::Block* pBlock = Sample.pBlock;
-    const s32 frameCount = (s32)pBlock->GetFrameCount();
+    xbool result = TRUE;
+    if (m_pOpusDecoder)
+        result = opus_decoder_ctl(m_pOpusDecoder, OPUS_RESET_STATE) == OPUS_OK;
+    if (m_pOpusMSDecoder)
+        result = opus_multistream_decoder_ctl(m_pOpusMSDecoder, OPUS_RESET_STATE) == OPUS_OK;
+    if (m_CodecType == CODEC_VORBIS)
+        result = InitializeVorbisState();
+    m_OpusPreSkipRemaining = m_OpusPreSkip;
+    m_PreviousBlockSize = 0;
+    m_bHasPendingSample = FALSE;
+    m_PendingSample = sample();
+    m_pReader = NULL;
+    m_bHasSampleTime = FALSE;
+    m_NextSample = 0;
+    m_EndSample = 0;
+    SDL_LockAudioStream(m_pAudioStream);
+    m_QueueRead = 0;
+    m_QueueCount = 0;
+    m_bWaitingForSpace = FALSE;
+    m_bEndOfInput = FALSE;
+    m_bStreamFlushed = FALSE;
+    m_bSyncHold = FALSE;
+    m_bUnderrun = FALSE;
+    m_OutputSample = 0;
+    x_AtomicStoreRelease(&m_Error, 0);
+    m_ErrorText[0] = 0;
+    ResetSync();
+    SDL_UnlockAudioStream(m_pAudioStream);
+    return result && !HasError();
+}
 
-    for (s32 frameIndex = 0; frameIndex < frameCount; ++frameIndex)
+//==============================================================================
+
+s64 audio_decoder::TimeToSamples(s64 Nanoseconds) const
+{
+    const s64 seconds = Nanoseconds / 1000000000;
+    const s64 fraction = Nanoseconds % 1000000000;
+    return seconds * m_SampleRate + (fraction * m_SampleRate + (fraction < 0 ? -500000000 : 500000000)) / 1000000000;
+}
+
+//==============================================================================
+
+xbool audio_decoder::ReadFrame(s32 FrameIndex)
+{
+    const mkvparser::Block::Frame& Frame = m_PendingSample.pBlock->GetFrame(FrameIndex);
+    if ((Frame.len <= 0) || (Frame.len > INT_MAX))
+        return FALSE;
+    m_CompressedBuffer.SetCount((s32)Frame.len);
+    return Frame.Read(m_pReader, m_CompressedBuffer.GetPtr()) == 0;
+}
+
+//==============================================================================
+
+s32 audio_decoder::GetPacketSamples(s32& PreviousBlockSize)
+{
+    if (m_CodecType == CODEC_OPUS)
+        return opus_packet_get_nb_samples(m_CompressedBuffer.GetPtr(), m_CompressedBuffer.GetCount(), m_SampleRate);
+
+    ogg_packet packet;
+    x_memset(&packet, 0, sizeof(packet));
+    packet.packet = m_CompressedBuffer.GetPtr();
+    packet.bytes = m_CompressedBuffer.GetCount();
+    const long size = vorbis_packet_blocksize(&m_VorbisInfo, &packet);
+    if (size <= 0)
+        return -1;
+    const s32 count = PreviousBlockSize ? (PreviousBlockSize + (s32)size) / 4 : 0;
+    PreviousBlockSize = (s32)size;
+    return count;
+}
+
+//==============================================================================
+
+xbool audio_decoder::BeginSample(const sample& Sample, mkvparser::IMkvReader* pReader)
+{
+    if (!m_isInitialized || m_bHasPendingSample || !Sample.pBlock || !pReader)
+        return FALSE;
+    m_PendingSample = Sample;
+    m_pReader = pReader;
+    m_PendingFrame = 0;
+    m_BlockOffset = 0;
+    m_BlockStart = TimeToSamples(Sample.TimeNanoseconds) - m_CodecDelay;
+    if (m_bHasSampleTime && (x_abs(m_BlockStart - m_NextSample) <= m_TimestampTolerance))
+        m_BlockStart = m_NextSample;
+
+    s64 count = 0;
+    s32 previous = m_PreviousBlockSize;
+    for (s32 i = 0; i < Sample.pBlock->GetFrameCount(); ++i)
     {
-        const mkvparser::Block::Frame& Frame = pBlock->GetFrame(frameIndex);
-        const s32 frameSize = (s32)Frame.len;
+        if (!ReadFrame(i))
+            return FALSE;
+        const s32 samples = GetPacketSamples(previous);
+        if ((samples < 0) || (samples > m_MaxFrameSamples))
+            return FALSE;
+        count += samples;
+    }
+    if (!Sample.pBlock->GetFrameCount() || (Sample.DiscardPadding == LLONG_MIN))
+        return FALSE;
+    m_TrimStart = Sample.DiscardPadding < 0 ? TimeToSamples(-Sample.DiscardPadding) : 0;
+    m_TrimEnd = count - (Sample.DiscardPadding > 0 ? TimeToSamples(Sample.DiscardPadding) : 0);
+    if ((m_TrimStart > count) || (m_TrimEnd < m_TrimStart))
+        return FALSE;
+    m_TrimStart = x_max(m_TrimStart, x_min(m_TrimEnd, m_EndSample - m_BlockStart));
+    m_NextSample = x_max(m_NextSample, m_BlockStart + count);
+    m_bHasSampleTime = TRUE;
+    m_bHasPendingSample = TRUE;
+    return TRUE;
+}
 
-        if (frameSize <= 0)
-            continue;
+//==============================================================================
 
-        m_CompressedBuffer.SetCount(frameSize);
-        if (Frame.Read(pReader, m_CompressedBuffer.GetPtr()) < 0)
-        {
-            x_DebugMsg("MoviePlayer_WebM: Failed to read audio frame.\n");
-            continue;
-        }
+xbool audio_decoder::Pump(void)
+{
+    while (m_bHasPendingSample)
+    {
+        SDL_LockAudioStream(m_pAudioStream);
+        const xbool full = m_QueueCount >= m_TargetFrames;
+        m_bWaitingForSpace = full;
+        SDL_UnlockAudioStream(m_pAudioStream);
+        if (full)
+            return TRUE;
 
-        if (m_CodecType == CODEC_OPUS)
+        if (!ReadFrame(m_PendingFrame))
+            return FALSE;
+        const xbool decoded = m_CodecType == CODEC_OPUS
+                            ? DecodeOpusFrame(m_CompressedBuffer.GetPtr(), m_CompressedBuffer.GetCount())
+                            : DecodeVorbisPacket(m_CompressedBuffer.GetPtr(), m_CompressedBuffer.GetCount());
+        if (!decoded)
+            return FALSE;
+        const s32 skip = x_min(m_OpusPreSkipRemaining, m_PCMCount);
+        m_OpusPreSkipRemaining -= skip;
+        const s64 begin = x_max((s64)skip, x_max(m_TrimStart - m_BlockOffset, -m_BlockStart - m_BlockOffset));
+        const s64 end = x_min((s64)m_PCMCount, m_TrimEnd - m_BlockOffset);
+        const s32 count = (s32)x_max((s64)0, end - begin);
+        SDL_LockAudioStream(m_pAudioStream);
+        for (s32 i = 0; i < count; ++i)
         {
-            if (!DecodeOpusFrame(m_CompressedBuffer.GetPtr(), frameSize))
-                return FALSE;
+            const s32 slot = (m_QueueRead + m_QueueCount + i) % m_QueueTimes.GetCount();
+            x_memcpy(m_QueuePCM.GetPtr() + slot * m_Channels,
+                     m_PCMBuffer.GetPtr() + ((s32)begin + i) * m_Channels,
+                     m_Channels * (s32)sizeof(s16));
+            m_QueueTimes[slot] = m_BlockStart + m_BlockOffset + begin + i;
         }
-        else if (m_CodecType == CODEC_VORBIS)
-        {
-            if (!DecodeVorbisPacket(m_CompressedBuffer.GetPtr(), frameSize))
-                return FALSE;
-        }
+        m_QueueCount += count;
+        SDL_UnlockAudioStream(m_pAudioStream);
+        if (count)
+            m_EndSample = x_max(m_EndSample, m_BlockStart + m_BlockOffset + end);
+        m_BlockOffset += m_PCMCount;
+        if (++m_PendingFrame == m_PendingSample.pBlock->GetFrameCount())
+            m_bHasPendingSample = FALSE;
+    }
+    return !HasError();
+}
+
+//==============================================================================
+
+void audio_decoder::EndInput(void)
+{
+    SDL_LockAudioStream(m_pAudioStream);
+    m_bEndOfInput = TRUE;
+    SDL_UnlockAudioStream(m_pAudioStream);
+}
+
+//==============================================================================
+
+xbool audio_decoder::IsDrained(void)
+{
+    SDL_LockAudioStream(m_pAudioStream);
+    const s32 queued = SDL_GetAudioStreamQueued(m_pAudioStream);
+    const s32 available = SDL_GetAudioStreamAvailable(m_pAudioStream);
+    if ((queued < 0) || (available < 0))
+        SetError();
+    const xbool drained = m_bEndOfInput && !m_QueueCount && m_bStreamFlushed && !queued && !available;
+    SDL_UnlockAudioStream(m_pAudioStream);
+    return drained;
+}
+
+//==============================================================================
+
+void SDLCALL audio_decoder::AudioCallback(void* pData, SDL_AudioStream* pStream, int AdditionalAmount, int TotalAmount)
+{
+    (void)pStream;
+    (void)TotalAmount;
+    audio_decoder* pThis = static_cast<audio_decoder*>(pData);
+    if (!pThis->HasError())
+        pThis->OutputPCM(AdditionalAmount);
+}
+
+//==============================================================================
+
+void audio_decoder::SetError(void)
+{
+    if (HasError())
+        return;
+    SDL_strlcpy(m_ErrorText, SDL_GetError(), sizeof(m_ErrorText));
+    x_AtomicStoreRelease(&m_Error, 1);
+    SDL_SignalSemaphore(m_pWakeSemaphore);
+}
+
+//==============================================================================
+
+void audio_decoder::OutputPCM(s32 Bytes)
+{
+    const s32 queued = SDL_GetAudioStreamQueued(m_pAudioStream);
+    if (queued < 0)
+    {
+        SetError();
+        return;
+    }
+    const s64 queuedFrames = queued / (m_Channels * (s32)sizeof(s16));
+    const f64 now = m_pClock->GetTime();
+    const f64 delta = x_max(0.0, now - m_LastCallbackTime);
+    const s64 consumed = m_OutputSample - (m_bSyncHold ? 0 : queuedFrames);
+    f64 error = now - (f64)consumed / m_SampleRate;
+    if (error > AUDIO_SYNC_LIMIT)
+    {
+        m_OutputSample = (s64)(now * m_SampleRate);
+        m_bUnderrun = TRUE;
+        m_SyncError = 0.0;
+        error = 0.0;
+    }
+    if (error < -AUDIO_SYNC_LIMIT)
+        m_bSyncHold = TRUE;
+    if (m_bSyncHold && (error >= -m_DevicePeriod))
+        m_bSyncHold = FALSE;
+    const f64 weight = x_min(1.0, delta / AUDIO_SYNC_WINDOW);
+    m_SyncError += (error - m_SyncError) * weight;
+    m_LastCallbackTime = now;
+    const f32 ratio = m_bSyncHold || (x_abs(m_SyncError) <= m_DevicePeriod) ? 1.0f
+                    : (f32)x_max(0.99, x_min(1.01, 1.0 + m_SyncError / AUDIO_SYNC_RESPONSE));
+    if (!SDL_SetAudioStreamFrequencyRatio(m_pAudioStream, ratio))
+    {
+        SetError();
+        return;
     }
 
-    return TRUE;
+    const s32 frameBytes = m_Channels * (s32)sizeof(s16);
+    s32 wanted = Bytes / frameBytes + ((Bytes % frameBytes) != 0);
+    while (wanted > 0)
+    {
+        const s32 count = x_min(wanted, m_MaxFrameSamples);
+        s32 produced = 0;
+        if (m_bSyncHold && (!m_bEndOfInput || m_QueueCount))
+        {
+            x_memset(m_OutputBuffer.GetPtr(), 0, count * frameBytes);
+            produced = count;
+        }
+        while ((produced < count) && !m_bSyncHold)
+        {
+            if (m_QueueCount)
+            {
+                const s64 time = m_QueueTimes[m_QueueRead];
+                if ((f64)time / m_SampleRate < now - AUDIO_SYNC_LIMIT)
+                {
+                    m_OutputSample = x_max(m_OutputSample, (s64)(now * m_SampleRate));
+                    m_bUnderrun = TRUE;
+                    m_SyncError = 0.0;
+                }
+                if (m_bUnderrun && (time < m_OutputSample))
+                {
+                    m_QueueRead = (m_QueueRead + 1) % m_QueueTimes.GetCount();
+                    --m_QueueCount;
+                    continue;
+                }
+                if (time <= m_OutputSample)
+                {
+                    x_memcpy(m_OutputBuffer.GetPtr() + produced * m_Channels,
+                             m_QueuePCM.GetPtr() + m_QueueRead * m_Channels, frameBytes);
+                    m_bUnderrun = FALSE;
+                    m_OutputSample = time + 1;
+                    m_QueueRead = (m_QueueRead + 1) % m_QueueTimes.GetCount();
+                    --m_QueueCount;
+                    ++produced;
+                    continue;
+                }
+            }
+            else if (m_bEndOfInput)
+                break;
+            else
+                m_bUnderrun = TRUE;
+
+            x_memset(m_OutputBuffer.GetPtr() + produced * m_Channels, 0, frameBytes);
+            ++m_OutputSample;
+            ++produced;
+        }
+        if (!produced)
+            break;
+        if (!SDL_PutAudioStreamData(m_pAudioStream, m_OutputBuffer.GetPtr(), produced * frameBytes))
+        {
+            SetError();
+            return;
+        }
+        wanted -= produced;
+    }
+    if (m_bWaitingForSpace && (m_QueueCount < m_TargetFrames))
+    {
+        m_bWaitingForSpace = FALSE;
+        SDL_SignalSemaphore(m_pWakeSemaphore);
+    }
+    if (m_bEndOfInput && !m_QueueCount && !m_bStreamFlushed)
+    {
+        if (!SDL_FlushAudioStream(m_pAudioStream))
+            SetError();
+        else
+            m_bStreamFlushed = TRUE;
+        SDL_SignalSemaphore(m_pWakeSemaphore);
+    }
+}
+
+//==============================================================================
+
+void audio_decoder::ResetSync(void)
+{
+    m_bSyncHold = FALSE;
+    m_SyncError = 0.0;
+    m_LastCallbackTime = m_pClock->GetTime();
+    if (!SDL_SetAudioStreamFrequencyRatio(m_pAudioStream, 1.0f))
+        SetError();
 }
 
 //==============================================================================
 
 void audio_decoder::SetVolume(f32 Volume)
 {
-    if (Volume < 0.0f) Volume = 0.0f;
-    if (Volume > 1.0f) Volume = 1.0f;
-
-    m_Volume = Volume;
-
-    if (m_pAudioStream && !SDL_SetAudioStreamGain(m_pAudioStream, m_Volume))
+    m_Volume = x_clamp(Volume, 0.0f, 1.0f);
+    if (m_pAudioStream)
     {
-        x_DebugMsg("MoviePlayer_WebM: SDL_SetAudioStreamGain failed: %s\n", SDL_GetError());
+        SDL_LockAudioStream(m_pAudioStream);
+        if (!SDL_SetAudioStreamGain(m_pAudioStream, m_Volume))
+            SetError();
+        SDL_UnlockAudioStream(m_pAudioStream);
     }
 }
 
 //==============================================================================
-// INTERNAL HELPERS
+
+xbool audio_decoder::Pause(void)
+{
+    if (!m_pAudioStream)
+        return TRUE;
+    if (!SDL_PauseAudioStreamDevice(m_pAudioStream))
+        return FALSE;
+    SDL_LockAudioStream(m_pAudioStream);
+    ResetSync();
+    SDL_UnlockAudioStream(m_pAudioStream);
+    return !HasError();
+}
+
+//==============================================================================
+
+xbool audio_decoder::Resume(void)
+{
+    if (!m_pAudioStream)
+        return TRUE;
+    SDL_LockAudioStream(m_pAudioStream);
+    ResetSync();
+    SDL_UnlockAudioStream(m_pAudioStream);
+    return !HasError() && SDL_ResumeAudioStreamDevice(m_pAudioStream);
+}
+
 //==============================================================================
 
 xbool audio_decoder::InitializeSDL(void)
 {
-    if (m_pAudioStream)
-        return TRUE;
-
     if (!SDL_InitSubSystem(SDL_INIT_AUDIO))
-    {
-        x_DebugMsg("MoviePlayer_WebM: SDL_InitSubSystem(SDL_INIT_AUDIO) failed: %s\n", SDL_GetError());
         return FALSE;
-    }
-
     m_SdlInitialized = TRUE;
-
     SDL_AudioSpec spec;
     x_memset(&spec, 0, sizeof(spec));
-    spec.format   = SDL_AUDIO_S16;
+    spec.format = SDL_AUDIO_S16;
     spec.channels = m_Channels;
-    spec.freq     = m_SampleRate;
-
-    m_pAudioStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, NULL, NULL);
+    spec.freq = m_SampleRate;
+    m_pAudioStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, AudioCallback, this);
     if (!m_pAudioStream)
-    {
-        x_DebugMsg("MoviePlayer_WebM: SDL_OpenAudioDeviceStream failed: %s\n", SDL_GetError());
-        ShutdownSDL();
         return FALSE;
-    }
-
-    m_MaxQueuedBytes = ((m_SampleRate * AUDIO_MAX_QUEUED_MS) / 1000) * m_Channels * (s32)sizeof(s16);
-    if (m_MaxQueuedBytes <= 0)
-        m_MaxQueuedBytes = m_SampleRate * m_Channels * (s32)sizeof(s16);
-
-    if (!SDL_SetAudioStreamGain(m_pAudioStream, m_Volume))
-    {
-        x_DebugMsg("MoviePlayer_WebM: SDL_SetAudioStreamGain failed: %s\n", SDL_GetError());
-    }
-
-    if (!SDL_ResumeAudioStreamDevice(m_pAudioStream))
-    {
-        x_DebugMsg("MoviePlayer_WebM: SDL_ResumeAudioStreamDevice failed: %s\n", SDL_GetError());
-        ShutdownSDL();
+    s32 frames = 0;
+    if (!SDL_GetAudioDeviceFormat(SDL_GetAudioStreamDevice(m_pAudioStream), &spec, &frames) ||
+        (frames <= 0) || (spec.freq <= 0))
         return FALSE;
-    }
-
-    return TRUE;
+    m_DevicePeriod = (f64)frames / spec.freq;
+    return SDL_SetAudioStreamGain(m_pAudioStream, m_Volume);
 }
 
 //==============================================================================
@@ -301,10 +587,10 @@ void audio_decoder::ShutdownSDL(void)
     if (m_pAudioStream)
     {
         SDL_PauseAudioStreamDevice(m_pAudioStream);
+        SDL_SetAudioStreamGetCallback(m_pAudioStream, NULL, NULL);
         SDL_DestroyAudioStream(m_pAudioStream);
         m_pAudioStream = NULL;
     }
-
     if (m_SdlInitialized)
     {
         SDL_QuitSubSystem(SDL_INIT_AUDIO);
@@ -313,112 +599,42 @@ void audio_decoder::ShutdownSDL(void)
 }
 
 //==============================================================================
-// OPUS IMPLEMENTATION
-//==============================================================================
 
 xbool audio_decoder::InitializeOpus(const player_config& Config)
 {
-    DestroyOpus();
-
-    const s32 privateSize = Config.AudioCodecPrivate.GetCount();
-    const u8* pPrivate    = (privateSize > 0) ? Config.AudioCodecPrivate.GetPtr() : NULL;
-
-    if (pPrivate && (privateSize >= 19) && (x_memcmp(pPrivate, "OpusHead", 8) == 0))
+    const s32 size = Config.AudioCodecPrivate.GetCount();
+    const u8* pHeader = Config.AudioCodecPrivate.GetPtr();
+    if ((size < 19) || (x_memcmp(pHeader, "OpusHead", 8) != 0) || (pHeader[8] > 15) || !pHeader[9])
+        return FALSE;
+    m_Channels = pHeader[9];
+    m_SampleRate = OPUS_SAMPLE_RATE;
+    m_MaxFrameSamples = (m_SampleRate * MAX_OPUS_FRAME_MS) / 1000;
+    m_OpusPreSkip = pHeader[10] | (pHeader[11] << 8);
+    const s16 gain = (s16)(pHeader[16] | (pHeader[17] << 8));
+    s32 error = OPUS_OK;
+    if (!pHeader[18])
     {
-        const u8 channelCount = pPrivate[9];
-        if (channelCount > 0)
-            m_Channels = channelCount;
-
-        const s32 preSkip = (s32)(pPrivate[10] | (pPrivate[11] << 8));
-        m_OpusPreSkip          = preSkip;
-        m_OpusPreSkipRemaining = preSkip;
-
-        const s32 inputRate = (s32)(pPrivate[12] | (pPrivate[13] << 8) | (pPrivate[14] << 16) | (pPrivate[15] << 24));
-        if (inputRate > 0)
-            m_SampleRate = inputRate;
-
-        const s16 gain = (s16)(pPrivate[16] | (pPrivate[17] << 8));
-        m_OpusGain = (s32)gain;
-
-        const u8 mappingFamily = pPrivate[18];
-        if (mappingFamily == 0)
-        {
-            s32 err = 0;
-            m_pOpusDecoder = opus_decoder_create(m_SampleRate, m_Channels, &err);
-            if ((err != OPUS_OK) || !m_pOpusDecoder)
-            {
-                x_DebugMsg("MoviePlayer_WebM: Failed to create Opus decoder (%d).\n", err);
-                DestroyOpus();
-                return FALSE;
-            }
-
-            if (gain != 0)
-            {
-                opus_decoder_ctl(m_pOpusDecoder, OPUS_SET_GAIN(gain));
-            }
-
-            m_OpusStreams = 1;
-            m_OpusCoupled = (m_Channels > 1) ? 1 : 0;
-        }
-        else
-        {
-            if (privateSize < 21)
-            {
-                x_DebugMsg("MoviePlayer_WebM: Invalid Opus header (mapping).\n");
-                return FALSE;
-            }
-
-            const u8 streamCount  = pPrivate[19];
-            const u8 coupledCount = pPrivate[20];
-            const s32 mappingSize = privateSize - 21;
-
-            if (mappingSize < m_Channels)
-            {
-                x_DebugMsg("MoviePlayer_WebM: Invalid Opus mapping size.\n");
-                return FALSE;
-            }
-
-            m_OpusMapping.SetCount(mappingSize);
-            x_memcpy(m_OpusMapping.GetPtr(), pPrivate + 21, mappingSize);
-
-            s32 err = 0;
-            m_pOpusMSDecoder = opus_multistream_decoder_create(m_SampleRate, m_Channels, streamCount, coupledCount, m_OpusMapping.GetPtr(), &err);
-            if ((err != OPUS_OK) || !m_pOpusMSDecoder)
-            {
-                x_DebugMsg("MoviePlayer_WebM: Failed to create Opus multistream decoder (%d).\n", err);
-                DestroyOpus();
-                return FALSE;
-            }
-
-            if (gain != 0)
-            {
-                opus_multistream_decoder_ctl(m_pOpusMSDecoder, OPUS_SET_GAIN(gain));
-            }
-
-            m_OpusStreams = streamCount;
-            m_OpusCoupled = coupledCount;
-        }
+        if (m_Channels > 2)
+            return FALSE;
+        m_pOpusDecoder = opus_decoder_create(m_SampleRate, m_Channels, &error);
+        if ((error != OPUS_OK) || !m_pOpusDecoder)
+            return FALSE;
+        error = opus_decoder_ctl(m_pOpusDecoder, OPUS_SET_GAIN(gain));
     }
     else
     {
-        int err = 0;
-        m_pOpusDecoder = opus_decoder_create(m_SampleRate, m_Channels, &err);
-        if ((err != OPUS_OK) || !m_pOpusDecoder)
-        {
-            x_DebugMsg("MoviePlayer_WebM: Failed to create default Opus decoder (%d).\n", err);
-            DestroyOpus();
+        if (size < 21 + m_Channels)
             return FALSE;
-        }
-
-        m_OpusStreams = 1;
-        m_OpusCoupled = (m_Channels > 1) ? 1 : 0;
-        m_OpusPreSkip          = 0;
-        m_OpusPreSkipRemaining = 0;
-        m_OpusGain             = 0;
+        m_OpusMapping.SetCount(m_Channels);
+        x_memcpy(m_OpusMapping.GetPtr(), pHeader + 21, m_Channels);
+        m_pOpusMSDecoder = opus_multistream_decoder_create(m_SampleRate, m_Channels, pHeader[19], pHeader[20], m_OpusMapping.GetPtr(), &error);
+        if ((error != OPUS_OK) || !m_pOpusMSDecoder)
+            return FALSE;
+        error = opus_multistream_decoder_ctl(m_pOpusMSDecoder, OPUS_SET_GAIN(gain));
     }
-
-    m_PCMBuffer.SetCount(m_MaxFrameSamples * m_Channels);
-    return TRUE;
+    if (error != OPUS_OK)
+        x_DebugMsg("MoviePlayer_WebM: Opus initialization failed (%d).\n", error);
+    return error == OPUS_OK;
 }
 
 //==============================================================================
@@ -426,105 +642,33 @@ xbool audio_decoder::InitializeOpus(const player_config& Config)
 void audio_decoder::DestroyOpus(void)
 {
     if (m_pOpusDecoder)
-    {
         opus_decoder_destroy(m_pOpusDecoder);
-        m_pOpusDecoder = NULL;
-    }
-
     if (m_pOpusMSDecoder)
-    {
         opus_multistream_decoder_destroy(m_pOpusMSDecoder);
-        m_pOpusMSDecoder = NULL;
-    }
-
+    m_pOpusDecoder = NULL;
+    m_pOpusMSDecoder = NULL;
     m_OpusMapping.Clear();
-    m_OpusStreams          = 0;
-    m_OpusCoupled          = 0;
-    m_OpusPreSkip          = 0;
+    m_OpusPreSkip = 0;
     m_OpusPreSkipRemaining = 0;
-    m_OpusGain             = 0;
 }
 
 //==============================================================================
 
 xbool audio_decoder::DecodeOpusFrame(const u8* pData, s32 DataSize)
 {
-    ASSERT(m_pOpusDecoder || m_pOpusMSDecoder);
-    ASSERT(pData);
-    ASSERT(DataSize > 0);    
-
-    if ((!m_pOpusDecoder && !m_pOpusMSDecoder) || (DataSize <= 0))
-        return TRUE;
-
-    if (m_PCMBuffer.GetCount() < (m_MaxFrameSamples * m_Channels))
-    {
-        m_PCMBuffer.SetCount(m_MaxFrameSamples * m_Channels);
-    }
-
-    s16* pOutput = m_PCMBuffer.GetPtr();
-    s32  samples = 0;
-
-    if (m_pOpusMSDecoder)
-    {
-        samples = opus_multistream_decode(m_pOpusMSDecoder, pData, DataSize, pOutput, m_MaxFrameSamples, 0);
-    }
-    else
-    {
-        samples = opus_decode(m_pOpusDecoder, pData, DataSize, pOutput, m_MaxFrameSamples, 0);
-    }
-
-    if (samples < 0)
-    {
-        x_DebugMsg("MoviePlayer_WebM: Opus decode error (%d).\n", samples);
-        return FALSE;
-    }
-
-    if (samples == 0)
-        return TRUE;
-
-    if (m_OpusPreSkipRemaining > 0)
-    {
-        const s32 skip = x_min(m_OpusPreSkipRemaining, samples);
-        m_OpusPreSkipRemaining -= skip;
-        
-        const s32 remaining = samples - skip;
-        if (remaining > 0)
-        {
-            x_memmove(pOutput, pOutput + (skip * m_Channels), remaining * m_Channels * (s32)sizeof(s16));
-            samples = remaining;
-        }
-        else
-        {
-            return TRUE;
-        }
-    }
-
-    return SubmitPCM(pOutput, samples);
+    m_PCMCount = m_pOpusMSDecoder
+               ? opus_multistream_decode(m_pOpusMSDecoder, pData, DataSize, m_PCMBuffer.GetPtr(), m_MaxFrameSamples, 0)
+               : opus_decode(m_pOpusDecoder, pData, DataSize, m_PCMBuffer.GetPtr(), m_MaxFrameSamples, 0);
+    if (m_PCMCount < 0)
+        x_DebugMsg("MoviePlayer_WebM: Opus decode failed (%d).\n", m_PCMCount);
+    return m_PCMCount >= 0;
 }
 
-//==============================================================================
-// VORBIS IMPLEMENTATION
 //==============================================================================
 
 xbool audio_decoder::InitializeVorbis(const player_config& Config)
 {
-    DestroyVorbis();
-
-    if (!ParseVorbisPrivate(Config))
-    {
-        x_DebugMsg("MoviePlayer_WebM: Failed to parse Vorbis private data.\n");
-        DestroyVorbis();
-        return FALSE;
-    }
-
-    if (!InitializeVorbisState())
-    {
-        x_DebugMsg("MoviePlayer_WebM: Failed to initialize Vorbis decoder state.\n");
-        DestroyVorbis();
-        return FALSE;
-    }
-
-    return TRUE;
+    return ParseVorbisPrivate(Config) && InitializeVorbisState();
 }
 
 //==============================================================================
@@ -552,10 +696,14 @@ xbool audio_decoder::ParseVorbisPrivate(const player_config& Config)
         while (pCurrent < pEnd)
         {
             const u8 value = *pCurrent++;
+            if (length > privateSize - value)
+                return FALSE;
             length += value;
             if (value < 255)
                 break;
         }
+        if ((pCurrent == pEnd) && (pCurrent[-1] == 255))
+            return FALSE;
         packetSizes[i] = length;
     }
 
@@ -571,7 +719,7 @@ xbool audio_decoder::ParseVorbisPrivate(const player_config& Config)
             length = (s32)(pEnd - pCurrent);
         }
 
-        if ((length < 0) || ((pCurrent + length) > pEnd))
+        if ((length < 0) || (length > pEnd - pCurrent))
             return FALSE;
 
         m_VorbisHeaders[i].SetCount(length);
@@ -606,83 +754,36 @@ xbool audio_decoder::ParseVorbisPrivate(const player_config& Config)
 xbool audio_decoder::InitializeVorbisState(void)
 {
     DestroyVorbisState(FALSE);
-
-    if ((m_VorbisHeaders[0].GetCount() == 0) ||
-        (m_VorbisHeaders[1].GetCount() == 0) ||
-        (m_VorbisHeaders[2].GetCount() == 0))
+    vorbis_info_init(&m_VorbisInfo);
+    vorbis_comment_init(&m_VorbisComment);
+    m_bVorbisHeaders = TRUE;
+    for (s32 i = 0; i < 3; ++i)
     {
-        return FALSE;
+        ogg_packet packet;
+        x_memset(&packet, 0, sizeof(packet));
+        packet.packet = m_VorbisHeaders[i].GetPtr();
+        packet.bytes = m_VorbisHeaders[i].GetCount();
+        packet.b_o_s = i == 0;
+        packet.packetno = i;
+        const s32 result = vorbis_synthesis_headerin(&m_VorbisInfo, &m_VorbisComment, &packet);
+        if (result != 0)
+        {
+            x_DebugMsg("MoviePlayer_WebM: Vorbis header %d failed (%d).\n", i, result);
+            return FALSE;
+        }
     }
-
-    m_pVorbisInfo    = (vorbis_info*)x_malloc(sizeof(vorbis_info));
-    m_pVorbisComment = (vorbis_comment*)x_malloc(sizeof(vorbis_comment));
-    m_pVorbisDsp     = (vorbis_dsp_state*)x_malloc(sizeof(vorbis_dsp_state));
-    m_pVorbisBlock   = (vorbis_block*)x_malloc(sizeof(vorbis_block));
-
-    if (!m_pVorbisInfo || !m_pVorbisComment || !m_pVorbisDsp || !m_pVorbisBlock)
-    {
-        DestroyVorbisState(FALSE);
+    m_Channels = m_VorbisInfo.channels;
+    m_SampleRate = m_VorbisInfo.rate;
+    m_MaxFrameSamples = (s32)vorbis_info_blocksize(&m_VorbisInfo, 1) / 2;
+    if (vorbis_synthesis_init(&m_VorbisDsp, &m_VorbisInfo) != 0)
         return FALSE;
-    }
-
-    x_memset(m_pVorbisInfo, 0, sizeof(vorbis_info));
-    x_memset(m_pVorbisComment, 0, sizeof(vorbis_comment));
-    x_memset(m_pVorbisDsp, 0, sizeof(vorbis_dsp_state));
-    x_memset(m_pVorbisBlock, 0, sizeof(vorbis_block));
-
-    vorbis_info_init(m_pVorbisInfo);
-    vorbis_comment_init(m_pVorbisComment);
-
-    ogg_packet packet;
-    x_memset(&packet, 0, sizeof(packet));
-
-    // Identification header
-    packet.packet   = m_VorbisHeaders[0].GetPtr();
-    packet.bytes    = m_VorbisHeaders[0].GetCount();
-    packet.b_o_s    = 1;
-    packet.packetno = 0;
-    if (vorbis_synthesis_headerin(m_pVorbisInfo, m_pVorbisComment, &packet) != 0)
-    {
-        DestroyVorbisState(FALSE);
+    m_bVorbisDsp = TRUE;
+    if (vorbis_block_init(&m_VorbisDsp, &m_VorbisBlock) != 0)
         return FALSE;
-    }
-
-    // Comment header
-    packet.packet   = m_VorbisHeaders[1].GetPtr();
-    packet.bytes    = m_VorbisHeaders[1].GetCount();
-    packet.b_o_s    = 0;
-    packet.packetno = 1;
-    if (vorbis_synthesis_headerin(m_pVorbisInfo, m_pVorbisComment, &packet) != 0)
-    {
-        DestroyVorbisState(FALSE);
-        return FALSE;
-    }
-
-    // Setup header
-    packet.packet   = m_VorbisHeaders[2].GetPtr();
-    packet.bytes    = m_VorbisHeaders[2].GetCount();
-    packet.packetno = 2;
-    if (vorbis_synthesis_headerin(m_pVorbisInfo, m_pVorbisComment, &packet) != 0)
-    {
-        DestroyVorbisState(FALSE);
-        return FALSE;
-    }
-
-    if (vorbis_synthesis_init(m_pVorbisDsp, m_pVorbisInfo) != 0)
-    {
-        DestroyVorbisState(FALSE);
-        return FALSE;
-    }
-
-    if (vorbis_block_init(m_pVorbisDsp, m_pVorbisBlock) != 0)
-    {
-        DestroyVorbisState(FALSE);
-        return FALSE;
-    }
-
-    m_VorbisInitialized = TRUE;
-    m_VorbisPacketIndex = 0;
-    return TRUE;
+    m_bVorbisBlock = TRUE;
+    m_PreviousBlockSize = 0;
+    m_VorbisPacketIndex = 2;
+    return m_MaxFrameSamples > 0;
 }
 
 //==============================================================================
@@ -696,179 +797,61 @@ void audio_decoder::DestroyVorbis(void)
 
 void audio_decoder::DestroyVorbisState(xbool ClearHeaders)
 {
-    if (m_pVorbisBlock)
+    if (m_bVorbisBlock)
+        vorbis_block_clear(&m_VorbisBlock);
+    if (m_bVorbisDsp)
+        vorbis_dsp_clear(&m_VorbisDsp);
+    if (m_bVorbisHeaders)
     {
-        vorbis_block_clear(m_pVorbisBlock);
-        x_free(m_pVorbisBlock);
-        m_pVorbisBlock = NULL;
+        vorbis_comment_clear(&m_VorbisComment);
+        vorbis_info_clear(&m_VorbisInfo);
     }
-
-    if (m_pVorbisDsp)
-    {
-        vorbis_dsp_clear(m_pVorbisDsp);
-        x_free(m_pVorbisDsp);
-        m_pVorbisDsp = NULL;
-    }
-
-    if (m_pVorbisComment)
-    {
-        vorbis_comment_clear(m_pVorbisComment);
-        x_free(m_pVorbisComment);
-        m_pVorbisComment = NULL;
-    }
-
-    if (m_pVorbisInfo)
-    {
-        vorbis_info_clear(m_pVorbisInfo);
-        x_free(m_pVorbisInfo);
-        m_pVorbisInfo = NULL;
-    }
-
+    m_bVorbisBlock = FALSE;
+    m_bVorbisDsp = FALSE;
+    m_bVorbisHeaders = FALSE;
     if (ClearHeaders)
     {
         for (s32 i = 0; i < 3; ++i)
             m_VorbisHeaders[i].Clear();
     }
-
-    m_VorbisInitialized = FALSE;
-    m_VorbisPacketIndex = 0;
 }
 
 //==============================================================================
 
 xbool audio_decoder::DecodeVorbisPacket(const u8* pData, s32 DataSize)
 {
-    ASSERT(m_VorbisInitialized);
-    ASSERT(m_pVorbisBlock);
-    ASSERT(m_pVorbisDsp);
-    ASSERT(DataSize > 0);    
-    ASSERT(pData);
-
-    if (!m_VorbisInitialized || !m_pVorbisBlock || !m_pVorbisDsp || (DataSize <= 0))
-        return TRUE;
-
     ogg_packet packet;
     x_memset(&packet, 0, sizeof(packet));
-
-    packet.packet   = const_cast<unsigned char*>(pData);
-    packet.bytes    = DataSize;
+    packet.packet = const_cast<u8*>(pData);
+    packet.bytes = DataSize;
+    packet.granulepos = -1;
     packet.packetno = ++m_VorbisPacketIndex;
-
-    const s32 result = (s32)vorbis_synthesis(m_pVorbisBlock, &packet);
+    m_PreviousBlockSize = (s32)vorbis_packet_blocksize(&m_VorbisInfo, &packet);
+    const s32 result = vorbis_synthesis(&m_VorbisBlock, &packet);
     if (result != 0)
     {
-        x_DebugMsg("MoviePlayer_WebM: Vorbis synthesis failed (%d).\n", result);
+        x_DebugMsg("MoviePlayer_WebM: Vorbis decode failed (%d).\n", result);
         return FALSE;
     }
-
-    if (vorbis_synthesis_blockin(m_pVorbisDsp, m_pVorbisBlock) != 0)
+    const s32 blockResult = vorbis_synthesis_blockin(&m_VorbisDsp, &m_VorbisBlock);
+    if (blockResult != 0)
     {
-        x_DebugMsg("MoviePlayer_WebM: Vorbis blockin failed.\n");
+        x_DebugMsg("MoviePlayer_WebM: Vorbis block submission failed (%d).\n", blockResult);
         return FALSE;
     }
-
-    while (TRUE)
+    f32** ppPCM = NULL;
+    m_PCMCount = vorbis_synthesis_pcmout(&m_VorbisDsp, &ppPCM);
+    if ((m_PCMCount < 0) || (m_PCMCount > m_MaxFrameSamples))
+        return FALSE;
+    for (s32 i = 0; i < m_PCMCount; ++i)
     {
-        f32** ppPcm = NULL;
-        const s32 samples = (s32)vorbis_synthesis_pcmout(m_pVorbisDsp, &ppPcm);
-        if (samples <= 0)
-            break;
-
-        const s32 sampleCount = samples;
-        if (sampleCount > (INT_MAX / m_Channels))
+        for (s32 ch = 0; ch < m_Channels; ++ch)
         {
-            x_DebugMsg("MoviePlayer_WebM: Sample count overflow detected.\n");
-            vorbis_synthesis_read(m_pVorbisDsp, sampleCount);
-            continue;
+            const f32 value = x_clamp(ppPCM[ch][i], -1.0f, 1.0f);
+            m_PCMBuffer[i * m_Channels + ch] = (s16)(value * (value < 0.0f ? 32768.0f : 32767.0f));
         }
-        
-        const s32 totalSamples = sampleCount * m_Channels;
-        if (totalSamples <= 0)
-        {
-            vorbis_synthesis_read(m_pVorbisDsp, sampleCount);
-            continue;
-        }
-
-        m_PCMBuffer.SetCount(totalSamples);
-        s16* pOut = m_PCMBuffer.GetPtr();
-
-        for (s32 i = 0; i < sampleCount; ++i)
-        {
-            for (s32 ch = 0; ch < m_Channels; ++ch)
-            {
-                f32 sample = (ppPcm[ch])[i];
-                if (sample > 1.0f) sample = 1.0f;
-                if (sample < -1.0f) sample = -1.0f;
-
-                s32 value = (sample >= 0.0f) ? (s32)(sample * 32767.0f + 0.5f) : (s32)(sample * 32768.0f - 0.5f);
-                if (value > 32767) value = 32767;
-                if (value < -32768) value = -32768;
-
-                *pOut++ = (s16)value;
-            }
-        }
-
-        SubmitPCM(m_PCMBuffer.GetPtr(), sampleCount);
-        vorbis_synthesis_read(m_pVorbisDsp, sampleCount);
     }
-
-    return TRUE;
+    return vorbis_synthesis_read(&m_VorbisDsp, m_PCMCount) == 0;
 }
 
 //==============================================================================
-
-void audio_decoder::ResetDecoders(void)
-{
-    if (m_CodecType == CODEC_OPUS)
-    {
-        if (m_pOpusDecoder)
-        {
-            opus_decoder_ctl(m_pOpusDecoder, OPUS_RESET_STATE);
-        }
-        if (m_pOpusMSDecoder)
-        {
-            opus_multistream_decoder_ctl(m_pOpusMSDecoder, OPUS_RESET_STATE);
-        }
-        m_OpusPreSkipRemaining = m_OpusPreSkip;
-    }
-    else if (m_CodecType == CODEC_VORBIS)
-    {
-        if (!InitializeVorbisState())
-        {
-            x_DebugMsg("MoviePlayer_WebM: Failed to reset Vorbis decoder.\n");
-        }
-    }
-}
-
-//==============================================================================
-
-xbool audio_decoder::SubmitPCM(const s16* pSamples, s32 SampleCount)
-{
-    ASSERT(m_pAudioStream);
-    ASSERT(pSamples);
-    ASSERT(SampleCount > 0);    
-    
-    if (!m_pAudioStream || !pSamples || (SampleCount <= 0))
-        return TRUE;
-
-    s32 waitMs = 0;
-    while (SDL_GetAudioStreamQueued(m_pAudioStream) >= m_MaxQueuedBytes)
-    {
-        if (waitMs >= AUDIO_SUBMIT_TIMEOUT_MS)
-        {
-            x_DebugMsg("MoviePlayer_WebM: Audio submit timeout, dropping buffer.\n");
-            return FALSE;
-        }
-        x_DelayThread(1);
-        ++waitMs;
-    }
-
-    const s32 bytes = SampleCount * m_Channels * (s32)sizeof(s16);
-    if (!SDL_PutAudioStreamData(m_pAudioStream, pSamples, bytes))
-    {
-        x_DebugMsg("MoviePlayer_WebM: SDL_PutAudioStreamData failed: %s\n", SDL_GetError());
-        return FALSE;
-    }
-
-    return TRUE;
-}

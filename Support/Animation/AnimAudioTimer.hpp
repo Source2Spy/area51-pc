@@ -37,8 +37,8 @@ public:
         // Returns TRUE if the voice has warmed up and is playing
         xbool   IsPlaying       ( void );
 
-        // Returns camera local to world (if there is one) for specified time
-        void    GetCameraBoneL2W( matrix4& L2W, f32 Time );
+        // Checks the next authored camera frame.
+        xbool   IsCameraCut     ( f32 Time );
         
         // Updates the predicted time
         void    Advance         ( f32 DeltaTime );

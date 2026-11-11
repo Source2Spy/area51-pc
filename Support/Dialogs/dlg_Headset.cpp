@@ -37,24 +37,7 @@ enum controls
 
 //-------------------------------------------------------------------------
 
-ui_manager::control_tem HeadsetControls_PAL[] = 
-{
-    // Frames.
-    { IDC_HEADSET_TOGGLE_HEADSET_TEXT,  "IDS_OPTIONS_HEADSET_AUDIO",    "text",      40,  40, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_HEADSET_VOLUME_SPEAKER_TEXT,  "IDS_SPEAKER_VOLUME",           "text",      40,  75, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_HEADSET_VOLUME_MIC_TEXT,      "IDS_MIC_VOLUME",               "text",      40, 110, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-
-    { IDC_HEADSET_TOGGLE_HEADSET,       "IDS_NULL",                     "combo",    290,  40, 202, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_HEADSET_VOLUME_SPEAKER,       "IDS_NULL",                     "slider",   300,  75, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_HEADSET_VOLUME_MIC,           "IDS_NULL",                     "slider",   300, 110, 120, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
-    
-    { IDC_HEADSET_BUTTON_ACCEPT,        "IDS_PROFILE_OPTIONS_ACCEPT",   "button",    40, 285, 220, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
-
-};
-
-//-------------------------------------------------------------------------
-
-ui_manager::control_tem HeadsetControls_ENG[] = 
+ui_manager::control_tem HeadsetControls[] =
 {
     // Frames.
     { IDC_HEADSET_TOGGLE_HEADSET_TEXT,  "IDS_OPTIONS_HEADSET_AUDIO",    "text",      40,  40, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
@@ -75,22 +58,10 @@ ui_manager::dialog_tem HeadsetDialog =
 {
     "IDS_PROFILE_HEADSET",
     1, 9,
-    sizeof(HeadsetControls_ENG)/sizeof(ui_manager::control_tem),
-    &HeadsetControls_ENG[0],
+    sizeof(HeadsetControls)/sizeof(ui_manager::control_tem),
+    &HeadsetControls[0],
     0
 };
-
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
 
 //=========================================================================
 //  Registration function
@@ -98,27 +69,6 @@ ui_manager::dialog_tem HeadsetDialog =
 
 void dlg_headset_register( ui_manager* pManager )
 {
-#ifndef X_EDITOR
-    switch( x_GetLocale() )
-    {        
-    case XL_LANG_ENGLISH:    // English uses default
-        break;
-
-    default:  // PAL
-        {
-            // set up new profile options dialog controls
-            HeadsetDialog.StringID = "IDS_PROFILE_HEADSET";
-            HeadsetDialog.NavW = 1;
-            HeadsetDialog.NavH = 9;
-            HeadsetDialog.nControls = sizeof(HeadsetControls_PAL)/sizeof(ui_manager::control_tem);
-            HeadsetDialog.pControls = &HeadsetControls_PAL[0];
-            HeadsetDialog.FocusControl = 0;
-        }
-        break;
-
-    }
-#endif
-
     pManager->RegisterDialogClass( "headset", &HeadsetDialog, &dlg_headset_factory );
 }
 
@@ -383,7 +333,7 @@ void dlg_headset::OnCancel( ui_win* pWin )
     }
 }
 
-//==========================================================================
+//=========================================================================
 
 void dlg_headset::ApplySettings( global_settings& Settings )
 {
@@ -392,7 +342,7 @@ void dlg_headset::ApplySettings( global_settings& Settings )
     Settings.SetHeadsetMode( static_cast<headset_mode>( m_pToggleHeadsetAudio->GetSelectedItemData() ) );
 }
 
-//==========================================================================
+//=========================================================================
 
 void dlg_headset::BeginSave( void )
 {
@@ -400,7 +350,7 @@ void dlg_headset::BeginSave( void )
     m_State = DIALOG_STATE_WAIT_FOR_SAVE_DATA;
 }
 
-//==========================================================================
+//=========================================================================
 
 void dlg_headset::OpenSavePopup( void )
 {
@@ -424,7 +374,7 @@ void dlg_headset::OpenSavePopup( void )
     m_State = DIALOG_STATE_POPUP;
 }
 
-//==========================================================================
+//=========================================================================
 
 void dlg_headset::RestoreSettings( void )
 {
@@ -434,7 +384,7 @@ void dlg_headset::RestoreSettings( void )
     PendingSettings.UpdateHeadsetMode( PendingSettings.GetHeadsetMode() );
 }
 
-//==========================================================================
+//=========================================================================
 
 void dlg_headset::OnSaveSettingsCB( void )
 {

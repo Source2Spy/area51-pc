@@ -24,10 +24,6 @@
 #endif
 
 //==============================================================================
-//  EXTERNS
-//==============================================================================
-
-//==============================================================================
 //  TYPES
 //==============================================================================
 
@@ -103,7 +99,23 @@ public:
 
         FMT_A8          = 78, // used for pure alpha textures
 
-        // TERMINATOR
+        // ASTC formats. Keep this order in sync with the block-dimension tables.
+        FMT_ASTC_4X4    = 79,
+        FMT_ASTC_5X4    = 80,
+        FMT_ASTC_5X5    = 81,
+        FMT_ASTC_6X5    = 82,
+        FMT_ASTC_6X6    = 83,
+        FMT_ASTC_8X5    = 84,
+        FMT_ASTC_8X6    = 85,
+        FMT_ASTC_8X8    = 86,
+        FMT_ASTC_10X5   = 87,
+        FMT_ASTC_10X6   = 88,
+        FMT_ASTC_10X8   = 89,
+        FMT_ASTC_10X10  = 90,
+        FMT_ASTC_12X10  = 91,
+        FMT_ASTC_12X12  = 92,
+
+        // TERMINATOR T-1000
 
         FMT_END_OF_LIST,
 
@@ -235,6 +247,15 @@ static    xbool        Info            ( const char* pFileName, info& BitmapInfo
         xbool       HasAlphaBits    ( void ) const;
         xbool       IsClutBased     ( void ) const;
         xbool       IsCompressed    ( void ) const;
+        xbool       IsDXT           ( void ) const;
+        xbool       IsASTC          ( void ) const;
+        xbool       IsSRGB          ( void ) const;
+
+        // Compressed block footprints in pixels; GetBlockSize returns bytes.
+        static s32  GetBlockWidth   ( format Format );
+        static s32  GetBlockHeight  ( format Format );
+        static s32  GetBlockSize    ( format Format );
+
         xbool       IsPowerOf2      ( void ) const;
 
         //
@@ -293,6 +314,7 @@ const   format_info&    GetFormatInfo   ( format Format );
 
     enum flags
     {
+        FLAG_SRGB                 = ( 1 << 14 ),
         FLAG_VALID                = ( 1 <<  0 ),
         FLAG_DATA_OWNED           = ( 1 <<  1 ),
         FLAG_CLUT_OWNED           = ( 1 <<  2 ),

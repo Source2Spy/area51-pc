@@ -27,11 +27,7 @@ class   player;
 struct  rigid_geom;
 struct  rtti;
 struct  guid;
-#ifdef TARGET_PS2
-struct  vector3;
-#else
 union   vector3;
-#endif
 struct  xcolor;
 
 //==---------------------------------------------------------------------------

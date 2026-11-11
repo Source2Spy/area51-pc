@@ -13,11 +13,22 @@
 //  TYPES
 //==============================================================================
 
-struct GEOM_PIXEL_OUTPUT
+struct GeomPixelResult
 {
-    float4 FinalColor  : SV_Target0;
-    float4 NormalDepth : SV_Target1;
-    float4 Glow        : SV_Target2;
+    float4 Color;
+    float4 Bloom;
+};
+
+//------------------------------------------------------------------------------
+
+struct GeomSceneOutput
+{
+    float4 Color : SV_Target0;
+#if defined(A51_SCENE_DEPTH_TARGET)
+    float Depth : SV_Target1;
+#elif A51_GEOM_NORMAL_TARGET
+    float4 Normal : SV_Target1;
+#endif
 };
 
 //==============================================================================

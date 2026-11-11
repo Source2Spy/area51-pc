@@ -20,7 +20,7 @@
 #include "StateMgr/StateMgr.hpp"
 #include "StringMgr/StringMgr.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "ResourceMgr/ResourceMgr.hpp"
 #include "Parsing/TextIn.hpp"
 #include "StateMgr/MapList.hpp"
@@ -30,7 +30,7 @@
 //  Main Menu Dialog
 //=========================================================================
 
-#if defined(CONFIG_VIEWER) || defined(CONFIG_DEBUG) || defined(CONFIG_OPTDEBUG) 
+#if defined(CONFIG_DEBUG) || defined(CONFIG_OPTDEBUG)
 #define ALLOW_EXTENDED_OPTIONS
 #endif
 
@@ -85,18 +85,6 @@ ui_manager::dialog_tem MultiOptionsDialog =
     &MultiOptionsControls[0],
     0
 };
-
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
 
 //=========================================================================
 //  Registration function

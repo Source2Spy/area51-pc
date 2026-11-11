@@ -28,7 +28,7 @@
 #ifndef X_EDITOR
 #include "StateMgr/StateMgr.hpp"
 #include "GameLib/RenderContext.hpp"
-#include "NetworkMgr/MsgMgr.hpp"
+#include "NetworkMgr/Messages/MsgMgr.hpp"
 #include "StateMgr/LoreList.hpp"
 #endif
 
@@ -658,7 +658,7 @@ void lore_object::OnRenderTransparent( void )
                 irect LabelPos( (s32)P3D[ 0 ].GetX(), (s32)P3D[ 0 ].GetY(), (s32)P3D[ 1 ].GetX(), (s32)P3D[ 0 ].GetY() );
                 xcolor White            = XCOLOR_WHITE;
                                 
-                const xwchar* pDisplayStr     = (xwchar*)g_StringTableMgr( g_StringMgr.GetString( m_DisplayStrTable ), 
+                const xwchar* pDisplayStr = g_StringTableMgr( g_StringMgr.GetString( m_DisplayStrTable ),
                     g_StringMgr.GetString( m_DisplayStrTitle ) );
                                 
                 if( x_wstrcmp( pDisplayStr, (const xwchar*)xwstring( "<null>" ) ) == 0 )
@@ -920,7 +920,7 @@ xbool lore_object::GetColDetails( s32 Key, detail_tri& Tri )
     if( !pRigidGeom )
         return( FALSE );
 
-    if( !pRigidGeom->m_collision.nHighClusters )
+    if( !pRigidGeom->m_Collision.nHighClusters )
         return( FALSE );
 
     return RigidGeom_GetColDetails( pRigidGeom,
@@ -1059,7 +1059,7 @@ void lore_object::OnAcquire( xbool bIsRestoring )
 
             s32 LoreID = g_LoreList.GetLoreIDByVault( pVault, GetLoreID() );
 
-            // if we have a real ID for this lore object, get it's name from the stringbin
+            // Resolve the lore entry name.
             if( LoreID == -1 )
             {
                 pString = (const xwchar*)xwstring( "IDS_LORE_FULL_NAME_nn not set in xxx_lore_strings table!!" );

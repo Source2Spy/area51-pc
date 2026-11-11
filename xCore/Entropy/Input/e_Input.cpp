@@ -10,8 +10,7 @@
 
 #include "../e_Input.hpp"
 #include "Input/backend/input_backend.hpp"
-
-#include <algorithm>
+#include "x_plus.hpp"
 
 //==============================================================================
 //  LOCAL TABLE TYPES
@@ -58,7 +57,7 @@ struct input_gadget_range
 static
 const input_gadget_range s_GadgetInfoRanges[] =
 {
-#include "e_Input_Gadget_Defines.hpp"
+    #include "e_Input_Gadget_Defines.hpp"
 };
 
 //==============================================================================
@@ -154,29 +153,43 @@ s32 GetSampleActivityPriority( const input_gadget_info& Info, f32 Value, xbool W
 {
     switch( Info.ValueKind )
     {
-    case INPUT_VALUE_DIGITAL:
-        return WasPressed ? INPUT_ACTIVITY_MOMENTARY : INPUT_ACTIVITY_NONE;
+        case INPUT_VALUE_DIGITAL:
+        {
+            return WasPressed ? INPUT_ACTIVITY_MOMENTARY : INPUT_ACTIVITY_NONE;
+        }
+        break;
 
-    case INPUT_VALUE_RELATIVE_AXIS:
-        // Mouse motion remains available to mixed-input camera code, but it
-        // must not churn UI prompts between keyboard/mouse and gamepad.
-        return( Info.Device == INPUT_DEVICE_MOUSE )
-             ? INPUT_ACTIVITY_NONE
-             : ((Value != 0.0f) ? INPUT_ACTIVITY_MOMENTARY : INPUT_ACTIVITY_NONE);
+        case INPUT_VALUE_RELATIVE_AXIS:
+        {
+            // Mouse motion remains available to mixed-input camera code, but it
+            // must not churn UI prompts between keyboard/mouse and gamepad.
+            return( Info.Device == INPUT_DEVICE_MOUSE )
+                 ? INPUT_ACTIVITY_NONE
+                 : ((Value != 0.0f) ? INPUT_ACTIVITY_MOMENTARY : INPUT_ACTIVITY_NONE);
+        }
+        break;
 
-    case INPUT_VALUE_PULSE:
-        return( Value != 0.0f ) ? INPUT_ACTIVITY_MOMENTARY : INPUT_ACTIVITY_NONE;
+        case INPUT_VALUE_PULSE:
+        {
+            return( Value != 0.0f ) ? INPUT_ACTIVITY_MOMENTARY : INPUT_ACTIVITY_NONE;
+        }
+        break;
 
-    case INPUT_VALUE_ABSOLUTE_AXIS:
-        return( x_abs( Value ) > s_InputActivityThreshold ) ? INPUT_ACTIVITY_AXIS : INPUT_ACTIVITY_NONE;
+        case INPUT_VALUE_ABSOLUTE_AXIS:
+        {
+            return( x_abs( Value ) > s_InputActivityThreshold ) ? INPUT_ACTIVITY_AXIS : INPUT_ACTIVITY_NONE;
+        }
+        break;
 
-    default:
-        return INPUT_ACTIVITY_NONE;
+        default:
+        {
+            return INPUT_ACTIVITY_NONE;
+        }
+        break;
     }
 }
 
 //==============================================================================
-
 //  INPUT EVENT BUFFER
 //==============================================================================
 
@@ -243,13 +256,19 @@ void input_event_buffer::EndCapture( u32 EndTimeStamp )
 void input_event_buffer::Sort( void )
 {
     u32 const StartTimeStamp = m_StartTimeStamp;
-    std::sort( m_Events, m_Events + m_Count,
-               [StartTimeStamp]( input_event const& A, input_event const& B )
-               {
-                   s32 const ATicks = static_cast<s32>( A.TimeStamp - StartTimeStamp );
-                   s32 const BTicks = static_cast<s32>( B.TimeStamp - StartTimeStamp );
-                   return (ATicks != BTicks) ? (ATicks < BTicks) : (A.Sequence < B.Sequence);
-               } );
+    x_qsort( m_Events, m_Count,
+             [StartTimeStamp]( input_event const& A, input_event const& B ) -> s32
+             {
+                 s32 const ATicks = static_cast<s32>( A.TimeStamp - StartTimeStamp );
+                 s32 const BTicks = static_cast<s32>( B.TimeStamp - StartTimeStamp );
+
+                 if( ATicks != BTicks )
+                 {
+                     return ATicks < BTicks ? -1 : 1;
+                 }
+
+                 return A.Sequence < B.Sequence ? -1 : ( A.Sequence > B.Sequence ? 1 : 0 );
+             } );
 }
 
 //==============================================================================
@@ -428,13 +447,19 @@ input_system::input_system( void )
 xbool input_system::Init( const input_init_desc& Desc )
 {
     if( Desc.pWindow )
+    {
         m_InitDesc.pWindow = Desc.pWindow;
+    }
 
     if( !m_pBackend )
+    {
         m_pBackend = input_CreateDefaultBackend();
+    }
 
     if( !m_pBackend )
+    {
         return FALSE;
+    }
 
     return m_pBackend->Init( m_InitDesc );
 }
@@ -496,7 +521,9 @@ xbool input_system::FindAvailableDevice( input_device& Device, s32& DeviceID ) c
     DeviceID = -1;
 
     if( !m_pBackend )
+    {
         return FALSE;
+    }
 
     // Device classes are data-driven by the input_device enum.  Adding a new
     // backend/device type automatically makes it eligible for fallback.
@@ -506,7 +533,9 @@ xbool input_system::FindAvailableDevice( input_device& Device, s32& DeviceID ) c
     {
         input_device const Candidate = (input_device)DeviceIndex;
         if( Candidate == INPUT_DEVICE_MESSAGE )
+        {
             continue;
+        }
 
         for( s32 CandidateID = 0; CandidateID < INPUT_MAX_DEVICES; CandidateID++ )
         {
@@ -536,7 +565,9 @@ s32 input_system::GetPadCount( void ) const
 void input_system::Feedback( f32 Duration, f32 Intensity, s32 DeviceID )
 {
     if( m_pBackend )
+    {
         m_pBackend->Feedback( Duration, Intensity, DeviceID );
+    }
 }
 
 //==============================================================================
@@ -544,7 +575,9 @@ void input_system::Feedback( f32 Duration, f32 Intensity, s32 DeviceID )
 void input_system::Feedback( s32 Count, feedback_envelope* pEnvelope, s32 DeviceID )
 {
     if( m_pBackend )
+    {
         m_pBackend->Feedback( Count, pEnvelope, DeviceID );
+    }
 }
 
 //==============================================================================
@@ -552,7 +585,9 @@ void input_system::Feedback( s32 Count, feedback_envelope* pEnvelope, s32 Device
 void input_system::EnableFeedback( xbool State, s32 DeviceID )
 {
     if( m_pBackend )
+    {
         m_pBackend->EnableFeedback( State, DeviceID );
+    }
 }
 
 //==============================================================================
@@ -560,7 +595,9 @@ void input_system::EnableFeedback( xbool State, s32 DeviceID )
 void input_system::SuppressFeedback( xbool Suppress )
 {
     if( m_pBackend )
+    {
         m_pBackend->SuppressFeedback( Suppress );
+    }
 }
 
 //==============================================================================
@@ -568,7 +605,9 @@ void input_system::SuppressFeedback( xbool Suppress )
 void input_system::ClearFeedback( void )
 {
     if( m_pBackend )
+    {
         m_pBackend->ClearFeedback();
+    }
 }
 
 //==============================================================================
@@ -597,16 +636,24 @@ void input_system::ClearFrameActivity( void )
 void input_system::RecordGadgetActivity( const input_gadget_info& Info, f32 Value, s32 Priority )
 {
     if( x_abs( Value ) <= s_InputActivityThreshold )
+    {
         return;
+    }
 
     if( (Info.ValueKind == INPUT_VALUE_NONE) || (Info.ValueKind == INPUT_VALUE_QUERY) )
+    {
         return;
+    }
 
     if( Info.Device == INPUT_DEVICE_NONE )
+    {
         return;
+    }
 
     if( Priority <= INPUT_ACTIVITY_NONE )
+    {
         return;
+    }
 
     if( Priority > m_FrameActivityPriority )
     {
@@ -632,7 +679,9 @@ void input_system::RecordGadgetActivity( const input_gadget_info& Info, f32 Valu
 void input_system::ResolveFrameActivity( void )
 {
     if( m_FrameActivityPriority == INPUT_ACTIVITY_NONE )
+    {
         return;
+    }
 
     if( !m_FrameActivityConflict )
     {
@@ -810,12 +859,16 @@ input_debug_stats const& input_system::GetDebugStats( void ) const
 const input_gadget_info& input_system::GetGadgetInfo( input_gadget GadgetID )
 {
     if( GadgetID == INPUT_UNDEFINED )
+    {
         return s_InvalidGadgetInfo;
+    }
 
     for( s32 i = 0; i < (s32)(sizeof(s_GadgetInfoRanges) / sizeof(s_GadgetInfoRanges[0])); i++ )
     {
         if( IsGadgetInRange( GadgetID, s_GadgetInfoRanges[i].First, s_GadgetInfoRanges[i].Last ) )
+        {
             return s_GadgetInfoRanges[i].Info;
+        }
     }
 
     return s_InvalidGadgetInfo;
@@ -959,12 +1012,16 @@ input_gadget input_system::LookupGadget( const char* pName )
     ASSERT( pName );
 
     if( !pName )
+    {
         return( INPUT_UNDEFINED );
+    }
 
     for( s32 i = 0; i < (s32)(sizeof(s_GadgetLookupTable) / sizeof(s_GadgetLookupTable[0])); i++ )
     {
         if( x_strcmp( s_GadgetLookupTable[i].pName, pName ) == 0 )
+        {
             return( s_GadgetLookupTable[i].Gadget );
+        }
     }
 
     return( INPUT_UNDEFINED );

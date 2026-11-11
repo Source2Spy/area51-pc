@@ -17,7 +17,10 @@
 //  INCLUDES
 //==============================================================================
 
+#include "NetworkMgr/Replication/NetUpdate.hpp"
+
 #include "Render/PrimitiveDebug.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "CapPoint.hpp"
 #include "GameLib/RenderContext.hpp"
 #include "TemplateMgr/TemplateMgr.hpp"
@@ -26,7 +29,7 @@
 
 #ifndef X_EDITOR
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/logic_Base.hpp"
+#include "NetworkMgr/Game/logic_Base.hpp"
 #endif  
 
 //==============================================================================
@@ -726,43 +729,33 @@ s32 cap_point::GetCircuit( void )
 #ifndef X_EDITOR
 //==============================================================================
 
-void cap_point::net_AcceptUpdate( const bitstream& BS )
+void cap_point::net_AcceptUpdate( const net_cap_point_update& Update )
 {
+    //
     // netobj::ACTIVATE_BIT
-    if( BS.ReadFlag() )
+    //
+    if( Update.Activate )
     {
-        vector3 Position;
-        radian3 Orientation;
-        s32     Zone1;
-        s32     Zone2;
-
-        BS.ReadVector( Position );
-        BS.ReadF32( m_Elevation );
-        BS.ReadF32( m_Radius    );
-        BS.ReadF32( Orientation.Pitch );
-        BS.ReadF32( Orientation.Yaw   );
-        BS.ReadF32( Orientation.Roll  );
-        BS.ReadRangedS32( Zone1, 0, 255 );
-        BS.ReadRangedS32( Zone2, 0, 255 );
-        BS.ReadRangedS32( m_Circuit, 0, 15 );
-
+        m_Elevation = Update.Elevation;
+        m_Radius    = Update.Radius;
+        m_Circuit   = Update.Circuit;
         matrix4 L2W;
         L2W.Identity();
-        L2W.SetRotation( Orientation );
-        L2W.SetTranslation( Position );
-
+        L2W.SetRotation( Update.Orientation );
+        L2W.SetTranslation( Update.Position );
         SetL2W( L2W );
-        SetZone1( Zone1 );
-        SetZone2( Zone2 );
-        
+        SetZone1( Update.Zone1 );
+        SetZone2( Update.Zone2 );
         Init();
     }
 
+    //
     // DIRTY_MODE
-    if( BS.ReadFlag() )
+    //
+    if( Update.HasMode )
     {
-        BS.ReadRangedS32( m_Mode, -1, +1 );
-        BS.ReadRangedF32( m_Value, 8, -1.0f, +1.0f );
+        m_Mode  = Update.Mode;
+        m_Value = Update.Value;
     }
 }
 

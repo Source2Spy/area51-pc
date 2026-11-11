@@ -68,9 +68,9 @@ const bbox& collision_mgr::GetDynamicBBox( void ) const
 //==============================================================================
 
 inline
-const collision_mgr::dynamic_cylinder& collision_mgr::GetDynamicCylinder( void ) const
+const collision_mgr::dynamic_capsule& collision_mgr::GetDynamicCapsule( void ) const
 {
-    return m_CylinderInfo[m_ContextInfo.Context];
+    return m_CapsuleInfo[m_ContextInfo.Context];
 }
 
 //==============================================================================

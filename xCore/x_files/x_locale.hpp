@@ -35,7 +35,7 @@ enum x_console_territory
 // The application is responsible for determining which languages it supports, and for
 // defaulting to an appropriate language when the console is set incorrectly.
 // Note that the corresponding strings in s_pLanguageStr must be in this order.
-// -- this is in alpha order, with the most common first (EFGIS).
+// Keep this order; append new languages to preserve saved values.
 enum x_language
 {
     XL_LANG_ENGLISH = 0,
@@ -50,6 +50,7 @@ enum x_language
     XL_LANG_PORTUGUESE,
     XL_LANG_TCHINESE,
     XL_LANG_RUSSIAN,
+    XL_LANG_CZECH,
 
     XL_NUM_LANGUAGES
 };

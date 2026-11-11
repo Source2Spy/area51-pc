@@ -7,6 +7,7 @@
 #include "IOManager/io_request.hpp"
 
 struct audio_runtime;
+struct audio_debug_stats;
 
 class audio_stream_mgr
 {
@@ -23,6 +24,7 @@ public:
             void            Kill                    ( void );
 
             void            Update                  ( void );
+            void            GetDebugStats           ( audio_debug_stats& Stats ) const;
             void            QueueStreamOpen         ( audio_stream* pStream );
 
             audio_stream*   AcquireStream           ( u32           WaveformOffset,

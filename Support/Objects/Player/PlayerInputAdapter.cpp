@@ -53,9 +53,6 @@ static const ingame_pad::logical_id s_PlayerActionToLogical[] =
     ingame_pad::ACTION_TALK_MODE_TOGGLE,
     ingame_pad::ACTION_FIRE_PARASITES,
     ingame_pad::ACTION_FIRE_CONTAGION,
-    ingame_pad::ACTION_MUTANT_MELEE,
-    ingame_pad::ACTION_MP_FLASHLIGHT,
-    ingame_pad::ACTION_MP_MUTATE,
     ingame_pad::ACTION_DROP_FLAG,
     ingame_pad::ACTION_SCOREBOARD,
 };

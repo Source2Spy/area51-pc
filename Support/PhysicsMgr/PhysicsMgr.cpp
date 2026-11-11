@@ -570,6 +570,22 @@ void physics_mgr::DetectSelfCollisions( physics_inst* pInst )
 // instances in the same zone, this is fast enough for our needs.
 void physics_mgr::DetectInstInstCollisions( physics_inst* pInst0 )
 {
+    X_PROFILE_SCOPE_CATEGORY( "Context", "physics_mgr::DetectInstInstCollisions" );
+
+    static xprofile_counter instancePairCandidates =
+        x_GetProfiler().RegisterCounter( "PhysicsInstancePairCandidates", "PhysicsCounter" );
+    static xprofile_counter instancePairOverlaps =
+        x_GetProfiler().RegisterCounter( "PhysicsInstancePairOverlaps", "PhysicsCounter" );
+    static xprofile_counter bodyPairCandidates =
+        x_GetProfiler().RegisterCounter( "PhysicsBodyPairCandidates", "PhysicsCounter" );
+    static xprofile_counter bodyPairBBoxHits =
+        x_GetProfiler().RegisterCounter( "PhysicsBodyPairBBoxHits", "PhysicsCounter" );
+
+    s32 InstancePairCandidates = 0;
+    s32 InstancePairOverlaps = 0;
+    s32 BodyPairCandidates = 0;
+    s32 BodyPairBBoxHits = 0;
+
     // Validate list management
     ASSERT( pInst0 );
     ASSERT( pInst0->m_isInitialized           == TRUE  );
@@ -585,6 +601,8 @@ void physics_mgr::DetectInstInstCollisions( physics_inst* pInst0 )
     physics_inst* pInst1 = m_AwakeInstances.GetNext( pInst0 );
     while( pInst1 )
     {
+        InstancePairCandidates++;
+
         // Validate list management
         ASSERT( pInst0 != pInst1 );
         ASSERT( pInst1->m_isInitialized           == TRUE  );
@@ -597,6 +615,8 @@ void physics_mgr::DetectInstInstCollisions( physics_inst* pInst0 )
             && ( pInst0->GetZone() == pInst1->GetZone() )       // Quick zone check
             && ( BBox0.Intersect( pInst1->GetWorldBBox() ) ) )  // Slow bbox check
         {
+            InstancePairOverlaps++;
+
             // Check all rigid bodies with other bodies in this instance
             for( s32 i = 0; i < pInst0->GetNRigidBodies(); i++ )
             {   
@@ -626,8 +646,11 @@ void physics_mgr::DetectInstInstCollisions( physics_inst* pInst0 )
 
                     // Do world bounding boxes overlap?
                     const bbox& BBox1  = pBody1->GetWorldBBox();
+                    BodyPairCandidates++;
                     if( BBox0.Intersect( BBox1 ) )
                     {
+                        BodyPairBBoxHits++;
+
                         // Detect collision between bodies       
                         PHYSICS_DEBUG_INC_COUNT( m_Profile.m_nBodyBodyCollTests );
 
@@ -650,6 +673,8 @@ void physics_mgr::DetectInstInstCollisions( physics_inst* pInst0 )
     pInst1 = m_SleepingInstances.GetHead();
     while( pInst1 )
     {
+        InstancePairCandidates++;
+
         // Validate list management
         ASSERT( pInst0 != pInst1 );
         ASSERT( pInst1->m_isInitialized           == TRUE  );
@@ -665,6 +690,8 @@ void physics_mgr::DetectInstInstCollisions( physics_inst* pInst0 )
             && ( pInst0->GetZone() == pInst1->GetZone() )      // Quick zone check
             && ( BBox0.Intersect( pInst1->GetWorldBBox() ) ) ) // Slow bbox check
         {
+            InstancePairOverlaps++;
+
             // Check all rigid bodies with other bodies in this instance
             for( s32 i = 0; i < pInst0->GetNRigidBodies(); i++ )
             {   
@@ -694,8 +721,11 @@ void physics_mgr::DetectInstInstCollisions( physics_inst* pInst0 )
 
                     // Do world bounding boxes overlap?
                     const bbox& BBox1  = pBody1->GetWorldBBox();
+                    BodyPairCandidates++;
                     if( BBox0.Intersect( BBox1 ) )
                     {
+                        BodyPairBBoxHits++;
+
                         // Detect collision between bodies
                         PHYSICS_DEBUG_INC_COUNT( m_Profile.m_nBodyBodyCollTests );
                         
@@ -716,12 +746,26 @@ void physics_mgr::DetectInstInstCollisions( physics_inst* pInst0 )
         // Check next instance
         pInst1 = pNextInst;
     }
+
+    instancePairCandidates.Add( InstancePairCandidates );
+    instancePairOverlaps.Add( InstancePairOverlaps );
+    bodyPairCandidates.Add( BodyPairCandidates );
+    bodyPairBBoxHits.Add( BodyPairBBoxHits );
 }
 
 //==============================================================================
 
 void physics_mgr::DetectInstActorCollisions( physics_inst* pInst )
 {
+    X_PROFILE_SCOPE_CATEGORY( "Context", "physics_mgr::DetectInstActorCollisions" );
+
+    static xprofile_counter actorPairCandidates =
+        x_GetProfiler().RegisterCounter( "PhysicsInstanceActorCandidates", "PhysicsCounter" );
+    static xprofile_counter actorPairOverlaps =
+        x_GetProfiler().RegisterCounter( "PhysicsInstanceActorOverlaps", "PhysicsCounter" );
+    s32 ActorPairCandidates = 0;
+    s32 ActorPairOverlaps = 0;
+
     // Validate list management
     ASSERT( pInst->m_isInitialized           == TRUE );
     ASSERT( pInst->m_bInAwakeList           == TRUE );
@@ -735,10 +779,14 @@ void physics_mgr::DetectInstActorCollisions( physics_inst* pInst )
     actor* pActor = actor::m_pFirstActive;
     while( pActor )
     {
+        ActorPairCandidates++;
+
         // Overlap?
         if(     ( pInst->GetZone() == pActor->GetZone1() ) // Quick zone check
             &&  ( BBox.Intersect( pActor->GetBBox() ) ) )
         {
+            ActorPairOverlaps++;
+
             // Setup global collision actor
             g_pCollisionActor = pActor;
 
@@ -754,15 +802,16 @@ void physics_mgr::DetectInstActorCollisions( physics_inst* pInst )
                 if( !pColl )
                     continue;
 
-                // Lookup actor collision radius (scale for 1st person player)
-                f32 CapsuleRadius = pActor->GetCollisionRadius();
-                if( pActor->GetType() == object::TYPE_PLAYER )
-                    CapsuleRadius *= 2.0f;
+                const f32 CapsuleHeight = pActor->GetCollisionHeight();
+                const f32 CapsuleRadius = x_min( pActor->GetCollisionRadius(), CapsuleHeight * 0.5f );
+                if( ( CapsuleHeight <= 0.0f ) || ( CapsuleRadius <= 0.0f ) )
+                {
+                    continue;
+                }
 
-                // Compute capsule
-                vector3 CapsuleBase   = pActor->GetPosition();
-                vector3 CapsuleStart  = CapsuleBase;
-                vector3 CapsuleEnd    = CapsuleBase + vector3( 0.0f, pActor->GetCollisionHeight(), 0.0f );
+                const vector3 CapsuleBase  = pActor->GetPosition();
+                const vector3 CapsuleStart = CapsuleBase + vector3( 0.0f, CapsuleRadius, 0.0f );
+                const vector3 CapsuleEnd   = CapsuleBase + vector3( 0.0f, CapsuleHeight - CapsuleRadius, 0.0f );
                 g_ActorBody.SetPosition( (CapsuleStart + CapsuleEnd) * 0.5f );
 
                 // Setup capsule collision shape (just setup start and end spheres)
@@ -789,6 +838,9 @@ void physics_mgr::DetectInstActorCollisions( physics_inst* pInst )
 
     // Clear global collision actor
     g_pCollisionActor = NULL;
+
+    actorPairCandidates.Add( ActorPairCandidates );
+    actorPairOverlaps.Add( ActorPairOverlaps );
 }
 
 //==============================================================================
@@ -1751,6 +1803,10 @@ void physics_mgr::Advance( f32 DeltaTime )
 {
     LOG_STAT( k_stats_Physics );
 
+    X_PROFILE_SCOPE_CATEGORY( "Context", "physics_mgr::Advance" );
+    static xprofile_counter physicsSubsteps =
+        x_GetProfiler().RegisterCounter( "PhysicsSubsteps", "PhysicsCounter" );
+
     ASSERTS( x_isvalid( DeltaTime ), "Physics received an invalid frame delta" );
     if( !x_isvalid( DeltaTime ) || (DeltaTime <= 0.0f) )
         return;
@@ -1798,6 +1854,7 @@ void physics_mgr::Advance( f32 DeltaTime )
     {
         Step( SubstepSeconds );
     }
+    physicsSubsteps.Add( nSubsteps );
     PHYSICS_DEBUG_STOP_TIMER( m_Profile.m_Advance );
 }
 
@@ -1949,6 +2006,7 @@ void physics_mgr::DebugText( s32 X, s32 Y, xcolor Color, const char* pFormatStr,
     x_va_list   Args;
     x_va_start( Args, pFormatStr );
     xvfs XVFS( pFormatStr, Args );
+    x_va_end( Args );
 
 #ifndef X_EDITOR
     // UI manager present?
@@ -1956,8 +2014,9 @@ void physics_mgr::DebugText( s32 X, s32 Y, xcolor Color, const char* pFormatStr,
     {    
         // Compute text screen position
         irect TextPos;
-        TextPos.l = 8 + ( X * 18 );
-        TextPos.t = 18 + ( Y * 17 );
+        const irect Bounds = g_UIRenderer.GetViewport().GetLogicalClipBounds();
+        TextPos.l = Bounds.l + 8 + ( X * 18 );
+        TextPos.t = Bounds.t + 18 + ( Y * 17 );
         TextPos.r = TextPos.l + 400;
         TextPos.b = TextPos.t + 20;
     
@@ -1968,7 +2027,7 @@ void physics_mgr::DebugText( s32 X, s32 Y, xcolor Color, const char* pFormatStr,
 #endif    
     
     // Use x files (will not appear in X_RETAIL builds!)
-    x_printfxy( X,Y, XVFS );
+    x_printfxy( X,Y, "%s", (const char*)XVFS );
 }
 
 //==============================================================================

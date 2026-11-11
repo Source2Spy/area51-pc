@@ -19,8 +19,10 @@
 #include "Render/Texture.hpp"
 #include "e_Input.hpp"
 #include "ui_renderer.hpp"
+#include "Font/Font.hpp"
 
 class ui_manager;
+struct ui_text_data;
 
 //==============================================================================
 //  ui_font
@@ -63,64 +65,39 @@ public:
         s_fade_out      = 0x0008
     };
 
-#pragma pack(2)
-    struct Character
-    {
-        u16     X;
-        u16     Y;
-        u16     W;
-    };
+protected:
 
-    struct charmap
-    {
-        u16     character;
-        u16     bitmap;
-    };
-#pragma pack()
-
+    void                RenderLayout        ( const irect& Rect,
+                                              u32 Flags,
+                                              const xcolor& Color,
+                                              const TextLayout& Layout,
+                                              xbool UseGradient,
+                                              f32 FlareAmount,
+                                              const CustomRenderStruct* pStateData = NULL ) const;
 
 protected:
-    struct glyph_quad
-    {
-        f32 X0;
-        f32 Y0;
-        f32 X1;
-        f32 Y1;
-        f32 U0;
-        f32 V0;
-        f32 U1;
-        f32 V1;
-    };
 
-    static glyph_quad   MakeGlyphQuad       ( f32 X0, f32 Y0, f32 X1, f32 Y1, f32 U0, f32 V0, f32 U1, f32 V1 );
-    static void         RenderGlyphQuad     ( const texture& Texture, const glyph_quad& Quad, const xcolor& TopColor, const xcolor& BottomColor, ui_blend_mode Blend );
-    static void         RenderGlyphSprite   ( const texture& Texture, const glyph_quad& Quad, const xcolor& Color, ui_blend_mode Blend );
-
-    rhandle<texture>    m_bitmap;
-    s32                 m_BmWidth;
-    s32                 m_BmHeight;
-    s32                 m_AvgWidth;
-    s32                 m_Height;
-    Character*          m_Characters;
-    charmap*            m_CMap;
-    s32                 m_CMapSize; 
-    s32                 m_NumChars;
+    FontHandle          m_Font;
     ui_manager*         m_pManager;
+    mutable xwstring    m_ClippedText;
 
 public:
-    xbool               Load                ( ui_manager* pManager, const char* pPathName );
+
+    xbool               Load                ( ui_manager* pManager, const char* pPathName, const char* pName );
     void                Kill                ( void );
+
     void                TextSize            ( irect& Rect, const   char* pString, s32 Count = -1 ) const;
     void                TextSize            ( irect& Rect, const xwchar* pString, s32 Count = -1 ) const;
     s32                 TextWidth           (              const xwchar* pString, s32 Count = -1 ) const;
     s32                 TextHeight          (              const xwchar* pString, s32 Count = -1 ) const;
-    u32                 LookUpCharacter     ( u32 c ) const;
-    const Character&    GetCharacter        ( s32 Index ) const;
-    s32                 GetLineHeight       ( void ) const { return m_Height; };
-    const xwchar*       ClipEllipsis        ( const xwchar* pString, const irect& Rect ) const;
+    f32                 GetGlyphAdvance     ( u32 Codepoint ) const;
+    s32                 GetLineHeight       ( void ) const;
+
+    const xwchar*        ClipEllipsis        ( const xwchar* pString, const irect& Rect ) const;
     void                TextWrap            ( const xwchar* pString, const irect& Rect, xwstring& WrappedString );
+    void                TextWrap            ( const ui_text_data& Text, const irect& Rect, ui_text_data& Wrapped );
 
-
+    void                RenderText          ( const irect& R, u32 Flags, const xcolor& Color, const ui_text_data& Text, xbool UseGradient = TRUE, f32 FlareAmount = 0.0f ) const;
     void                RenderText          ( const irect& R, u32 Flags, const xcolor& Color, const   char* pString, xbool IgnoreEmbeddedColor = TRUE, xbool UseGradient = TRUE, f32 FlareAmount = 0.0f ) const;
     void                RenderText          ( const irect& R, u32 Flags, const xcolor& Color, const xwchar* pString, xbool IgnoreEmbeddedColor = TRUE, xbool UseGradient = TRUE, f32 FlareAmount = 0.0f ) const;
     void                RenderText          ( const irect& R, u32 Flags,       s32     Alpha, const xwchar* pString, xbool IgnoreEmbeddedColor = TRUE, xbool UseGradient = TRUE, f32 FlareAmount = 0.0f ) const;

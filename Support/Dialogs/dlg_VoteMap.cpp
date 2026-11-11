@@ -46,18 +46,6 @@ ui_manager::dialog_tem VoteMapDialog =
 };
 
 //=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
-
-//=========================================================================
 //  Registration function
 //=========================================================================
 
@@ -144,9 +132,11 @@ xbool dlg_vote_map::Create( s32                        UserID,
         if( Entry.IsAvailable() && (Entry.GetGameType() != GAME_CAMPAIGN) )
         {
             // build the full map name (includes the game type)
-            xwstring FullMapName( xfs( "%s %s", Entry.GetShortGameTypeName(), Entry.GetDisplayName() ) );                    
-            // add an entry to the list
-            m_pMapList->AddItem( FullMapName, (uaddr)&Entry );
+            xwstring FullMapName;
+            if( DecodeFontText( xfs( "%s %s", Entry.GetShortGameTypeName(), Entry.GetDisplayName() ), FullMapName ) )
+            {
+                m_pMapList->AddItem( FullMapName, (uaddr)&Entry );
+            }
         }
     }
     // sort the list

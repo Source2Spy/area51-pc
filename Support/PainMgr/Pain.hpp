@@ -31,6 +31,12 @@ class pain
 
 public:
 
+    enum impact_type
+    {
+        IMPACT_DIRECT,
+        IMPACT_EXPLOSION
+    };
+
     pain(void);
     ~pain(void);
 
@@ -49,6 +55,8 @@ public:
     // These routines provide additional information (if available) to later inquiries
     void SetDirection           ( const vector3& Direction ); 
     void SetDirectHitGuid       ( guid DirectHitGuid );
+    // Classifies the source independently of profile falloff and direct-hit targets.
+    void SetImpactType          ( impact_type Type );
     void SetCustomScalar        ( f32 CustomScalar );
     void SetCollisionInfo       ( const collision_mgr::collision& CollisionInfo );
     void SetAnimEventID         ( s32 AnimEventID );
@@ -71,6 +79,7 @@ public:
     const vector3&      GetImpactPoint      ( void ) const;
     const vector3&      GetImpactNormal     ( void ) const;
     xbool               IsDamageComputed    ( void ) const;
+    xbool               IsExplosion         ( void ) const; // Independent of a direct-hit target
 
     // The collision info provides a number of useful values
     // - ObjectHit guid
@@ -114,6 +123,7 @@ private:
 
     // Values set by Setup()
     pain_handle                 m_PainHandle;
+    impact_type                 m_ImpactType;
     vector3                     m_Position;
     bbox                        m_PainBBox;
     guid                        m_OriginGuid;

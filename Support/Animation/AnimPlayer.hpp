@@ -77,6 +77,7 @@ public:
                                 
     f32                         GetFrame            ( void ) const;
     f32                         GetPrevFrame        ( void ) const;
+    xbool                       HasCameraCut        ( s32 iBone );
     s32                         GetCycle            ( void ) const;
     s32                         GetPrevCycle        ( void ) const;
     f32                         GetRate             ( void ) const;

@@ -1,4 +1,7 @@
-
+//==============================================================================
+//
+//  music_mgr.cpp
+//
 //==============================================================================
 //  INCLUDES
 //==============================================================================
@@ -12,7 +15,10 @@
 #include "ResourceMgr/ResourceMgr.hpp"
 #include <stdio.h>
 #include "x_string.hpp"
-#include "PerceptionMgr/PerceptionMgr.hpp"
+
+//==============================================================================
+//  STORAGE
+//==============================================================================
 
 music_mgr g_MusicMgr;
 
@@ -20,31 +26,45 @@ music_mgr::music_mgr( void )
 {
 }
 
+//==============================================================================
+
 music_mgr::~music_mgr( void )
 {
 }
 
+//==============================================================================
+
 void music_mgr::Init( void )
 {
-    m_bIsLooping        = FALSE;
-    m_bIsWarming        = FALSE;
-    m_bIsSilent         = TRUE;
-    m_bInTransition     = FALSE;
-    m_bStartTransition  = FALSE;
-    m_CurrentTrack[0]   = 0;
-    m_TransTrack[0]     = 0;
-    m_CurrentVoiceID    = 0;
-    m_TransVoiceID      = 0;
-    m_Volume            = 1.0f;
-    m_TransMode         = SWITCH_NONE;
+    g_AudioMgr.CancelRequest( m_pBreakPointRequest );
+
+    m_BreakPointVoiceID = 0;
+    m_BreakPoints.SetCount( 0 );
+    m_BreakPointsReady = FALSE;
+
+    m_bIsLooping       = FALSE;
+    m_bIsWarming       = FALSE;
+    m_bIsSilent        = TRUE;
+    m_bInTransition    = FALSE;
+    m_bStartTransition = FALSE;
+    m_CurrentTrack[0]  = 0;
+    m_TransTrack[0]    = 0;
+    m_CurrentVoiceID   = 0;
+    m_TransVoiceID     = 0;
+    m_Volume           = 1.0f;
+    m_TransMode        = SWITCH_NONE;
 }
+
+//==============================================================================
 
 void music_mgr::Kill( void )
 {
     g_AudioMgr.Release( m_CurrentVoiceID, 0.0f );
-    g_AudioMgr.Release( m_TransVoiceID,   0.0f );
+    g_AudioMgr.Release( m_TransVoiceID, 0.0f );
     Init();
 }
+
+//==============================================================================
 
 xbool music_mgr::Request( char* pTrackName,
                           s32   TransitionMode,
@@ -54,11 +74,11 @@ xbool music_mgr::Request( char* pTrackName,
                           xbool bLoop )
 {
     // Playing the same track? If so, dont do a damn thing (but act like you did!)
-    if( (x_stricmp( m_CurrentTrack, pTrackName ) == 0) && !m_bIsSilent )
+    if( ( x_stricmp( m_CurrentTrack, pTrackName ) == 0 ) && !m_bIsSilent )
         return TRUE;
 
     // Ignore null or empty tracknames.
-    if( (pTrackName == NULL) || (*pTrackName == 0) )
+    if( ( pTrackName == NULL ) || ( *pTrackName == 0 ) )
         return TRUE;
 
     // Is it an invalid descriptor? Pretend everything is great!
@@ -75,14 +95,27 @@ xbool music_mgr::Request( char* pTrackName,
     if( bTransition )
     {
         const char* pText = "???";
+
         switch( TransitionMode )
         {
-            case SWITCH_END_OF_TRACK: pText = "EndOfTrack"; break;
-            case SWITCH_BREAKPOINT:   pText = "Breakpoint"; break;
-            case SWITCH_IMMEDIATE:    pText = "Immediate";  break;
-            case SWITCH_VOLUME_FADE:  pText = "VolumeFade"; break;                                          
+            case SWITCH_END_OF_TRACK:
+                pText = "EndOfTrack";
+                break;
+
+            case SWITCH_BREAKPOINT:
+                pText = "Breakpoint";
+                break;
+
+            case SWITCH_IMMEDIATE:
+                pText = "Immediate";
+                break;
+
+            case SWITCH_VOLUME_FADE:
+                pText = "VolumeFade";
+                break;
         }
-        LOG_MESSAGE( "music_mgr::Request", 
+
+        LOG_MESSAGE( "music_mgr::Request",
                      "TRANSITION! Mode: %s(%d), Track: %s, FadeOut: %6.3f, Silence: %6.3f, FadeIn: %6.3f",
                      pText, TransitionMode, pTrackName, FadeOutTime, DelayTime, FadeInTime );
         LOG_FLUSH();
@@ -92,16 +125,18 @@ xbool music_mgr::Request( char* pTrackName,
 
         // Set up the transition.
         x_strcpy( m_TransTrack, pTrackName );
-        m_TransMode         = TransitionMode;
-        m_TransFadeOutTime  = FadeOutTime;
-        m_TransDelayTime    = DelayTime;
-        m_TransFadeInTime   = FadeInTime;
-        m_TransIsLooped     = bLoop;
+        m_TransMode        = TransitionMode;
+        m_TransFadeOutTime = FadeOutTime;
+        m_TransDelayTime   = DelayTime;
+        m_TransFadeInTime  = FadeInTime;
+        m_TransIsLooped    = bLoop;
     }
 
     // Tell the world.
     return bTransition;
 }
+
+//==============================================================================
 
 xbool music_mgr::CanTransition( s32 TransitionMode, f32& FadeOutTime )
 {
@@ -121,13 +156,13 @@ xbool music_mgr::CanTransition( s32 TransitionMode, f32& FadeOutTime )
         {
             // Gotta wait for these to complete, no exceptions!
             case SWITCH_END_OF_TRACK:
-            case SWITCH_BREAKPOINT: 
+            case SWITCH_BREAKPOINT:
             case SWITCH_IMMEDIATE:
                 return FALSE;
 
             // Can only break out of SWITCH_VOLUME_FADE if the new transition is SWITCH_IMMEDIATE.
             case SWITCH_VOLUME_FADE:
-                return (TransitionMode == SWITCH_IMMEDIATE);
+                return ( TransitionMode == SWITCH_IMMEDIATE );
 
             // First time?
             case SWITCH_NONE:
@@ -145,43 +180,73 @@ xbool music_mgr::CanTransition( s32 TransitionMode, f32& FadeOutTime )
     s32  nBreakPoints = 0;
 
     // Calculate length, playtime and remaining time.
-    f32 Length        = g_AudioMgr.GetLengthSeconds( m_CurrentVoiceID );
-    f32 PlayTime      = g_AudioMgr.GetCurrentPlayTime( m_CurrentVoiceID );
+    audio_voice_state CurrentState;
+    g_AudioMgr.GetVoiceStateCached( m_CurrentVoiceID, CurrentState );
+
+    if( CurrentState.Pending )
+        return FALSE;
+
+    if( !CurrentState.Valid )
+        return TRUE;
+
+    f32 Length        = CurrentState.Length;
+    f32 PlayTime      = CurrentState.PlayTime;
     f32 RemainingTime = Length - PlayTime;
 
     switch( TransitionMode )
     {
         case SWITCH_BREAKPOINT:
             // Get the number and address for the breakpoints.
-            nBreakPoints = g_AudioMgr.GetBreakPoints( m_CurrentVoiceID, pBreakPoints );
+            if( m_BreakPointVoiceID != m_CurrentVoiceID )
+            {
+                g_AudioMgr.CancelRequest( m_pBreakPointRequest );
+                m_BreakPointVoiceID = m_CurrentVoiceID;
+                m_BreakPointsReady  = FALSE;
+                m_BreakPoints.SetCount( 0 );
+            }
+
+            // The request is asynchronous; retry on later updates until ready.
+            if( !m_BreakPointsReady )
+            {
+                if( !m_pBreakPointRequest )
+                    m_pBreakPointRequest = g_AudioMgr.RequestBreakPoints( m_CurrentVoiceID );
+
+                if( !g_AudioMgr.PollBreakPoints( m_pBreakPointRequest, m_BreakPoints ) )
+                    return FALSE;
+
+                m_BreakPointsReady = TRUE;
+            }
+
+            nBreakPoints = m_BreakPoints.GetCount();
+            pBreakPoints = nBreakPoints ? m_BreakPoints.GetPtr() : NULL;
 
             // Lets find the breakpoint.
-            for( s32 i=0 ; i<nBreakPoints ; i++ )
+            for( s32 i = 0; i < nBreakPoints; i++ )
             {
                 // Calculate time until this break point.
-                f32 Time = *(pBreakPoints+i) - PlayTime;
+                f32 Time = *( pBreakPoints + i ) - PlayTime;
 
                 // Inside the window?
-                if( (Time > MINIMUM_TRANSITION_TIME) && (Time < MINIMUM_TRANSITION_TIME+MINIMUM_TRANSITION_DELTA) )
+                if( ( Time > MINIMUM_TRANSITION_TIME ) && ( Time < MINIMUM_TRANSITION_TIME + MINIMUM_TRANSITION_DELTA ) )
                 {
                     // Note the breakpoint.
-                    m_TransBreakPoint = *(pBreakPoints+i);
+                    m_TransBreakPoint = *( pBreakPoints + i );
 
                     // Transition baby!
                     return TRUE;
                 }
             }
-            
+
             //=======================================================
             // No good breakpoint found? *FALL THRU* to end of track!
             //=======================================================
 
         case SWITCH_END_OF_TRACK:
-            // Time to start transition? 
-            if( RemainingTime < (MINIMUM_TRANSITION_TIME+MINIMUM_TRANSITION_DELTA) )
+            // Time to start transition?
+            if( RemainingTime < ( MINIMUM_TRANSITION_TIME + MINIMUM_TRANSITION_DELTA ) )
             {
                 // If we *can* loop and we are cutting it close, then chill out.
-                if( m_bIsLooping && (RemainingTime < MINIMUM_TRANSITION_TIME) )
+                if( m_bIsLooping && ( RemainingTime < MINIMUM_TRANSITION_TIME ) )
                 {
                     // Wait for the loop to start again...
                     return FALSE;
@@ -207,7 +272,7 @@ xbool music_mgr::CanTransition( s32 TransitionMode, f32& FadeOutTime )
         // Can always SWITCH_VOLUME_FADE
         case SWITCH_VOLUME_FADE:
             // Is the fade out too long for a non-looped track? Clamp it!
-            if( (FadeOutTime > RemainingTime) && !m_bIsLooping )
+            if( ( FadeOutTime > RemainingTime ) && !m_bIsLooping )
                 FadeOutTime = RemainingTime;
 
             // Woot! All good!
@@ -223,6 +288,8 @@ xbool music_mgr::CanTransition( s32 TransitionMode, f32& FadeOutTime )
     return FALSE;
 }
 
+//==============================================================================
+
 void music_mgr::StartTransition( void )
 {
     // Do different stuff based on transition mode.
@@ -232,11 +299,12 @@ void music_mgr::StartTransition( void )
         case SWITCH_BREAKPOINT:
         case SWITCH_IMMEDIATE:
             // Special case for UpdateTransition.
-            m_bImmediateSwitch = (m_TransMode == SWITCH_IMMEDIATE);
+            m_bImmediateSwitch = ( m_TransMode == SWITCH_IMMEDIATE );
 
             // Better not be in transition!
             ASSERT( !m_bIsWarming );
-            if( g_AudioMgr.IsValidVoiceId( m_TransVoiceID ) )
+
+            if( g_AudioMgr.IsValidVoiceIdCached( m_TransVoiceID ) )
             {
                 // Should never get here!
                 ASSERT( 0 );
@@ -266,8 +334,8 @@ void music_mgr::StartTransition( void )
                 if( !m_bIsSilent )
                 {
                     LOG_MESSAGE( "music_mgr::StartTransition",
-                                  "Segue: %08x -> %08x",
-                                  m_CurrentVoiceID, m_TransVoiceID );
+                                 "Segue: %08x -> %08x",
+                                 m_CurrentVoiceID, m_TransVoiceID );
 
                     // Set up the segue.
                     g_AudioMgr.Segue( m_CurrentVoiceID, m_TransVoiceID );
@@ -280,6 +348,7 @@ void music_mgr::StartTransition( void )
                     }
                 }
             }
+
             LOG_FLUSH();
             break;
 
@@ -307,6 +376,7 @@ void music_mgr::StartTransition( void )
                 // Start the fade out.
                 m_EnvelopeState = VOLUME_FADEOUT;
             }
+
             break;
 
         default:
@@ -322,13 +392,15 @@ void music_mgr::StartTransition( void )
     m_bInTransition = TRUE;
 }
 
+//==============================================================================
+
 void music_mgr::UpdateTransition( f32 DeltaTime )
 {
     switch( m_TransMode )
     {
         case SWITCH_IMMEDIATE:
-            // Transition voice valid? 
-            if( g_AudioMgr.IsValidVoiceId( m_TransVoiceID ) )
+            // Transition voice valid?
+            if( g_AudioMgr.IsValidVoiceIdCached( m_TransVoiceID ) )
             {
                 // All warmed up?
                 if( g_AudioMgr.GetIsReady( m_TransVoiceID ) )
@@ -344,6 +416,7 @@ void music_mgr::UpdateTransition( f32 DeltaTime )
                     }
                 }
             }
+
             // Transition voice is invalid! How?
             else
             {
@@ -353,6 +426,7 @@ void music_mgr::UpdateTransition( f32 DeltaTime )
                 // Safety (retail build) - Force transition done!
                 m_bInTransition = FALSE;
             }
+
             break;
 
         case SWITCH_VOLUME_FADE:
@@ -367,7 +441,7 @@ void music_mgr::UpdateTransition( f32 DeltaTime )
                         f32 TimeToFadeIn = m_TransFadeOutTime + m_TransDelayTime - m_EnvelopeTime;
 
                         // Time to start warming up?
-                        if( TimeToFadeIn < (MINIMUM_TRANSITION_TIME+MINIMUM_TRANSITION_DELTA) )
+                        if( TimeToFadeIn < ( MINIMUM_TRANSITION_TIME + MINIMUM_TRANSITION_DELTA ) )
                         {
                             // Dont warm it up again!
                             m_bWarmFadeIn = FALSE;
@@ -382,6 +456,7 @@ void music_mgr::UpdateTransition( f32 DeltaTime )
                                 // Woot, we are warming it up!
                                 m_bIsWarming = TRUE;
                             }
+
                             // Safety (retail build) - Don't get stuck in a transition.
                             else
                             {
@@ -398,7 +473,7 @@ void music_mgr::UpdateTransition( f32 DeltaTime )
                     m_EnvelopeTime += DeltaTime;
 
                     // Volume fade out complete?
-                    if( (m_EnvelopeTime >= m_TransFadeOutTime) || (m_TransFadeOutTime <= 0.0f) )
+                    if( ( m_EnvelopeTime >= m_TransFadeOutTime ) || ( m_TransFadeOutTime <= 0.0f ) )
                     {
                         // Silent!
                         m_Volume = 0.0f;
@@ -415,8 +490,9 @@ void music_mgr::UpdateTransition( f32 DeltaTime )
                     else
                     {
                         // Calculate the new volume.
-                        m_Volume = (m_TransFadeOutTime - m_EnvelopeTime) / m_TransFadeOutTime;
+                        m_Volume = ( m_TransFadeOutTime - m_EnvelopeTime ) / m_TransFadeOutTime;
                     }
+
                     break;
 
                 case VOLUME_SILENT:
@@ -430,7 +506,7 @@ void music_mgr::UpdateTransition( f32 DeltaTime )
                         f32 TimeToFadeIn = m_TransDelayTime - m_EnvelopeTime;
 
                         // Time to start warming up?
-                        if( TimeToFadeIn < (MINIMUM_TRANSITION_TIME+MINIMUM_TRANSITION_DELTA) )
+                        if( TimeToFadeIn < ( MINIMUM_TRANSITION_TIME + MINIMUM_TRANSITION_DELTA ) )
                         {
                             // Dont warm it up again!
                             m_bWarmFadeIn = FALSE;
@@ -445,6 +521,7 @@ void music_mgr::UpdateTransition( f32 DeltaTime )
                                 // Woot, we are warming it up!
                                 m_bIsWarming = TRUE;
                             }
+
                             // Safety (retail build) - Don't get stuck in a transition.
                             else
                             {
@@ -461,7 +538,7 @@ void music_mgr::UpdateTransition( f32 DeltaTime )
                     m_EnvelopeTime += DeltaTime;
 
                     // Silent long enough?
-                    if( (m_EnvelopeTime >= m_TransDelayTime) || (m_TransDelayTime <= 0.0f) )
+                    if( ( m_EnvelopeTime >= m_TransDelayTime ) || ( m_TransDelayTime <= 0.0f ) )
                     {
                         // Reset time for next state.
                         m_EnvelopeTime = 0.0f;
@@ -469,6 +546,7 @@ void music_mgr::UpdateTransition( f32 DeltaTime )
                         // Change states.
                         m_EnvelopeState = VOLUME_FADEIN;
                     }
+
                     break;
 
                 case VOLUME_FADEIN:
@@ -479,8 +557,8 @@ void music_mgr::UpdateTransition( f32 DeltaTime )
                         if( m_bStartFadeIn )
                         {
                             // Is the fade in too long for a non-looped track? Clamp it!
-                            if( (m_TransFadeInTime > g_AudioMgr.GetLengthSeconds( m_TransVoiceID )) && !m_TransIsLooped )
-                                 m_TransFadeInTime = g_AudioMgr.GetLengthSeconds( m_TransVoiceID );
+                            if( ( m_TransFadeInTime > g_AudioMgr.GetLengthSecondsCached( m_TransVoiceID ) ) && !m_TransIsLooped )
+                                m_TransFadeInTime = g_AudioMgr.GetLengthSecondsCached( m_TransVoiceID );
 
                             // Clear flag.
                             m_bStartFadeIn = FALSE;
@@ -498,7 +576,7 @@ void music_mgr::UpdateTransition( f32 DeltaTime )
                             m_EnvelopeTime += DeltaTime;
 
                             // Volume fade in complete?
-                            if( (m_EnvelopeTime >= m_TransFadeInTime) || (m_TransFadeInTime <= 0.0f) )
+                            if( ( m_EnvelopeTime >= m_TransFadeInTime ) || ( m_TransFadeInTime <= 0.0f ) )
                             {
                                 // Full volume!
                                 m_Volume = 1.0f;
@@ -509,10 +587,11 @@ void music_mgr::UpdateTransition( f32 DeltaTime )
                             else
                             {
                                 // Calculate the new volume.
-                                m_Volume = 1.0f - ((m_TransFadeInTime - m_EnvelopeTime) / m_TransFadeInTime);
+                                m_Volume = 1.0f - ( ( m_TransFadeInTime - m_EnvelopeTime ) / m_TransFadeInTime );
                             }
                         }
-                    }        
+                    }
+
                     break;
 
                 default:
@@ -523,6 +602,7 @@ void music_mgr::UpdateTransition( f32 DeltaTime )
                     m_bInTransition = FALSE;
                     break;
             }
+
             break;
 
         case SWITCH_END_OF_TRACK:
@@ -540,38 +620,38 @@ void music_mgr::UpdateTransition( f32 DeltaTime )
     }
 }
 
-void music_mgr::UpdateNormal( void )
+//==============================================================================
+
+void music_mgr::UpdateNormal( const audio_voice_state& CurrentState )
 {
-    f32 Pitch = 1.0f / g_PerceptionMgr.GetAudioTimeDialation();
+    if( CurrentState.Pending )
+        return;
 
     // Update the volume (for fades).
     g_AudioMgr.SetVolume( m_CurrentVoiceID, m_Volume );
-    g_AudioMgr.SetPitch ( m_CurrentVoiceID, Pitch );
     g_AudioMgr.SetVolume( m_TransVoiceID, m_Volume );
-    g_AudioMgr.SetPitch ( m_TransVoiceID, Pitch );
 
     // Current track voice valid?
-    if( g_AudioMgr.IsValidVoiceId( m_CurrentVoiceID ) )
+    if( CurrentState.Valid )
     {
         //==================================================================================
         // This code loops the current track when we get near the end of the current track.
         //
         // NOTE: Looping is only possible if we are not warming up a track. This means that
         //       looping will not occur when we are warming up an END_OF_TRACK, BREAKPOINT
-        //       or IMMEDIATE transition track.  This should not present a problem as 
-        //       transition permission is not granted unless there is time to perform the 
+        //       or IMMEDIATE transition track.  This should not present a problem as
+        //       transition permission is not granted unless there is time to perform the
         //       specified transition.
         //==================================================================================
 
-        // Looped? Not warming? 
+        // Looped? Not warming?
         if( m_bIsLooping && !m_bIsWarming )
-        {      
+        {
             // Calculate the remaining time.
-            f32 RemainingTime = g_AudioMgr.GetLengthSeconds( m_CurrentVoiceID ) - 
-                                g_AudioMgr.GetCurrentPlayTime( m_CurrentVoiceID );
+            f32 RemainingTime = CurrentState.Length - CurrentState.PlayTime;
 
             // Close to end of track?
-            if( RemainingTime < (MINIMUM_TRANSITION_TIME+MINIMUM_TRANSITION_DELTA) )
+            if( RemainingTime < ( MINIMUM_TRANSITION_TIME + MINIMUM_TRANSITION_DELTA ) )
             {
                 // Attempt to warm that bad boy up.
                 m_TransVoiceID = g_AudioMgr.Play( m_CurrentTrack, FALSE );
@@ -603,7 +683,7 @@ void music_mgr::UpdateNormal( void )
         if( m_bIsWarming )
         {
             // This voice should always be valid (Survive in retail builds).
-            if( !g_AudioMgr.IsValidVoiceId( m_TransVoiceID ) )
+            if( !g_AudioMgr.IsValidVoiceIdCached( m_TransVoiceID ) )
             {
                 x_DebugMsg( "m_TransVoiceID: %08x\n", m_TransVoiceID );
 
@@ -625,7 +705,7 @@ void music_mgr::UpdateNormal( void )
             }
 
             // Is the transition track playing? (this means the segue fired)
-            if( g_AudioMgr.GetCurrentPlayTime( m_TransVoiceID ) > 0.0f )
+            if( g_AudioMgr.GetCurrentPlayTimeCached( m_TransVoiceID ) > 0.0f )
             {
                 // New current voice!
                 m_CurrentVoiceID = m_TransVoiceID;
@@ -636,6 +716,7 @@ void music_mgr::UpdateNormal( void )
                 LOG_MESSAGE( "music_mgr::UpdateNormal",
                              "Transition is playing! (segue/autostart)" );
             }
+
             // Is the transition track ready? (no segue/segue failed, so need to manually start the track)
             else if( g_AudioMgr.GetIsReady( m_TransVoiceID ) )
             {
@@ -655,7 +736,7 @@ void music_mgr::UpdateNormal( void )
             LOG_FLUSH();
 
             // Still warming or done?
-            m_bIsWarming = (m_TransVoiceID != 0);
+            m_bIsWarming = ( m_TransVoiceID != 0 );
 
             // Transition done?
             if( m_bInTransition && !m_bIsWarming )
@@ -672,8 +753,8 @@ void music_mgr::UpdateNormal( void )
         else
         {
             // This voice should be invalid!
-            ASSERT( !g_AudioMgr.IsValidVoiceId( m_TransVoiceID ) );
-            
+            ASSERT( !g_AudioMgr.IsValidVoiceIdCached( m_TransVoiceID ) );
+
             // For safety (retail) - no losing voices!
             g_AudioMgr.Release( m_TransVoiceID, 0.0f );
 
@@ -682,6 +763,8 @@ void music_mgr::UpdateNormal( void )
         }
     }
 }
+
+//==============================================================================
 
 void music_mgr::Update( f32 DeltaTime )
 {
@@ -692,8 +775,13 @@ void music_mgr::Update( f32 DeltaTime )
     }
 #endif
 
+    audio_voice_state CurrentState;
+    g_AudioMgr.GetVoiceStateCached( m_CurrentVoiceID, CurrentState );
+
     // Update silent flag on entry.
-    m_bIsSilent = !g_AudioMgr.IsValidVoiceId( m_CurrentVoiceID );
+    m_bIsSilent = !CurrentState.Valid;
+
+    xbool bRefreshState = m_bStartTransition || m_bInTransition;
 
     // Start a transition?
     if( m_bStartTransition )
@@ -703,9 +791,16 @@ void music_mgr::Update( f32 DeltaTime )
     if( m_bInTransition )
         UpdateTransition( DeltaTime );
 
+    if( bRefreshState )
+        g_AudioMgr.GetVoiceStateCached( m_CurrentVoiceID, CurrentState );
+
     // Normal update.
-    UpdateNormal();
+    voice_id CurrentVoiceID = m_CurrentVoiceID;
+    UpdateNormal( CurrentState );
+
+    if( CurrentVoiceID != m_CurrentVoiceID )
+        g_AudioMgr.GetVoiceStateCached( m_CurrentVoiceID, CurrentState );
 
     // Update silent flag on exit.
-    m_bIsSilent = !g_AudioMgr.IsValidVoiceId( m_CurrentVoiceID );
+    m_bIsSilent = !CurrentState.Valid;
 }

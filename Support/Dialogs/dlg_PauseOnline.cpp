@@ -15,14 +15,12 @@
 #include "dlg_PauseOnline.hpp"
 #include "StateMgr/StateMgr.hpp"
 #include "StringMgr/StringMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "Objects/Player/Player.hpp"
 
 //=========================================================================
 //  Main Menu Dialog
 //=========================================================================
-static const s32 FrY = 160;     // Friends Y
-static const s32 IcY = FrY + 3; // Friends Invite Icons Y
 
 ui_manager::control_tem PauseOnlineControls[] = 
 {
@@ -31,42 +29,22 @@ ui_manager::control_tem PauseOnlineControls[] =
     { IDC_PAUSE_ONLINE_SWITCH_TEAM,    "IDS_ONLINE_PAUSE_SWITCH_TEAM",     "button",  110,  70, 120, 30, 0, 1, 1, 1, ui_win::WF_VISIBLE },
     { IDC_PAUSE_ONLINE_VOTE_MAP,    "IDS_ONLINE_PAUSE_VOTE_MAP",        "button",  110, 100, 120, 30, 0, 2, 1, 1, ui_win::WF_VISIBLE },
     { IDC_PAUSE_ONLINE_VOTE_KICK,   "IDS_ONLINE_PAUSE_VOTE_KICK",       "button",  110, 130, 120, 30, 0, 3, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_PAUSE_ONLINE_FRIENDS,     "IDS_ONLINE_PAUSE_FRIENDS",         "button",  110, FrY, 120, 30, 0, 4, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_PAUSE_ONLINE_PLAYERS,     "IDS_ONLINE_PAUSE_PLAYERS",         "button",  110, 190, 120, 30, 0, 5, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_PAUSE_ONLINE_OPTIONS,        "IDS_ONLINE_PAUSE_OPTIONS",         "button",  110, 220, 120, 30, 0, 6, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_PAUSE_ONLINE_SETTINGS,    "IDS_ONLINE_PAUSE_SETTINGS",        "button",  110, 250, 120, 30, 0, 7, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_PAUSE_ONLINE_CONFIG,      "IDS_ONLINE_PAUSE_SERVER_CONFIG",   "button",  110, 280, 120, 30, 0, 8, 1, 1, ui_win::WF_VISIBLE },
-#if defined( TARGET_XBOX )
-    { IDC_PAUSE_ONLINE_FRIEND_INV,  "IDS_NULL",                         "bitmap",   30, IcY,  26, 26, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_PAUSE_ONLINE_GAME_INV,    "IDS_NULL",                         "bitmap",  204, IcY,  26, 26, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-#endif
+    { IDC_PAUSE_ONLINE_PLAYERS,     "IDS_ONLINE_PAUSE_PLAYERS",         "button",  110, 160, 120, 30, 0, 4, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_PAUSE_ONLINE_OPTIONS,        "IDS_ONLINE_PAUSE_OPTIONS",         "button",  110, 190, 120, 30, 0, 5, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_PAUSE_ONLINE_SETTINGS,    "IDS_ONLINE_PAUSE_SETTINGS",        "button",  110, 220, 120, 30, 0, 6, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_PAUSE_ONLINE_CONFIG,      "IDS_ONLINE_PAUSE_SERVER_CONFIG",   "button",  110, 250, 120, 30, 0, 7, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_PAUSE_ONLINE_QUIT,        "IDS_PAUSE_MENU_QUIT",              "button",  110, 280, 120, 30, 0, 8, 1, 1, ui_win::WF_VISIBLE },
 };
 
 
 ui_manager::dialog_tem PauseOnlineDialog =
 {
-#if defined(TARGET_XBOX)
-    "IDS_ONLINE_MAIN",
-#else
     "IDS_ONLINE_PAUSE_MENU",
-#endif
-    1, 10,
+    1, 9,
     sizeof(PauseOnlineControls)/sizeof(ui_manager::control_tem),
     &PauseOnlineControls[0],
     0
 };
-
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
 
 //=========================================================================
 //  Registration function
@@ -94,10 +72,6 @@ ui_win* dlg_pause_online_factory( s32 UserID, ui_manager* pManager, ui_manager::
 //=========================================================================
 
 dlg_pause_online::dlg_pause_online( void )
-#if defined( TARGET_XBOX )
-    : m_pFriendInvite   ( NULL ),
-      m_pGameInvite     ( NULL )
-#endif
 {
 }
 
@@ -132,19 +106,15 @@ xbool dlg_pause_online::Create( s32                        UserID,
     m_pButtonSwitchTeam = (ui_button*)  FindChildByID( IDC_PAUSE_ONLINE_SWITCH_TEAM );     
     m_pButtonVoteMap    = (ui_button*)  FindChildByID( IDC_PAUSE_ONLINE_VOTE_MAP    );     
     m_pButtonVoteKick   = (ui_button*)  FindChildByID( IDC_PAUSE_ONLINE_VOTE_KICK   );     
-    m_pButtonFriends    = (ui_button*)  FindChildByID( IDC_PAUSE_ONLINE_FRIENDS     );     
     m_pButtonPlayers    = (ui_button*)  FindChildByID( IDC_PAUSE_ONLINE_PLAYERS     );     
     m_pButtonOptions    = (ui_button*)  FindChildByID( IDC_PAUSE_ONLINE_OPTIONS     );     
     m_pButtonSettings   = (ui_button*)  FindChildByID( IDC_PAUSE_ONLINE_SETTINGS    );
     m_pButtonConfig     = (ui_button*)  FindChildByID( IDC_PAUSE_ONLINE_CONFIG      );     
-#if defined( TARGET_XBOX )
-    m_pFriendInvite     = (ui_bitmap*)  FindChildByID( IDC_PAUSE_ONLINE_FRIEND_INV  );
-    m_pGameInvite       = (ui_bitmap*)  FindChildByID( IDC_PAUSE_ONLINE_GAME_INV    );
-#endif
+    m_pButtonQuit       = (ui_button*)  FindChildByID( IDC_PAUSE_ONLINE_QUIT        );
  
     s32 iControl = g_StateMgr.GetCurrentControl();
 
-    if( iControl > 8 ) 
+    if( iControl > IDC_PAUSE_ONLINE_QUIT )
         iControl = 0;
 
     if( (iControl == -1) || (GotoControl( iControl )==NULL) )
@@ -165,15 +135,11 @@ xbool dlg_pause_online::Create( s32                        UserID,
     m_pButtonSwitchTeam ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pButtonVoteMap    ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pButtonVoteKick   ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-    m_pButtonFriends    ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pButtonPlayers    ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pButtonOptions    ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pButtonSettings   ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pButtonConfig     ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-#if defined( TARGET_XBOX )
-    m_pFriendInvite     ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-    m_pGameInvite       ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-#endif
+    m_pButtonQuit       ->SetFlag(ui_win::WF_VISIBLE, FALSE);
 
     // set up nav text
     xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_QUIT" ));
@@ -181,11 +147,6 @@ xbool dlg_pause_online::Create( s32                        UserID,
     navText += g_StringTableMgr( "ui", "IDS_NAV_UNPAUSE" );   
     SetNavText( navText );
 
-#if defined( TARGET_XBOX )
-    // set up icons
-    m_pFriendInvite->SetBitmap( g_UiMgr->FindBitmap( "icon_friend_req_rcvd" ) );
-    m_pGameInvite  ->SetBitmap( g_UiMgr->FindBitmap( "icon_invite_rcvd"     ) );
-#endif
 
     // check for team based game
     const game_score& ScoreData = GameMgr.GetScore();
@@ -200,12 +161,6 @@ xbool dlg_pause_online::Create( s32                        UserID,
         m_pButtonConfig->SetFlag(ui_win::WF_DISABLED, TRUE);
     }
 
-#ifdef LAN_PARTY_BUILD
-    m_pButtonVoteMap    ->SetFlag(ui_win::WF_DISABLED, TRUE);
-    m_pButtonVoteKick   ->SetFlag(ui_win::WF_DISABLED, TRUE);
-    m_pButtonFriends    ->SetFlag(ui_win::WF_DISABLED, TRUE);
-    m_pButtonPlayers    ->SetFlag(ui_win::WF_DISABLED, TRUE);
-#endif
 
     // initialize screen scaling
     InitScreenScaling( Position );
@@ -363,12 +318,6 @@ void dlg_pause_online::OnAccept( ui_win* pWin )
             m_CurrentControl = IDC_PAUSE_ONLINE_VOTE_KICK;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin == (ui_win*)m_pButtonFriends )
-        {
-            g_AudioMgr.Play("Select_Norm");
-            m_CurrentControl = IDC_PAUSE_ONLINE_FRIENDS;
-            m_State = DIALOG_STATE_SELECT;
-        }
         else if( pWin == (ui_win*)m_pButtonPlayers )
         {
             g_AudioMgr.Play("Select_Norm");
@@ -393,6 +342,10 @@ void dlg_pause_online::OnAccept( ui_win* pWin )
             g_AudioMgr.Play("Select_Norm");
             m_CurrentControl = IDC_PAUSE_ONLINE_CONFIG;
             m_State = DIALOG_STATE_SELECT;
+        }
+        else if( pWin == (ui_win*)m_pButtonQuit )
+        {
+            OnDelete( pWin );
         }
     }
 }
@@ -455,31 +408,6 @@ void dlg_pause_online::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     //
     // Figure out if we have invitations to be friends or join games
     //
-#if defined( TARGET_XBOX )
-    xbool HaveFriendRequest     = FALSE;
-    xbool HaveGameInvitation    = FALSE;
-    s32 i;
-    const s32 nBuddies = g_MatchMgr.GetBuddyCount();
-    for ( i = 0; i < nBuddies; ++i )
-    {
-        buddy_info Buddy = g_MatchMgr.GetBuddy( i );
-        if ( Buddy.Flags & USER_REQUEST_RECEIVED )
-        {
-            HaveFriendRequest = TRUE;
-        }
-
-        if ( Buddy.Flags & USER_HAS_INVITE )
-        {
-            HaveGameInvitation = TRUE;
-        }
-
-        if ( HaveGameInvitation && HaveFriendRequest )
-        {
-            // No need to search further, we're rendering both
-            break;
-        }
-    }
-#endif // TARGET_XBOX
 
     // scale window if necessary
     if( g_UiMgr->IsScreenScaling() )
@@ -491,15 +419,11 @@ void dlg_pause_online::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             m_pButtonSwitchTeam ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pButtonVoteMap    ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pButtonVoteKick   ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pButtonFriends    ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pButtonPlayers    ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pButtonOptions    ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pButtonSettings   ->SetFlag(ui_win::WF_VISIBLE, TRUE);
+            m_pButtonQuit       ->SetFlag(ui_win::WF_VISIBLE, TRUE);
 
-#if defined( TARGET_XBOX )
-            m_pFriendInvite     ->SetFlag(ui_win::WF_VISIBLE, HaveFriendRequest     );
-            m_pGameInvite       ->SetFlag(ui_win::WF_VISIBLE, HaveGameInvitation    );
-#endif
 
             if( m_pButtonConfig->GetFlags(WF_DISABLED) == FALSE )
             {
@@ -508,7 +432,7 @@ void dlg_pause_online::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
             s32 iControl = g_StateMgr.GetCurrentControl();
 
-            if( iControl > 8 ) 
+            if( iControl > IDC_PAUSE_ONLINE_QUIT )
                 iControl = 0;
 
             if( (iControl == -1) || (GotoControl(iControl)==NULL) )
@@ -532,13 +456,6 @@ void dlg_pause_online::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             }
         }
     }
-#if defined( TARGET_XBOX )
-    else
-    {
-        m_pFriendInvite     ->SetFlag(ui_win::WF_VISIBLE, HaveFriendRequest     );
-        m_pGameInvite       ->SetFlag(ui_win::WF_VISIBLE, HaveGameInvitation    );
-    }
-#endif
 
     if ( m_PopUp )
     {
@@ -589,7 +506,6 @@ void dlg_pause_online::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         }
     }
 
-#ifndef LAN_PARTY_BUILD
     // Update the state of the two vote items.
     {
         s32     NetSlot = g_NetworkMgr.GetLocalPlayerSlot(0);
@@ -612,7 +528,6 @@ void dlg_pause_online::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             OnNavigate( this, ui_navigation::Down, 1, 0 );
         }
     }
-#endif
 
     // update the glow bar
     g_UiMgr->UpdateGlowBar(DeltaTime);
@@ -642,11 +557,6 @@ void dlg_pause_online::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         highLight = 4;
         g_UiMgr->SetScreenHighlight( m_pButtonOptions->GetPosition() );
     }
-    else if( m_pButtonFriends->IsFocused() )
-    {
-        highLight = 5;
-        g_UiMgr->SetScreenHighlight( m_pButtonFriends->GetPosition() );
-    }
     else if( m_pButtonPlayers->IsFocused() )
     {
         highLight = 6;
@@ -661,6 +571,11 @@ void dlg_pause_online::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     {
         highLight = 8;
         g_UiMgr->SetScreenHighlight( m_pButtonConfig->GetPosition() );
+    }
+    else if( m_pButtonQuit->IsFocused() )
+    {
+        highLight = 9;
+        g_UiMgr->SetScreenHighlight( m_pButtonQuit->GetPosition() );
     }
 
     if( highLight != m_CurrHL )

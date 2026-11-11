@@ -44,6 +44,8 @@ debug_menu2::debug_menu2()
 
 debug_menu2::~debug_menu2()
 {
+    for( s32 i = 0; i < m_Pages.GetCount(); i++ )
+        delete m_Pages[i];
 }
 
 //==============================================================================
@@ -54,6 +56,9 @@ xbool debug_menu2::Init( void )
     m_Pages.Append() = new debug_menu_page_gameplay();
     m_Pages.Append() = new debug_menu_page_memory();
     m_Pages.Append() = new debug_menu_page_render();
+#ifndef X_RETAIL
+    m_Pages.Append() = new debug_menu_page_lighting();
+#endif
 
 #ifdef DEBUG_FX
     m_Pages.Append() = new debug_menu_page_fx();
@@ -391,11 +396,7 @@ void debug_menu2::Render( void )
 #endif
         )
         {
-            irect rb;
-            // render background filter
-            s32 XRes, YRes;
-            eng_GetRes(XRes, YRes);
-            rb.Set( 0, 0, XRes, YRes );
+            const irect rb = g_UIRenderer.GetViewport().GetLogicalClipBounds();
             g_UIRenderer.DrawRect( rb, xcolor(0,0,0,(u8)(255 * m_FadeAlpha)) );
 
             m_Pages[m_iActivePage]->Render();

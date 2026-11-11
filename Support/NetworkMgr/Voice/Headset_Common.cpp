@@ -19,9 +19,16 @@ void headset::ProvideUpdate( netstream& BitStream, s32 MaxLength )
 
 //==============================================================================
 
-void headset::AcceptUpdate( netstream& BitStream )
+xbool headset::ReadUpdate( netstream& BitStream, fifo::update& Update ) const
 {
-    m_WriteFifo.AcceptUpdate( BitStream, m_EncodeBlockSize );
+    return m_WriteFifo.ReadUpdate( BitStream, Update, m_EncodeBlockSize );
+}
+
+//==============================================================================
+
+void headset::AcceptUpdate( const fifo::update& Update )
+{
+    m_WriteFifo.AcceptUpdate( Update, m_EncodeBlockSize );
 }
 
 //==============================================================================
@@ -103,7 +110,13 @@ void headset::ClearWriteFifo( void )
 
 void headset::UpdateTalkingState( void )
 {
-    m_IsTalking = m_TalkingRequested && (m_HeadsetCount > 0);
+    xbool IsTalking = m_TalkingRequested && (m_HeadsetCount > 0);
+    if( m_IsTalking != IsTalking )
+    {
+        m_IsTalking = IsTalking;
+        m_TalkingGeneration++;
+        m_ReadFifo.Clear();
+    }
 }
 
 //==============================================================================
@@ -120,8 +133,6 @@ void headset::SetVolume( f32 Headset, f32 MicrophoneSensitivity )
 {
     m_HeadsetVolume         = MAX( 0.0f, MIN( 1.0f, Headset ) );
     m_MicrophoneSensitivity = MAX( 0.0f, MIN( 1.0f, MicrophoneSensitivity ) );
-    m_VolumeChanged = TRUE;
-
 }
 
 //==============================================================================

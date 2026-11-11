@@ -19,6 +19,7 @@ class debug_menu_page_multiplayer : public debug_menu_page
 public:
                         debug_menu_page_multiplayer     ( void );
     virtual            ~debug_menu_page_multiplayer     ( void ) { };
+    virtual void        OnFocus                         ( void );
     virtual void        OnChangeItem                    ( debug_menu_item* pItem );
     virtual void        OnPreRender                     ( void );
 
@@ -29,8 +30,6 @@ protected:
     debug_menu_item*    m_pSkinItem;
     s32                 m_AvatarSkin;
     
-    debug_menu_item*    m_pVoiceActorItem;
-    s32                 m_VoiceActor;
     debug_menu_item*    m_pPlayerCount;   
 
     xbool               m_bToggleNetInfo;

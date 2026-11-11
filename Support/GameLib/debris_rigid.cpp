@@ -8,6 +8,12 @@
 
 #include "Debris/debris_rigid.hpp"
 
+//=============================================================================
+// CONSTANTS
+//=============================================================================
+
+static const f32 kLIFE_SCALE = 2.0f;
+static const f32 kFADE_TIME  = 3.0f;
 
 //=============================================================================
 // OBJECT DESC.
@@ -50,6 +56,7 @@ const object_desc&  debris_rigid::GetObjectType ( void )
 debris_rigid::debris_rigid(void) :
     debris()
 {
+    m_FadeTime  = 0.0f;
     m_VMeshMask = 0;
     m_VMeshMask = ~m_VMeshMask;
 }
@@ -80,7 +87,13 @@ void debris_rigid::Create( const char*            rigidFileName,
     static radian InitSpinRate = R_60;
     m_Spin = radian3(x_frand(-InitSpinRate,InitSpinRate), x_frand(-InitSpinRate,InitSpinRate),x_frand(-InitSpinRate,InitSpinRate));
 
+    lifeSpan *= kLIFE_SCALE;
+    m_FadeTime = MIN( kFADE_TIME, MAX( 0.0f, lifeSpan ) );
+
     debris::Create( NULL, startingPosition, startingVelocity, lifeSpan, bBounces );
+
+    m_FloorProperties.Init( 1.0f, 0.128f, GetGuid() );
+    m_FloorProperties.ForceUpdate( startingPosition );
 }
 
 //=============================================================================
@@ -98,7 +111,13 @@ void debris_rigid::Create( rigid_inst&            Inst,
 
     m_Spin = radian3(x_frand(-R_20,R_20), x_frand(-R_20,R_20),x_frand(-R_20,R_20));
 
+    lifeSpan *= kLIFE_SCALE;
+    m_FadeTime = MIN( kFADE_TIME, MAX( 0.0f, lifeSpan ) );
+
     debris::Create( NULL, startingPosition, startingVelocity, lifeSpan, bBounces );
+
+    m_FloorProperties.Init( 1.0f, 0.128f, GetGuid() );
+    m_FloorProperties.ForceUpdate( startingPosition );
 }
 
 //=============================================================================
@@ -109,11 +128,19 @@ bbox debris_rigid::GetLocalBBox ( void ) const
 
     if( pRigidGeom )
     {
-        return( pRigidGeom->m_collision.BBox );
+        return( pRigidGeom->m_Collision.BBox );
     }
     
     return( bbox( vector3( 20.0f, 20.0f, 20.0f),
                   vector3(-20.0f,-20.0f,-20.0f) ) );
+}
+
+//=============================================================================
+
+void debris_rigid::OnAdvanceSimulation ( f32 DeltaTime )
+{
+    debris::OnAdvanceSimulation( DeltaTime );
+    m_FloorProperties.Update( GetPosition(), DeltaTime );
 }
 
 //=============================================================================
@@ -129,9 +156,19 @@ void debris_rigid::OnRender ( void )
 
         const matrix4& L2W = GetL2W();
 
+        u8 Alpha = 255;
+        if( m_FadeTime > 0.0f )
+        {
+            Alpha = (u8)(255.0f * x_clamp( m_LifeSpan / m_FadeTime, 0.0f, 1.0f ));
+        }
+        if( Alpha < 255 )
+        {
+            Flags |= render::FADING_ALPHA;
+        }
+
         ASSERT( pRigidGeom->m_nBones <= 1 );
         m_RigidInst.SetVMeshMask( m_VMeshMask );
-        m_RigidInst.Render( &L2W, Flags, m_RigidInst.GetLODMask(L2W) );
+        m_RigidInst.Render( &L2W, Flags, m_RigidInst.GetLODMask(L2W), Alpha, m_FloorProperties.GetColor() );
     }
 }
 

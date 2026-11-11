@@ -338,7 +338,7 @@ void CreatePainResponse( guid               OwnerGuid,
 
             if (ThisVoice != 0)
             {
-                if (!g_AudioMgr.IsValidVoiceId( ThisVoice ))
+                if (!g_AudioMgr.IsValidVoiceIdCached( ThisVoice ))
                 {
                     g_AudioMgr.Release( ThisVoice, 0.0f );
                     s_PainResponseInfo[ i ].AudioVoice = 0;
@@ -483,7 +483,7 @@ void destructible_obj::SetDestroyed( void )
                 g_ObjMgr.DestroyObject( s_PainResponseInfo[ i ].Emitter );
                 s_PainResponseInfo[ i ].Emitter = 0;                    
             }
-            if (g_AudioMgr.IsValidVoiceId( s_PainResponseInfo[ i ].AudioVoice ))
+            if (g_AudioMgr.IsValidVoiceIdCached( s_PainResponseInfo[ i ].AudioVoice ))
                 g_AudioMgr.Release( s_PainResponseInfo[ i ].AudioVoice, 0.0f );
             s_PainResponseInfo[ i ].AudioVoice = 0;
 

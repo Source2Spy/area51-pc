@@ -18,11 +18,7 @@
 #include "Configuration/GameConfig.hpp"
 
 
-#ifdef CONFIG_VIEWER
-#include "../../Apps/ArtistViewer/Config.hpp"
-#else
 #include "../../Apps/GameApp/Config.hpp"    
-#endif
 
 //=========================================================================
 //  Main Menu Dialog
@@ -57,14 +53,6 @@ ui_manager::dialog_tem MainMenuDialog =
 static const s32 MAIN_MENU_LOGO_WIDTH  = 128;
 static const s32 MAIN_MENU_LOGO_HEIGHT =  32;
 static const s32 MAIN_MENU_LOGO_TOP    =   2;
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
 
 //=========================================================================
 //  Registration function
@@ -161,12 +149,7 @@ xbool dlg_main_menu::Create( s32                        UserID,
 #if defined(TARGET_DESKTOP)    
     m_pButtonExit         ->SetFlag(ui_win::WF_VISIBLE, FALSE);
 #endif    
-//#if defined(TARGET_DESKTOP) || defined(LAN_PARTY_BUILD)
     m_pButtonMultiPlayer  ->SetFlag(ui_win::WF_DISABLED, TRUE);
-//#endif
-#if defined(TARGET_POSIX)
-    m_pButtonOnline       ->SetFlag(ui_win::WF_DISABLED, TRUE);
-#endif
 
 
     // set up nav text 

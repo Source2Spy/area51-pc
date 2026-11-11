@@ -1,3 +1,13 @@
+//==============================================================================
+//
+//  audio_mgr.cpp
+//
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
+
 #include "e_Audio.hpp"
 #include "Audio/audio_types.hpp"
 #include "Audio/audio_package_format.hpp"
@@ -19,14 +29,13 @@
 #include "x_workers.hpp"
 #include "x_log.hpp"
 
-#if (!defined(X_RETAIL) || defined(X_QA)) && defined(TARGET_PS2)
-#include "sntty.h"  
-#define ENABLE_AUDIO_DEBUG
-#endif
+//==============================================================================
+//  STATE AND DEBUG SETTINGS
+//==============================================================================
 
-static xbool    s_bDisableAudio = FALSE;
+static xbool s_bDisableAudio = FALSE;
 
-#if defined(rbrannon) || defined(mreed)
+#if defined( rbrannon ) || defined( mreed )
 #define LOG_PLAY_SUCCESS "audio_mgr::Play(success)"
 #define LOG_PLAY_CLIPPED "audio_mgr::Play(clipped)"
 #define LOG_PLAY_FAILURE "audio_mgr::Play(failure)"
@@ -35,51 +44,27 @@ static xbool    s_bDisableAudio = FALSE;
 voice*   g_DebugVoice   = NULL;
 element* g_DebugElement = NULL;
 channel* g_DebugChannel = NULL;
-f32      g_DebugTime    = 0.0f; 
+f32      g_DebugTime    = 0.0f;
 #endif
 
 //#define TRAP_ON_IDENTIFIER
 
 #ifdef TRAP_ON_IDENTIFIER
-xbool    g_EnableIdentifierTrap = 1;
-char     g_DebugIdentifier[64] = "FORCE_FIELD_ACTIVE";
+xbool g_EnableIdentifierTrap = 1;
+char  g_DebugIdentifier[64]  = "FORCE_FIELD_ACTIVE";
 #endif
 
-//------------------------------------------------------------------------------
+static xbool s_Initialized = FALSE;
 
-#ifdef ENABLE_AUDIO_DEBUG
-void AudioDebug( const char* pString )
-{
-#ifdef X_QA    // this used to be excluded from a QA build...
-    (void) pString;
-#else
-    if (x_IsAtomic())
-    {
-        //***** BIG NOTE *****
-        // If you get here when running normally, this means text was attempted to be printed
-        // while interrupts were disabled (a problem on PS2). Please contact Biscuit since, if
-        // this happens, this should only be in a system defined function.
-        BREAK;
-    }
-
-    s32 length = snputs( pString );
-    if (length < 0)
-        scePrintf("%s",pString);
-#endif // X_QA
-}
-#endif // ENABLE_AUDIO_DEBUG
-
-//------------------------------------------------------------------------------
-
-static xbool    s_Initialized = FALSE;
-
-//------------------------------------------------------------------------------
+//==============================================================================
+//  RUNTIME STORAGE
+//==============================================================================
 
 union audio_runtime_storage
 {
-    u64     Align64;
-    void*   AlignPtr;
-    byte    Bytes[ sizeof( audio_runtime ) ];
+    u64   Align64;
+    void* AlignPtr;
+    byte  Bytes[sizeof( audio_runtime )];
 };
 
 static audio_runtime_storage s_AudioRuntimeStorage;
@@ -87,16 +72,22 @@ static xbool                 s_AudioRuntimeConstructed = FALSE;
 
 #undef new
 
-static audio_runtime* ConstructAudioRuntime( audio_mgr& Audio )
+//==============================================================================
+//  RUNTIME LIFETIME HELPERS
+//==============================================================================
+
+static
+audio_runtime* ConstructAudioRuntime( audio_mgr& Audio )
 {
     ASSERT( !s_AudioRuntimeConstructed );
     s_AudioRuntimeConstructed = TRUE;
-    return new((void*)s_AudioRuntimeStorage.Bytes) audio_runtime( Audio );
+    return new( (void*)s_AudioRuntimeStorage.Bytes ) audio_runtime( Audio );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
-static void DestructAudioRuntime( audio_runtime* pRuntime )
+static
+void DestructAudioRuntime( audio_runtime* pRuntime )
 {
     if( pRuntime )
     {
@@ -105,12 +96,14 @@ static void DestructAudioRuntime( audio_runtime* pRuntime )
     }
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
+//  GLOBAL INSTANCE
+//==============================================================================
 
 audio_mgr g_AudioMgr;
 
 //==============================================================================
-//  Construction And Runtime Access
+//  CONSTRUCTION AND RUNTIME ACCESS
 //==============================================================================
 
 audio_mgr::audio_mgr( void ) :
@@ -119,7 +112,7 @@ audio_mgr::audio_mgr( void ) :
 {
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 audio_mgr::~audio_mgr( void )
 {
@@ -127,7 +120,7 @@ audio_mgr::~audio_mgr( void )
     m_pRuntime = NULL;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 audio_runtime& audio_mgr::Runtime( void )
 {
@@ -135,7 +128,7 @@ audio_runtime& audio_mgr::Runtime( void )
     return *m_pRuntime;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 const audio_runtime& audio_mgr::Runtime( void ) const
 {
@@ -144,10 +137,8 @@ const audio_runtime& audio_mgr::Runtime( void ) const
 }
 
 //==============================================================================
-//  Lifecycle
+//  LIFECYCLE
 //==============================================================================
-
-//------------------------------------------------------------------------------
 
 void audio_mgr::Init( s32 MemSize )
 {
@@ -168,7 +159,8 @@ void audio_mgr::Init( s32 MemSize )
     // Initialize the channel manager.
     Runtime().Channels.Init( Runtime() );
 
-    ASSERTS((MemSize & 2047)==0,"Memory must be in 2K increments");
+    ASSERTS( ( MemSize & 2047 ) == 0, "Memory must be in 2K increments" );
+
     // Initialize the audio hardware.
     Runtime().Backend.Init( Runtime(), MemSize );
 
@@ -194,14 +186,16 @@ void audio_mgr::Init( s32 MemSize )
     VERIFY( StartService() );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::Kill( void )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -221,6 +215,7 @@ void audio_mgr::Kill( void )
 
     // Kill the virtual voices.
     Runtime().Voices.Kill();
+    Runtime().DeferredVoices.Reset();
 
     // Kill the streams.
     Runtime().Streams.Kill();
@@ -238,17 +233,16 @@ void audio_mgr::Kill( void )
     s_Initialized = FALSE;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
+
 void audio_mgr::ResizeMemory( s32 NewSize )
 {
     Runtime().SubmitS32CommandAsync( AUDIO_CMD_RESIZE_MEMORY, NewSize );
 }
 
 //==============================================================================
-//  Service Thread And Ticks
+//  SERVICE THREAD AND TICKS
 //==============================================================================
-
-//------------------------------------------------------------------------------
 
 void audio_mgr::ServiceEntry( void* pData )
 {
@@ -258,7 +252,7 @@ void audio_mgr::ServiceEntry( void* pData )
     pAudio->ServiceLoop();
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::ServiceLoop( void )
 {
@@ -269,17 +263,22 @@ void audio_mgr::ServiceLoop( void )
     while( Runtime().ServiceRunning )
     {
         if( !Runtime().Commands.PopWait( Command ) )
+        {
             continue;
+        }
 
+        // Keep voice updates running when producers continuously fill the queue.
+        s32 CommandCount = 0;
         do
         {
             Runtime().ExecuteCommand( Command );
-        }
-        while( Runtime().Commands.Pop( Command ) );
+            CommandCount++;
+        } while( CommandCount < AUDIO_MAX_COMMANDS && Runtime().Commands.Pop( Command ) );
 
         Runtime().Voices.UpdateCheckQueued();
         PeriodicUpdateNow();
         Runtime().Backend.Update();
+        Runtime().Voices.PublishVoiceReadiness();
     }
 
     while( Runtime().Commands.Pop( Command ) )
@@ -290,7 +289,7 @@ void audio_mgr::ServiceLoop( void )
     Runtime().ServiceThreadId = -1;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::StartService( void )
 {
@@ -308,12 +307,14 @@ xbool audio_mgr::StartService( void )
     return TRUE;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::StopService( void )
 {
     if( Runtime().Service.IsNull() )
+    {
         return;
+    }
 
     Runtime().ServiceRunning = FALSE;
     Runtime().Commands.Wake();
@@ -322,49 +323,54 @@ void audio_mgr::StopService( void )
     Runtime().Service = x_worker_service( HNULL );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::IsServiceThread( void ) const
 {
-    return (Runtime().ServiceThreadId >= 0) && (x_GetThreadID() == Runtime().ServiceThreadId);
+    return ( Runtime().ServiceThreadId >= 0 ) && ( x_GetThreadID() == Runtime().ServiceThreadId );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::Update( f32 DeltaTime )
 {
-    X_PROFILE_SCOPE_CATEGORY( "Context", "audio_mgr::Update");
+    X_PROFILE_SCOPE_CATEGORY( "Context", "audio_mgr::Update" );
 
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
 
-    if( !x_isvalid( DeltaTime ) || (DeltaTime <= 0.0f) )
+    if( !x_isvalid( DeltaTime ) || ( DeltaTime <= 0.0f ) )
+    {
         return;
+    }
 
     DeltaTime = MIN( DeltaTime, 0.1f );
 
     Runtime().SubmitFloatCommandAsync( AUDIO_CMD_UPDATE, DeltaTime );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
+
 void audio_mgr::PeriodicUpdate( void )
 {
     Runtime().SubmitSimpleCommandAsync( AUDIO_CMD_PERIODIC_UPDATE );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::UpdateNow( f32 DeltaTime )
 {
     Runtime().Time += DeltaTime;
 
 #if defined( rbrannon )
-    void AudioThrashUpdate(void);
+    void AudioThrashUpdate( void );
     AudioThrashUpdate();
 #endif
 
@@ -373,7 +379,7 @@ void audio_mgr::UpdateNow( f32 DeltaTime )
     Runtime().Backend.SetDoBackendUpdate();
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::PeriodicUpdateNow( void )
 {
@@ -381,41 +387,39 @@ void audio_mgr::PeriodicUpdateNow( void )
 }
 
 //==============================================================================
-//  Packages
+//  PACKAGES
 //==============================================================================
-
-//------------------------------------------------------------------------------
 
 void audio_mgr::SetLanguage( x_language Language )
 {
-    ASSERT( (Language >= XL_LANG_ENGLISH) && (Language < XL_NUM_LANGUAGES) );
+    ASSERT( ( Language >= XL_LANG_ENGLISH ) && ( Language < XL_NUM_LANGUAGES ) );
     m_Language = Language;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 x_language audio_mgr::GetLanguage( void ) const
 {
     return m_Language;
 }
 
-//=========================================================================
+//==============================================================================
 // Returns a localized filename for the current langauge.
 // The name will change ONLY if the file starts with "DX_" which indicates
 // that the file is a dialogue. Note also, that this is different from
 // the naming for text files which are prepended.
+
 const char* audio_mgr::GetLocalizedName( const char* pFileName ) const
 {
     char Drive[X_MAX_DRIVE], Path[X_MAX_PATH], FName[X_MAX_FNAME], Ext[X_MAX_EXT];
 
-    ASSERT(pFileName != NULL);
-    x_splitpath(pFileName, Drive, Path, FName, Ext);
+    ASSERT( pFileName != NULL );
+    x_splitpath( pFileName, Drive, Path, FName, Ext );
 
     // check that this is a dialog file
-    if( (FName[0] == 'D') && (FName[1] == 'X') && (FName[2] == '_') &&
+    if( ( FName[0] == 'D' ) && ( FName[1] == 'X' ) && ( FName[2] == '_' ) &&
         // if this is English, leave the file name "unmangled". This should probably be fixed in the future.
-        (m_Language != XL_LANG_ENGLISH)
-      )
+        ( m_Language != XL_LANG_ENGLISH ) )
     {
         static char Name[X_MAX_PATH];
         x_sprintf( Name,
@@ -426,11 +430,12 @@ const char* audio_mgr::GetLocalizedName( const char* pFileName ) const
                    x_GetLocaleString( m_Language ),
                    Ext );
 
-#if defined(X_DEBUG) && defined(ctetrick)
-        LOG_MESSAGE("audio_mgr::GetLocalizedName", "voice file (%s) returned as (%s)", pFileName, Name);
+#if defined( X_DEBUG ) && defined( ctetrick )
+        LOG_MESSAGE( "audio_mgr::GetLocalizedName", "voice file (%s) returned as (%s)", pFileName, Name );
 #endif
 
         X_FILE* pLocalizedFile = x_fopen( Name, "rb" );
+
         if( pLocalizedFile )
         {
             x_fclose( pLocalizedFile );
@@ -449,7 +454,7 @@ const char* audio_mgr::GetLocalizedName( const char* pFileName ) const
     }
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::LoadPackage( const char* pFilename )
 {
@@ -458,7 +463,9 @@ xbool audio_mgr::LoadPackage( const char* pFilename )
 
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return FALSE;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -467,14 +474,16 @@ xbool audio_mgr::LoadPackage( const char* pFilename )
     return Runtime().SubmitTextCommandSync( AUDIO_CMD_LOAD_PACKAGE, pFilename, Result ) && Result.Bool;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::UnloadPackage( const char* pFilename )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return FALSE;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -484,14 +493,16 @@ xbool audio_mgr::UnloadPackage( const char* pFilename )
     return Runtime().SubmitTextCommandSync( AUDIO_CMD_UNLOAD_PACKAGE, pFilename, Result ) && Result.Bool;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::IsPackageLoaded( const char* pFilename )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return FALSE;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -499,33 +510,35 @@ xbool audio_mgr::IsPackageLoaded( const char* pFilename )
     return Runtime().Packages.IsPackageLoaded( pFilename );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::LoadPackageStrings( const char* pFilename, xarray<xstring>& Strings )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return FALSE;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
 
     char LocalizedName[X_MAX_PATH];
 
-    x_strcpy(LocalizedName, GetLocalizedName(pFilename));
+    x_strcpy( LocalizedName, GetLocalizedName( pFilename ) );
 
     return Runtime().Packages.LoadPackageStrings( pFilename, LocalizedName, Strings );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::UnloadAllPackages( void )
 {
     Runtime().SubmitSimpleCommandAsync( AUDIO_CMD_UNLOAD_ALL_PACKAGES );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::GetLoadedPackages( xarray<xstring>& Packages )
 {
@@ -534,7 +547,7 @@ void audio_mgr::GetLoadedPackages( xarray<xstring>& Packages )
     Runtime().Packages.GetLoadedPackages( Packages );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::GetLoadedPackageLookupNames( xarray<xstring>& Packages )
 {
@@ -543,14 +556,16 @@ void audio_mgr::GetLoadedPackageLookupNames( xarray<xstring>& Packages )
     Runtime().Packages.GetLoadedPackageLookupNames( Packages );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::DisplayPackages( void )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -559,7 +574,7 @@ void audio_mgr::DisplayPackages( void )
     Runtime().Packages.DisplayPackages();
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 s32 audio_mgr::GetPackageARAM( const char* pName )
 {
@@ -568,14 +583,16 @@ s32 audio_mgr::GetPackageARAM( const char* pName )
     return Runtime().Packages.GetPackageARAM( pName );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 char* audio_mgr::GetMusicType( const char* pFilename )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return NULL;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -583,9 +600,9 @@ char* audio_mgr::GetMusicType( const char* pFilename )
     return Runtime().Packages.GetMusicType( pFilename );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
-s32 audio_mgr::GetMusicIntensity( const char* pFilename, music_intensity* &Intensity )
+s32 audio_mgr::GetMusicIntensity( const char* pFilename, music_intensity*& Intensity )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
@@ -602,73 +619,73 @@ s32 audio_mgr::GetMusicIntensity( const char* pFilename, music_intensity* &Inten
 }
 
 //==============================================================================
-//  Descriptors
+//  DESCRIPTORS
 //==============================================================================
 
-//------------------------------------------------------------------------------
-
-u16* audio_mgr::FindDescriptorByName( const char* pName, audio_package** pPackageResult, char* &DescriptorName )
+u16* audio_mgr::FindDescriptorByName( const char* pName, audio_package** pPackageResult, char*& DescriptorName )
 {
     return Runtime().Packages.FindDescriptorByName( pName, pPackageResult, DescriptorName );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::IsValidDescriptor( const char* pName )
 {
     return Runtime().Packages.IsValidDescriptor( pName );
 }
 
-
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::ReMergeIdentifierTables( void )
 {
     Runtime().SubmitSimpleCommandAsync( AUDIO_CMD_REMERGE_IDENTIFIER_TABLES );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 s32 audio_mgr::IsCold( char* pIdentifier )
 {
     return Runtime().Descriptors.IsCold( pIdentifier );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 u32 audio_mgr::GetUserData( const char* pIdentifier )
 {
     return Runtime().Descriptors.GetUserData( pIdentifier );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 s32 audio_mgr::GetPriority( const char* pIdentifier )
 {
     return Runtime().Descriptors.GetPriority( pIdentifier );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 audio_mgr::GetFarFalloff( const char* pIdentifier )
 {
     return Runtime().Descriptors.GetFarFalloff( pIdentifier );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 audio_mgr::GetNearFalloff( const char* pIdentifier )
 {
     return Runtime().Descriptors.GetNearFalloff( pIdentifier );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
+
 f32 audio_mgr::GetLengthSeconds( const char* pIdentifier )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return 0.0f;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -676,46 +693,49 @@ f32 audio_mgr::GetLengthSeconds( const char* pIdentifier )
 }
 
 //==============================================================================
-//  Voice Handles
+//  VOICE HANDLES
 //==============================================================================
 
 voice* audio_mgr::IdToVoice( voice_id VoiceID )
 {
     voice* pVoice   = Runtime().Voices.GetVoiceBuffer();
-    s32    Index    = ((VoiceID & 0xffff)-1);
-    u32    Sequence = ((VoiceID >> 16) & 0x0000ffff);
+    s32    Index    = ( ( VoiceID & 0xffff ) - 1 );
+    u32    Sequence = ( ( VoiceID >> 16 ) & 0x0000ffff );
 
     // Error check.
-    if( (Index < 0) || (Index >= Runtime().Voices.GetNumVoices()) )
+    if( ( Index < 0 ) || ( Index >= Runtime().Voices.GetNumVoices() ) )
     {
         return NULL;
     }
 
     // Does the sequence match?
-    if( ((pVoice+Index)->Sequence & 0x0000ffff) == Sequence )
-        return pVoice+Index;
+    if( ( ( pVoice + Index )->Sequence & 0x0000ffff ) == Sequence )
+    {
+        return pVoice + Index;
+    }
     else
+    {
         return NULL;
+    }
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 voice_id audio_mgr::VoiceToId( voice* pVoice )
 {
-    s32 Index = pVoice-Runtime().Voices.GetVoiceBuffer();
+    s32 Index = pVoice - Runtime().Voices.GetVoiceBuffer();
 
     // Error check.
-    ASSERT( Runtime().Voices.IsValidVoice(pVoice) );
+    ASSERT( Runtime().Voices.IsValidVoice( pVoice ) );
 
     // Encode index and sequence.
-    return (((Index+1) & 0xffff) + (pVoice->Sequence << 16));
+    return ( ( ( Index + 1 ) & 0xffff ) + ( pVoice->Sequence << 16 ) );
 }
 
 //==============================================================================
-//  Playback
+//  PLAYBACK
 //==============================================================================
 
-//------------------------------------------------------------------------------
 voice_id audio_mgr::Play( const char* pIdentifier, xbool AutoStart )
 {
     vector3  Dummy;
@@ -724,35 +744,32 @@ voice_id audio_mgr::Play( const char* pIdentifier, xbool AutoStart )
     return PlayInternal( pIdentifier, AutoStart, DummyRef, -1, FALSE, FALSE );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 voice_id audio_mgr::Play( const char* pIdentifier, const vector3& Position, s32 ZoneID, xbool AutoStart )
 {
     return PlayInternal( pIdentifier, AutoStart, Position, ZoneID, TRUE, FALSE );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
-voice_id audio_mgr::Play( const char* pIdentifier, const vector3& Position, s32 ZoneID, xbool AutoStart, xbool VolumeClip )
+voice_id audio_mgr::Play( const char*    pIdentifier,
+                          const vector3& Position,
+                          s32            ZoneID,
+                          xbool          AutoStart,
+                          xbool          VolumeClip )
 {
     return PlayInternal( pIdentifier, AutoStart, Position, ZoneID, TRUE, VolumeClip );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 voice_id audio_mgr::PlayVolumeClipped( const char* pIdentifier, const vector3& Position, s32 ZoneID, xbool AutoStart )
 {
     return PlayInternal( pIdentifier, AutoStart, Position, ZoneID, TRUE, TRUE );
 }
 
-//------------------------------------------------------------------------------
-
-xbool DEBUG_PLAY_IDENTIFIER_NOT_FOUND = 0;
-xbool DEBUG_PLAY_ACQUIRE_VOICE_FAILED = 0;
-xbool DEBUG_PLAY_VOLUME_CLIPPED       = 0;
-xbool DEBUG_PLAY_SUCCESS              = 0;
-xbool DEBUG_FILTER_FOOTFALL           = 0;
-xbool DEBUG_FILTER_VOX                = 0;
+//==============================================================================
 
 voice_id audio_mgr::PlayInternal( const char*    pIdentifier,
                                   xbool          AutoStart,
@@ -760,18 +777,20 @@ voice_id audio_mgr::PlayInternal( const char*    pIdentifier,
                                   s32            ZoneID,
                                   xbool          IsPositional,
                                   xbool          bVolumeClip,
-                                  xbool          UseReservedStream )
+                                  xbool          UseReservedStream,
+                                  voice_id       ReplaceVoiceID )
 {
-    return Runtime().SubmitPlayCommandSync( pIdentifier,
-                                            AutoStart,
-                                            Position,
-                                            ZoneID,
-                                            IsPositional,
-                                            bVolumeClip,
-                                            UseReservedStream );
+    return Runtime().SubmitPlayCommand( pIdentifier,
+                                        AutoStart,
+                                        Position,
+                                        ZoneID,
+                                        IsPositional,
+                                        bVolumeClip,
+                                        UseReservedStream,
+                                        ReplaceVoiceID );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 voice_id audio_mgr::PlayInternalNow( const char*    pIdentifier,
                                      xbool          AutoStart,
@@ -784,7 +803,9 @@ voice_id audio_mgr::PlayInternalNow( const char*    pIdentifier,
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return 0;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -795,8 +816,10 @@ voice_id audio_mgr::PlayInternalNow( const char*    pIdentifier,
     }
 
 #ifdef TRAP_ON_IDENTIFIER
-    if( g_EnableIdentifierTrap && (x_stricmp( pIdentifier, g_DebugIdentifier ) == 0) )
+    if( g_EnableIdentifierTrap && ( x_stricmp( pIdentifier, g_DebugIdentifier ) == 0 ) )
+    {
         BREAK;
+    }
 #endif
 
     audio_package* pPackage;
@@ -804,22 +827,6 @@ voice_id audio_mgr::PlayInternalNow( const char*    pIdentifier,
     f32            PositionalVolume = 1.0f;
     f32            UserVolume       = 1.0f;
     char*          DescriptorName   = NULL;
-
-    #if !defined(X_RETAIL) || defined(X_QA)
-    xbool bDebug = TRUE;
-    if( DEBUG_FILTER_FOOTFALL || DEBUG_FILTER_VOX )
-    {
-        bDebug = FALSE;
-        if( DEBUG_FILTER_FOOTFALL && x_stristr( pIdentifier, "FOOTFALL" ) )
-            bDebug = TRUE;
-        if( DEBUG_FILTER_FOOTFALL && x_stristr( pIdentifier, "FF_" ) )
-            bDebug = TRUE;
-        else if( DEBUG_FILTER_VOX && x_stristr( pIdentifier, "VOX" ) )
-            bDebug = TRUE;
-        else if( DEBUG_FILTER_VOX && x_stristr( pIdentifier, "PAINGRUNT" ) )
-            bDebug = TRUE;
-    }
-    #endif // !defined(X_RETAIL)
 
     // Find the descriptor by name.
     pDescriptor = FindDescriptorByName( pIdentifier, &pPackage, DescriptorName );
@@ -839,7 +846,7 @@ voice_id audio_mgr::PlayInternalNow( const char*    pIdentifier,
         {
             // Calculate the falloffs.
             f32 Near = Params.NearFalloff * pPackage->GetComputedNearFalloff();
-            f32 Far  = Params.FarFalloff  * pPackage->GetComputedFarFalloff();
+            f32 Far  = Params.FarFalloff * pPackage->GetComputedFarFalloff();
 
             // Calculate the 3d volume.
             Calculate3dVolume( Near, Far, Params.RolloffCurve, Position, ZoneID, PositionalVolume );
@@ -850,15 +857,11 @@ voice_id audio_mgr::PlayInternalNow( const char*    pIdentifier,
                 // Is it *REALLY* quiet...
                 if( PositionalVolume <= 0.05f )
                 {
-                    // I'm sorry cap'n but I canna play this...the dilithium crystals are cracked!
-                    #ifdef LOG_PLAY_CLIPPED
+// I'm sorry cap'n but I canna play this...the dilithium crystals are cracked!
+#ifdef LOG_PLAY_CLIPPED
                     LOG_MESSAGE( LOG_PLAY_CLIPPED, "'%s' was VOLUME CLIPPED!", pIdentifier );
-                    #endif // LOG_PLAY_CLIPPED
+#endif // LOG_PLAY_CLIPPED
 
-                    #if defined(ENABLE_AUDIO_DEBUG)
-                    if( DEBUG_PLAY_VOLUME_CLIPPED && bDebug )
-                        AudioDebug( xfs("'%s' was VOLUME CLIPPED!\n", pIdentifier) );
-                    #endif //!defined(X_RETAIL)
                     return 0;
                 }
             }
@@ -871,30 +874,26 @@ voice_id audio_mgr::PlayInternalNow( const char*    pIdentifier,
 
         // Attempt to acquire a voice.
         pVoice = Runtime().Voices.AcquireVoice( Params.Priority, AbsoluteVolume );
+
         if( pVoice )
         {
-#if defined(rbrannon) && defined(TRAP_ON_IDENTIFIER)
-            if( g_EnableIdentifierTrap && (x_stricmp( pIdentifier, g_DebugIdentifier ) == 0) )
+#if defined( rbrannon ) && defined( TRAP_ON_IDENTIFIER )
+            if( g_EnableIdentifierTrap && ( x_stricmp( pIdentifier, g_DebugIdentifier ) == 0 ) )
             {
                 if( g_DebugVoice == NULL )
                 {
                     g_EnableIdentifierTrap = 0;
-                    g_DebugVoice = pVoice;
+                    g_DebugVoice           = pVoice;
                     LOG_MESSAGE( "AudioDebug(audio_mgr::Play)",
-                        "Trapped: %s, pVoice: %08x",
-                        pIdentifier,
-                        pVoice );
+                                 "Trapped: %s, pVoice: %08x",
+                                 pIdentifier,
+                                 pVoice );
                 }
             }
 #endif
-            #ifdef LOG_PLAY_SUCCESS
-            LOG_MESSAGE( LOG_PLAY_SUCCESS, "pVoice: 0x%08x [Id:%08x] '%s'", pVoice, VoiceToId(pVoice), pIdentifier );
-            #endif //LOG_PLAY_SUCCESS
-
-            #if defined(ENABLE_AUDIO_DEBUG)
-            if( DEBUG_PLAY_SUCCESS && bDebug )
-                AudioDebug( xfs("'%s' success!!\n", pIdentifier)  );
-            #endif //!defined(X_RETAIL)
+#ifdef LOG_PLAY_SUCCESS
+            LOG_MESSAGE( LOG_PLAY_SUCCESS, "pVoice: 0x%08x [Id:%08x] '%s'", pVoice, VoiceToId( pVoice ), pIdentifier );
+#endif //LOG_PLAY_SUCCESS
 
             // Save descriptor name
             pVoice->pDescriptorName = DescriptorName;
@@ -920,9 +919,13 @@ voice_id audio_mgr::PlayInternalNow( const char*    pIdentifier,
 
             // If pan was specified, then it cannot be changed.
             if( pVoice->Params.Bits & PAN_2D && !IsPositional )
+            {
                 pVoice->IsPanChangeable = FALSE;
+            }
             else
+            {
                 pVoice->IsPanChangeable = TRUE;
+            }
 
             // Force voice positional flag until parameters have been set.
             pVoice->IsPositional = TRUE;
@@ -947,98 +950,89 @@ voice_id audio_mgr::PlayInternalNow( const char*    pIdentifier,
             {
                 // Start the voice.
                 if( AutoStart )
+                {
                     Runtime().Voices.StartVoice( pVoice );
+                }
 
                 voice_id ResultID = VoiceToId( pVoice );
+                Runtime().Voices.PublishVoiceId( pVoice, ResultID );
 
                 // Its all good!
-                return( ResultID );
+                return ( ResultID );
             }
             else
             {
-                #if defined(ENABLE_AUDIO_DEBUG)
-                if( DEBUG_PLAY_ACQUIRE_VOICE_FAILED && bDebug )
-                    AudioDebug( xfs("'%s' could not acquire voice! (element error)\n", pIdentifier) );
-                #endif //!defined(X_RETAIL)
                 // Had problems, no elements in voice, so release the voice...
                 Runtime().Voices.ReleaseVoice( pVoice, 0.0f );
             }
         }
         else
         {
-            #ifdef LOG_PLAY_FAILURE
+#ifdef LOG_PLAY_FAILURE
             LOG_MESSAGE( LOG_PLAY_FAILURE, "'%s' could not acquire voice!", pIdentifier );
-            #endif // LOG_PLAY_FAILURE
-
-            #if defined(ENABLE_AUDIO_DEBUG)
-            if( DEBUG_PLAY_ACQUIRE_VOICE_FAILED && bDebug )
-                AudioDebug( xfs("'%s' could not acquire voice! (voice error)\n", pIdentifier) );
-            #endif //!defined(X_RETAIL)
-
+#endif // LOG_PLAY_FAILURE
         }
     }
     else
     {
-        #ifdef LOG_PLAY_WARNING
+#ifdef LOG_PLAY_WARNING
         LOG_WARNING( LOG_PLAY_WARNING, "'%s' identifier NOT FOUND!!!", pIdentifier );
-        #endif // LOG_PLAY_WARNING
-
-        #if defined(ENABLE_AUDIO_DEBUG)
-        if( DEBUG_PLAY_IDENTIFIER_NOT_FOUND && bDebug )
-            AudioDebug( xfs("'%s' identifier NOT FOUND!!!\n", pIdentifier) );
-        #endif //!defined(X_RETAIL)
-
+#endif // LOG_PLAY_WARNING
     }
 
     return 0;
 }
 
 //==============================================================================
-//  Voice Commands
+//  VOICE COMMANDS
 //==============================================================================
-
-//------------------------------------------------------------------------------
 
 xbool audio_mgr::Start( voice_id VoiceID )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return FALSE;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
 
-    audio_command_result Result;
-
-    return Runtime().SubmitVoiceCommandSync( AUDIO_CMD_START, VoiceID, Result ) && Result.Bool;
+    return Runtime().SubmitVoiceCommandAsync( AUDIO_CMD_START, VoiceID );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::Segue( voice_id VoiceID, voice_id VoiceToQ )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return FALSE;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
 
-    audio_command_result Result;
-
-    return Runtime().SubmitSegueCommandSync( VoiceID, VoiceToQ, Result ) && Result.Bool;
+    audio_command Command;
+    Command.Init( AUDIO_CMD_SEGUE );
+    Command.VoiceID  = VoiceID;
+    Command.VoiceID2 = VoiceToQ;
+    return Runtime().SubmitCommandAsync( Command );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::Pause( voice_id VoiceID )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1046,33 +1040,33 @@ void audio_mgr::Pause( voice_id VoiceID )
     Runtime().SubmitVoiceCommandAsync( AUDIO_CMD_PAUSE, VoiceID );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::PauseAll( void )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
 
     Runtime().SubmitSimpleCommandAsync( AUDIO_CMD_PAUSE_ALL );
-    Update( 0.015f );
-    x_DelayThread( 15 );
-    Update( 0.015f );
-    x_DelayThread( 15 );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::Resume( voice_id VoiceID )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1080,38 +1074,33 @@ void audio_mgr::Resume( voice_id VoiceID )
     Runtime().SubmitVoiceCommandAsync( AUDIO_CMD_RESUME, VoiceID );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::ResumeAll( void )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
 
-    while( g_IoMgr.GetDeviceQueueStatus( IO_DEVICE_HOST ) )
-    {
-        x_DelayThread( 10 );
-//        Update( 10 );
-    }
     Runtime().SubmitSimpleCommandAsync( AUDIO_CMD_RESUME_ALL );
-    Update( 0.015f );
-    x_DelayThread( 15 );
-    Update( 0.015f );
-    x_DelayThread( 15 );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::Release( voice_id VoiceID, f32 Time )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1119,37 +1108,33 @@ void audio_mgr::Release( voice_id VoiceID, f32 Time )
     Runtime().SubmitVoiceFloatCommandAsync( AUDIO_CMD_RELEASE, VoiceID, Time );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::ReleaseAll( void )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
 
     Runtime().SubmitSimpleCommandAsync( AUDIO_CMD_RELEASE_ALL );
-
-    Update( 1.0f );
-
-    x_DelayThread( 15 );
-
-    Update( 1.0f );
-
-    x_DelayThread( 15 );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::SetReleaseTime( voice_id VoiceID, f32 Time )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return FALSE;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1157,14 +1142,16 @@ xbool audio_mgr::SetReleaseTime( voice_id VoiceID, f32 Time )
     return Runtime().SubmitVoiceFloatCommandAsync( AUDIO_CMD_SET_RELEASE_TIME, VoiceID, Time );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::IsReleasing( voice_id VoiceID )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return FALSE;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1174,31 +1161,245 @@ xbool audio_mgr::IsReleasing( voice_id VoiceID )
     return Runtime().SubmitVoiceCommandSync( AUDIO_CMD_IS_RELEASING, VoiceID, Result ) && Result.Bool;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
+
+voice_id audio_mgr::PlayConfigured( const char*    pIdentifier,
+                                    const vector3& Position,
+                                    s32            ZoneID,
+                                    xbool          IsPositional,
+                                    f32            Volume,
+                                    f32            FarClipScale )
+{
+    if( !s_Initialized )
+    {
+        return 0;
+    }
+
+    audio_play_settings Settings;
+    Settings.Volume       = Volume;
+    Settings.FarClipScale = FarClipScale;
+    return Runtime().SubmitPlayCommand( pIdentifier, TRUE, Position, IsPositional ? ZoneID : -1,
+                                        IsPositional, IsPositional, FALSE, 0, &Settings );
+}
+
+//==============================================================================
+//  CACHED VOICE STATE AND REQUESTS
+//==============================================================================
+
+f32 audio_mgr::GetCurrentPlayTimeCached( voice_id VoiceID )
+{
+    audio_voice_state State;
+    GetVoiceStateCached( VoiceID, State );
+    return State.PlayTime;
+}
+
+//==============================================================================
+
+f32 audio_mgr::GetLengthSecondsCached( voice_id VoiceID )
+{
+    audio_voice_state State;
+    GetVoiceStateCached( VoiceID, State );
+    return State.Length;
+}
+
+//==============================================================================
+
+audio_request* audio_mgr::RequestCreateEar( const matrix4& W2V,
+                                            const vector3& Position,
+                                            s32            ZoneID,
+                                            f32            Volume )
+{
+    return s_Initialized ? Runtime().SubmitCreateEarAsync( W2V, Position, ZoneID, Volume ) : NULL;
+}
+
+//==============================================================================
+
+audio_request* audio_mgr::RequestBreakPoints( voice_id VoiceID )
+{
+    return s_Initialized && VoiceID ? Runtime().SubmitBreakPointsAsync( VoiceID ) : NULL;
+}
+
+//==============================================================================
+
+xbool audio_mgr::GetVoiceDescriptorCached( voice_id VoiceID, char* pName, s32 NameSize )
+{
+    if( !pName || NameSize <= 0 )
+    {
+        return FALSE;
+    }
+
+    pName[0] = 0;
+
+    if( !s_Initialized )
+    {
+        return FALSE;
+    }
+
+    xbool Pending;
+    VoiceID = Runtime().DeferredVoices.Resolve( VoiceID, Pending );
+    return !Pending && Runtime().Voices.GetVoiceDescriptorCached( VoiceID, pName, NameSize );
+}
+
+//==============================================================================
+
+f32 audio_mgr::GetVolumeCached( voice_id VoiceID )
+{
+    if( !s_Initialized )
+    {
+        return 0.0f;
+    }
+
+    xbool Pending;
+    VoiceID = Runtime().DeferredVoices.Resolve( VoiceID, Pending );
+    return Pending ? 0.0f : Runtime().Voices.GetVolumeCached( VoiceID );
+}
+
+//==============================================================================
+
+s32 audio_mgr::GetPriorityCached( voice_id VoiceID )
+{
+    if( !s_Initialized )
+    {
+        return 0;
+    }
+
+    xbool Pending;
+    VoiceID = Runtime().DeferredVoices.Resolve( VoiceID, Pending );
+    return Pending ? 0 : Runtime().Voices.GetPriorityCached( VoiceID );
+}
+
+//==============================================================================
+
+xbool audio_mgr::IsVoicePending( voice_id VoiceID ) const
+{
+    xbool Pending;
+    Runtime().DeferredVoices.Resolve( VoiceID, Pending );
+    return Pending;
+}
+
+//==============================================================================
+
+xbool audio_mgr::GetVoiceStateCached( voice_id VoiceID, audio_voice_state& State )
+{
+    x_memset( &State, 0, sizeof( State ) );
+
+    if( !s_Initialized || !VoiceID )
+    {
+        return FALSE;
+    }
+
+    VoiceID = Runtime().DeferredVoices.Resolve( VoiceID, State.Pending );
+
+    if( State.Pending )
+    {
+        State.Valid = TRUE;
+        return TRUE;
+    }
+
+    return Runtime().Voices.GetVoiceStateCached( VoiceID, State );
+}
+
+//==============================================================================
+
+xbool audio_mgr::GetVoiceState( voice_id VoiceID, audio_voice_state& State )
+{
+    x_memset( &State, 0, sizeof( State ) );
+
+#ifndef AUDIO_ENABLE
+    if( !s_Initialized )
+    {
+        return FALSE;
+    }
+#else
+    ASSERT( s_Initialized );
+#endif
+
+    if( VoiceID == 0 )
+    {
+        return FALSE;
+    }
+
+    audio_command_result Result;
+
+    if( !Runtime().SubmitVoiceCommandSync( AUDIO_CMD_GET_VOICE_STATE, VoiceID, Result ) )
+    {
+        return FALSE;
+    }
+
+    State = Result.VoiceState;
+    return TRUE;
+}
+
+//==============================================================================
 
 xbool audio_mgr::IsValidVoiceId( voice_id VoiceID )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return FALSE;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
+
+    if( VoiceID == 0 )
+    {
+        return FALSE;
+    }
 
     audio_command_result Result;
 
     return Runtime().SubmitVoiceCommandSync( AUDIO_CMD_IS_VALID_VOICE_ID, VoiceID, Result ) && Result.Bool;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
+
+xbool audio_mgr::IsValidVoiceIdCached( voice_id VoiceID )
+{
+#ifndef AUDIO_ENABLE
+    if( !s_Initialized )
+    {
+        return FALSE;
+    }
+#else
+    ASSERT( s_Initialized );
+#endif
+
+    xbool Pending;
+    VoiceID = Runtime().DeferredVoices.Resolve( VoiceID, Pending );
+    return Pending || Runtime().Voices.IsValidVoiceIdCached( VoiceID );
+}
+
+//==============================================================================
+
+xbool audio_mgr::IsVoiceReadyCached( voice_id VoiceID )
+{
+#ifndef AUDIO_ENABLE
+    if( !s_Initialized )
+    {
+        return FALSE;
+    }
+#else
+    ASSERT( s_Initialized );
+#endif
+
+    xbool Pending;
+    VoiceID = Runtime().DeferredVoices.Resolve( VoiceID, Pending );
+    return !Pending && Runtime().Voices.IsVoiceReadyCached( VoiceID );
+}
+
+//==============================================================================
 
 xbool audio_mgr::IsVoiceReady( voice_id VoiceID )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return FALSE;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1208,25 +1409,26 @@ xbool audio_mgr::IsVoiceReady( voice_id VoiceID )
     return Runtime().SubmitVoiceCommandSync( AUDIO_CMD_IS_VOICE_READY, VoiceID, Result ) && Result.Bool;
 }
 
-//------------------------------------------------------------------------------
-void audio_mgr::SetPitchLock( voice_id          VoiceID,
-                              xbool             bPitchLock )
+//==============================================================================
+
+void audio_mgr::SetPitchLock( voice_id VoiceID,
+                              xbool    bPitchLock )
 {
     Runtime().SubmitVoiceBoolCommandAsync( AUDIO_CMD_SET_PITCH_LOCK, VoiceID, bPitchLock );
 }
 
 //==============================================================================
-//  Voice Queries And Properties
+//  VOICE QUERIES AND PROPERTIES
 //==============================================================================
-
-//------------------------------------------------------------------------------
 
 f32 audio_mgr::GetLengthSeconds( voice_id VoiceID )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return 0.0f;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1234,19 +1436,23 @@ f32 audio_mgr::GetLengthSeconds( voice_id VoiceID )
     audio_command_result Result;
 
     if( !Runtime().SubmitVoiceCommandSync( AUDIO_CMD_GET_LENGTH_SECONDS_VOICE, VoiceID, Result ) )
+    {
         return 0.0f;
+    }
 
     return Result.F32;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 const char* audio_mgr::GetVoiceDescriptor( voice_id VoiceID )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return "NULL";
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1254,19 +1460,23 @@ const char* audio_mgr::GetVoiceDescriptor( voice_id VoiceID )
     audio_command_result Result;
 
     if( !Runtime().SubmitVoiceCommandSync( AUDIO_CMD_GET_VOICE_DESCRIPTOR, VoiceID, Result ) || !Result.pText )
+    {
         return "NULL";
+    }
 
     return Result.pText;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 audio_mgr::GetVolume( voice_id VoiceID )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return 0.0f;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1274,19 +1484,23 @@ f32 audio_mgr::GetVolume( voice_id VoiceID )
     audio_command_result Result;
 
     if( !Runtime().SubmitVoiceCommandSync( AUDIO_CMD_GET_VOLUME, VoiceID, Result ) )
+    {
         return 0.0f;
+    }
 
     return Result.F32;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::SetVolume( voice_id VoiceID, f32 Volume )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return FALSE;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1294,14 +1508,16 @@ xbool audio_mgr::SetVolume( voice_id VoiceID, f32 Volume )
     return Runtime().SubmitVoiceFloatCommandAsync( AUDIO_CMD_SET_VOLUME, VoiceID, Volume );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 audio_mgr::GetPan( voice_id VoiceID )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return 0.0f;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1309,19 +1525,23 @@ f32 audio_mgr::GetPan( voice_id VoiceID )
     audio_command_result Result;
 
     if( !Runtime().SubmitVoiceCommandSync( AUDIO_CMD_GET_PAN, VoiceID, Result ) )
+    {
         return 0.0f;
+    }
 
     return Result.F32;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::SetPan( voice_id VoiceID, f32 Pan )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return FALSE;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1329,14 +1549,16 @@ xbool audio_mgr::SetPan( voice_id VoiceID, f32 Pan )
     return Runtime().SubmitVoiceFloatCommandAsync( AUDIO_CMD_SET_PAN, VoiceID, Pan );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 audio_mgr::GetPitch( voice_id VoiceID )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return 0.0f;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1344,37 +1566,45 @@ f32 audio_mgr::GetPitch( voice_id VoiceID )
     audio_command_result Result;
 
     if( !Runtime().SubmitVoiceCommandSync( AUDIO_CMD_GET_PITCH, VoiceID, Result ) )
+    {
         return 0.0f;
+    }
 
     return Result.F32;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::SetPitch( voice_id VoiceID, f32 Pitch )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return FALSE;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
 
     if( Pitch < 0.99f )
+    {
         LOG_MESSAGE( "audio_mgr::SetPitch", "VoiceID: %08x, Pitch: %f", VoiceID, Pitch );
+    }
 
     return Runtime().SubmitVoiceFloatCommandAsync( AUDIO_CMD_SET_PITCH, VoiceID, Pitch );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::GetPosition( voice_id VoiceID, vector3& Position, s32& ZoneID )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return FALSE;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1382,7 +1612,7 @@ xbool audio_mgr::GetPosition( voice_id VoiceID, vector3& Position, s32& ZoneID )
     return Runtime().SubmitGetPositionCommandSync( VoiceID, Position, ZoneID );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::SetPosition( voice_id VoiceID, const vector3& Position, s32 ZoneID )
 {
@@ -1392,14 +1622,16 @@ xbool audio_mgr::SetPosition( voice_id VoiceID, const vector3& Position, s32 Zon
     return Runtime().SubmitSetPositionCommandAsync( VoiceID, Position, ZoneID );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::SetFalloff( voice_id VoiceID, f32 Near, f32 Far )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return FALSE;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1407,14 +1639,16 @@ xbool audio_mgr::SetFalloff( voice_id VoiceID, f32 Near, f32 Far )
     return Runtime().SubmitVoiceFalloffCommandAsync( VoiceID, Near, Far );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 audio_mgr::GetEffectSend( voice_id VoiceID )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return 0.0f;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1422,19 +1656,23 @@ f32 audio_mgr::GetEffectSend( voice_id VoiceID )
     audio_command_result Result;
 
     if( !Runtime().SubmitVoiceCommandSync( AUDIO_CMD_GET_EFFECT_SEND, VoiceID, Result ) )
+    {
         return 0.0f;
+    }
 
     return Result.F32;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::SetEffectSend( voice_id VoiceID, f32 EffectSend )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return FALSE;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1442,14 +1680,16 @@ xbool audio_mgr::SetEffectSend( voice_id VoiceID, f32 EffectSend )
     return Runtime().SubmitVoiceFloatCommandAsync( AUDIO_CMD_SET_EFFECT_SEND, VoiceID, EffectSend );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::HasLipSync( voice_id VoiceID )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return FALSE;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1459,14 +1699,16 @@ xbool audio_mgr::HasLipSync( voice_id VoiceID )
     return Runtime().SubmitVoiceCommandSync( AUDIO_CMD_HAS_LIP_SYNC, VoiceID, Result ) && Result.Bool;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 audio_mgr::GetLipSync( voice_id VoiceID )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return 0.0f;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1474,19 +1716,23 @@ f32 audio_mgr::GetLipSync( voice_id VoiceID )
     audio_command_result Result;
 
     if( !Runtime().SubmitVoiceCommandSync( AUDIO_CMD_GET_LIP_SYNC, VoiceID, Result ) )
+    {
         return 0.0f;
+    }
 
     return Result.F32;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
-s32 audio_mgr::GetBreakPoints( voice_id VoiceID, f32* &BreakPoints )
+s32 audio_mgr::GetBreakPoints( voice_id VoiceID, f32*& BreakPoints )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return 0;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1494,37 +1740,33 @@ s32 audio_mgr::GetBreakPoints( voice_id VoiceID, f32* &BreakPoints )
     audio_command_result Result;
 
     if( !Runtime().SubmitVoiceCommandSync( AUDIO_CMD_GET_BREAK_POINTS, VoiceID, Result ) )
+    {
         return 0;
+    }
 
     BreakPoints = Result.pF32;
     return Result.S32;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::GetIsReady( voice_id VoiceID )
 {
-    // Error check.
-#ifndef AUDIO_ENABLE
-    if( !s_Initialized )
-        return FALSE;
-#else
-    ASSERT( s_Initialized );
-#endif
-
-    audio_command_result Result;
-
-    return Runtime().SubmitVoiceCommandSync( AUDIO_CMD_GET_IS_READY, VoiceID, Result ) && Result.Bool;
+    audio_voice_state State;
+    GetVoiceStateCached( VoiceID, State );
+    return State.Ready;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 audio_mgr::GetCurrentPlayTime( voice_id VoiceID )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return 0.0f;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1532,86 +1774,93 @@ f32 audio_mgr::GetCurrentPlayTime( voice_id VoiceID )
     audio_command_result Result;
 
     if( !Runtime().SubmitVoiceCommandSync( AUDIO_CMD_GET_CURRENT_PLAY_TIME, VoiceID, Result ) )
+    {
         return 0.0f;
+    }
 
     return Result.F32;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 s32 audio_mgr::GetPriority( voice_id VoiceID )
 {
     audio_command_result Result;
 
     if( !Runtime().SubmitVoiceCommandSync( AUDIO_CMD_GET_PRIORITY, VoiceID, Result ) )
+    {
         return 0;
+    }
 
     return Result.S32;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
+
 void audio_mgr::SetVoiceEar( voice_id VoiceID, ear_id EarID )
 {
     Runtime().SubmitVoiceEarCommandAsync( VoiceID, EarID );
 }
 
 //==============================================================================
-//  Spatial And Ears
+//  SPATIAL AND EARS
 //==============================================================================
-
-//------------------------------------------------------------------------------
 
 void audio_mgr::SetClip( f32 NearClip, f32 FarClip )
 {
     Runtime().SubmitClipCommandAsync( NearClip, FarClip );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::GetClip( f32& NearClip, f32& FarClip )
 {
     Runtime().Spatial.GetClip( NearClip, FarClip );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
-void audio_mgr::Calculate3dVolume( f32               NearClip,
-                                   f32               FarClip,
-                                   s32               VolumeRolloff,
-                                   const vector3&    WorldPosition,
-                                   s32               ZoneID,
-                                   f32&              Volume )
+void audio_mgr::Calculate3dVolume( f32            NearClip,
+                                   f32            FarClip,
+                                   s32            VolumeRolloff,
+                                   const vector3& WorldPosition,
+                                   s32            ZoneID,
+                                   f32&           Volume )
 {
     Runtime().Spatial.Calculate3dVolume( NearClip, FarClip, VolumeRolloff, WorldPosition, ZoneID, Volume );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 ear_id audio_mgr::CreateEar( void )
 {
     audio_command_result Result;
 
     if( !Runtime().SubmitSimpleCommandSync( AUDIO_CMD_CREATE_EAR, Result ) )
+    {
         return 0;
+    }
 
     return Result.S32;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::DestroyEar( ear_id EarID )
 {
     Runtime().SubmitEarCommandAsync( AUDIO_CMD_DESTROY_EAR, EarID );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::GetEar( ear_id EarID, matrix4& W2V, vector3& Position, s32& ZoneID, f32& Volume )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
@@ -1619,20 +1868,23 @@ void audio_mgr::GetEar( ear_id EarID, matrix4& W2V, vector3& Position, s32& Zone
     Runtime().Spatial.GetEar( EarID, W2V, Position, ZoneID, Volume );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::SetEar( ear_id EarID, const matrix4& W2V, const vector3& Position, s32 ZoneID, f32 Volume )
 {
     // Error check.
 #ifndef AUDIO_ENABLE
     if( !s_Initialized )
+    {
         return;
+    }
 #else
     ASSERT( s_Initialized );
 #endif
     Runtime().SubmitSetEarCommandAsync( EarID, W2V, Position, ZoneID, Volume );
 }
-//------------------------------------------------------------------------------
+
+//==============================================================================
 
 void audio_mgr::UpdateEarZoneVolume( ear_id EarID, s32 ZoneID, f32 Volume )
 {
@@ -1640,53 +1892,64 @@ void audio_mgr::UpdateEarZoneVolume( ear_id EarID, s32 ZoneID, f32 Volume )
     Runtime().SubmitEarZoneVolumeCommandAsync( EarID, ZoneID, Volume );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::UpdateEarZoneVolumes( ear_id EarID, f32* pVolumes )
 {
     ASSERT( s_Initialized );
-    Runtime().SubmitEarZoneVolumesCommandSync( EarID, pVolumes );
+    Runtime().SubmitEarZoneVolumesCommandAsync( EarID, pVolumes );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
+
+xbool audio_mgr::IsEarInBox( const bbox& Box )
+{
+    return Runtime().Spatial.IsEarInBox( Box );
+}
+
+//==============================================================================
 
 ear_id audio_mgr::GetFirstEar( void )
 {
     audio_command_result Result;
 
     if( !Runtime().SubmitSimpleCommandSync( AUDIO_CMD_GET_FIRST_EAR, Result ) )
+    {
         return 0;
+    }
 
     return Result.S32;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 ear_id audio_mgr::GetNextEar( void )
 {
     audio_command_result Result;
 
     if( !Runtime().SubmitSimpleCommandSync( AUDIO_CMD_GET_NEXT_EAR, Result ) )
+    {
         return 0;
+    }
 
     return Result.S32;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::ResetCurrentEar( void )
 {
     Runtime().SubmitSimpleCommandAsync( AUDIO_CMD_RESET_CURRENT_EAR );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::SetSpeakerConfig( s32 SpeakerConfig )
 {
     Runtime().SubmitS32CommandAsync( AUDIO_CMD_SET_SPEAKER_CONFIG, SpeakerConfig );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 s32 audio_mgr::GetSpeakerConfig( void )
 {
@@ -1694,73 +1957,71 @@ s32 audio_mgr::GetSpeakerConfig( void )
 }
 
 //==============================================================================
-//  Global Mix Settings
+//  GLOBAL MIX SETTINGS
 //==============================================================================
-
-//------------------------------------------------------------------------------
 
 void audio_mgr::SetMasterVolume( f32 Volume )
 {
     Runtime().SubmitFloatCommandAsync( AUDIO_CMD_SET_MASTER_VOLUME, Volume );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::SetMusicVolume( f32 Volume )
 {
     Runtime().SubmitFloatCommandAsync( AUDIO_CMD_SET_MUSIC_VOLUME, Volume );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::SetSFXVolume( f32 Volume )
 {
     Runtime().SubmitFloatCommandAsync( AUDIO_CMD_SET_SFX_VOLUME, Volume );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::SetVoiceVolume( f32 Volume )
 {
     Runtime().SubmitFloatCommandAsync( AUDIO_CMD_SET_VOICE_VOLUME, Volume );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::SetPitchFactor( f32 PitchFactor )
 {
     Runtime().SubmitFloatCommandAsync( AUDIO_CMD_SET_PITCH_FACTOR, PitchFactor );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::EnableAudioDucking( void )
 {
     Runtime().SubmitSimpleCommandAsync( AUDIO_CMD_ENABLE_DUCKING );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::DisableAudioDucking( void )
 {
     Runtime().SubmitSimpleCommandAsync( AUDIO_CMD_DISABLE_DUCKING );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::IsAudioDuckingEnabled( void )
 {
-    return (Runtime().AudioDuckLevel > 0);
+    return ( Runtime().AudioDuckLevel > 0 );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 s32 audio_mgr::GetAudioLevel( void )
 {
     return Runtime().Backend.GetAudioLevel();
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 audio_mgr::GetAudioTime( void )
 {
@@ -1768,24 +2029,22 @@ f32 audio_mgr::GetAudioTime( void )
 }
 
 //==============================================================================
-//  Stream Integration
+//  STREAM INTEGRATION
 //==============================================================================
-
-//------------------------------------------------------------------------------
 
 void audio_mgr::QueueStreamReadComplete( io_request* pRequest )
 {
     Runtime().SubmitIoRequestCommandAsync( AUDIO_CMD_STREAM_READ_COMPLETE, pRequest );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_mgr::QueueStreamWarmComplete( io_request* pRequest )
 {
     Runtime().SubmitIoRequestCommandAsync( AUDIO_CMD_STREAM_WARM_COMPLETE, pRequest );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::ReserveStreams( s32 nStreams )
 {
@@ -1794,11 +2053,35 @@ xbool audio_mgr::ReserveStreams( s32 nStreams )
     return Runtime().SubmitS32CommandSync( AUDIO_CMD_RESERVE_STREAMS, nStreams, Result ) && Result.Bool;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_mgr::UnReserveStreams( s32 nStreams )
 {
     audio_command_result Result;
 
     return Runtime().SubmitS32CommandSync( AUDIO_CMD_UNRESERVE_STREAMS, nStreams, Result ) && Result.Bool;
+}
+
+//==============================================================================
+//  DEBUG STATISTICS
+//==============================================================================
+
+xbool audio_mgr::GetDebugStats( audio_debug_stats& Stats )
+{
+    x_memset( &Stats, 0, sizeof( Stats ) );
+
+    if( !m_pRuntime )
+    {
+        return FALSE;
+    }
+
+    audio_command_result Result;
+
+    if( !Runtime().SubmitSimpleCommandSync( AUDIO_CMD_GET_DEBUG_STATS, Result ) || !Result.Bool )
+    {
+        return FALSE;
+    }
+
+    Stats = Result.DebugStats;
+    return TRUE;
 }

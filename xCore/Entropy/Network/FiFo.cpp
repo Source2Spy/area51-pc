@@ -75,7 +75,9 @@ xbool fifo::Remove( void* pBuffer, s32 nBytes, s32 Modulo )
     pDest = (byte*)pBuffer;
 
     if( m_ValidBytes < nBytes )
+    {
         return FALSE;
+    }
 
     while( nBytes )
     {
@@ -165,17 +167,25 @@ void fifo::ProvideUpdate( netstream& BitStream, s32 MaxLength, s32 Modulo )
     s32     BytesAvailableInStream;
     s32     BytesAvailableInFifo;
     s32     Length;
+    s32     TrailerBits = 8;
+
+#if defined(X_DEBUG)
+    TrailerBits += 32;
+#endif
 
     BitStream.WriteMarker();
 
-    MaxLength = MIN( MaxLength, (s32)sizeof(Buffer) );
+    ASSERT( Modulo > 0 );
+    MaxLength = MIN( MaxLength, (s32)sizeof(Buffer) - 1 );
 
     MaxLength = MaxLength - ( MaxLength % Modulo );
-    BytesAvailableInStream = MIN(BitStream.GetNBytesFree(), MaxLength );
+    BytesAvailableInStream = MAX( 0, (BitStream.GetNBitsFree() - TrailerBits) / 8 );
+    BytesAvailableInStream = MIN( BytesAvailableInStream, MaxLength );
     BytesAvailableInFifo   = GetBytesUsed();
 
     // Get maximum space we'd want in the buffer
     Length = MIN( BytesAvailableInFifo, BytesAvailableInStream );
+    Length -= Length % Modulo;
     BitStream.WriteRangedS32(Length,0,255);
 
     if( Length )
@@ -190,20 +200,35 @@ void fifo::ProvideUpdate( netstream& BitStream, s32 MaxLength, s32 Modulo )
 
 //==============================================================================
 
-void fifo::AcceptUpdate( netstream& BitStream, s32 Modulo )
+xbool fifo::ReadUpdate( netstream& BitStream, update& Update, s32 Modulo ) const
 {
-    char    Buffer[256];
-    s32     Length;
-
     BitStream.ReadMarker();
+    BitStream.ReadRangedS32( Update.Length, 0, sizeof(Update.Data) );
 
-    BitStream.ReadRangedS32(Length, 0, 255);
-    if( Length > 0 )
+    if( BitStream.ReadError() )
     {
-        LOG_MESSAGE("fifo::AcceptUpdate","Received %d bytes of data.",Length);
+        return FALSE;
     }
-    BitStream.ReadBits(Buffer,Length*8);
-    Insert( Buffer, Length, Modulo );
 
+    if( Update.Length && ((Modulo <= 0) || (Update.Length > m_Length) ||
+                          (Modulo > m_Length) || (Update.Length % Modulo)) )
+    {
+        BitStream.SetReadError();
+        return FALSE;
+    }
+
+    BitStream.ReadBits( Update.Data, Update.Length * 8 );
     BitStream.ReadMarker();
+
+    return !BitStream.ReadError();
+}
+
+//==============================================================================
+
+void fifo::AcceptUpdate( const update& Update, s32 Modulo )
+{
+    if( Update.Length )
+    {
+        Insert( Update.Data, Update.Length, Modulo );
+    }
 }

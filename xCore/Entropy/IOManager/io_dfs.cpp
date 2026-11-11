@@ -29,7 +29,9 @@ dfs_header* dfs_InitHeaderFromRawPtr( void* pRawHeaderData, s32 Length )
     ASSERT( pRawHeaderData );
     ASSERT( Length >= (s32)sizeof(dfs_header) );    
     if( !pRawHeaderData || Length < (s32)sizeof(dfs_header) )
+    {
         return NULL;
+    }
 
     dfs_header* pHeader = (dfs_header*)pRawHeaderData;
 
@@ -58,7 +60,9 @@ dfs_header* dfs_InitHeaderFromRawPtr( void* pRawHeaderData, s32 Length )
         ASSERT( pHeader->nSubFiles     >= 0 );
         ASSERT( pHeader->StringsLength >= 0 );    
         if( pHeader->nFiles < 0 || pHeader->nSubFiles < 0 || pHeader->StringsLength < 0 )
+        {
             return NULL;
+        }
 
         usize SubFileEnd = (usize)pHeader->SubFileTableOffset + (usize)pHeader->nSubFiles * sizeof(dfs_subfile);
         usize FilesEnd   = (usize)pHeader->FilesOffset        + (usize)pHeader->nFiles    * sizeof(dfs_file);
@@ -68,10 +72,14 @@ dfs_header* dfs_InitHeaderFromRawPtr( void* pRawHeaderData, s32 Length )
         ASSERT( FilesEnd   <= (usize)Length );
         ASSERT( StringsEnd <= (usize)Length );
         if( SubFileEnd > (usize)Length || FilesEnd > (usize)Length || StringsEnd > (usize)Length )
+        {
             return NULL;
+        }
 
         if( (pHeader->ChecksumsOffset != 0) && ((usize)pHeader->ChecksumsOffset > (usize)Length) )
+        {
             return NULL;
+        }
 
         // Byte swap the filesize / checksum index table.
         dfs_subfile* pTable = dfs_GetSubFileTable( pHeader );
@@ -123,8 +131,10 @@ void dfs_DumpFileListing( const dfs_header* pHeader, const char* pFileName )
                 (u32)pEntry->FileNameOffset1 >= pHeader->StringsLength ||
                 (u32)pEntry->FileNameOffset2 >= pHeader->StringsLength ||
                 (u32)pEntry->ExtNameOffset   >= pHeader->StringsLength )
+            {
                 continue;
-        
+            }
+
             x_fprintf( f,"%8d\t%8d\t%8d\t%s\t%s%s\t%s\n",
                 i,
                 pEntry->Length,
@@ -195,7 +205,9 @@ void dfs_SplitRelativePath( const char* pRelativePath, xstring& Path, xstring& N
     Ext.Clear();
 
     if( !pSlash || (pForwardSlash && (pForwardSlash > pSlash)) )
+    {
         pSlash = pForwardSlash;
+    }
 
     if( pSlash )
     {
@@ -225,9 +237,18 @@ void dfs_SplitRelativePath( const char* pRelativePath, xstring& Path, xstring& N
     }
 
 #if defined( TARGET_WINDOWS )
-    if( Path.GetLength() > 0 ) Path.MakeUpper();
-    if( Name.GetLength() > 0 ) Name.MakeUpper();
-    if( Ext.GetLength()  > 0 ) Ext.MakeUpper();
+    if( Path.GetLength() > 0 )
+    {
+        Path.MakeUpper();
+    }
+    if( Name.GetLength() > 0 )
+    {
+        Name.MakeUpper();
+    }
+    if( Ext.GetLength()  > 0 )
+    {
+        Ext.MakeUpper();
+    }
 #endif
 }
 
@@ -245,7 +266,9 @@ xbool dfs_FindOrAddString( xarray<dfs_string_entry>& Table, u64& StringsLength, 
     }
 
     if( StringLength < 0 )
+    {
         return FALSE;
+    }
 
     for( s32 i = 0; i < Table.GetCount(); i++ )
     {
@@ -278,21 +301,29 @@ xbool dfs_CollectFiles( const char* pRootPath, const char* pRelativePath, xarray
 {
     ASSERT( Depth <= 64 );
     if( Depth > 64 )
+    {
         return FALSE;
-    
+    }
+
 #if defined( TARGET_WINDOWS )
     char SearchPath[X_MAX_PATH];
     WIN32_FIND_DATA FindData;
     HANDLE hFind;
 
     if( pRelativePath && *pRelativePath )
+    {
         x_sprintf( SearchPath, "%s\\%s\\*", pRootPath, pRelativePath );
+    }
     else
+    {
         x_sprintf( SearchPath, "%s\\*", pRootPath );
+    }
 
     hFind = FindFirstFile( SearchPath, &FindData );
     if( hFind == INVALID_HANDLE_VALUE )
+    {
         return FALSE;
+    }
 
     do
     {
@@ -306,9 +337,13 @@ xbool dfs_CollectFiles( const char* pRootPath, const char* pRelativePath, xarray
         {
             char NextRelative[X_MAX_PATH];
             if( pRelativePath && *pRelativePath )
+            {
                 x_sprintf( NextRelative, "%s\\%s", pRelativePath, FindData.cFileName );
+            }
             else
+            {
                 x_sprintf( NextRelative, "%s", FindData.cFileName );
+            }
 
             if( !dfs_CollectFiles( pRootPath, NextRelative, Entries, Depth + 1 ) )
             {
@@ -327,9 +362,13 @@ xbool dfs_CollectFiles( const char* pRootPath, const char* pRelativePath, xarray
 
             dfs_emulated_entry& Entry = Entries.Append();
             if( pRelativePath && *pRelativePath )
+            {
                 Entry.RelPath = xfs( "%s\\%s", pRelativePath, FindData.cFileName );
+            }
             else
+            {
                 Entry.RelPath = FindData.cFileName;
+            }
 
             Entry.Length = FindData.nFileSizeLow;
             Entry.PathOffset  = 0;
@@ -346,13 +385,19 @@ xbool dfs_CollectFiles( const char* pRootPath, const char* pRelativePath, xarray
     struct dirent* pDirectoryEntry;
 
     if( pRelativePath && *pRelativePath )
+    {
         x_sprintf( SearchPath, "%s/%s", pRootPath, pRelativePath );
+    }
     else
+    {
         x_sprintf( SearchPath, "%s", pRootPath );
+    }
 
     pDirectory = opendir( SearchPath );
     if( !pDirectory )
+    {
         return FALSE;
+    }
 
     while( (pDirectoryEntry = readdir( pDirectory )) != NULL )
     {
@@ -367,21 +412,31 @@ xbool dfs_CollectFiles( const char* pRootPath, const char* pRelativePath, xarray
         }
 
         if( pRelativePath && *pRelativePath )
+        {
             x_sprintf( FullPath, "%s/%s/%s", pRootPath, pRelativePath, pName );
+        }
         else
+        {
             x_sprintf( FullPath, "%s/%s", pRootPath, pName );
+        }
 
         // lstat keeps symlinks from turning into directory recursion loops.
         if( lstat( FullPath, &FileStat ) != 0 )
+        {
             continue;
+        }
 
         if( S_ISDIR( FileStat.st_mode ) )
         {
             char NextRelative[X_MAX_PATH];
             if( pRelativePath && *pRelativePath )
+            {
                 x_sprintf( NextRelative, "%s/%s", pRelativePath, pName );
+            }
             else
+            {
                 x_sprintf( NextRelative, "%s", pName );
+            }
 
             if( !dfs_CollectFiles( pRootPath, NextRelative, Entries, Depth + 1 ) )
             {
@@ -401,9 +456,13 @@ xbool dfs_CollectFiles( const char* pRootPath, const char* pRelativePath, xarray
 
             dfs_emulated_entry& Entry = Entries.Append();
             if( pRelativePath && *pRelativePath )
+            {
                 Entry.RelPath = xfs( "%s/%s", pRelativePath, pName );
+            }
             else
+            {
                 Entry.RelPath = pName;
+            }
 
             Entry.Length      = (u32)FileStat.st_size;
             Entry.PathOffset  = 0;
@@ -430,13 +489,19 @@ dfs_header* dfs_BuildHeaderFromDirectory( const char* pRootPath )
     s32 i;
 
     if( (pRootPath == NULL) || (*pRootPath == 0) )
+    {
         return NULL;
+    }
 
     if( !dfs_CollectFiles( pRootPath, "", Entries, 0 ) )
+    {
         return NULL;
+    }
 
     if( Entries.GetCount() == 0 )
+    {
         return NULL;
+    }
 
     // Split paths, cache results, and build deduplicated string table.
     for( i=0 ; i<Entries.GetCount() ; i++ )
@@ -480,7 +545,9 @@ dfs_header* dfs_BuildHeaderFromDirectory( const char* pRootPath )
     dfs_header* pHeader;
 
     if( !pBuffer )
+    {
         return NULL;
+    }
 
     x_memset( pBuffer, 0, BufferSize );
     pHeader = (dfs_header*)pBuffer;

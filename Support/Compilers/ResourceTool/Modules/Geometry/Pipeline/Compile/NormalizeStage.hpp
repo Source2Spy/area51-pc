@@ -1,0 +1,48 @@
+//=========================================================================
+//
+//  NormalizeStage.hpp
+//
+//=========================================================================
+
+#ifndef RESOURCE_TOOL_GEOMETRY_NORMALIZE_STAGE_HPP
+#define RESOURCE_TOOL_GEOMETRY_NORMALIZE_STAGE_HPP
+
+//=========================================================================
+//  INCLUDES
+//=========================================================================
+
+#include "x_files.hpp"
+
+#include "Model/GeometryAsset.hpp"
+
+namespace resource_tool
+{
+class diagnostic_log;
+
+namespace geometry
+{
+
+//=========================================================================
+//  TYPES
+//=========================================================================
+
+struct normalize_options
+{
+    xbool Rigid = FALSE;
+    xbool Verbose = FALSE;
+};
+
+//-------------------------------------------------------------------------
+
+class normalize_stage final
+{
+public:
+    xbool Execute( geometry_asset& Asset, const normalize_options& Options, diagnostic_log& Diagnostics,
+                   const char* pSourceFile ) const;
+};
+
+} // namespace geometry
+} // namespace resource_tool
+
+#endif // RESOURCE_TOOL_GEOMETRY_NORMALIZE_STAGE_HPP
+//=========================================================================

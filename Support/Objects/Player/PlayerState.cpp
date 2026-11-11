@@ -19,18 +19,18 @@
 #include "Objects/WeaponSniper.hpp"
 #include "Objects/WeaponSMP.hpp"
 #include "Objects/Corpse.hpp"
-#include "NetworkMgr/NetObjMgr.hpp"
+#include "NetworkMgr/Replication/NetObjMgr.hpp"
 #include "NetworkMgr/Voice/VoiceMgr.hpp"
 #include "Objects/Ladders/Ladder_Field.hpp"
 #include "Objects/GrenadeProjectile.hpp"
 #include "Objects/GravChargeProjectile.hpp"
 #include "Objects/JumpingBeanProjectile.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "Objects/Door.hpp"
 #include "Objects/Projector.hpp"
 #include "Objects/WeaponMutation.hpp"
 #include "StateMgr/StateMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "Objects/HudObject.hpp"
 #include "Characters/ActorEffects.hpp"
 #include "Configuration/GameConfig.hpp"
@@ -538,16 +538,6 @@ void player::EndSwitchTo( void )
 {
     LoadAimAssistTweakHandles();
 
-    if ( m_bIsMutated )
-    {
-        // make sure we have lost our gloves
-        const f32 Gloves = m_Inventory2.GetAmount( INVEN_GLOVES );
-        if ( Gloves > 0.0f )
-        {
-            m_Inventory2.RemoveAmount( INVEN_GLOVES, Gloves );
-        }
-    }
-
     // Make sure the weapon knows we are done playing the switch anim
     new_weapon* pWeapon = GetCurrentWeaponPtr();
     if( pWeapon )
@@ -756,6 +746,7 @@ void player::UpdateIdle( const f32& DeltaTime )
                 if( IsAltFirePressed() && IsAnimStateAvailable2( m_CurrentWeaponItem, ANIM_STATE_ZOOM_IN ) )
                 {
                     SetAnimState( ANIM_STATE_ZOOM_IN );
+                    return;
                 }
             }
         }
@@ -771,7 +762,7 @@ void player::UpdateIdle( const f32& DeltaTime )
     }
 
     // Check if we need to change to another motion animation.
-    if ( m_Physics.GetVelocity().LengthSquared() > m_fMinRunSpeed )
+    if ( m_Physics.GetMotionVelocity().LengthSquared() > m_fMinRunSpeed )
     {
         SetAnimState( GetMotionTransitionAnimState() );
         return;
@@ -880,6 +871,7 @@ void player::UpdateRun( const f32& DeltaTime )
                 if( IsAltFirePressed() && IsAnimStateAvailable2( m_CurrentWeaponItem, ANIM_STATE_ZOOM_IN ) )
                 {
                     SetAnimState( ANIM_STATE_ZOOM_IN );
+                    return;
                 }
             }
         }
@@ -895,7 +887,7 @@ void player::UpdateRun( const f32& DeltaTime )
     }
 
     // Check if we need to change to another motion animation.
-    if ( m_Physics.GetVelocity().LengthSquared() < m_fMinRunSpeed )
+    if ( m_Physics.GetMotionVelocity().LengthSquared() < m_fMinRunSpeed )
     {
         SetAnimState( GetMotionTransitionAnimState() );
     }
@@ -1890,6 +1882,7 @@ void player::UpdateReload( const f32& DeltaTime )
         else if( IsAltFirePressed() && IsAnimStateAvailable2( m_CurrentWeaponItem, ANIM_STATE_ZOOM_IN ) )
         {
             SetAnimState( ANIM_STATE_ZOOM_IN );
+            return;
         }
     }
 
@@ -2492,7 +2485,7 @@ void player::UpdateFallingToDeath( f32 DeltaTime )
 
     if( m_DeathCamera.IsActive() )
     {
-        m_DeathCamera.SetDesiredPitch( -m_Physics.GetVelocity().GetPitch() );
+        m_DeathCamera.SetDesiredPitch( -m_Physics.GetMotionVelocity().GetPitch() );
     }
 }
 
@@ -2547,7 +2540,7 @@ void player::UpdateZoomIn( const f32& DeltaTime )
     // Wait until the current animtion ends, then switch the animation
     if( m_AnimPlayer.IsAtEnd() )
     {
-        f32     VelocitySquared = m_Physics.GetVelocity().LengthSquared();
+        f32     VelocitySquared = m_Physics.GetMotionVelocity().LengthSquared();
         if( VelocitySquared < m_fMinRunSpeed )
             SetAnimState( ANIM_STATE_ZOOM_IDLE );
         else
@@ -2606,7 +2599,7 @@ void player::UpdateZoomOut( const f32& DeltaTime )
     ASSERT( m_NextAnimState != ANIM_STATE_UNDEFINED );
 
     new_weapon* pWeapon = GetCurrentWeaponPtr();
-    if( !pWeapon || !pWeapon->IsZoomEnabled() )
+    if( !pWeapon || !IsAnimStateAvailable2( m_CurrentWeaponItem, ANIM_STATE_ZOOM_OUT ) )
     {
         SetAnimState( m_NextAnimState );
         return;
@@ -2689,6 +2682,7 @@ void player::UpdateZoomIdle( const f32& DeltaTime )
         {
             SetAnimState( ANIM_STATE_ZOOM_OUT );
             m_NextAnimState = ANIM_STATE_IDLE;
+            return;
         }
         else
         {
@@ -2716,11 +2710,12 @@ void player::UpdateZoomIdle( const f32& DeltaTime )
         {
             SetAnimState( ANIM_STATE_ZOOM_OUT );
             m_NextAnimState = ANIM_STATE_RELOAD;
+            return;
         }
     }
 
     // Check if we need to change to another motion animation.
-    if ( m_Physics.GetVelocity().LengthSquared() > m_fMinRunSpeed )
+    if ( m_Physics.GetMotionVelocity().LengthSquared() > m_fMinRunSpeed )
     {
         SetAnimState( ANIM_STATE_ZOOM_RUN );
         return;
@@ -2814,6 +2809,7 @@ void player::UpdateZoomRun( const f32& DeltaTime )
         {
             SetAnimState( ANIM_STATE_ZOOM_OUT );
             m_NextAnimState = ANIM_STATE_IDLE;
+            return;
         }
         else
         {
@@ -2841,11 +2837,12 @@ void player::UpdateZoomRun( const f32& DeltaTime )
         {
             SetAnimState( ANIM_STATE_ZOOM_OUT );
             m_NextAnimState = ANIM_STATE_RELOAD;
+            return;
         }
     }
 
     // Check if we need to change to another motion animation.
-    if ( m_Physics.GetVelocity().LengthSquared() < m_fMinRunSpeed )
+    if ( m_Physics.GetMotionVelocity().LengthSquared() < m_fMinRunSpeed )
     {
         SetAnimState( ANIM_STATE_ZOOM_IDLE );
         return;
@@ -3028,7 +3025,7 @@ void player::UpdateZoomFire( const f32& DeltaTime )
     
         if( pWeapon && pWeapon->CanIntereptPrimaryFire( m_CurrentAnimIndex ) )
         {
-            f32     VelocitySquared = m_Physics.GetVelocity().LengthSquared();
+            f32     VelocitySquared = m_Physics.GetMotionVelocity().LengthSquared();
             if( VelocitySquared < m_fMinRunSpeed )
                 SetAnimState( ANIM_STATE_ZOOM_IDLE );
             else
@@ -3057,7 +3054,7 @@ void player::EndZoomFire( void )
     }        
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void player::SetAnimState( animation_state AnimState )
 {
@@ -3106,11 +3103,9 @@ void player::SetAnimState( animation_state AnimState )
 }
 
 //==============================================================================
-
-
-//==============================================================================
 //  ORTHOGONAL PLAYER CINEMA MODE
 //==============================================================================
+
 void player::BeginCinema( void )
 {
     if( m_CinemaController.IsActive() )
@@ -3162,6 +3157,8 @@ void player::BeginCinema( void )
     }
 }
 
+//==============================================================================
+
 void player::UpdateCinema( f32 DeltaTime )
 {
     if( !m_CinemaController.IsActive() )
@@ -3178,7 +3175,12 @@ void player::UpdateCinema( f32 DeltaTime )
         pCameraObject = g_ObjMgr.GetObjectByGuid( m_CinemaSettings.CameraGuid );
         if( !pCameraObject )
         {
-            EndCinema( PlayerCinemaFinishReason::Error );
+            // NOTE: GS: I don't know what idiot did this, but some cutscene cameras are assigned with a delay on levels.
+            // The old camera is destroyed, the new one isn't there yet, and the game assigns the character's camera in cutscenes.
+            // I found a similar bug in the HotZone level after Macken's death.
+
+            // So I'll have to rule out an obvious error here.
+            // EndCinema( PlayerCinemaFinishReason::Error );
             return;
         }
 
@@ -3192,13 +3194,16 @@ void player::UpdateCinema( f32 DeltaTime )
         m_CinemaViewSample.Mode = PlayerViewMode::Cinema;
         m_CinemaViewSample.ViewToWorld = pCameraObject->GetL2W();
         m_CinemaViewSample.XFOV = m_ViewInfo.XFOV;
+        m_CinemaViewSample.HasZoneSnapshot = TRUE;
+        m_CinemaViewSample.ZoneSourceGuid = pCameraObject->GetGuid();
+        g_ZoneMgr.RebaseZoneTracking( m_CinemaViewSample.ZoneSnapshot,
+                                      pCameraObject->GetPosition(),
+                                      static_cast<zone_mgr::zone_id>( pCameraObject->GetZone1() ),
+                                      static_cast<zone_mgr::zone_id>( pCameraObject->GetZone2() ) );
 
         if( pCamera )
         {
-            zone_mgr::tracker const CameraZoneTracker = pCamera->GetZoneTracker();
-            m_CinemaViewSample.HasZoneSnapshot = TRUE;
-            m_CinemaViewSample.Zone1 = CameraZoneTracker.GetMainZone();
-            m_CinemaViewSample.Zone2 = CameraZoneTracker.GetZone2();
+            m_CinemaViewSample.ZoneSnapshot = pCamera->GetZoneTracker();
         }
 
         if( pCamera )
@@ -3260,7 +3265,7 @@ void player::UpdateCinema( f32 DeltaTime )
     }
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void player::EndCinema( PlayerCinemaFinishReason Reason )
 {
@@ -3271,6 +3276,8 @@ void player::EndCinema( PlayerCinemaFinishReason Reason )
 
     PlayerViewSample const LastCinemaView = m_ViewController.GetCurrent();
     xbool const UseViewCorrection = m_CinemaSettings.UseViewCorrection;
+    m_CinemaSettings.LookAtTargetGuid = NULL_GUID;
+    m_CinemaController.UpdateSettings( m_CinemaSettings );
     m_CinemaController.End( Reason );
     if( UseViewCorrection )
     {
@@ -3346,5 +3353,3 @@ void player::EndMissionFailed( void )
     m_AnimStage     = 0;
     m_DeathType     = DEATH_BY_ANIM;
 }
-
-//==============================================================================

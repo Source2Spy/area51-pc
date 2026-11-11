@@ -156,6 +156,7 @@ public:
     f32                         m_MutationBarAlpha;
     f32                         m_MutationFadeInRate;
     f32                         m_MutationFadeResetChance;
+    f32                         m_MutationFadeTime;
     f32                         m_MutationDisplayTime;
 
     typedef struct _Cell

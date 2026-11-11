@@ -6,6 +6,11 @@
 
 cmake_minimum_required( VERSION 3.23 )
 
+if( "$ENV{GITHUB_ACTIONS}" STREQUAL "true" )
+    set( CMAKE_SUPPRESS_DEVELOPER_WARNINGS ON CACHE INTERNAL "" FORCE )
+    set( CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE )
+endif()
+
 # Set CMP0091 before project().
 cmake_policy( SET CMP0091 NEW )
 
@@ -19,6 +24,14 @@ if( CMAKE_SYSTEM_NAME STREQUAL "Android" AND
 endif()
 
 project( Area51 LANGUAGES C CXX )
+
+if( "$ENV{GITHUB_ACTIONS}" STREQUAL "true" )
+    if( MSVC )
+        add_compile_options( /w )
+    else()
+        add_compile_options( -w )
+    endif()
+endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     add_compile_options(
@@ -36,7 +49,6 @@ endif()
 list( APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" )
 include( A51Project )
 include( A51Platform )
-include( A51ThirdParty )
 
 #==========================================================================
 #  OPTIONS AND CONFIGURATIONS
@@ -70,7 +82,13 @@ endforeach()
 option( A51_BUILD_SELECTED_APPS "Build the selected application targets" ON )
 option( A51_ENABLE_QT "Enable Qt integration for XBMPViewer when Qt6 is available" ON )
 option( A51_EXPORT_COMPILE_COMMANDS "Generate compile_commands.json for tooling" ON )
-option( A51_BUILD_DXC "Build the bundled DXC host compiler from source" ON )
+option( A51_BUILD_SHADER_TOOL "Build the host shader compiler and preparation target" OFF )
+set( A51_SHADER_KIT "${CMAKE_SOURCE_DIR}/build/shaders/GameApp/release"
+     CACHE PATH "Prepared GameApp shader kit" )
+set( A51_SHADER_TOOLS_ONLY OFF )
+if( A51_BUILD_SHADER_TOOL AND NOT A51_BUILD_SELECTED_APPS )
+    set( A51_SHADER_TOOLS_ONLY ON )
+endif()
 if( WIN32 )
     set( _a51_default_windows_targets ON )
 else()
@@ -146,22 +164,21 @@ endif()
 #  PROJECT GRAPH
 #==========================================================================
 
+include( A51ThirdParty )
 add_subdirectory( xCore )
 
-# ShaderTool is a host-side tool.  Build DXC from the bundled source tree on
-# Linux and Windows instead of relying on a prebuilt compiler library.  DXC is
-# deliberately not added to Android builds: the Android target only consumes
-# the SPIR-V blobs produced by this host tool.
-if( A51_BUILD_SELECTED_APPS AND A51_BUILD_DXC AND
-    ( CMAKE_SYSTEM_NAME STREQUAL "Linux" OR
-      ( CMAKE_SYSTEM_NAME STREQUAL "Windows" AND A51_BUILD_WINDOWS_TARGETS ) ) )
+# Shader preparation runs on the host independently of the game build.
+if( A51_BUILD_SHADER_TOOL )
+    if( CMAKE_CROSSCOMPILING OR NOT CMAKE_SYSTEM_NAME MATCHES "^(Linux|Windows)$" )
+        message( FATAL_ERROR "ShaderTool requires a native Linux or Windows build." )
+    endif()
     set( A51_DXC_SOURCE_DIR
          "${CMAKE_CURRENT_SOURCE_DIR}/xCore/3rdParty/DXC"
          CACHE PATH "Bundled DirectX Shader Compiler source directory" )
 
     if( NOT EXISTS "${A51_DXC_SOURCE_DIR}/CMakeLists.txt" )
         message( FATAL_ERROR
-            "A51_BUILD_DXC is enabled, but DXC was not found at "
+            "A51_BUILD_SHADER_TOOL is enabled, but DXC was not found at "
             "${A51_DXC_SOURCE_DIR}." )
     endif()
 
@@ -183,6 +200,7 @@ if( A51_BUILD_SELECTED_APPS AND A51_BUILD_DXC AND
     # DXC is a large LLVM project.  Only its compiler targets are needed by
     # ShaderTool, so keep the generated graph and default build small.
     set( ENABLE_SPIRV_CODEGEN ON CACHE BOOL "Enable DXC SPIR-V code generation" FORCE )
+    set( HLSL_DISABLE_SOURCE_GENERATION ON CACHE BOOL "Use checked-in DXC generated sources" FORCE )
     set( LLVM_TARGETS_TO_BUILD None CACHE STRING "LLVM targets used by DXC" FORCE )
     set( LLVM_ENABLE_EH ON CACHE BOOL "Enable DXC exception handling" FORCE )
     set( LLVM_ENABLE_RTTI ON CACHE BOOL "Enable DXC RTTI" FORCE )
@@ -207,7 +225,9 @@ if( A51_BUILD_SELECTED_APPS AND A51_BUILD_DXC AND
                       EXCLUDE_FROM_ALL )
 endif()
 
-add_subdirectory( Support )
+if( NOT A51_SHADER_TOOLS_ONLY )
+    add_subdirectory( Support )
+endif()
 add_subdirectory( Apps )
 
 set( _a51_tool_targets
@@ -215,13 +235,10 @@ set( _a51_tool_targets
     Art2Code
     dfsTool
     XBMPViewer
-    SoundPackager
+    # SoundPackager
     ShaderTool
-    AnimCompiler
-    BitmapCompiler
     DecalCompiler
-    FontBuilder
-    stringTool
+    ResourceTool
 )
 
 set( _a51_configured_tool_targets )
@@ -244,38 +261,82 @@ if( TARGET Entropy )
     target_compile_definitions( Entropy PRIVATE ENTROPY_RENDER_SDL )
 endif()
 
-if( TARGET Script_mgr )
-    target_include_directories( Script_mgr PRIVATE
+if( TARGET ScriptMgr )
+    target_include_directories( ScriptMgr PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/xCore/3rdParty/Lua/5.5.0"
     )
 endif()
 
-if( TARGET ShaderTool )
+if( TARGET a51_shader_compiler )
     if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/xCore/3rdParty/DXC/include/dxc/dxcapi.h" )
-        target_include_directories( ShaderTool PRIVATE
+        target_include_directories( a51_shader_compiler PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/xCore/3rdParty/DXC/include/dxc"
         )
     else()
-        target_include_directories( ShaderTool PRIVATE
+        target_include_directories( a51_shader_compiler PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/xCore/3rdParty/DXC/inc"
         )
     endif()
 
-    if( TARGET dxcompiler )
-        target_compile_definitions( ShaderTool PRIVATE DXC_USE_DIRECTX_HEADERS=1 )
-        target_include_directories( ShaderTool PRIVATE
+    if( TARGET dxcompiler AND NOT WIN32 )
+        target_compile_definitions( a51_shader_compiler PRIVATE DXC_USE_DIRECTX_HEADERS=1 )
+        target_include_directories( a51_shader_compiler PRIVATE
             "${CMAKE_CURRENT_SOURCE_DIR}/xCore/3rdParty/DXC/external/DirectX-Headers/include/directx"
             "${CMAKE_CURRENT_SOURCE_DIR}/xCore/3rdParty/DXC/external/DirectX-Headers/include/wsl/stubs"
         )
     endif()
 
     if( TARGET dxcompiler )
-        target_link_libraries( ShaderTool PRIVATE dxcompiler )
+        target_link_libraries( a51_shader_compiler PRIVATE dxcompiler )
         if( UNIX )
             set_property( TARGET ShaderTool APPEND PROPERTY BUILD_RPATH
                           "${CMAKE_BINARY_DIR}/lib" )
         endif()
     endif()
+endif()
+
+if( TARGET Render )
+    include( A51ShaderKit )
+    a51_import_shader_kit( "${A51_SHADER_KIT}"
+        generated/a51_compute_cloth_tessellate.hpp
+        generated/a51_compute_cmaa2_init.hpp
+        generated/a51_compute_cmaa2_edges.hpp
+        generated/a51_compute_cmaa2_args.hpp
+        generated/a51_compute_cmaa2_candidates.hpp
+        generated/a51_compute_cmaa2_apply.hpp
+        generated/a51_compute_xegtao_prepare.hpp
+        generated/a51_compute_xegtao_prepare_msaa.hpp
+        generated/a51_compute_xegtao_prepare_half.hpp
+        generated/a51_compute_xegtao_prepare_half_msaa.hpp
+        generated/a51_compute_xegtao_medium.hpp
+        generated/a51_compute_xegtao_high.hpp
+        generated/a51_compute_xegtao_ultra.hpp
+        generated/a51_compute_xegtao_denoise.hpp
+        generated/a51_compute_xegtao_denoise_final.hpp
+        generated/a51_compute_xegtao_resolve.hpp )
+    target_include_directories( Render PUBLIC "${A51_SHADER_KIT}/generated" )
+    foreach( _a51_shader_consumer Entropy UserInterface Gamelib FX A51 main )
+        if( TARGET ${_a51_shader_consumer} )
+            target_include_directories( ${_a51_shader_consumer} PRIVATE "${A51_SHADER_KIT}/generated" )
+        endif()
+    endforeach()
+    target_compile_definitions( Entropy PRIVATE A51_GAME_SHADER_CONTRACT=1 )
+    if( TARGET A51 OR TARGET main )
+        install( DIRECTORY "${A51_SHADER_KIT}/"
+            DESTINATION SHADERS
+            COMPONENT Runtime
+            FILES_MATCHING PATTERN "*.ecs" )
+    endif()
+endif()
+
+if( TARGET ShaderTool )
+    set( A51_SHADER_JOBS 8 CACHE STRING "Shader preparation worker count" )
+    add_custom_target( a51_prepare_shaders
+        COMMAND "$<TARGET_FILE:ShaderTool>" -jobs "${A51_SHADER_JOBS}"
+            "${CMAKE_SOURCE_DIR}/Apps/GameApp/media/GameApp.shaderscript"
+        DEPENDS ShaderTool
+        USES_TERMINAL
+        VERBATIM )
 endif()
 
 message( STATUS "Configured the native Area 51 CMake target graph." )

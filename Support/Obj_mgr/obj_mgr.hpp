@@ -12,6 +12,7 @@
 //==============================================================================
 
 #include "Objects/object.hpp"
+#include "ZoneMgr/ZoneMgr.hpp"
 #include "PainMgr/Pain.hpp"
 #include "TweakMgr/TweakMgr.hpp"
 #include "Animation/CharAnimPlayer.hpp"
@@ -94,11 +95,8 @@ public:
         f32             GetGameDeltaTime        ( xtick LastTime ) const;
         f64             GetSimulationTimeSeconds( void ) const;
 
-        void            Render                  ( xbool DoPortalWalk, const view& PortalView, u8 StartZone );
+        void            Render                  ( xbool DoPortalWalk, const view& PortalView, const zone_mgr::tracker& ViewZones );
 
-#ifdef CONFIG_VIEWER
-        void            RenderArtistViewer      ( const view& View );
-#endif
         
         void            Clear                   ( void );
         void            DisplayStats            ( void );
@@ -202,14 +200,15 @@ public:
 //------------------------------------------------------------------------------
         
 public:
-        void            Render3dObjects             ( xbool DoPortalWalk, const view& PortalView, u8 StartZone );
+        void            Render3dObjects             ( xbool DoPortalWalk, const view& PortalView, const zone_mgr::tracker& ViewZones );
         void            RenderIcons                 ( void );
 
 protected:        
         void            DoVisibilityTests           ( const view& View );
         void            CollectVisibleLights        ( void );
         void            CompleteVisibilityTests     ( void );
-        void            Render3dPrep                ( xbool DoPortalWalk, const view& PortalView, u8 StartZone );
+        void            Render3dPrep                ( xbool DoPortalWalk, const view& PortalView, const zone_mgr::tracker& ViewZones );
+        void            BuildPackedVisibleSlots     ( void );
         void            RenderNormalObjects         ( void );
         void            RenderPlaySurfaces          ( void );
         void            Render2dObjects             ( void );
@@ -297,6 +296,8 @@ protected:
         guid_lookup     m_GuidLookup;                                   //  Guid lookup object                  Size = 28 bytess
         obj_type_node   m_ObjectType    [ object::TYPE_END_OF_LIST ];   //  Info about each type of object      Size = 40*numOfObjects
         obj_slot        m_ObjectSlot    [ MAX_OBJECTS   ];              //  The array that holds all pointers   Size = 14*4096
+        slot_id         m_VisibleSlots [ MAX_OBJECTS   ];
+        slot_id         m_PackedVisibleSlots[ MAX_OBJECTS ];
         obj_cell_link   m_ObjectLink    [ MAX_OBJECTS*8 ];              //  for the spatial structure           Size = 48*4096  
         obj_zone        m_ObjectZone    [ 256 ];                        //  for the zone linked-list            Size = 4*255
 
@@ -305,9 +306,11 @@ protected:
         xbool           m_InVisLoop;                                    //                                              4
         xbool           m_InLoop;
         s32             m_Sequence;
-        plane           m_Plane[6*2];     
-        s32             m_PlaneMinIndex[6*2*3];
-        s32             m_PlaneMaxIndex[6*2*3];
+        s32             m_VisibleSlotCount;
+        s32             m_VisibleTypeStart[ object::TYPE_END_OF_LIST ];
+        plane           m_Plane[6];
+        s32             m_PlaneMinIndex[6*3];
+        s32             m_PlaneMaxIndex[6*3];
         object*         m_pAdvanceLogicActiveObject;                    // This is the current object that we are advancing the logic for
         object*         m_pProxyPlaySurface;                            // This is a proxy playsurface for doing collisions, etc.
         xtick           m_GameTime;
@@ -342,6 +345,8 @@ protected:
 // Create   -   Allocates and initializes an object.
 //
 //==============================================================================
+namespace render { class PipelinePrewarmContext; }
+
 class object_desc : public prop_interface
 {
 //------------------------------------------------------------------------------
@@ -373,6 +378,7 @@ public:
 #endif // X_EDITOR
 
     virtual const char* QuickResourceName           ( void ) const { return NULL; }
+    virtual xbool       CollectRenderPipelineRequirements( render::PipelinePrewarmContext& ) const { return TRUE; }
     virtual const char* QuickResourcePropertyName   ( void ) const { return NULL; }
     
     static object_desc* GetFirstType                ( void );

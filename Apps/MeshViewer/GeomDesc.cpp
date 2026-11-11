@@ -12,7 +12,7 @@
 
 #include "SkinDesc.hpp"
 #include "MeshUtil/RawMesh2.hpp"
-#include "../../Support/Compilers/GeomCompiler/GeomSource.hpp"
+#include "../../Support/Compilers/GeomTool/Compile/GeomSource.hpp"
 #include "../Support/Render/geom.hpp"
 #include "../Editor/Project.hpp"
 

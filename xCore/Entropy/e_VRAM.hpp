@@ -50,6 +50,34 @@ enum vram_texture_format
     VRAM_TEXTURE_FORMAT_BC3_RGBA,
     VRAM_TEXTURE_FORMAT_DEPTH_STENCIL,
     VRAM_TEXTURE_FORMAT_DEPTH32F,
+    VRAM_TEXTURE_FORMAT_ASTC_4X4,
+    VRAM_TEXTURE_FORMAT_ASTC_5X4,
+    VRAM_TEXTURE_FORMAT_ASTC_5X5,
+    VRAM_TEXTURE_FORMAT_ASTC_6X5,
+    VRAM_TEXTURE_FORMAT_ASTC_6X6,
+    VRAM_TEXTURE_FORMAT_ASTC_8X5,
+    VRAM_TEXTURE_FORMAT_ASTC_8X6,
+    VRAM_TEXTURE_FORMAT_ASTC_8X8,
+    VRAM_TEXTURE_FORMAT_ASTC_10X5,
+    VRAM_TEXTURE_FORMAT_ASTC_10X6,
+    VRAM_TEXTURE_FORMAT_ASTC_10X8,
+    VRAM_TEXTURE_FORMAT_ASTC_10X10,
+    VRAM_TEXTURE_FORMAT_ASTC_12X10,
+    VRAM_TEXTURE_FORMAT_ASTC_12X12,
+    VRAM_TEXTURE_FORMAT_ASTC_4X4_SRGB,
+    VRAM_TEXTURE_FORMAT_ASTC_5X4_SRGB,
+    VRAM_TEXTURE_FORMAT_ASTC_5X5_SRGB,
+    VRAM_TEXTURE_FORMAT_ASTC_6X5_SRGB,
+    VRAM_TEXTURE_FORMAT_ASTC_6X6_SRGB,
+    VRAM_TEXTURE_FORMAT_ASTC_8X5_SRGB,
+    VRAM_TEXTURE_FORMAT_ASTC_8X6_SRGB,
+    VRAM_TEXTURE_FORMAT_ASTC_8X8_SRGB,
+    VRAM_TEXTURE_FORMAT_ASTC_10X5_SRGB,
+    VRAM_TEXTURE_FORMAT_ASTC_10X6_SRGB,
+    VRAM_TEXTURE_FORMAT_ASTC_10X8_SRGB,
+    VRAM_TEXTURE_FORMAT_ASTC_10X10_SRGB,
+    VRAM_TEXTURE_FORMAT_ASTC_12X10_SRGB,
+    VRAM_TEXTURE_FORMAT_ASTC_12X12_SRGB,
     VRAM_TEXTURE_FORMAT_COUNT
 };
 
@@ -69,6 +97,7 @@ enum vram_texture_usage_flags
 //------------------------------------------------------------------------------
 
 struct vram_texture_backend;
+struct vram_texture;
 
 //------------------------------------------------------------------------------
 
@@ -152,6 +181,20 @@ struct vram_texture_upload_desc
 
 //------------------------------------------------------------------------------
 
+struct vram_texture_upload_batch_item
+{
+    vram_texture*           pTexture;
+    vram_texture_upload_desc Upload;
+
+    vram_texture_upload_batch_item( void ) :
+        pTexture( NULL ),
+        Upload  ()
+    {
+    }
+};
+
+//------------------------------------------------------------------------------
+
 struct vram_texture
 {
     vram_texture_desc     Desc;
@@ -196,6 +239,8 @@ void                    vram_DestroyTexture     ( vram_texture& Texture );
 
 xbool                   vram_UploadTexture      ( vram_texture& Texture,
                                                   const vram_texture_upload_desc& Upload );
+xbool                   vram_UploadTextureBatch ( const vram_texture_upload_batch_item* pItems,
+                                                  u32 Count );
 xbool                   vram_UploadTexture      ( vram_texture& Texture,
                                                   const xbitmap& Bitmap,
                                                   xbool bGenerateMips = FALSE );

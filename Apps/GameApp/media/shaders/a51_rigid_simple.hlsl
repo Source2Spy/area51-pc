@@ -12,16 +12,18 @@
 
 #include "common/material_flags.hlsl"
 
+#include "common/geom_shader_features.hlsl"
+
 //==============================================================================
 //  GEOMETRY RESOURCES
 //==============================================================================
 
 #define GEOM_USE_RIGID_INSTANCE_DATA 1
 #include "common/frame_constants.hlsl"
-#include "common/lighting_constants.hlsl"
-#include "common/proj_buffers.hlsl"
-#include "common/shadow_buffers.hlsl"
-#include "common/rigid_instance_buffers.hlsl"
+#if defined(A51_SHADER_STAGE_VERTEX)
+    #include "common/rigid_instance_buffers.hlsl"
+#endif
+
 
 #define GEOM_HAS_VERTEX_COLOR 1
 
@@ -40,68 +42,51 @@ struct VS_INPUT
 
 //------------------------------------------------------------------------------
 
-struct GEOM_PIXEL_INPUT
-{
-    float4 Pos         : SV_POSITION;
-    float2 UV          : TEXCOORD0;
-    float4 Color       : COLOR0;
-    float3 WorldPos    : TEXCOORD1;
-    float3 Normal      : TEXCOORD2;
-    float3 ViewVector  : TEXCOORD3;
-    float3 ViewNormal  : TEXCOORD4;
-    nointerpolation uint InstanceID : TEXCOORD5;
-};
-
-//------------------------------------------------------------------------------
-
-#include "common/pixel_structs.hlsl"
-#include "common/geom_textures.hlsl"
-#include "common/geom_pixel_shared.hlsl"
-#include "common/geom_local_shadow_maps.hlsl"
+#include "common/geom_surface_interface.hlsl"
 
 //==============================================================================
 //  SHADERS
 //==============================================================================
 
-GEOM_PIXEL_INPUT VSMain( VS_INPUT input )
+#if defined(A51_SHADER_STAGE_VERTEX)
+GEOM_PIXEL_INPUT VSMain( VS_INPUT Input )
 {
-    GEOM_PIXEL_INPUT output;
-    const uint instanceID = input.InstanceIndex;
+    GEOM_PIXEL_INPUT Output;
+    const uint InstanceID = Input.InstanceIndex;
 
-    float4 worldPos    = mul( RigidInstances[instanceID].World, float4( input.Position, 1.0f ) );
-    float4 viewPos     = mul( View, worldPos );
-    float3 worldNormal = normalize( mul( (float3x3)RigidInstances[instanceID].World, input.Normal ) );
-    float3 viewNormal  = normalize( mul( (float3x3)View, worldNormal ) );
-
-    output.Pos        = mul( Projection, viewPos );
-    output.UV         = input.UV + UVAnim.xy;
-    output.WorldPos   = worldPos.xyz;
-    output.Normal     = worldNormal;
-    output.ViewVector = worldPos.xyz - CameraPosition.xyz;
-    output.ViewNormal = viewNormal;
-    output.InstanceID = instanceID;
-
-    output.Color = 1.0f.xxxx;
-    if( RigidInstances[instanceID].ColorOffset != 0xFFFFFFFFu )
-    {
-        const uint colorIndex = RigidInstances[instanceID].ColorOffset + input.VertexIndex;
-        output.Color = DecodeRigidVertexColor( RigidVertexColors[colorIndex] );
-    }
-
-    return output;
+    const float4 WorldPos = mul(RigidInstances[InstanceID].World, float4(Input.Position,1));
+    const float4 ViewPos = mul(View,WorldPos);
+    precise float4 ClipPos = mul(Projection,ViewPos);
+    Output.Pos = ClipPos;
+#if A51_SURFACE_INTERFACE & 1
+    Output.UV = Input.UV + UVAnim.xy;
+#endif
+#if A51_SURFACE_INTERFACE & 2
+    Output.Color = float4(0,0,0,1);
+    if( RigidInstances[InstanceID].ColorOffset != 0xffffffffu )
+        Output.Color = DecodeRigidVertexColor(RigidVertexColors[RigidInstances[InstanceID].ColorOffset + Input.VertexIndex]);
+#endif
+#if A51_SURFACE_INTERFACE & 4
+    Output.WorldPos = WorldPos.xyz;
+#endif
+#if A51_SURFACE_INTERFACE & 8
+    Output.Normal = normalize(mul((float3x3)RigidInstances[InstanceID].World,Input.Normal));
+#endif
+#if A51_SURFACE_INTERFACE & 16
+    Output.ViewVector = WorldPos.xyz - CameraPosition.xyz;
+#endif
+#if A51_SURFACE_INTERFACE & 32
+    Output.ViewDepth = ViewPos.z;
+#endif
+#if A51_SURFACE_INTERFACE & 64
+    Output.DrawFlags = RigidInstances[InstanceID].ShaderFlags;
+#endif
+#if A51_SURFACE_INTERFACE & 128
+    Output.LightingIndex = RigidInstances[InstanceID].LightingIndex;
+#endif
+#if A51_SURFACE_INTERFACE & 256
+    Output.FadeAlpha = RigidInstances[InstanceID].FadeAlpha;
+#endif
+    return Output;
 }
-
-//==============================================================================
-
-GEOM_PIXEL_OUTPUT PSMain( GEOM_PIXEL_INPUT input, bool isFrontFace : SV_IsFrontFace )
-{
-    return ShadeGeometryPixel( input, isFrontFace );
-}
-
-//==============================================================================
-
-float4 PSScene( GEOM_PIXEL_INPUT input, bool isFrontFace : SV_IsFrontFace ) : SV_Target0
-{
-    const GEOM_PIXEL_OUTPUT shaded = ShadeGeometryPixel( input, isFrontFace );
-    return GeomApplyForwardFog( shaded.FinalColor, input );
-}
+#endif

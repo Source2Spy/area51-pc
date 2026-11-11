@@ -95,10 +95,7 @@ void hud_contagious_vision::OnRender( player* pPlayer )
     eng_SetView( OverlayView );
  
     // render it!
-    VERIFY( render::BeginPrimitiveRender() );
     m_OverlayHandle.Render( );
-    render::EndPrimitiveRender();
-    render::ExecuteForwardRender();
 
     // restore the original view
     eng_SetView( OrigView );

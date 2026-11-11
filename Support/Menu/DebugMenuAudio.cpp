@@ -14,15 +14,7 @@
 #if defined( ENABLE_DEBUG_MENU )
 
 extern xbool SHOW_STREAM_INFO;
-extern xbool SHOW_AUDIO_LEVELS;
-extern xbool SHOW_AUDIO_CHANNELS;
-extern xbool DEBUG_PLAY_IDENTIFIER_NOT_FOUND;
-extern xbool DEBUG_PLAY_ACQUIRE_VOICE_FAILED;
-extern xbool DEBUG_PLAY_VOLUME_CLIPPED;
-extern xbool DEBUG_PLAY_SUCCESS;
 extern xbool DEBUG_ACQUIRE_CHANNEL_FAIL;
-extern xbool DEBUG_FILTER_FOOTFALL;
-extern xbool DEBUG_FILTER_VOX;
 #ifndef X_RETAIL
 extern xbool AUDIO_TWEAK;
 #endif
@@ -38,14 +30,7 @@ debug_menu_audio::debug_menu_audio( ) : debug_menu_page()
     AddItemBool( "Enable Audio Tweaks",             AUDIO_TWEAK   );
 #endif
     AddItemSeperator( );
-    AddItemBool( "Debug 'Identifier Not Found'",    DEBUG_PLAY_IDENTIFIER_NOT_FOUND );
-    AddItemBool( "Debug 'Voice Acquire Failure'",   DEBUG_PLAY_ACQUIRE_VOICE_FAILED );
-    AddItemBool( "Debug 'Volume Clipped'",          DEBUG_PLAY_VOLUME_CLIPPED       );
-    AddItemBool( "Debug 'Success'",                 DEBUG_PLAY_SUCCESS              );
     AddItemBool( "Debug 'Channel Acquire Failure'", DEBUG_ACQUIRE_CHANNEL_FAIL      );
-    AddItemSeperator( );
-    AddItemBool( "'Footfall' Filter",               DEBUG_FILTER_FOOTFALL );
-    AddItemBool( "'VOX & PainGrunt' Filter",        DEBUG_FILTER_VOX );
     AddItemSeperator( );
     m_pDumpLoadedPackages = AddItemButton( "Dump Loaded Packages to TTY" );    
 }
@@ -60,12 +45,4 @@ void debug_menu_audio::OnChangeItem( debug_menu_item* pItem )
     }
 }
 
-//==============================================================================
-#if 1
-void debug_menu_audio::OnPreRenderActive( void )
-{
-    extern void AudioStats( f32 DeltaTime );
-    AudioStats( 0.033f );
-}
-#endif
-#endif // defined( ENABLE_DEBUG_MENU )
+#endif // ENABLE_DEBUG_MENU

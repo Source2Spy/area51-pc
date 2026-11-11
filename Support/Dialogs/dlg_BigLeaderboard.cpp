@@ -15,7 +15,7 @@
 
 #include "StateMgr/StateMgr.hpp"
 #include "StringMgr/StringMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "NetworkMgr/Voice/VoiceMgr.hpp"
 
 //=========================================================================
@@ -44,14 +44,6 @@ ui_manager::dialog_tem BigLeaderboardDialog =
     &BigLeaderboardControls[0],
     0
 };
-
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
 
 //=========================================================================
 //  Data
@@ -174,14 +166,14 @@ xbool dlg_big_leaderboard::Create( s32                        UserID,
     navText += g_StringTableMgr( "ui", "IDS_NAV_CYCLE_DATA" );
   
     // Grab a bunch of strings.
-    m_pStrLevelDesc  = g_StringTableMgr( "ui", "IDS_NAV_LEVEL_DESC"  );
-    m_pStrPlayer     = g_StringTableMgr( "ui", "IDS_HEADER_PLAYER"   );
-    m_pStrScore      = g_StringTableMgr( "ui", "IDS_HEADER_SCORE"    );
-    m_pStrIconKills  = g_StringTableMgr( "ui", "IDS_ICON_KILLS"      );
-    m_pStrIconDeaths = g_StringTableMgr( "ui", "IDS_ICON_DEATHS"     );
-    m_pStrIconTKs    = g_StringTableMgr( "ui", "IDS_ICON_TEAM_KILLS" );
-    m_pStrIconFlags  = g_StringTableMgr( "ui", "IDS_ICON_FLAGS"      );
-    m_pStrIconVotes  = g_StringTableMgr( "ui", "IDS_ICON_VOTES"      );
+    m_StrLevelDesc  = g_StringTableMgr( "ui", "IDS_NAV_LEVEL_DESC"  );
+    m_StrPlayer     = g_StringTableMgr( "ui", "IDS_HEADER_PLAYER"   );
+    m_StrScore      = g_StringTableMgr( "ui", "IDS_HEADER_SCORE"    );
+    m_StrIconKills  = g_StringTableMgr( "ui", "IDS_ICON_KILLS"      );
+    m_StrIconDeaths = g_StringTableMgr( "ui", "IDS_ICON_DEATHS"     );
+    m_StrIconTKs    = g_StringTableMgr( "ui", "IDS_ICON_TEAM_KILLS" );
+    m_StrIconFlags  = g_StringTableMgr( "ui", "IDS_ICON_FLAGS"      );
+    m_StrIconVotes  = g_StringTableMgr( "ui", "IDS_ICON_VOTES"      );
 
     SetNavText( navText );
     SetNavTextVisible( TRUE );
@@ -393,7 +385,7 @@ void dlg_big_leaderboard::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
     case LEADERBOARD_INTERLEVEL:
         {
-            NavText = m_pStrLevelDesc;
+            NavText = m_StrLevelDesc;
 
             xwstring LoadText("");
             switch( (s32)(m_LoadTimeElapsed*4.0f) % 4 )
@@ -652,8 +644,8 @@ void dlg_big_leaderboard::RenderScoreList( s32 ox, s32 oy )
         r2.l += 5;
         r2.r = r2.l + 155;
         r2.b -= 6;
-        m_pManager->RenderText( Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, th, ScoreData.Team[0].NName );
-        m_pManager->RenderText( Font, r2, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, th, ScoreData.Team[1].NName );
+        m_pManager->RenderText( Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, th, ScoreData.Team[0].Name );
+        m_pManager->RenderText( Font, r2, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, th, ScoreData.Team[1].Name );
 
         r.l += 160;
         r.r = r.l + 45;
@@ -673,15 +665,15 @@ void dlg_big_leaderboard::RenderScoreList( s32 ox, s32 oy )
     r2.l += 256 + 5 + 16;
     r2.t += 36 + s_LineSpacing - 16;
     r2.b = r2.t + 16;
-    m_pManager->RenderText( m_Font, r , ui_font::h_left|ui_font::v_center, ch, m_pStrPlayer );
-    m_pManager->RenderText( m_Font, r2, ui_font::h_left|ui_font::v_center, ch, m_pStrPlayer );
+    m_pManager->RenderText( m_Font, r , ui_font::h_left|ui_font::v_center, ch, m_StrPlayer );
+    m_pManager->RenderText( m_Font, r2, ui_font::h_left|ui_font::v_center, ch, m_StrPlayer );
     
     r.l  += 136  - 16;
     r.r   = r.l  + 30;
     r2.l += 136  - 16;
     r2.r  = r2.l + 30;
-    m_pManager->RenderText( m_Font, r , ui_font::h_right|ui_font::v_center, ch, m_pStrScore );
-    m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, m_pStrScore );
+    m_pManager->RenderText( m_Font, r , ui_font::h_right|ui_font::v_center, ch, m_StrScore );
+    m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, m_StrScore );
     
     r.l  += 35;
     r.r  += 35;
@@ -692,28 +684,28 @@ void dlg_big_leaderboard::RenderScoreList( s32 ox, s32 oy )
     switch( m_SelectedType )
     {
         case TYPE_KILLS:
-            m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_pStrIconKills );
-            m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, m_pStrIconKills );
+            m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_StrIconKills );
+            m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, m_StrIconKills );
             break;
 
         case TYPE_DEATHS:
-            m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_pStrIconDeaths );       
-            m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, m_pStrIconDeaths );      
+            m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_StrIconDeaths );
+            m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, m_StrIconDeaths );
             break;
 
         case TYPE_TKS:
-            m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_pStrIconTKs );       
-            m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, m_pStrIconTKs );      
+            m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_StrIconTKs );
+            m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, m_StrIconTKs );
             break;
 
         case TYPE_FLAGS:
-            m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_pStrIconFlags );       
-            m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, m_pStrIconFlags );      
+            m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_StrIconFlags );
+            m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, m_StrIconFlags );
             break;
 
         case TYPE_VOTES:
-            m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_pStrIconVotes );       
-            m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, m_pStrIconVotes );      
+            m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_StrIconVotes );
+            m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, m_StrIconVotes );
             break;
 
         case TYPE_NONE:
@@ -809,7 +801,7 @@ void dlg_big_leaderboard::RenderScoreList( s32 ox, s32 oy )
 
             r.l += 16;
             r.r = r.l + 131 - 16;
-            m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, c1, m_PlayerData[i].NName );
+            m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, c1, m_PlayerData[i].Name );
             
             r.l += 120;
             r.r = r.l + 30;

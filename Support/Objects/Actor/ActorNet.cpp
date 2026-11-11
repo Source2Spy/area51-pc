@@ -38,11 +38,12 @@
 #include "Characters/Grunt/GruntLoco.hpp"
 #include "TemplateMgr/TemplateMgr.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
-#include "NetworkMgr/PainQueue.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
+#include "NetworkMgr/Replication/PainQueue.hpp"
 #include "Inventory/Inventory2.hpp"
 #include "Characters/ActorEffects.hpp"
 #include "Objects/Player/Player.hpp"
+#include "StateMgr/MapList.hpp"
 
 //==============================================================================
 
@@ -457,6 +458,42 @@ void update::Read( const bitstream& BS )
         LOG_FLUSH();
     }
 #endif        
+    u32 ActivateBits = POSITION_BIT | ORIENTATION_BIT | HEALTH_BIT | LIFE_BIT |
+                       TEAM_BITS_BIT | WEAPON_BIT | VOTE_FLAGS_BIT;
+    u32 SpawnBits = POSITION_BIT | ORIENTATION_BIT | WEAPON_BIT;
+    u32 AnimMask = (loco::ANIM_FLAG_COVER_RELATIVE_MODE << 1) - 1;
+
+    if( DirtyBits & netobj::ACTIVATE_BIT )
+    {
+        if( !IN_RANGE( SKIN_BEGIN_PLAYERS, Skin, SKIN_END_PLAYERS ) ||
+            ((DirtyBits & ActivateBits) != ActivateBits) )
+            BS.SetReadError();
+    }
+
+    if( ((DirtyBits & MUTATION_FLAGS_BIT) && ForceHuman && ForceMutant) ||
+        ((DirtyBits & LIFE_BIT) && !(LifeSeq & 1) && ((DirtyBits & SpawnBits) != SpawnBits)) ||
+        ((DirtyBits & CURRENT_AMMO_BIT) && !(DirtyBits & WEAPON_BIT)) ||
+        ((DirtyBits & PLAY_ANIM_BIT) && ((iAnim < -1) || (AnimFlags & ~AnimMask))) )
+        BS.SetReadError();
+
+    if( ((DirtyBits & HEALTH_BIT) &&
+         (g_NetworkMgr.IsServer() || (IncHealth < 0.0f) || (DecHealth < 0.0f))) ||
+        ((DirtyBits & VOTE_ACTION_BIT) && g_NetworkMgr.IsClient()) )
+        BS.SetReadError();
+
+    if( (DirtyBits & LIFE_BIT) && !(LifeSeq & 1) &&
+        (DirtyBits & ORIENTATION_BIT) && (TargetNetSlot != -1) )
+        BS.SetReadError();
+
+    if( (DirtyBits & VOTE_ACTION_BIT) && (VoteAction == 3) )
+    {
+        s32 MapID = (u32)VoteArgument & 0xFFFF;
+        s32 GameType = (u32)VoteArgument >> 16;
+
+        if( !IN_RANGE( GAME_DM, GameType, GAME_CNH ) || !g_MapList.Find(MapID, GameType) ||
+            !g_MapList.GetGameTypeInfo(GameType) )
+            BS.SetReadError();
+    }
 }
 
 //==============================================================================
@@ -914,19 +951,6 @@ void actor::net_Activate( void )
                  (m_NetModeBits & CONTROL_LOCAL) ? "LOCAL"  : "REMOTE",
                  (m_NetModeBits & ON_SERVER    ) ? "SERVER" : "CLIENT" );
 
-}
-
-//==============================================================================
-
-void actor::net_AcceptUpdate( const bitstream& BS )
-{
-    // Read update using utility structure.
-    update Update;
-    Update.Slot = m_NetSlot;
-    Update.Read( BS );
-
-    // Call virtual function to process.
-    net_AcceptUpdate( Update );
 }
 
 //==============================================================================

@@ -1917,7 +1917,7 @@ void cinema_object::OnAdvanceSimulation( f32 DeltaTime )
         {
             m_VoiceID = g_ConverseMgr.PlayStream( m_Descriptor, GetPosition(), GetGuid(), GetZone1(), 0.0f, FALSE );
         }
-        if( g_AudioMgr.IsValidVoiceId( m_VoiceID ) )
+        if( g_AudioMgr.IsValidVoiceIdCached( m_VoiceID ) )
         {
             LOG_MESSAGE( "cinema_object::OnAdvanceSimulation", "AUDIO_STATUS_WARMING" );
             m_AudioStatus = AUDIO_STATUS_WARMING;
@@ -1936,7 +1936,7 @@ void cinema_object::OnAdvanceSimulation( f32 DeltaTime )
 
     case AUDIO_STATUS_WARMING:
 
-        if( !g_AudioMgr.IsValidVoiceId( m_VoiceID ) )
+        if( !g_AudioMgr.IsValidVoiceIdCached( m_VoiceID ) )
         {
             m_VoiceID     = 0;
             m_AudioStatus = AUDIO_STATUS_DONE;
@@ -1950,7 +1950,7 @@ void cinema_object::OnAdvanceSimulation( f32 DeltaTime )
         break;
 
     case AUDIO_STATUS_PLAYING:
-        if( !g_AudioMgr.IsValidVoiceId( m_VoiceID ) )
+        if( !g_AudioMgr.IsValidVoiceIdCached( m_VoiceID ) )
         {
             g_ConverseMgr.Stop( m_VoiceID );
             m_VoiceID = 0;

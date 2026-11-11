@@ -9,846 +9,209 @@
 //==============================================================================
 
 #include "StringMgr.hpp"
-#include "Entropy.hpp"
-#include "ResourceMgr/ResourceMgr.hpp"
+#include "StringTable.hpp"
 
 //==============================================================================
 //  STORAGE
 //==============================================================================
 
-//#define ENABLE_QA_STRINGTEST
+string_mgr g_StringTableMgr;
 
-string_mgr g_StringTableMgr;               // Instantiate the one and only string manager
-
-#if !defined(X_RETAIL) || defined(X_QA)
-  #if defined(X_QA) && defined(ENABLE_QA_STRINGTEST)
-    xbool    g_bStringTest = TRUE; 
-  #else
-    xbool    g_bStringTest = FALSE; 
-  #endif
-    xbool    g_bShowStringID = FALSE;
-#endif
-
-xwchar s_NullString[] = { '<','n','u','l','l','>',0,0 };
-
-//------------------------------------------------------------------------------
-
-//==============================================================================
-//  STRING MANAGER RESOURCE LOADER
-//==============================================================================
-
-class binstring_loader : public rsc_loader
-{
-public:
-            binstring_loader ( const char* pType, const char* pExt ) : rsc_loader(pType,pExt) {}
-    void*   PreLoad         ( X_FILE* pFP   );
-    void*   Resolve         ( void*   pData );
-    void    Unload          ( void*   pData );
-    void*   PreLoad         ( X_FILE*& Fp, const char* pFileName );
-};
-
-binstring_loader BinaryStringLoader("Binary Text",".stringbin");
-
-//==============================================================================
-
-void* binstring_loader::PreLoad( X_FILE*& Fp, const char* pFileName )
-{
-    MEMORY_OWNER( "STRING DATA" );
-    xbool Loaded = FALSE;
-
-    // this just checks that the file exists. the unlocalized name is passed
-    // to the loader, and will be converted again...
-    // this is because it will fail if we remove the ENG_ name prefix in the future,
-    // and because the loader may be called elsewhere.
-    string_mgr::char_string CharString;
-    const char* LocalizedName = g_StringTableMgr.GetLocalizedName( pFileName, CharString );
-
-    Fp = x_fopen( LocalizedName, "rb" );
-
-    if( !Fp && (x_GetLocale() != XL_LANG_ENGLISH) )
-    {
-        LocalizedName = g_StringTableMgr.GetLocalizedName( pFileName,
-                                                           XL_LANG_ENGLISH,
-                                                           CharString );
-        Fp = x_fopen( LocalizedName, "rb" );
-    }
-
-    if( Fp )
-    {
-        //
-        // We are going to use the name of the file as the table name.
-        //
-        xstring FileName( pFileName );  
-        
-        // Find the last '/' or '\'.
-        s32 i = -1;
-        for( s32 j = FileName.GetLength()-1; j >= 0 ; j--)
-        {
-            if( FileName[j] == '/' || FileName[j] == '\\' )
-            {
-                i = j + 1;
-                break;
-            }
-        }
-
-        if( i == -1 )
-            i = 0;
-        
-        s32 CharsToTake = FileName.GetLength() - i;
-        xstring TableNameExt = FileName.Right( CharsToTake );    
-        TableNameExt = TableNameExt.Left( TableNameExt.Find( '.' ) );
-
-        s32 StrLen = TableNameExt.GetLength();
-        char* pTableName = new char[ StrLen + 1 ];
-        x_memset( pTableName, 0, StrLen+1 );
-
-        x_strncpy( pTableName, (const char*)TableNameExt, StrLen );
-        Loaded = g_StringTableMgr.LoadTable( pTableName, pFileName );    
-
-        if( Loaded )
-        {
-            return (void*)pTableName;
-        }
-        else
-        {
-            delete [] pTableName;
-            return NULL;
-        }
-    }
-    return NULL;
-}
-
-//==============================================================================
-
-void* binstring_loader::PreLoad( X_FILE* pFP   )
-{
-    (void)pFP;
-    return NULL;
-}
-
-//==============================================================================
-
-void* binstring_loader::Resolve( void* pData )
-{
-    return pData;
-}
-
-//==============================================================================
-
-void  binstring_loader::Unload( void* pData )
-{
-    if( pData != NULL )
-    {
-        g_StringTableMgr.UnloadTable( (const char*)pData );
-        delete [] (char *)pData;
-    }
-}
-//==============================================================================
-// GLOBALS
-//==============================================================================
-xbool   string_mgr::m_Initialized = FALSE;
-
-//==============================================================================
-//  FUNCTIONS
-//==============================================================================
-
-string_table::string_table( void )
-{
-    m_TableName[0]  = 0;
-    m_SourceName[0] = 0;
-    m_pData         = NULL;
-    m_nStrings      = 0;
-    m_Version       = 0;
-    m_pIndex        = NULL;
-    m_pStrings      = NULL;
-}
-
-//==============================================================================
-
-string_table::~string_table( void )
-{
-    if( m_pData )
-    {
-        x_free( m_pData );
-
-        m_pData     = NULL;
-        m_nStrings  = 0;
-        m_Version   = 0;
-        m_pIndex    = NULL;
-        m_pStrings  = NULL;
-
-        LOG_MESSAGE( "string_table::~string_table",
-                     "Unloaded: %s", m_TableName );
-    }
-}
-
-//==============================================================================
-
-const char* string_mgr::GetLocalizedName( const char* pFileName, char_string& LocalizedName ) const
-{
-    return GetLocalizedName( pFileName,
-                             x_GetLocale(),
-                             LocalizedName );
-}
-
-//==============================================================================
-
-const char* string_mgr::GetLocalizedName( const char* pFileName,
-                                          x_language  Language,
-                                          char_string& LocalizedName ) const
-{
-    char pDrive[X_MAX_DRIVE], pPath[X_MAX_PATH], pName[X_MAX_FNAME], pExt[X_MAX_EXT];
-    ASSERT( pFileName );
-
-    x_splitpath(pFileName, pDrive, pPath, pName, pExt);
-    ASSERT(x_strlen(pName) > 3);
-    ASSERTS( x_strlen(pName) < (s32)sizeof( LocalizedName ), xfs( "Inc char_string to %d chars", x_strlen( pName ) ) );
-
-    char* Name = LocalizedName.m_String;
-    x_sprintf( Name,
-               "%s%s%s%s%s",
-               pDrive,
-               pPath,
-               x_GetLocaleString( Language ),
-               pName + 3,
-               pExt );
-
-#if defined(X_DEBUG) && defined(ctetrick)
-    if( x_strcmp(pFileName, Name) != 0 )
-        LOG_MESSAGE("string_mgr::GetLocalizedName", "Stringbin file (%s) returned as (%s)", pFileName, Name);
-#endif
-    
-    return (const char *)Name;
-}
-
-//==============================================================================
-
-xbool string_table::Load( const char* pTableName,
-                          const char* pFileName,
-                          x_language  Language )
-{
-    xbool Success = FALSE;
-
-    string_mgr::char_string CharString;
-    const char* LocalizedName = g_StringTableMgr.GetLocalizedName( pFileName,
-                                                                   Language,
-                                                                   CharString );
-
-    X_FILE* pFile = x_fopen( LocalizedName, "rb" );
-    if( pFile )
-    {
-        s32 Length = x_flength( pFile );
-
-        m_pData = (byte*)x_malloc( Length );
-        ASSERT( m_pData );
-
-        VERIFY( x_fread( m_pData, 1, Length, pFile ) == Length );
-        x_fclose( pFile );
-
-        m_Version    = 0;
-        m_pIndex     = NULL;
-        m_pStrings   = NULL;
-        m_nStrings   = 0;
-
-        do
-        {
-            if( Length < (s32)STRINGBIN_HEADER_BYTES )
-            {
-                LOG_ERROR( "string_table::Load",
-                           "String table too small: %s - %s",
-                           pTableName, pFileName );
-                break;
-            }
-
-            const stringbin_header* pHeader = (const stringbin_header*)m_pData;
-            if( pHeader->Signature != STRINGBIN_SIGNATURE )
-            {
-                LOG_ERROR( "string_table::Load",
-                           "Invalid string table signature: %s - %s",
-                           pTableName, pFileName );
-                break;
-            }
-
-            m_Version  = pHeader->Version;
-            m_nStrings = pHeader->StringCount;
-
-            if( m_Version != STRINGBIN_VERSION )
-            {
-                LOG_ERROR( "string_table::Load",
-                           "Unsupported string table version %d: %s - %s",
-                           m_Version, pTableName, pFileName );
-                break;
-            }
-
-            if( m_nStrings < 0 )
-            {
-                LOG_ERROR( "string_table::Load",
-                           "Invalid string count %d: %s - %s",
-                           m_nStrings, pTableName, pFileName );
-                break;
-            }
-
-            const s32 IndexOffset = STRINGBIN_HEADER_BYTES;
-            const s32 BytesAfterHeader = Length - IndexOffset;
-            if( BytesAfterHeader < 0 )
-            {
-                LOG_ERROR( "string_table::Load",
-                           "Corrupt string table length: %s - %s",
-                           pTableName, pFileName );
-                break;
-            }
-
-            if( m_nStrings > (BytesAfterHeader / (s32)sizeof(s32)) )
-            {
-                LOG_ERROR( "string_table::Load",
-                           "Corrupt string table index: %s - %s",
-                           pTableName, pFileName );
-                break;
-            }
-
-            const s32 IndexSize = m_nStrings * (s32)sizeof(s32);
-            if( BytesAfterHeader < IndexSize )
-            {
-                LOG_ERROR( "string_table::Load",
-                           "Truncated string table index: %s - %s",
-                           pTableName, pFileName );
-                break;
-            }
-
-            m_pIndex   = (s32*)(m_pData + IndexOffset);
-            m_pStrings = m_pData + IndexOffset + IndexSize;
-
-            x_strncpy( m_TableName, pTableName, sizeof(m_TableName) );
-            m_TableName[sizeof(m_TableName) - 1] = 0;
-            x_strncpy( m_SourceName, pFileName, sizeof(m_SourceName) );
-            m_SourceName[sizeof(m_SourceName) - 1] = 0;
-            Success = TRUE;
-
-            LOG_MESSAGE( "string_table::Load",
-                         "Loaded: %s - %s",
-                         pTableName, pFileName );
-        } while( FALSE );
-
-        if( !Success )
-        {
-            x_free( m_pData );
-            m_pData      = NULL;
-            m_TableName[0] = 0;
-            m_SourceName[0] = 0;
-            m_nStrings   = 0;
-            m_Version    = 0;
-            m_pIndex     = NULL;
-            m_pStrings   = NULL;
-        }
-    }
-    else
-    {
-        LOG_ERROR( "string_table::Load",
-                   "Failed to load string table: %s - %s",
-                   pTableName, pFileName );
-    }
-
-    return Success;
-}
-
-//==============================================================================
-s32 string_table::GetCount( void ) const
-{
-    return( m_nStrings );
-}
-
-//==============================================================================
-#if !defined(X_RETAIL) || defined(X_QA)
-// function for string tests. to flush out hard coded text in game. 
-// Substitutes X's for all printable text.
-void FillString( const xwchar* pString )
-{
-    ASSERTS(!g_bShowStringID, "Shouldn't be here if displaying string IDs.");    
-
-    xwchar* pText = (xwchar*)pString;
-
-    while( *pText )
-    {
-        // skip over any control codes.
-        if(( *pText > 0x10 ) && (*pText != 0x20))
-        {
-            // check for button code pairs
-            if( *pText == 0xAB)
-            {
-                while(*pText && *pText != 0xBB)
-                    pText++;
-            }
-            // check for bracket pairs
-            if( *pText == '<')
-            {
-                while(*pText && *pText != '>')
-                    pText++;
-            }
-            if( *pText == 0 ) break;
-            if( (*pText != 0xBB) && (*pText != '>') )
-                *pText = 'x';
-        }
-        pText++;
-    }
-}
-#endif
-
-//==============================================================================
-
-const xwchar* string_table::GetAt( s32 Index ) const
-{
-    const xwchar* pString = NULL;
-
-    if( (Index >= 0) && (Index < m_nStrings) && m_pIndex && m_pStrings )
-    {
-        const xwchar* pStringBase = (const xwchar*)(m_pStrings + m_pIndex[Index]);
-        pString = pStringBase;
+static const xwstring s_EmptyString;
 
 #if !defined(X_RETAIL) || defined(X_QA)
-        if( g_bShowStringID )
-            return pStringBase;
+xbool g_bStringTest   = FALSE;
+xbool g_bShowStringID = FALSE;
 #endif
-        pString = pStringBase + x_wstrlen( pStringBase ) + 1;
-
-#if !defined(X_RETAIL) || defined(X_QA)
-        if( g_bStringTest )
-            FillString(pString);    // modifies string
-#endif
-
-        return pString;
-    }
-
-    return NULL;
-}
 
 //==============================================================================
-s32 w2sstricmp( const xwchar* pStr1, const char* pStr2 )
-{
-    s32 C1, C2;
-
-    ASSERT( pStr1 );
-    ASSERT( pStr2 );
-
-    do
-    {
-        C2 = (s32)(*(pStr1++));
-        if( (C2 >= 'A') && (C2 <= 'Z') )
-        {
-            C2 -= ('A' - 'a');
-        }
-
-        C1 = (s32)(*(pStr2++));
-        if( (C1 >= 'A') && (C1 <= 'Z') )
-        {
-            C1 -= ('A' - 'a');
-        }
-
-    } while( C1 && (C1 == C2) );
-
-    return( C2 - C1 );
-}
-
-//==============================================================================
-
-xwchar* Ansi2UpperWide( const char* pSrc, string_mgr::wchar_string& WideString )
-{
-    ASSERT( pSrc );
-    u32 Length = x_strlen( pSrc )+1;
-    ASSERTS( Length <= ( sizeof( WideString ) / 2 ), xfs( "Inc wide_string to %d chars", Length ) );
-    xwchar* pWide = WideString.m_String;
-    char* pTemp = (char*)pWide;
-    for( u32 i=0;i<Length;i++ )
-    {
-#ifdef TARGET_GCN
-        pTemp[0]=0;
-        pTemp[1]= x_toupper( pSrc[i] );
-        pTemp+=2;
-#else   
-        pTemp[1]=0;
-        pTemp[0]= x_toupper( pSrc[i] );
-        pTemp+=2;
-#endif
-    }
-    return pWide;
-}
-
-//==============================================================================
-
-const xwchar* string_table::FindString( const char* lookupString ) const
-{
-    if( !m_pIndex || !m_pStrings )
-        return NULL;
-
-    const s32* pIndex = m_pIndex;
-    xwchar* pString = NULL;
-    
-    s32 imax;
-    s32 imin;
-    xbool bFound = FALSE;
-
-    string_mgr::wchar_string WideString;
-    xwchar* pLookupWide = Ansi2UpperWide( lookupString, WideString );
-
-    imax = m_nStrings;
-    imin = 0;
-    bFound = FALSE;
-
-    while( imax >= imin )
-    {
-        s32 i = (imin+imax)/2;
-        pString = (xwchar*)(m_pStrings + pIndex[i]);
-
-        if( imax == imin+1 )
-        {
-            if( !x_wstrcmp( pString, pLookupWide ) )
-                bFound = TRUE;
-            else  //-- NOT FOUND
-                break;
-        }
-
-        s32 cmpVal = x_wstrcmp( pString, pLookupWide );
-
-        if( cmpVal == 0 )
-            bFound = TRUE;
-        else if ( cmpVal > 0 )
-            imax = i;
-        else
-            imin = i;
-
-        if( bFound )
-        {
-#if !defined(X_RETAIL) || defined(X_QA)
-            if( g_bShowStringID )
-                return pString;
-#endif
-            pString += x_wstrlen(pString);
-            pString++;
-
-#if !defined(X_RETAIL) || defined(X_QA)
-            if( g_bStringTest )
-                FillString(pString);    // modifies string
-#endif
-
-            return( pString );    
-        }
-    }
-    return(NULL);
-}
-
-//==============================================================================
-
-const xwchar* string_table::GetAt( const char* lookupString ) const
-{
-#if defined(TARGET_DESKTOP)
-    char TARGETTAG[4] = {'_','P','C','\0'};
-#else
-    char TARGETTAG[1] = {'\0'};
-#endif
-
-    const xwchar* pString = NULL;
-    char LOOKUPSTRING_TAG[256];
-
-    ASSERT( ( x_strlen(TARGETTAG) + x_strlen(lookupString) ) < (s32)sizeof( LOOKUPSTRING_TAG ) );
-    x_strncpy( LOOKUPSTRING_TAG, lookupString, sizeof( LOOKUPSTRING_TAG ) );  //-- ID
-    x_strncat( LOOKUPSTRING_TAG, TARGETTAG, 7 );     //-- TAG
-
-    //-- Look for the ID with the Tag hooked to the end.
-    pString = FindString( LOOKUPSTRING_TAG );
-    if( pString )
-    {
-        return( pString );
-    }
-    else
-    {
-        //-- Didnt find it with a platform tag now look normaly.
-        pString = FindString( lookupString );
-        if( pString )
-            return( pString );
-    }
-
-    return NULL;
-}
-
-//==============================================================================
-
-const xwchar* string_table::GetSubTitleSpeaker( const char* lookupString ) const
-{
-    if( !m_pIndex || !m_pStrings )
-        return NULL;
-
-    xwchar* pString = NULL;
-    const s32* pIndex = m_pIndex;
-
-    string_mgr::wchar_string WideString;
-    xwchar* pLookupWide = Ansi2UpperWide( lookupString, WideString );
-
-    s32 imax = m_nStrings;
-    s32 imin = 0;
-    xbool    bFound = FALSE;
-    while( imax >= imin )
-    {
-        s32 i = (imin+imax)/2;
-
-        pString = (xwchar*)(m_pStrings + pIndex[i]);
-
-        if( imax == imin+1 )
-        {
-            if( !x_wstrcmp( pString, pLookupWide ) )
-            {
-                bFound = TRUE;
-            }
-            else
-            {
-                //-- NOT FOUND
-                break;
-            }
-        }
-
-        s32 cmpVal = x_wstrcmp( pString, pLookupWide );
-
-        if( cmpVal == 0 )
-            bFound = TRUE;
-        else if ( cmpVal > 0 )
-            imax = i;
-        else
-            imin = i;
-
-        if ( bFound )
-        {
-#if !defined(X_RETAIL) || defined(X_QA)
-            if( g_bShowStringID )
-                return pString;
-#endif
-            // Skip Title
-            pString += x_wstrlen(pString);
-            pString++;
-
-            // Skip String
-            pString += x_wstrlen(pString);
-            pString++; // Skip Null
-
-#if !defined(X_RETAIL) || defined(X_QA)
-            if( g_bStringTest )
-                FillString(pString);    // modifies string
-#endif
-
-            // Return Speaker
-            return pString;
-        }
-    }
-
-    return NULL;
-}
-
-//==============================================================================
-
-const xwchar* string_table::GetSoundDescString( const char* lookupString ) const
-{
-    if( !m_pIndex || !m_pStrings )
-        return NULL;
-
-    xwchar* pString = NULL;
-    const s32* pIndex = m_pIndex;
-
-    string_mgr::wchar_string WideString;
-    xwchar* pLookupWide = Ansi2UpperWide( lookupString, WideString );
-
-    s32 imax = m_nStrings;
-    s32 imin = 0;
-    xbool    bFound = FALSE;
-    while( imax >= imin )
-    {
-        s32 i = (imin+imax)/2;
-
-        pString = (xwchar*)(m_pStrings + pIndex[i]);
-
-        if( imax == imin+1 )
-        {
-            if( !x_wstrcmp( pString, pLookupWide ) )
-            {
-                bFound = TRUE;
-            }
-            else
-            {
-                //-- NOT FOUND
-                break;
-            }
-        }
-
-        s32 cmpVal = x_wstrcmp( pString, pLookupWide );
-
-        if( cmpVal == 0 )
-            bFound = TRUE;
-        else if ( cmpVal > 0 )
-            imax = i;
-        else
-            imin = i;
-
-        if ( bFound )
-        {
-#if !defined(X_RETAIL) || defined(X_QA)
-            if( g_bShowStringID )
-                return pString;
-#endif
-            // Skip Title
-            pString += x_wstrlen(pString);
-            pString++;
-
-            // Skip String
-            pString += x_wstrlen(pString);
-            pString++; // Skip Null
-            
-            // Skip Subtitle string.
-            pString += x_wstrlen(pString);
-            pString++;
-
-#if !defined(X_RETAIL) || defined(X_QA)
-            if( g_bStringTest )
-                FillString(pString);    // modifies string
-#endif
-
-            // Return Speaker
-            return pString;
-        }
-    }
-
-    return NULL;
-}
-
+//  IMPLEMENTATION
 //==============================================================================
 
 string_mgr::string_mgr( void )
 {
-    ASSERT( !m_Initialized );
-    m_Initialized = TRUE;
-    m_Tables.SetCapacity( 64 );
-    m_Tables.SetLocked( TRUE );
-    m_RetiredTables.SetCapacity( 64 );
+    RegisterResourceLoader();
 }
 
 //==============================================================================
 
 string_mgr::~string_mgr( void )
 {
-    ASSERT( m_Initialized );
+    ClearDiagnostics();
 
     for( s32 i = 0; i < m_Tables.GetCount(); i++ )
     {
         delete m_Tables[i];
     }
-    m_Tables.Clear();
-
-    for( s32 i = 0; i < m_RetiredTables.GetCount(); i++ )
-    {
-        delete m_RetiredTables[i];
-    }
-    m_RetiredTables.Clear();
-
-    m_Initialized = FALSE;
 }
 
 //==============================================================================
 
-s32 string_mgr::GetStringCount( const char* pTableName )
+xstring string_mgr::GetLocalizedName( const char* pFileName, x_language Language )
 {
-    s32 numStrings = 0;
+    char Drive[X_MAX_DRIVE];
+    char Path[X_MAX_PATH];
+    char Name[X_MAX_FNAME];
+    char Extension[X_MAX_EXT];
 
-    const string_table* pTable  = FindTable( pTableName );
-    if( pTable )
+    x_splitpath( pFileName, Drive, Path, Name, Extension );
+
+    if( x_strlen( Name ) < 4 || Name[3] != '_' || x_stricmp( Extension, ".string" ) )
     {
-        numStrings = pTable->GetCount();
+        return xstring();
     }
 
-    return numStrings;
+    return xstring( xfs( "%s%s%s%s%s", Drive, Path, x_GetLocaleString( Language ), Name + 3, Extension ) );
 }
 
 //==============================================================================
 
 xbool string_mgr::LoadTable( const char* pTableName, const char* pFileName )
 {
-    X_PROFILE_SCOPE_CATEGORY( "Context", "string_mgr::LoadTable" );
-
-    // If the table is already loaded then just return.
-    if( FindTable( pTableName ) != 0 )
+    if( FindTable( pTableName ) )
+    {
         return TRUE;
-
-    // Create a new table
-    string_table* pTable = new string_table;
-    ASSERT( pTable );
-
-    // Load the table
-    x_language const Language = x_GetLocale();
-    xbool Success = pTable->Load( pTableName, pFileName, Language );
-
-    if( !Success && (Language != XL_LANG_ENGLISH) )
-    {
-        Success = pTable->Load( pTableName, pFileName, XL_LANG_ENGLISH );
     }
 
-    // Keep it or heave it.
-    if( Success )
+    X_FILE* pFile  = NULL;
+    xbool   Result = LoadTable( pTableName, pFileName, pFile );
+
+    if( pFile )
     {
-        x_DebugMsg( 7, "********* %s Loaded\n", pFileName );
-        LOG_MESSAGE( "string_mgr::LoadTable",
-                     "Loaded: %s - %s",
-                     pTableName, pFileName );
-        m_Tables.Append( pTable );
-    }
-    else
-    {
-        delete pTable;
-        LOG_ERROR( "string_mgr::LoadTable", 
-                   "Failed to load string table: %s - %s",
-                   pTableName, pFileName );
-        ASSERT( FALSE );
+        x_fclose( pFile );
     }
 
-    // Return success code
-    return Success;
+    return Result;
+}
+
+//==============================================================================
+//  HELPER FUNCTIONS
+//==============================================================================
+
+X_FILE* string_mgr::OpenLocalizedFile( const char* pFileName, x_language& Language,
+                                       xstring& LocalizedName )
+{
+    LocalizedName = GetLocalizedName( pFileName, Language );
+
+    if( LocalizedName.IsEmpty() )
+    {
+        return NULL;
+    }
+
+    X_FILE* pFile = x_fopen( LocalizedName, "rb" );
+
+    // Fall back only when the requested locale file is absent.
+    if( !pFile && Language != XL_LANG_ENGLISH )
+    {
+        Language = XL_LANG_ENGLISH;
+        LocalizedName = GetLocalizedName( pFileName, Language );
+        pFile = x_fopen( LocalizedName, "rb" );
+    }
+
+    return pFile;
 }
 
 //==============================================================================
 
-xbool string_mgr::ReloadLocalizedTables( void )
+string_table* string_mgr::LoadLocalizedTable( const char* pTableName, const char* pFileName,
+                                             x_language Language, X_FILE*& pFile ) const
 {
-    X_PROFILE_SCOPE_CATEGORY( "Context", "string_mgr::ReloadLocalizedTables" );
+    xstring LocalizedName;
+    pFile = OpenLocalizedFile( pFileName, Language, LocalizedName );
 
-    xarray<string_table*> ReplacementTables;
-    ReplacementTables.SetCapacity( m_Tables.GetCount() );
+    if( !pFile )
+    {
+        return NULL;
+    }
 
+    string_table* pTable = new string_table;
+
+    if( !pTable->Load( pFile, LocalizedName, Language ) )
+    {
+        delete pTable;
+        return NULL;
+    }
+
+    pTable->m_TableName  = pTableName;
+    pTable->m_SourceName = pFileName;
+    return pTable;
+}
+
+//==============================================================================
+
+xbool string_mgr::LoadTable( const char* pTableName, const char* pFileName,
+                             X_FILE*& pFile )
+{
+    if( FindTable( pTableName ) )
+    {
+        x_language Language = x_GetLocale();
+        xstring LocalizedName;
+
+        // ResourceMgr retains the open file until Resolve completes.
+        pFile = OpenLocalizedFile( pFileName, Language, LocalizedName );
+        return pFile != NULL;
+    }
+
+    string_table* pTable = LoadLocalizedTable( pTableName, pFileName, x_GetLocale(), pFile );
+
+    if( !pTable )
+    {
+        x_DebugMsg( "StringMgr: failed to load '%s' from '%s'\n", pTableName, pFileName );
+        return FALSE;
+    }
+
+    m_Tables.Append() = pTable;
+    return TRUE;
+}
+
+//==============================================================================
+
+xbool string_mgr::LoadLocalizedTables( x_language Language, xarray<string_table*>& Replacements ) const
+{
     for( s32 i = 0; i < m_Tables.GetCount(); i++ )
     {
-        string_table* pReplacement = new string_table;
-        ASSERT( pReplacement );
+        X_FILE* pFile = NULL;
+        string_table* pTable = LoadLocalizedTable( m_Tables[i]->m_TableName,
+                                                   m_Tables[i]->m_SourceName, Language, pFile );
 
-        x_language const Language = x_GetLocale();
-        xbool Loaded = pReplacement->Load( m_Tables[i]->m_TableName,
-                                           m_Tables[i]->m_SourceName,
-                                           Language );
-        if( !Loaded && (Language != XL_LANG_ENGLISH) )
+        if( pFile )
         {
-            Loaded = pReplacement->Load( m_Tables[i]->m_TableName,
-                                         m_Tables[i]->m_SourceName,
-                                         XL_LANG_ENGLISH );
+            x_fclose( pFile );
         }
 
-        if( !Loaded )
+        if( !pTable )
         {
-            delete pReplacement;
-            for( s32 j = 0; j < ReplacementTables.GetCount(); j++ )
+            for( s32 j = 0; j < Replacements.GetCount(); j++ )
             {
-                delete ReplacementTables[j];
+                delete Replacements[j];
             }
+
+            Replacements.Clear();
             return FALSE;
         }
 
-        ReplacementTables.Append( pReplacement );
+        Replacements.Append() = pTable;
     }
 
-    for( s32 i = 0; i < m_Tables.GetCount(); i++ )
+    return TRUE;
+}
+
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
+
+xbool string_mgr::ValidateLocalizedTables( x_language Language ) const
+{
+    xarray<string_table*> Replacements;
+
+    if( !LoadLocalizedTables( Language, Replacements ) )
     {
-        m_RetiredTables.Append( m_Tables[i] );
-        m_Tables[i] = ReplacementTables[i];
+        return FALSE;
+    }
+
+    for( s32 i = 0; i < Replacements.GetCount(); i++ )
+    {
+        delete Replacements[i];
     }
 
     return TRUE;
@@ -856,32 +219,37 @@ xbool string_mgr::ReloadLocalizedTables( void )
 
 //==============================================================================
 
-void string_mgr::UnloadTable( const char* pTableName )
+xbool string_mgr::ReloadLocalizedTables( void )
 {
-    s32 iTable = -1;
-    
-    // Find Table
-    for( s32 i=0 ; i<m_Tables.GetCount() ; i++ )
+    xarray<string_table*> Replacements;
+
+    if( !LoadLocalizedTables( x_GetLocale(), Replacements ) )
     {
-        if( x_strcmp( m_Tables[i]->m_TableName, pTableName ) == 0 )
-        {
-            iTable = i;
-            break;
-        }
+        return FALSE;
     }
 
-    // Found?
-    if( iTable != -1 )
+    for( s32 i = 0; i < m_Tables.GetCount(); i++ )
     {
-        x_DebugMsg( 7, "********* %s UnLoaded\n", pTableName );
-        LOG_MESSAGE( "string_mgr::UnloadTable",
-                     "Unloaded: %s", pTableName );
-        delete m_Tables[iTable];
-        m_Tables.Delete( iTable );
+        delete m_Tables[i];
+        m_Tables[i] = Replacements[i];
     }
-    else
+
+    ClearDiagnostics();
+    return TRUE;
+}
+
+//==============================================================================
+
+void string_mgr::UnloadTable( const char* pTableName )
+{
+    for( s32 i = 0; i < m_Tables.GetCount(); i++ )
     {
-        ASSERT( FALSE );
+        if( x_stricmp( m_Tables[i]->m_TableName, pTableName ) == 0 )
+        {
+            delete m_Tables[i];
+            m_Tables.Delete( i );
+            return;
+        }
     }
 }
 
@@ -889,10 +257,9 @@ void string_mgr::UnloadTable( const char* pTableName )
 
 const string_table* string_mgr::FindTable( const char* pTableName ) const
 {
-    // Find Table
-    for( s32 i=0 ; i<m_Tables.GetCount() ; i++ )
+    for( s32 i = 0; i < m_Tables.GetCount(); i++ )
     {
-        if( x_stricmp(m_Tables[i]->m_TableName, pTableName) == 0 )
+        if( x_stricmp( m_Tables[i]->m_TableName, pTableName ) == 0 )
         {
             return m_Tables[i];
         }
@@ -902,77 +269,128 @@ const string_table* string_mgr::FindTable( const char* pTableName ) const
 }
 
 //==============================================================================
-// string_mgr
-//==============================================================================
 
-const xwchar* string_mgr::operator () ( const char* pTableName, s32 Index, const xbool bLogNULLString ) const
+s32 string_mgr::GetStringCount( const char* pTableName )
 {
-    const string_table* pTable  = FindTable( pTableName );
-    if( pTable )
-    {
-        const xwchar* pString = pTable->GetAt( Index );
-        if( pString )
-            return pString;
-    }
-
-    // String not found
-    if( bLogNULLString )
-        LOG_ERROR( "string_table::()", "Failed to find string %d in table '%s'", Index, pTableName );
-    return s_NullString;
+    const string_table* pTable = FindTable( pTableName );
+    return pTable ? pTable->m_Entries.GetCount() : 0;
 }
 
 //==============================================================================
 
-const xwchar* string_mgr::operator () ( const char* pTableName, const char* TitleString, const xbool bLogNULLString ) const
+const xwstring& string_mgr::MissingString( const char* pTableName, const char* pID, xbool LogMissing ) const
 {
-    const string_table* pTable  = FindTable( pTableName );
-    if( pTable )
+    if( LogMissing )
     {
-        const xwchar* pString = pTable->GetAt( TitleString );
-        if( pString )
-            return pString;
+        x_DebugMsg( "StringMgr: missing '%s' in '%s'\n", pID, pTableName );
     }
 
-    // String not found
-    if( bLogNULLString )
-        LOG_ERROR( "string_table::()", "Failed to find string '%s' in table '%s'", TitleString, pTableName );
-    return s_NullString;
+    xstring Key( xfs( "%s:%s", pTableName, pID ) );
+
+    for( s32 i = 0; i < m_MissingStrings.GetCount(); i++ )
+    {
+        if( m_MissingStrings[i]->Key == Key )
+        {
+            return m_MissingStrings[i]->Text;
+        }
+    }
+
+    string_diagnostic* pDiagnostic = new string_diagnostic;
+    pDiagnostic->Key  = Key;
+    pDiagnostic->Text = xwstring( (const char*)xfs( "<%s>", (const char*)Key ) );
+    m_MissingStrings.Append() = pDiagnostic;
+    return pDiagnostic->Text;
 }
 
 //==============================================================================
 
-const xwchar* string_mgr::GetSubTitleSpeaker( const char* pTableName, const char* SpeakerString, const xbool bLogNULLString ) const
+void string_mgr::ClearDiagnostics( void )
 {
-    const string_table* pTable  = FindTable( pTableName );
-    if( pTable )
+    for( s32 i = 0; i < m_MissingStrings.GetCount(); i++ )
     {
-        const xwchar* pString = pTable->GetSubTitleSpeaker( SpeakerString );
-        if( pString )
-            return pString;
+        delete m_MissingStrings[i];
     }
 
-    // String not found
-    if( bLogNULLString )
-        LOG_ERROR( "string_table::GetSubTitleSpeaker", "Failed to find subtitle string '%s' in table '%s'", SpeakerString, pTableName );
-    return s_NullString;
+    m_MissingStrings.Clear();
 }
 
 //==============================================================================
 
-const xwchar* string_mgr::GetSoundDescString( const char* pTableName, const char* SpeakerString, const xbool bLogNULLString ) const
+const string_entry* string_mgr::FindEntry( const char* pTableName, const char* pID, xbool LogMissing ) const
 {
-    const string_table* pTable  = FindTable( pTableName );
-    if( pTable )
+    const string_table* pTable = FindTable( pTableName );
+    const string_entry* pEntry = pTable ? pTable->Find( pID ) : NULL;
+
+    if( !pEntry )
     {
-        const xwchar* pString = pTable->GetSoundDescString( SpeakerString );
-        if( pString )
-            return pString;
+        MissingString( pTableName, pID, LogMissing );
     }
 
-    // String not found
-    if( bLogNULLString )
-        LOG_ERROR( "string_table::GetSoundDescString", "Failed to find sounddesc string '%s' in table '%s'", SpeakerString, pTableName );
-    return s_NullString;
+    return pEntry;
 }
 
 //==============================================================================
+
+const xwstring& string_mgr::GetText( const string_entry& Entry )
+{
+#if !defined(X_RETAIL) || defined(X_QA)
+    if( g_bShowStringID )
+    {
+        return Entry.DisplayID;
+    }
+
+    if( g_bStringTest )
+    {
+        return Entry.TestText;
+    }
+#endif
+
+    return Entry.Text;
+}
+
+//==============================================================================
+
+const xwstring* string_mgr::FindString( const char* pTableName, const char* pID ) const
+{
+    const string_table* pTable = FindTable( pTableName );
+    const string_entry* pEntry = pTable ? pTable->Find( pID ) : NULL;
+    return pEntry ? &GetText( *pEntry ) : NULL;
+}
+
+//==============================================================================
+
+const xwstring& string_mgr::operator () ( const char* pTableName, const char* pID, xbool LogMissing ) const
+{
+    const string_entry* pEntry = FindEntry( pTableName, pID, LogMissing );
+    return pEntry ? GetText( *pEntry ) : MissingString( pTableName, pID, FALSE );
+}
+
+//==============================================================================
+
+const xwstring& string_mgr::operator () ( const char* pTableName, s32 Index, xbool LogMissing ) const
+{
+    const string_table* pTable = FindTable( pTableName );
+
+    if( pTable && Index >= 0 && Index < pTable->m_Entries.GetCount() )
+    {
+        return GetText( *pTable->m_Index[Index] );
+    }
+
+    return MissingString( pTableName, xfs( "%d", Index ), LogMissing );
+}
+
+//==============================================================================
+
+const xwstring& string_mgr::GetSubTitleSpeaker( const char* pTableName, const char* pID, xbool LogMissing ) const
+{
+    const string_entry* pEntry = FindEntry( pTableName, pID, LogMissing );
+    return pEntry ? pEntry->Speaker : s_EmptyString;
+}
+
+//==============================================================================
+
+const xwstring& string_mgr::GetSoundDescString( const char* pTableName, const char* pID, xbool LogMissing ) const
+{
+    const string_entry* pEntry = FindEntry( pTableName, pID, LogMissing );
+    return pEntry ? pEntry->SoundDesc : s_EmptyString;
+}

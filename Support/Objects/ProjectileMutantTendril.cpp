@@ -6,9 +6,10 @@
 // INCLUDES
 //=============================================================================================
 #include "Render/PrimitiveDebug.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "ProjectileMutantTendril.hpp"
 #include "AudioMgr/AudioMgr.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "Objects/Actor/Actor.hpp"
 #include "Decals/DecalMgr.hpp"
 #include "Objects/ParticleEmiter.hpp"
@@ -331,6 +332,36 @@ void mutant_tendril_projectile::net_Deactivate( void )
 #endif
 
 //=============================================================================
+const matrix4* mutant_tendril_projectile::GetSkinMatrices( void )
+{
+    skin_geom* pGeometry = m_SkinInst.GetSkinGeom();
+    ASSERT( pGeometry && pGeometry->m_nBones == MAX_SEGMENTS );
+    if( !pGeometry || pGeometry->m_nBones != MAX_SEGMENTS )
+    {
+        return NULL;
+    }
+
+    matrix4* pMatrices = m_SMEM_Mat_Cache.GetMatrices( pGeometry->m_nBones );
+    if( !pMatrices )
+    {
+        return NULL;
+    }
+
+    for( s32 i = 0; i < MAX_SEGMENTS; ++i )
+    {
+        const vector3 Direction = i == 0 ? m_Velocity : m_SegmentPositions[i - 1] - m_SegmentPositions[i];
+        f32 Pitch;
+        f32 Yaw;
+        Direction.GetPitchYaw( Pitch, Yaw );
+        pMatrices[i].Setup( vector3( 1.0f, 1.0f, 1.0f ), radian3( Pitch, Yaw, R_0 ), m_SegmentPositions[i] );
+        pMatrices[i].PreTranslate( vector3( 0.0f, 0.0f, -( g_TendrilTweaks.m_BoneDist * i ) ) );
+    }
+
+    return pMatrices;
+}
+
+//=============================================================================
+
 void mutant_tendril_projectile::OnRender( void )
 {
 #ifndef X_RETAIL
@@ -387,40 +418,9 @@ void mutant_tendril_projectile::OnRender( void )
             return ;
 
         // get matrix
-        matrix4* mat = m_SMEM_Mat_Cache.GetMatrices(pSkinGeom->m_nBones);
-        vector3 LookAt;
-        f32 Pitch, Yaw;
-
-        ASSERT( pSkinGeom->m_nBones == MAX_SEGMENTS );
-
-        // set up head segment
-        {
-            s32 Head = 0;
-            LookAt = m_Velocity;
-
-            LookAt.GetPitchYaw(Pitch, Yaw);
-
-            // setup matrix
-            mat[Head].Setup(vector3(1.0f, 1.0f, 1.0f), radian3(Pitch, Yaw, R_0), m_SegmentPositions[Head]);
-
-            // pre-translate info
-            mat[Head].PreTranslate( vector3(0.0f, 0.0f, -(g_TendrilTweaks.m_BoneDist*Head)) );
-        }
-
-        // set up trailing segments
-        for( s32 i = 1; i < MAX_SEGMENTS; i++ )
-        {
-            // vector to leading segment
-            LookAt = m_SegmentPositions[i-1] - m_SegmentPositions[i];
-
-            LookAt.GetPitchYaw(Pitch, Yaw);
-
-            // setup matrix
-            mat[i].Setup(vector3(1.0f, 1.0f, 1.0f), radian3(Pitch, Yaw, R_0), m_SegmentPositions[i]);
-
-            // pre-translate info
-            mat[i].PreTranslate( vector3(0.0f, 0.0f, -(g_TendrilTweaks.m_BoneDist*i)) );
-        }
+        const matrix4* mat = GetSkinMatrices();
+        if( !mat )
+            return;
 
         // Compute LOD mask
     u64 LODMask = m_SkinInst.GetLODMask(GetL2W());
@@ -1076,4 +1076,3 @@ void mutant_tendril_projectile::OnColCheck( void )
 {
     // do nothing
 }
-

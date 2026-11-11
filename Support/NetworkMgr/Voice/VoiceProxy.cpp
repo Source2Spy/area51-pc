@@ -19,7 +19,7 @@
 
 #include "NetworkMgr/NetworkMgr.hpp"
 #include "NetworkMgr/NetLimits.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 
 //==============================================================================
 //  FUNCTIONS
@@ -118,52 +118,43 @@ void voice_proxy::AcceptUpdate( netstream& BitStream )
     byte                Buffer[512];
     s32                 Length;
     s32                 EncodeBlockSize;
+    fifo::update        Update;
 
     ASSERT( g_NetworkMgr.IsServer() );
 
-    // Determine the voice status of the client
-    {
-        xbool IsVoiceAllowed;
-        xbool IsVoiceCapable;
-        BitStream.ReadFlag( IsVoiceAllowed );
-        BitStream.ReadFlag( IsVoiceCapable );
-
-        GameMgr.SetVoiceAllowed( m_PlayerNetSlot, IsVoiceAllowed );
-        GameMgr.SetVoiceCapable( m_PlayerNetSlot, IsVoiceCapable );
-    }
-
+    xbool IsVoiceAllowed;
+    xbool IsVoiceCapable;
+    u32 MutedPlayers = m_MutedPlayers;
+    BitStream.ReadFlag( IsVoiceAllowed );
+    BitStream.ReadFlag( IsVoiceCapable );
     if( BitStream.ReadFlag() )
-    {
-        BitStream.ReadU32( m_MutedPlayers );
-    }
-
+        BitStream.ReadU32( MutedPlayers );
     BitStream.ReadRangedS32( DesiredTalkModeValue, TALK_TEAM, TALK_NONE );
-    if( !IN_RANGE( TALK_TEAM, DesiredTalkModeValue, TALK_NONE ) )
-    {
-        ASSERT( FALSE );
-        DesiredTalkModeValue = TALK_NONE;
-    }
+    if( BitStream.ReadError() )
+        return;
 
     DesiredTalkMode = static_cast<desired_talk_mode>( DesiredTalkModeValue );
     EncodeBlockSize = g_VoiceMgr.GetEncodeBlockSize();
 
-#if defined(X_DEBUG)
-    if( m_DesiredTalkMode != DesiredTalkMode )
+    if( DesiredTalkMode != TALK_NONE )
     {
-        LOG_MESSAGE( "voice_proxy::AcceptUpdate","Talk mode change. Old:%s, New:%s", GetTalkModeName(m_DesiredTalkMode), GetTalkModeName(DesiredTalkMode) );
+        if( EncodeBlockSize <= 0 )
+        {
+            BitStream.SetReadError();
+            return;
+        }
+        if( !m_Incoming.ReadUpdate( BitStream, Update, EncodeBlockSize ) )
+            return;
     }
-#endif
+
+    GameMgr.SetVoiceAllowed( m_PlayerNetSlot, IsVoiceAllowed );
+    GameMgr.SetVoiceCapable( m_PlayerNetSlot, IsVoiceCapable );
+    m_MutedPlayers    = MutedPlayers;
     m_DesiredTalkMode = DesiredTalkMode;
 
     if( m_DesiredTalkMode != TALK_NONE )
     {
-        if( EncodeBlockSize <= 0 )
-        {
-            m_Incoming.Clear();
-            return;
-        }
-
-        m_Incoming.AcceptUpdate( BitStream, EncodeBlockSize );
+        m_Incoming.AcceptUpdate( Update, EncodeBlockSize );
 
         Length = Read( Buffer, sizeof(Buffer) );
         if( Length > 0 )

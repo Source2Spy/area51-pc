@@ -14,7 +14,7 @@
 
 #include "Render/PrimitiveDebug.hpp"
 #include "NetGhost.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "GameLib/RenderContext.hpp"
 #include "Objects/Player/PlayerLoco.hpp"
 #include "Characters/Grunt/GruntLoco.hpp"

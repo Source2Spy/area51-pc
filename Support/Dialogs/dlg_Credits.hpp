@@ -33,20 +33,31 @@ extern ui_win*  dlg_credits_factory   ( s32 UserID, ui_manager* pManager, ui_man
 class ui_button;
 
 #define MAX_CREDIT_LINES_PER_PAGE      32
+
+//==============================================================================
+//  STRUCTURES
+//==============================================================================
+
 typedef struct _CreditLine_
 {
-    irect               m_Rect;
-    char                m_Font[32];
-    xwchar              m_String[128];
-    xcolor              m_Color;
-    u8                  m_Type;
-    s32                 m_RenderFlags;
-    s32                 m_StringLength;
-    s32                 m_CharCount;
-    CustomRenderStruct  m_CustomRenderStruct[128];
-    f32                 m_FadeDelay[128];
-    f32                 m_SweepTime[128];
+    irect                     m_Rect;
+    char                      m_Font[32];
+    xwstring                  m_String;
+    xcolor                    m_Color;
+    u8                        m_Type;
+    s32                       m_RenderFlags;
+    s32                       m_StringLength;
+    s32                       m_CharCount;
+    xarray<CustomRenderStruct> m_CustomRenderStruct;
+    xarray<f32>               m_FadeDelay;
+    xarray<f32>               m_SweepTime;
 }CreditLine;
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
+
+//------------------------------------------------------------------------------
 
 class dlg_credits : public ui_dialog
 {
@@ -94,7 +105,7 @@ public:
 
     void                InitCreditLines     ( void );
     xbool               BuildPage           ( void );
-    s32                 CheckLine           ( const xwchar* pString );
+    s32                 CheckLine           ( xwstring& String );
 
 protected:
     s32                 m_LineIndex;

@@ -123,15 +123,15 @@ namespace tracy
    is like backtrace_pcinfo.  */
 
 typedef int (*fileline) (struct backtrace_state *state, uintptr_t pc,
-             backtrace_full_callback callback,
-             backtrace_error_callback error_callback, void *data);
+			 backtrace_full_callback callback,
+			 backtrace_error_callback error_callback, void *data);
 
 /* The type of the function that collects symbol information.  This is
    like backtrace_syminfo.  */
 
 typedef void (*syminfo) (struct backtrace_state *state, uintptr_t pc,
-             backtrace_syminfo_callback callback,
-             backtrace_error_callback error_callback, void *data);
+			 backtrace_syminfo_callback callback,
+			 backtrace_error_callback error_callback, void *data);
 
 /* The type of the function that will trigger an known address range refresh
  (if pc passed in is for an address whichs lies ourtisde of known ranges) */
@@ -166,6 +166,12 @@ struct backtrace_state
   struct backtrace_freelist_struct *freelist;
   /* Trigger an known address range refresh */
   request_known_address_ranges_refresh request_known_address_ranges_refresh_fn;
+  /* Non-zero if this state is for an external file, not the current
+     process.  When set, backtrace_initialize will not treat the file
+     as the main executable (bypassing the ET_DYN deferral to
+     dl_iterate_phdr) and will not enumerate the current process's
+     shared libraries.  */
+  int external_file;
 };
 
 /* Open a file for reading.  Returns -1 on error.  If DOES_NOT_EXIST
@@ -175,9 +181,9 @@ struct backtrace_state
    not call ERROR_CALLBACK.  On other errors, or if DOES_NOT_EXIST is
    NULL, the function will call ERROR_CALLBACK before returning.  */
 extern int backtrace_open (const char *filename,
-               backtrace_error_callback error_callback,
-               void *data,
-               int *does_not_exist);
+			   backtrace_error_callback error_callback,
+			   void *data,
+			   int *does_not_exist);
 
 /* A view of the contents of a file.  This supports mmap when
    available.  A view will remain in memory even after backtrace_close
@@ -197,42 +203,42 @@ struct backtrace_view
 /* Create a view of SIZE bytes from DESCRIPTOR at OFFSET.  Store the
    result in *VIEW.  Returns 1 on success, 0 on error.  */
 extern int backtrace_get_view (struct backtrace_state *state, int descriptor,
-                   off_t offset, uint64_t size,
-                   backtrace_error_callback error_callback,
-                   void *data, struct backtrace_view *view);
+			       off_t offset, uint64_t size,
+			       backtrace_error_callback error_callback,
+			       void *data, struct backtrace_view *view);
 
 /* Release a view created by backtrace_get_view.  */
 extern void backtrace_release_view (struct backtrace_state *state,
-                    struct backtrace_view *view,
-                    backtrace_error_callback error_callback,
-                    void *data);
+				    struct backtrace_view *view,
+				    backtrace_error_callback error_callback,
+				    void *data);
 
 /* Close a file opened by backtrace_open.  Returns 1 on success, 0 on
    error.  */
 
 extern int backtrace_close (int descriptor,
-                backtrace_error_callback error_callback,
-                void *data);
+			    backtrace_error_callback error_callback,
+			    void *data);
 
 /* Sort without using memory.  */
 
 extern void backtrace_qsort (void *base, size_t count, size_t size,
-                 int (*compar) (const void *, const void *));
+			     int (*compar) (const void *, const void *));
 
 /* Allocate memory.  This is like malloc.  If ERROR_CALLBACK is NULL,
    this does not report an error, it just returns NULL.  */
 
 extern void *backtrace_alloc (struct backtrace_state *state, size_t size,
-                  backtrace_error_callback error_callback,
-                  void *data) ATTRIBUTE_MALLOC;
+			      backtrace_error_callback error_callback,
+			      void *data) ATTRIBUTE_MALLOC;
 
 /* Free memory allocated by backtrace_alloc.  If ERROR_CALLBACK is
    NULL, this does not report an error.  */
 
 extern void backtrace_free (struct backtrace_state *state, void *mem,
-                size_t size,
-                backtrace_error_callback error_callback,
-                void *data);
+			    size_t size,
+			    backtrace_error_callback error_callback,
+			    void *data);
 
 /* A growable vector of some struct.  This is used for more efficient
    allocation when we don't know the final size of some group of data
@@ -253,9 +259,9 @@ struct backtrace_vector
    location.  Returns NULL on failure.  */
 
 extern void *backtrace_vector_grow (struct backtrace_state *state, size_t size,
-                    backtrace_error_callback error_callback,
-                    void *data,
-                    struct backtrace_vector *vec);
+				    backtrace_error_callback error_callback,
+				    void *data,
+				    struct backtrace_vector *vec);
 
 /* Finish the current allocation on VEC.  Prepare to start a new
    allocation.  The finished allocation will never be freed.  Returns
@@ -263,24 +269,24 @@ extern void *backtrace_vector_grow (struct backtrace_state *state, size_t size,
    failure.  */
 
 extern void* backtrace_vector_finish (struct backtrace_state *state,
-                      struct backtrace_vector *vec,
-                      backtrace_error_callback error_callback,
-                      void *data);
+				      struct backtrace_vector *vec,
+				      backtrace_error_callback error_callback,
+				      void *data);
 
 /* Release any extra space allocated for VEC.  This may change
    VEC->base.  Returns 1 on success, 0 on failure.  */
 
 extern int backtrace_vector_release (struct backtrace_state *state,
-                     struct backtrace_vector *vec,
-                     backtrace_error_callback error_callback,
-                     void *data);
+				     struct backtrace_vector *vec,
+				     backtrace_error_callback error_callback,
+				     void *data);
 
 /* Free the space managed by VEC.  This will reset VEC.  */
 
 static inline void
 backtrace_vector_free (struct backtrace_state *state,
-               struct backtrace_vector *vec,
-               backtrace_error_callback error_callback, void *data)
+		       struct backtrace_vector *vec,
+		       backtrace_error_callback error_callback, void *data)
 {
   vec->alc += vec->size;
   vec->size = 0;
@@ -298,11 +304,11 @@ backtrace_vector_free (struct backtrace_state *state,
    appropriate one.  */
 
 extern int backtrace_initialize (struct backtrace_state *state,
-                 const char *filename,
-                 int descriptor,
-                 backtrace_error_callback error_callback,
-                 void *data,
-                 fileline *fileline_fn);
+				 const char *filename,
+				 int descriptor,
+				 backtrace_error_callback error_callback,
+				 void *data,
+				 fileline *fileline_fn);
 
 /* An enum for the DWARF sections we care about.  */
 
@@ -370,13 +376,13 @@ struct libbacktrace_base_address
 /* Add file/line information for a DWARF module.  */
 
 extern int backtrace_dwarf_add (struct backtrace_state *state,
-                struct libbacktrace_base_address base_address,
-                const struct dwarf_sections *dwarf_sections,
-                int is_bigendian,
-                struct dwarf_data *fileline_altlink,
-                backtrace_error_callback error_callback,
-                void *data, fileline *fileline_fn,
-                struct dwarf_data **fileline_entry);
+				struct libbacktrace_base_address base_address,
+				const struct dwarf_sections *dwarf_sections,
+				int is_bigendian,
+				struct dwarf_data *fileline_altlink,
+				backtrace_error_callback error_callback,
+				void *data, fileline *fileline_fn,
+				struct dwarf_data **fileline_entry);
 
 /* A data structure to pass to backtrace_syminfo_to_full.  */
 
@@ -393,42 +399,42 @@ struct backtrace_call_full
    debug info.  */
 
 extern void backtrace_syminfo_to_full_callback (void *data, uintptr_t pc,
-                        const char *symname,
-                        uintptr_t symval,
-                        uintptr_t symsize);
+						const char *symname,
+						uintptr_t symval,
+						uintptr_t symsize);
 
 /* An error callback that corresponds to
    backtrace_syminfo_to_full_callback.  */
 
 extern void backtrace_syminfo_to_full_error_callback (void *, const char *,
-                              int);
+						      int);
 
 /* A test-only hook for elf_uncompress_zdebug.  */
 
 extern int backtrace_uncompress_zdebug (struct backtrace_state *,
-                    const unsigned char *compressed,
-                    size_t compressed_size,
-                    backtrace_error_callback, void *data,
-                    unsigned char **uncompressed,
-                    size_t *uncompressed_size);
+					const unsigned char *compressed,
+					size_t compressed_size,
+					backtrace_error_callback, void *data,
+					unsigned char **uncompressed,
+					size_t *uncompressed_size);
 
 /* A test-only hook for elf_zstd_decompress.  */
 
 extern int backtrace_uncompress_zstd (struct backtrace_state *,
-                      const unsigned char *compressed,
-                      size_t compressed_size,
-                      backtrace_error_callback, void *data,
-                      unsigned char *uncompressed,
-                      size_t uncompressed_size);
+				      const unsigned char *compressed,
+				      size_t compressed_size,
+				      backtrace_error_callback, void *data,
+				      unsigned char *uncompressed,
+				      size_t uncompressed_size);
 
 /* A test-only hook for elf_uncompress_lzma.  */
 
 extern int backtrace_uncompress_lzma (struct backtrace_state *,
-                      const unsigned char *compressed,
-                      size_t compressed_size,
-                      backtrace_error_callback, void *data,
-                      unsigned char **uncompressed,
-                      size_t *uncompressed_size);
+				      const unsigned char *compressed,
+				      size_t compressed_size,
+				      backtrace_error_callback, void *data,
+				      unsigned char **uncompressed,
+				      size_t *uncompressed_size);
 
 }
 

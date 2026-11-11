@@ -17,6 +17,7 @@ void headset::Init( xbool )
     m_HeadsetCount          = 0;
     m_HardwareEnabled       = FALSE;
     m_IsTalking             = FALSE;
+    m_TalkingGeneration     = 0;
     m_TalkingRequested      = FALSE;
     m_LoopbackEnabled       = FALSE;
     m_VoiceBanned           = FALSE;

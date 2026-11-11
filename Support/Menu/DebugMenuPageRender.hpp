@@ -19,9 +19,19 @@ public:
     virtual                     ~debug_menu_page_render     ( ) { };
 
     virtual void                OnChangeItem        ( debug_menu_item* pItem );
+    virtual void                OnPreRender         ( void );
 
 protected:
     debug_menu_item*            m_pItemPolyCache;
+    void                       RenderLightingStats ( void );
+};
+
+//==============================================================================
+
+class debug_menu_page_lighting : public debug_menu_page
+{
+public:
+                                debug_menu_page_lighting    ( void );
 };
 
 //==============================================================================

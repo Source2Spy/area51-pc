@@ -64,7 +64,7 @@ inline      void            ClearDoBackendUpdate( void )       { m_bDoBackendUpd
             xbool           ResumeChannel       ( channel*      pChannel );
             u32             GetSamplesPlayed    ( channel*      pChannel );
 
-            void            SetPitchFactor      ( f32           PitchFactor )   { m_PitchFactor = PitchFactor; }
+            void            SetPitchFactor( f32 PitchFactor );
             void            SetVolumeFactor     ( f32           VolumeFactor )  { m_VolumeFactor = VolumeFactor; }
             f32             GetPitchFactor      ( void )        { return m_PitchFactor; }
             f32             GetVolumeFactor     ( void )        { return m_VolumeFactor; }

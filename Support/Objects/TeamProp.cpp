@@ -11,9 +11,9 @@
 #include "TeamProp.hpp"
 #include "AudioMgr/AudioMgr.hpp"
 #include "x_profile.hpp"
-#include "NetworkMgr/NetObjMgr.hpp"
+#include "NetworkMgr/Replication/NetObjMgr.hpp"
 #include "Player/Player.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "GameLib/RigidGeomCollision.hpp"
 
 #ifndef X_EDITOR

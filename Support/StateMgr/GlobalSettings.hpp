@@ -14,7 +14,9 @@
 #include "x_types.hpp"
 #include "Entropy.hpp"
 #include "NetworkMgr/NetLimits.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
+#include "Render/RenderScale.hpp"
+#include "Render/AmbientOcclusion.hpp"
 #include "Render/ShadowTypes.hpp"
 
 
@@ -29,6 +31,12 @@ constexpr s32               UI_SCALE_DEFAULT_PERCENT            = 120;
 constexpr s32               HUD_SCALE_MIN_PERCENT               = 60;
 constexpr s32               HUD_SCALE_MAX_PERCENT               = 140;
 constexpr s32               HUD_SCALE_DEFAULT_PERCENT           = 80;
+constexpr s32               BRIGHTNESS_MIN_PERCENT              = -25;
+constexpr s32               BRIGHTNESS_MAX_PERCENT              = 25;
+constexpr s32               BRIGHTNESS_DEFAULT_PERCENT          = 0;
+constexpr s32               CONTRAST_MIN_PERCENT                = 75;
+constexpr s32               CONTRAST_MAX_PERCENT                = 125;
+constexpr s32               CONTRAST_DEFAULT_PERCENT            = 100;
 constexpr s32               FIELD_OF_VIEW_MIN_DEGREES           = 60;
 constexpr s32               FIELD_OF_VIEW_MAX_DEGREES           = 120;
 constexpr s32               FIELD_OF_VIEW_DEFAULT_DEGREES       = 100;
@@ -37,8 +45,11 @@ constexpr s32               FILM_GRAIN_MAX_STRENGTH             = 150;
 constexpr s32               FILM_GRAIN_DEFAULT_STRENGTH         = 100;
 constexpr s32               VOLUME_MIN_PERCENT                  = 0;
 constexpr s32               VOLUME_MAX_PERCENT                  = 100;
-constexpr xbool             POST_EFFECT_BACKGROUND_BLUR_DEFAULT = TRUE;
-constexpr xbool             DYNAMIC_SHADOWS_DEFAULT             = FALSE;
+constexpr xbool             POST_EFFECT_BACKGROUND_BLUR_DEFAULT = FALSE;
+constexpr xbool             PHONG_SHADING_DEFAULT               = FALSE;
+constexpr xbool             TESSELLATION_DEFAULT                = FALSE;
+constexpr xbool             XBOX_FOG_DEFAULT                    = FALSE;
+constexpr ShadowMode        SHADOW_MODE_DEFAULT                  = ShadowMode::Enabled;
 constexpr ShadowFilterType  SHADOW_FILTER_TYPE_DEFAULT          = ShadowFilterType::Evsm;
 
 //------------------------------------------------------------------------------
@@ -63,9 +74,12 @@ enum class AntiAliasingType : s32
 {
     None,
     Cmaa2,
+    Msaa,
 };
 
 constexpr AntiAliasingType   ANTI_ALIASING_TYPE_DEFAULT           = AntiAliasingType::None;
+
+constexpr rstate_texture_filtering TEXTURE_FILTERING_DEFAULT = RSTATE_TEXTURE_FILTER_ANISOTROPIC_16;
 
 //------------------------------------------------------------------------------
 
@@ -94,6 +108,8 @@ enum headset_mode
 
 struct map_settings
 {
+    void            Reset( void );
+
     s32             m_MapCycle[MAP_CYCLE_SIZE];   
     s32             m_MapCycleIdx;                
     s32             m_MapCycleCount;              
@@ -119,6 +135,8 @@ struct multi_settings
 
 struct host_settings
 {
+    void            Reset( void );
+
     xwchar          m_ServerName[NET_SERVER_NAME_LENGTH];
     char            m_Password[NET_PASSWORD_LENGTH];
     s32             m_GameTypeID;
@@ -133,18 +151,6 @@ struct host_settings
     skill_level     m_SkillLevel;
 };
 
-//==============================================================================
-// JOIN SETTINGS
-//==============================================================================
-
-struct join_settings
-{
-    s32             m_GameTypeID;
-    s32             m_MinPlayers;
-    s32             m_MutationMode;
-    s32             m_PasswordEnabled;
-    s32             m_VoiceEnabled;
-};
 
 //------------------------------------------------------------------------------
 
@@ -155,6 +161,7 @@ enum settings_reset_flags
     RESET_LOCALIZATION = 4,
     RESET_GRAPHICS     = 8,
     RESET_DISPLAY      = 16,
+    RESET_INTERFACE    = 32,
     RESET_ALL          = -1,
 };
 
@@ -165,9 +172,7 @@ enum settings_reset_flags
 
 class global_settings
 {
-    friend class save_data_codec;
-    template<class SERIALIZER>
-    friend void save_data_serialize_settings( SERIALIZER&, global_settings& );
+    friend class SaveDataCodec;
 
 public:
                         global_settings         ( void );
@@ -178,13 +183,14 @@ public:
     void                CommitLocalization      ( void );
     void                CommitGraphics          ( void );
     void                CaptureGraphics         ( void );
-    static void         SetDefaultLocalizationLanguage
-                                                ( x_language Language );
+    static void         SetDefaultLocalizationLanguages
+                                                ( x_language TextLanguage,
+                                                  x_language AudioLanguage,
+                                                  x_language VideoLanguage );
     static x_language   GetDefaultLocalizationLanguage
                                                 ( void );
     multi_settings&     GetMultiplayerSettings  ( void );
     host_settings&      GetHostSettings         ( void );
-    join_settings&      GetJoinSettings         ( void );
     map_settings&       GetMapSettings          ( void );
     xbool               HasChanged              ( void );
     void                MarkDirty               ( void );
@@ -205,6 +211,12 @@ public:
     s32                 GetUIScale              ( void ) const;
     void                SetHUDScale             ( s32 Percent );
     s32                 GetHUDScale             ( void ) const;
+    void                SetBrightness           ( s32 Percent );
+    s32                 GetBrightness           ( void ) const;
+    void                SetContrast             ( s32 Percent );
+    s32                 GetContrast             ( void ) const;
+    void                SetRenderScale          ( s32 Percent );
+    s32                 GetRenderScale          ( void ) const;
     void                SetDisplayResolution    ( s32 Width, s32 Height );
     s32                 GetDisplayWidth         ( void ) const;
     s32                 GetDisplayHeight        ( void ) const;
@@ -222,8 +234,18 @@ public:
     xbool               GetBackgroundBlurEnabled( void ) const;
     void                SetAntiAliasingType     ( AntiAliasingType Type );
     AntiAliasingType    GetAntiAliasingType     ( void ) const;
-    void                SetDynamicShadowsEnabled( xbool Enabled );
-    xbool               GetDynamicShadowsEnabled( void ) const;
+    void                SetAmbientOcclusionQuality( render::AmbientOcclusionQuality Quality );
+    render::AmbientOcclusionQuality GetAmbientOcclusionQuality( void ) const;
+    void                SetTextureFiltering     ( rstate_texture_filtering Filtering );
+    rstate_texture_filtering GetTextureFiltering( void ) const;
+    void                SetPhongShadingEnabled  ( xbool Enabled );
+    xbool               GetPhongShadingEnabled  ( void ) const;
+    void                SetTessellationEnabled  ( xbool Enabled );
+    xbool               GetTessellationEnabled  ( void ) const;
+    void                SetXboxFogEnabled       ( xbool Enabled );
+    xbool               GetXboxFogEnabled       ( void ) const;
+    void                SetShadowMode           ( ShadowMode Mode );
+    ShadowMode          GetShadowMode           ( void ) const;
     void                SetShadowFilterType     ( ShadowFilterType Type );
     ShadowFilterType    GetShadowFilterType     ( void ) const;
     headset_mode        GetHeadsetMode          ( void ) const;
@@ -238,16 +260,15 @@ public:
 
 private:
     static xbool        IsFrameRateLimitValid   ( FrameRateLimit Limit );
-    static void         ResetMapSettings        ( map_settings& Settings );
     void                ResetMultiplayerDefaults( void );
     void                ResetHostDefaults       ( void );
-    void                ResetJoinDefaults       ( void );
     void                ResetAudioDefaults      ( void );
     void                ResetHeadsetDefaults    ( void );
     void                ResetLocalizationDefaults
                                                 ( void );
     void                ResetGraphicsDefaults   ( void );
     void                ResetDisplayDefaults    ( void );
+    void                ResetInterfaceDefaults  ( void );
     void                NormalizeGraphicsSettings
                                                 ( void );
     void                CommitInterfaceSettings ( void );
@@ -266,12 +287,14 @@ private:
 
     multi_settings      m_MultiplayerSettings;
     host_settings       m_HostSettings;
-    join_settings       m_JoinSettings;
     map_settings        m_MapSettings;
 
     // Persisted interface, display, and presentation settings.
     s32                 m_UIScale;
     s32                 m_HUDScale;
+    s32                 m_Brightness;
+    s32                 m_Contrast;
+    s32                 m_RenderScale;
     s32                 m_ResolutionWidth;
     s32                 m_ResolutionHeight;
     eng_display_mode    m_DisplayMode;
@@ -281,7 +304,12 @@ private:
     s32                 m_FilmGrainStrength;
     xbool               m_BackgroundBlurEnabled;
     AntiAliasingType    m_AntiAliasingType;
-    xbool               m_DynamicShadowsEnabled;
+    render::AmbientOcclusionQuality m_AmbientOcclusionQuality;
+    rstate_texture_filtering m_TextureFiltering;
+    xbool               m_PhongShadingEnabled;
+    xbool               m_TessellationEnabled;
+    xbool               m_XboxFogEnabled;
+    ShadowMode          m_ShadowMode;
     ShadowFilterType    m_ShadowFilterType;
     s32                 m_VideoVolume;
     x_language          m_TextLanguage;
@@ -303,13 +331,6 @@ inline multi_settings& global_settings::GetMultiplayerSettings( void )
 inline host_settings& global_settings::GetHostSettings( void )
 {
     return m_HostSettings;
-}
-
-//==============================================================================
-
-inline join_settings& global_settings::GetJoinSettings( void )
-{
-    return m_JoinSettings;
 }
 
 //==============================================================================

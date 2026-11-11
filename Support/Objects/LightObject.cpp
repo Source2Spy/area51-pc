@@ -4,7 +4,7 @@
 #include "Entropy.hpp"
 #include "CollisionMgr/CollisionMgr.hpp"
 #include "Render/Editor/EditorIcons.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 
 //=========================================================================
 // BASE LIGHT OBJECT
@@ -103,7 +103,7 @@ void light_obj::OnCollectLight( void )
 
     if ( IsDynamic() )
     {
-        g_LightMgr.AddDynamicLight( GetL2W().GetTranslation(),
+        render::GetRenderPipeline().GetLightSystem().AddDynamicLight( GetL2W().GetTranslation(),
                                     m_Color,
                                     m_Sphere.R,
                                     m_Intensity,
@@ -1049,11 +1049,11 @@ void dynamic_light_obj::OnCollectLight( void )
             Direction.Set( 0.0f, 0.0f, 1.0f );
         }
 
-        s32 Shape = light_mgr::LIGHT_SHAPE_OMNI;
+        s32 Shape = render::LightSystem::LIGHT_SHAPE_OMNI;
         if( m_EmitterType == EMITTER_TYPE_SPOT )
-            Shape = light_mgr::LIGHT_SHAPE_SPOT;
+            Shape = render::LightSystem::LIGHT_SHAPE_SPOT;
 
-        g_LightMgr.AddDynamicLight( RenderL2W.GetTranslation(),
+        render::GetRenderPipeline().GetLightSystem().AddDynamicLight( RenderL2W.GetTranslation(),
                                     m_Color,
                                     m_Sphere.R,
                                     T*m_Intensity,

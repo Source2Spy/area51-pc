@@ -19,7 +19,10 @@ floor_properties::floor_properties( void )
     m_ColorFadeTime = 0.0f;
     m_ColorFadeT    = 0.0f;
     m_RadiusSquared = -1.0f;
+    m_TraceDepth    = 100.0f;
     m_FloorMat      = 0;
+    m_ObjectGuid    = 0;
+    m_bFirstUpdate  = TRUE;
     m_LastPosition.Zero();
 }
 
@@ -31,11 +34,14 @@ floor_properties::~floor_properties( void )
 
 //==============================================================================
 
-void floor_properties::Init( f32 Radius, f32 ColorFadeTime )
+void floor_properties::Init( f32 Radius, f32 ColorFadeTime, guid ObjectGuid, f32 TraceDepth )
 {
-    m_RadiusSquared = Radius*Radius;
+    m_RadiusSquared = Radius * Radius;
+    m_TraceDepth    = x_max( 0.0f, TraceDepth );
     m_ColorFadeTime = x_max( 0.0f, ColorFadeTime );
     m_ColorFadeT    = 0.0f;
+    m_ObjectGuid   = ObjectGuid;
+    m_bFirstUpdate = TRUE;
 }
 
 //==============================================================================
@@ -44,6 +50,12 @@ void floor_properties::Update( const vector3& NewPosition, f32 DeltaTime, xbool 
 {
     // Check if we've been initialized
     ASSERT( m_RadiusSquared >= 0 );
+
+    if( m_bFirstUpdate )
+    {
+        ForceUpdate( NewPosition );
+        return;
+    }
 
     //
     // Check if object has moved beyond radius
@@ -109,6 +121,7 @@ void floor_properties::ForceUpdate( const vector3& NewPosition )
 
     // Backup the new position
     m_LastPosition = NewPosition;
+    m_bFirstUpdate = FALSE;
 
 
     // Try to grab new floor properties. If we can't find any we'll stick with
@@ -145,9 +158,9 @@ xbool floor_properties::GrabFloorProperties( const vector3& ObjectPosition, xcol
     vector3 Start( ObjectPosition );
     vector3 End  ( Start );
     Start.GetY() += 10.0f;   // sometimes the root can be below the ground, so nudge it up a bit
-    End.GetY()   -= 100.0f;  // give it a meters to hit the ground
+    End.GetY()   -= m_TraceDepth;
 
-    g_CollisionMgr.RaySetup( 0, Start, End );
+    g_CollisionMgr.RaySetup( m_ObjectGuid, Start, End );
     g_CollisionMgr.CheckCollisions(object::TYPE_ALL_TYPES, object::ATTR_COLLIDABLE, object::ATTR_LIVING);
 
     // from the collision info, save out the poly color and material

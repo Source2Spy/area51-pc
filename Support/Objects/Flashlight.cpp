@@ -11,7 +11,7 @@
 #include "Flashlight.hpp"
 
 #include "Player/Player.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 
 //==============================================================================
 //  CONSTANTS
@@ -72,12 +72,12 @@ void flashlight_Register( player& Player )
     const f32 InnerAngle  = MAX( 1.0f, OuterAngle * s_FlashlightInnerConeScale );
     const f32 InnerRadius = MAX( 0.0f, s_FlashlightRange * ( 1.0f - s_FlashlightFalloff ) );
 
-    g_LightMgr.AddDynamicLight( L2W.GetTranslation(),
+    render::GetRenderPipeline().GetLightSystem().AddDynamicLight( L2W.GetTranslation(),
                                 s_FlashlightColor,
                                 s_FlashlightRange,
                                 s_FlashlightIntensity,
                                 FALSE,
-                                light_mgr::LIGHT_SHAPE_SPOT,
+                                render::LightSystem::LIGHT_SHAPE_SPOT,
                                 TRUE,
                                 InnerRadius,
                                 Direction,
@@ -86,5 +86,6 @@ void flashlight_Register( player& Player )
                                 OuterAngle,
                                 1024,
                                 4,
-                                s_FlashlightCookie );
+                                s_FlashlightCookie,
+                                TRUE );
 }

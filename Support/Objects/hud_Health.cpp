@@ -121,16 +121,16 @@ hud_health::hud_health ( void )
     //
     // Volume scanner (EQ) (polish)
     //
-    m_VolScanBmp.SetName( PRELOAD_FILE("HUD_Campaign_volume_scan.xbmp") );
+    m_VolScanBmp.SetName( PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_VOLUME_SCAN.XBMP") );
 
     //-- EKG Init
     m_EKGSpeed = 1.0f;
     m_BlipCount = 0;
     m_LineColor = XCOLOR_WHITE;
 
-    m_StaticBmp1.SetName( PRELOAD_FILE("HUD_Campaign_heart_bkd_static1.xbmp") );
-    m_StaticBmp2.SetName( PRELOAD_FILE("HUD_Campaign_heart_bkd_static2.xbmp") );
-    m_StaticBmp3.SetName( PRELOAD_FILE("HUD_Campaign_heart_bkd_static3.xbmp") );
+    m_StaticBmp1.SetName( PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_HEART_BKD_STATIC1.XBMP") );
+    m_StaticBmp2.SetName( PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_HEART_BKD_STATIC2.XBMP") );
+    m_StaticBmp3.SetName( PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_HEART_BKD_STATIC3.XBMP") );
 
 
     for( s32 i = 0 ; i < NUM_DOTS ; i ++ )
@@ -158,6 +158,7 @@ hud_health::hud_health ( void )
     // Mutation Take over
     m_bPlayHudMutation    = FALSE; // this will be set from player inventory...
     m_MutationState  = MUTATION_START;
+    m_MutationFadeTime = 0.0f;
     m_Instances++;
 }
 
@@ -182,14 +183,14 @@ void hud_health::Init( void )
     }
 
     if( m_MultiPlayerHud )
-        m_OuterBmp.SetName (PRELOAD_FILE("HUD_Campaign_healthbox_Q.xbmp") );
+        m_OuterBmp.SetName (PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_HEALTHBOX_Q.XBMP") );
     else
-        m_OuterBmp.SetName (PRELOAD_FILE("HUD_Campaign_healthbox.xbmp") );
+        m_OuterBmp.SetName (PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_HEALTHBOX.XBMP") );
 
     if( m_MultiPlayerHud )
-        m_MutationBmp.SetName( PRELOAD_FILE( "HUD_Campaign_mutation_bar_Q.xbmp" ) );
+        m_MutationBmp.SetName( PRELOAD_FILE( "HUD/CAMPAIGN/HUD_CAMPAIGN_MUTATION_BAR_Q.XBMP" ) );
     else
-        m_MutationBmp.SetName( PRELOAD_FILE( "HUD_Campaign_mutation_bar.xbmp" ) );
+        m_MutationBmp.SetName( PRELOAD_FILE( "HUD/CAMPAIGN/HUD_CAMPAIGN_MUTATION_BAR.XBMP" ) );
 
     m_HudInited = TRUE;
 }
@@ -1000,6 +1001,7 @@ void hud_health::UpdateMutationTakeOver( player* pPlayer, f32 DeltaTime )
         m_MutationBarAlpha = 0;
         m_MutationFadeInRate = 480.0f;
         m_MutationFadeResetChance = 40;
+        m_MutationFadeTime = 0.0f;
         m_MutationDisplayTime = 0.0f;
         m_MutationState++;
         break;
@@ -1050,22 +1052,30 @@ void hud_health::UpdateMutationTakeOver( player* pPlayer, f32 DeltaTime )
         break;
 
     case MUTATION_FADE_BAR_IN:
-        m_MutationBarAlpha += m_MutationFadeInRate * DeltaTime;
-        m_MutationFadeResetChance += 60.0f * DeltaTime;
-
-        if( x_rand()%100 > m_MutationFadeResetChance )
-            m_MutationBarAlpha -= 32.0f;
-
-        m_MutationBarAlpha = MAX(0, m_MutationBarAlpha);
-        m_MutationBarAlpha = MIN(255,m_MutationBarAlpha);
-
-        if( m_MutationBarAlpha >= 255 )
         {
-            pPlayer->SetMutagen(10.0f);
-            m_Bars[MUTAGEN].m_FirstPass = TRUE;
-            m_MutationState++;
+            const f32 FadeFrameDuration = 1.0f / 30.0f;
+            m_MutationFadeTime += DeltaTime;
+            while( (m_MutationFadeTime >= FadeFrameDuration) && (m_MutationBarAlpha < 255.0f) )
+            {
+                m_MutationFadeTime -= FadeFrameDuration;
+                m_MutationBarAlpha += m_MutationFadeInRate * FadeFrameDuration;
+                m_MutationFadeResetChance += 60.0f * FadeFrameDuration;
+
+                if( x_rand()%100 > m_MutationFadeResetChance )
+                    m_MutationBarAlpha -= 32.0f;
+
+                m_MutationBarAlpha = MAX(0, m_MutationBarAlpha);
+                m_MutationBarAlpha = MIN(255,m_MutationBarAlpha);
+            }
+
+            if( m_MutationBarAlpha >= 255 )
+            {
+                pPlayer->SetMutagen(10.0f);
+                m_Bars[MUTAGEN].m_FirstPass = TRUE;
+                m_MutationState++;
+            }
+            break;
         }
-        break;
 
     case MUTATION_BAR_FILL:
         AdvanceBar(pPlayer,DeltaTime, MUTAGEN );

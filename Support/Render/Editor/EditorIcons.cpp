@@ -89,7 +89,7 @@ enum
 
 //=========================================================================
 
-static 
+static
 icon_mesh GetIconMesh( EditorIcon icon )
 {
     switch( icon )
@@ -149,7 +149,7 @@ icon_mesh GetIconMesh( EditorIcon icon )
 
 //=========================================================================
 
-static 
+static
 xcolor TintColor( const vertex& source, xcolor tint )
 {
     return xcolor( (u8)( ( source.R * tint.R + 127 ) / 255 ),
@@ -160,8 +160,8 @@ xcolor TintColor( const vertex& source, xcolor tint )
 
 //=========================================================================
 
-static 
-xbool SubmitIconMesh( const icon_mesh& mesh, const matrix4& localToWorld, xcolor tint,
+static
+xbool SubmitIconMesh( const icon_mesh& mesh, const matrix4& LocalToWorld, xcolor tint,
                       const render::primitive_draw_desc& material )
 {
     if( !mesh.pVertices || !mesh.pIndices || mesh.VertexCount <= 0 || mesh.FacetCount <= 0 ||
@@ -180,46 +180,44 @@ xbool SubmitIconMesh( const icon_mesh& mesh, const matrix4& localToWorld, xcolor
                                                 TintColor( source, tint ) );
     }
 
-    const s32 indexCount = mesh.FacetCount * 3;
-    for( s32 i = 0; i < indexCount; ++i )
+    const s32 IndexCount = mesh.FacetCount * 3;
+    for( s32 i = 0; i < IndexCount; ++i )
     {
         ASSERT( mesh.pIndices[i] >= 0 && mesh.pIndices[i] < mesh.VertexCount );
         indices[i] = (u16)mesh.pIndices[i];
     }
 
-    return render::SubmitPrimitives( material, localToWorld, vertices, mesh.VertexCount, indices, indexCount );
+    return render::SubmitPrimitives( material, LocalToWorld, vertices, mesh.VertexCount, indices, IndexCount );
 }
 }
 
 //=========================================================================
 
-void DrawEditorIcon( EditorIcon icon, matrix4 const& l2W, xbool isSelected, xcolor tintColor )
+void DrawEditorIcon( EditorIcon icon, matrix4 const& L2W, xbool isSelected, xcolor TintColor )
 {
     const icon_mesh mesh = GetIconMesh( icon );
     if( !mesh.pVertices )
         return;
 
-    matrix4 localToWorld = l2W;
-    const f32 scaleSquared = l2W( 0, 0 ) * l2W( 0, 0 ) + l2W( 1, 0 ) * l2W( 1, 0 ) + l2W( 2, 0 ) * l2W( 2, 0 );
-    if( scaleSquared >= ( 1.01f * 1.01f ) || scaleSquared <= ( 0.98f * 0.98f ) )
-        localToWorld.Setup( vector3( 1.0f, 1.0f, 1.0f ), l2W.GetRotation(), l2W.GetTranslation() );
+    matrix4 LocalToWorld = L2W;
+    const f32 ScaleSquared = L2W( 0, 0 ) * L2W( 0, 0 ) + L2W( 1, 0 ) * L2W( 1, 0 ) + L2W( 2, 0 ) * L2W( 2, 0 );
+    if( ScaleSquared >= ( 1.01f * 1.01f ) || ScaleSquared <= ( 0.98f * 0.98f ) )
+        LocalToWorld.Setup( vector3( 1.0f, 1.0f, 1.0f ), L2W.GetRotation(), L2W.GetTranslation() );
 
     const render::primitive_draw_desc IconMaterial( NULL,
                                                     render::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
                                                     render::PRIMITIVE_BLEND_OPAQUE,
                                                     render::PRIMITIVE_DEPTH_READ_WRITE,
                                                     render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                    render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                    render::PRIMITIVE_LAYER_SURFACE );
-    SubmitIconMesh( mesh, localToWorld, tintColor, IconMaterial );
+                                                    render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
+    SubmitIconMesh( mesh, LocalToWorld, TintColor, IconMaterial );
 
     const render::primitive_draw_desc SelectionMaterial( NULL,
                                                          render::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
                                                          render::PRIMITIVE_BLEND_ALPHA,
                                                          render::PRIMITIVE_DEPTH_READ_ONLY,
                                                          render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                         render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                         render::PRIMITIVE_LAYER_TRANSPARENT );
-    const xcolor selectionColor = isSelected ? xcolor( 255, 0, 0, 128 ) : xcolor( 255, 255, 255, 64 );
-    SubmitIconMesh( GetIconMesh( EditorIcon::Sphere ), localToWorld, selectionColor, SelectionMaterial );
+                                                         render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
+    const xcolor SelectionColor = isSelected ? xcolor( 255, 0, 0, 128 ) : xcolor( 255, 255, 255, 64 );
+    SubmitIconMesh( GetIconMesh( EditorIcon::Sphere ), LocalToWorld, SelectionColor, SelectionMaterial );
 }

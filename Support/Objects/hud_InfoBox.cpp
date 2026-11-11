@@ -13,7 +13,7 @@
 #include "hud_InfoBox.hpp"
 #include "HudObject.hpp"  
 
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 
 #include "GameLib/RenderContext.hpp"
 #include "UI/ui_manager.hpp"
@@ -30,18 +30,11 @@ static xcolor SCORE_RECT_COLOR_GREEN = xcolor( 0,31,0,127 );
 
 hud_info_box::hud_info_box( void ) 
 {
-    m_ScoreString_Col1[0][0] = 0x0000;
-    m_ScoreString_Col1[1][0] = 0x0000;
-    m_ScoreString_Col2[0][0] = 0x0000;
-    m_ScoreString_Col2[1][0] = 0x0000;
-    m_ScoreString_Col3[0][0] = 0x0000;
-    m_ScoreString_Col3[1][0] = 0x0000;
-
     m_RenderCTFFlag      = FALSE;
     m_HasCTFFlag         = FALSE;
     m_CTFFlagAlpha       = 0.0f;
-    m_CTFFlag.SetName    ( PRELOAD_FILE( "HUD_multiplayer_FlagIcon.xbmp") );
-    m_CTFFlagRing.SetName( PRELOAD_FILE( "HUD_multiplayer_FlagIcon_backgnd.xbmp"));
+    m_CTFFlag.SetName    ( PRELOAD_FILE( "HUD/MULTIPLAYER/HUD_MULTIPLAYER_FLAGICON.XBMP") );
+    m_CTFFlagRing.SetName( PRELOAD_FILE( "HUD/MULTIPLAYER/HUD_MULTIPLAYER_FLAGICON_BACKGND.XBMP"));
 
 }
 
@@ -62,22 +55,22 @@ s32 hud_info_box::MeasureScoreLayout( f32& Segment1Width,
         irect TextRect;
         f32   ColumnWidths[3] = { 8.0f, 8.0f, 8.0f };
 
-        if( x_wstrlen( m_ScoreString_Col1[BoxNum] ) )
+        if( m_ScoreString_Col1[BoxNum].Text.GetLength() )
         {
-            g_UiMgr->TextSize( 1, TextRect, m_ScoreString_Col1[BoxNum], -1 );
+            g_UiMgr->TextSize( 1, TextRect, m_ScoreString_Col1[BoxNum].Text, -1 );
             ColumnWidths[0] += (f32)TextRect.GetWidth();
         }
 
-        if( x_wstrlen( m_ScoreString_Col2[BoxNum] ) )
+        if( m_ScoreString_Col2[BoxNum].Text.GetLength() )
         {
             NumBoxes++;
-            g_UiMgr->TextSize( 1, TextRect, m_ScoreString_Col2[BoxNum], -1 );
+            g_UiMgr->TextSize( 1, TextRect, m_ScoreString_Col2[BoxNum].Text, -1 );
             ColumnWidths[1] += (f32)TextRect.GetWidth();
         }
 
-        if( x_wstrlen( m_ScoreString_Col3[BoxNum] ) )
+        if( m_ScoreString_Col3[BoxNum].Text.GetLength() )
         {
-            g_UiMgr->TextSize( 1, TextRect, m_ScoreString_Col3[BoxNum], -1 );
+            g_UiMgr->TextSize( 1, TextRect, m_ScoreString_Col3[BoxNum].Text, -1 );
             ColumnWidths[2] += (f32)TextRect.GetWidth();
         }
 
@@ -166,7 +159,7 @@ void hud_info_box::OnRender( player* pPlayer )
                       (s32)(Pos.GetX() + LineWidthSeg1 - 2)-4, (s32)(Pos.GetY() + 17) );
 
             xcolor textColor( XCOLOR_WHITE );
-            if( x_wstrlen(m_ScoreString_Col1[i]) )
+            if( m_ScoreString_Col1[i].Text.GetLength() )
             {                
                 RenderLine( m_ScoreString_Col1[ i ],  Rect, 255, textColor, 1, ui_font::h_right |ui_font::v_bottom, FALSE );
             }
@@ -174,7 +167,7 @@ void hud_info_box::OnRender( player* pPlayer )
             // Seg 2
             Rect.Set( (s32)(Pos.GetX() + LineWidthSeg1 + 2),                 (s32)(Pos.GetY() + 1), 
                       (s32)(Pos.GetX() + LineWidthSeg1 + LineWidthSeg2 - 2), (s32)(Pos.GetY() + 17) );
-            if( x_wstrlen(m_ScoreString_Col2[i]) )
+            if( m_ScoreString_Col2[i].Text.GetLength() )
             {                
                 RenderLine( m_ScoreString_Col2[ i ],  Rect, 255, textColor, 1, ui_font::h_left|ui_font::v_bottom, FALSE );
             }
@@ -182,7 +175,7 @@ void hud_info_box::OnRender( player* pPlayer )
             // Seg 3
             Rect.Set( (s32)(Pos.GetX() + LineWidthSeg1 + LineWidthSeg2 + 2),                 (s32)(Pos.GetY() + 1), 
                       (s32)(Pos.GetX() + LineWidthSeg1 + LineWidthSeg2 + LineWidthSeg3 - 2), (s32)(Pos.GetY() + 17) );
-            if( x_wstrlen(m_ScoreString_Col3[i]) )
+            if( m_ScoreString_Col3[i].Text.GetLength() )
             {               
                 RenderLine( m_ScoreString_Col3[ i ],  Rect, 255, textColor, 1, ui_font::h_right|ui_font::v_bottom, FALSE );
             }
@@ -307,38 +300,29 @@ void hud_info_box::OnEnumProp( prop_enum&  List )
 
 //==============================================================================
 
-void hud_info_box::SetScoreInfo( const xwchar* Col1, const xwchar* Col2, const xwchar* Col3, s32 Slot )
+void hud_info_box::SetScoreInfo( const ui_text_data& Col1,
+                                const ui_text_data& Col2,
+                                const ui_text_data& Col3,
+                                s32 Slot )
 {
-    if( Slot<0 )
-    {
-        s32 s = ABS(Slot);
-        s -= 1;    
-        s = MAX(s,0);
+    s32 Index = MAX( ABS( Slot ) - 1, 0 );
 
-        m_ScoreString_Col1[ABS(Slot)-1][0] = 0x0000;
-        m_ScoreString_Col2[ABS(Slot)-1][0] = 0x0000;
-        m_ScoreString_Col3[ABS(Slot)-1][0] = 0x0000;
+    if( Index >= 2 )
+    {
+        return;
     }
-    else    
+
+    if( Slot < 0 )
     {
-        s32 s = ABS(Slot);
-        s -= 1;
-        s = MAX(s,0);
-
-        if( x_wstrlen(Col1) )
-            x_wstrcpy( m_ScoreString_Col1[s], Col1 );
-        else
-            m_ScoreString_Col1[s][0] = 0x0000;
-
-        if( x_wstrlen(Col2) )
-            x_wstrcpy( m_ScoreString_Col2[s], Col2 );
-        else
-            m_ScoreString_Col2[s][0] = 0x0000;
-
-        if( x_wstrlen(Col3) )
-            x_wstrcpy( m_ScoreString_Col3[s], Col3 );
-        else
-            m_ScoreString_Col3[s][0] = 0x0000;
+        m_ScoreString_Col1[Index] = ui_text_data();
+        m_ScoreString_Col2[Index] = ui_text_data();
+        m_ScoreString_Col3[Index] = ui_text_data();
+    }
+    else
+    {
+        m_ScoreString_Col1[Index] = Col1;
+        m_ScoreString_Col2[Index] = Col2;
+        m_ScoreString_Col3[Index] = Col3;
     }
 }
 

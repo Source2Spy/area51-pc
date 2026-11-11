@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include "EditorView3D.h"
+#include "Render/Render.hpp"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -218,23 +219,18 @@ void CEditorView3D::OnDraw(CDC* pDC)
     {
         return;
     }
+    render::BeginFrame();
 
-    rtarget_backbuffer_pass_desc PassDesc;
-    PassDesc.bUseDepth = FALSE;
-    if( !rtarget_BeginBackBufferPass( PassDesc ) )
-    {
-        eng_ResetAfterException();
-        return;
-    }
-    rtarget_EndPass();
-
+    xbool sceneActive = FALSE;
     {
         if( eng_Begin( "EditorView3D" ) )
         {
-            VERIFY( render::BeginPrimitiveRender() );
-            m_Grid.Render();
-            render::EndPrimitiveRender();
-            render::ExecuteForwardRender();
+            sceneActive = render::BeginRenderScope();
+            if ( sceneActive )
+            {
+                m_Grid.Render();
+                sceneActive = render::SubmitRenderScope();
+            }
             eng_End();
         }
 
@@ -245,6 +241,12 @@ void CEditorView3D::OnDraw(CDC* pDC)
     {
         g_ManipulatorMgr.Render( m_View );
     }
+
+    if( sceneActive && !render::EndRenderScope() )
+        return;
+
+    if( !render::EndFrame( FALSE ) )
+        return;
 
     if( !eng_EndFrame() )
     {
@@ -287,7 +289,3 @@ void    CEditorView3D::DrawMarquee( CDC* pDC, CPoint pt1, CPoint pt2 )
 //-------------------------------------------------------------------------
 // Internal Utilities
 //-------------------------------------------------------------------------
-
-
-
-

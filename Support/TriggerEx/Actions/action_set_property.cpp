@@ -251,7 +251,7 @@ void action_set_property::OnEnumProp    ( prop_enum& rPropList )
     xbool bShowProp = FALSE;
     if (RequiresObjectType())
     {
-        rPropList.PropEnumExternal   ( "ObjType",    "object_picker\0object_picker", "What kind of object are you planning to modify. This is required for variable guid objects.", PROP_TYPE_MUST_ENUM );
+        rPropList.PropEnumExternal   ( "ObjType",    "object_picker\0object_picker\0", "What kind of object are you planning to modify. This is required for variable guid objects.", PROP_TYPE_MUST_ENUM );
 
         if (m_ObjectType != -1)
             bShowProp = TRUE;

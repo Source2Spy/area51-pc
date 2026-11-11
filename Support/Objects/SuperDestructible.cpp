@@ -386,7 +386,7 @@ void super_destructible_obj::KillStage( const pain& Pain )
                 g_ObjMgr.DestroyObject( s_PainResponseInfo[ i ].Emitter );
                 s_PainResponseInfo[ i ].Emitter = 0;                    
             }
-            if (g_AudioMgr.IsValidVoiceId( s_PainResponseInfo[ i ].AudioVoice ))
+            if (g_AudioMgr.IsValidVoiceIdCached( s_PainResponseInfo[ i ].AudioVoice ))
                 g_AudioMgr.Release( s_PainResponseInfo[ i ].AudioVoice, 0 );
             s_PainResponseInfo[ i ].AudioVoice = 0;
 
@@ -628,7 +628,7 @@ void super_destructible_obj::OnMove( const vector3& NewPos )
     BBox += GetBBox() ;
 
     rigid_geom* pRigidGeom = m_Inst.GetRigidGeom();
-    if( pRigidGeom && pRigidGeom->m_collision.nLowClusters > 0 )
+    if( pRigidGeom && pRigidGeom->m_Collision.nLowClusters > 0 )
         g_PolyCache.InvalidateCells( BBox, GetGuid() );
 
     // Make sure to track the object across zones
@@ -646,7 +646,7 @@ void super_destructible_obj::OnTransform( const matrix4& L2W )
  
     BBox += GetBBox() ;
     rigid_geom* pRigidGeom = m_Inst.GetRigidGeom();
-    if( pRigidGeom && pRigidGeom->m_collision.nLowClusters > 0 )
+    if( pRigidGeom && pRigidGeom->m_Collision.nLowClusters > 0 )
         g_PolyCache.InvalidateCells( BBox, GetGuid() );
 
     // Make sure to track the object across zones
@@ -702,7 +702,7 @@ void super_destructible_obj::OnAdvanceSimulation( f32 DeltaTime )
                 (m_AnimPlayer.GetCycle() != m_AnimPlayer.GetPrevCycle()) )
             {
                 rigid_geom* pRigidGeom = m_Inst.GetRigidGeom();
-                if( pRigidGeom && pRigidGeom->m_collision.nLowClusters > 0 )
+                if( pRigidGeom && pRigidGeom->m_Collision.nLowClusters > 0 )
                     g_PolyCache.InvalidateCells( GetBBox(), GetGuid() );
             }
         }
@@ -921,7 +921,7 @@ void super_destructible_obj::CreateSuperPainResponse( guid          OwnerGuid,
 
             if (ThisVoice != 0)
             {
-                if (!g_AudioMgr.IsValidVoiceId( ThisVoice ))
+                if (!g_AudioMgr.IsValidVoiceIdCached( ThisVoice ))
                 {
                     g_AudioMgr.Release( ThisVoice, 0 );
                     s_PainResponseInfo[ i ].AudioVoice = 0;
@@ -1036,10 +1036,13 @@ void super_destructible_obj::BroadcastPain( s32 iUsePainFromThisStage )
     {
         slot_id& SlotID = ObjectSlots[i];
         object* pObject = g_ObjMgr.GetObjectBySlot( SlotID );
-        if( pObject->GetAttrBits() & ATTR_DAMAGEABLE )
+        if( pObject && (pObject->GetAttrBits() & ATTR_DAMAGEABLE) )
         {
             pain Pain;
             Pain.Setup( m_Stages[iUsePainFromThisStage].m_PainType, GetGuid(),GetPosition());
+            // Stage radius selects the victims. Legacy profiles such as
+            // GENERIC_EXPLOSIVE are not marked IsSplash in the level data.
+            Pain.SetImpactType( pain::IMPACT_EXPLOSION );
             Pain.SetDirectHitGuid( pObject->GetGuid() );
             Pain.ApplyToObject( pObject );
         }
@@ -1191,14 +1194,14 @@ xbool super_destructible_obj::OnProperty( prop_query& I )
     if( play_surface::OnProperty( I ) )
     {
         // Initialize the zone tracker
-        if( I.IsVar( "Base\\Position" )) 
+        if( !I.IsRead() &&
+            (I.IsVar( "Base\\Position" ) || I.IsVar( "Base\\ZoneInfo" )) )
         {
             g_ZoneMgr.RebaseZoneTracking( *this,
                                           m_ZoneTracker,
                                           GetPosition(),
                                           GetZone1(),
-                                          GetZone2(),
-                                          zone_mgr::SeedSource::Object );
+                                          GetZone2() );
         }
 
         return( TRUE );

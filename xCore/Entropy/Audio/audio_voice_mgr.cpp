@@ -1,3 +1,13 @@
+//==============================================================================
+//
+//  audio_voice_mgr.cpp
+//
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
+
 #include "Audio/audio_voice_mgr.hpp"
 #include "Audio/audio_runtime.hpp"
 #include "Audio/audio_channel_mgr.hpp"
@@ -8,6 +18,7 @@
 #include "Audio/audio_spatial_mgr.hpp"
 #include "e_Audio.hpp"
 #include "x_log.hpp"
+#include "IOManager/io_mgr.hpp"
 
 #if defined(rbrannon)
 extern voice*   g_DebugVoice;
@@ -19,26 +30,48 @@ extern f32      g_DebugTime;
 //#define UPDATE_STATE_LOGGING "audio_voice_mgr::Update(state)" 
 //#define PLAY_TIME_LOGGING    "audio_voice_mgr::GetCurrentPlayTime"
 
-//------------------------------------------------------------------------------
+//==============================================================================
 // Defines.
 
 #define MAX_VOICES    (48) //(64)
 #define MAX_ELEMENTS  (MAX_VOICES * 3)
+
+static_assert( MAX_VOICES < audio_deferred_voice_table::FIRST_INDEX,
+               "deferred voice handles overlap physical voice slots" );
 
 #if defined(X_DEBUG)
 #define ELEMENT_EXPIRE_DELAY    (0.250f)
 #else
 #define ELEMENT_EXPIRE_DELAY    (0.250f)
 #endif
-//------------------------------------------------------------------------------
+//==============================================================================
 // Static variables.
 
 static xbool        s_IsInitialized = FALSE;    // Semaphore.
 static xbool        s_UpdatePriority;           // Update flag.
 static voice        s_Voices[ MAX_VOICES ];     // Voice buffer.
 static element      s_Elements[ MAX_ELEMENTS ]; // Element buffer.
+static x_atomic_u32 s_PublishedVoiceIDs[MAX_VOICES];
+static x_atomic_u32 s_ReadyVoiceIDs[MAX_VOICES];
+static x_atomic_u32 s_StateReadyVoiceIDs[MAX_VOICES];
+static x_atomic_u64 s_VoiceLengths[MAX_VOICES];
+static x_atomic_u64 s_VoicePlayTimes[MAX_VOICES];
+static x_atomic_u32 s_VoiceStateRequests[MAX_VOICES];
+static x_atomic_u64 s_VoiceVolumes[MAX_VOICES];
+static x_atomic_u64 s_VoicePriorities[MAX_VOICES];
+static x_atomic_u64 s_VoiceNames[MAX_VOICES][AUDIO_PACKAGE_FILENAME_LENGTH / 4];
 
-//------------------------------------------------------------------------------
+//==============================================================================
+
+static
+u64 PackVoiceTime( u32 VoiceID, f32 Time )
+{
+    u32 Bits;
+    x_memcpy( &Bits, &Time, sizeof( Bits ) );
+    return ( (u64)VoiceID << 32 ) | Bits;
+}
+
+//==============================================================================
 
 audio_voice_mgr::audio_voice_mgr( void )
 {
@@ -51,13 +84,13 @@ audio_voice_mgr::audio_voice_mgr( void )
     m_pRuntime     = NULL;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 audio_voice_mgr::~audio_voice_mgr( void )
 {
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::Init( audio_runtime& AudioRuntime )
 {
@@ -74,7 +107,6 @@ void audio_voice_mgr::Init( audio_runtime& AudioRuntime )
     m_ElementChannels.Init( AudioRuntime );
     m_StreamBinder.Init( AudioRuntime );
 
-
     // It's initialized!
     s_IsInitialized = TRUE;
 
@@ -87,6 +119,8 @@ void audio_voice_mgr::Init( audio_runtime& AudioRuntime )
         // Initialize it.
         x_memset( pVoice, 0, sizeof( voice ) );
         pVoice->Sequence = 32000;
+        x_AtomicStoreRelease( &s_PublishedVoiceIDs[i], 0 );
+        x_AtomicStoreRelease( &s_ReadyVoiceIDs[i], 0 );
 
         // Link it.
         pVoice->Link.pPrev = pPrevVoice;
@@ -143,13 +177,18 @@ void audio_voice_mgr::Init( audio_runtime& AudioRuntime )
 
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::Kill( void )
 {
     // Error check.
     ASSERT( s_IsInitialized );
 
+    for( s32 i = 0; i < MAX_VOICES; i++ )
+    {
+        x_AtomicStoreRelease( &s_PublishedVoiceIDs[i], 0 );
+        x_AtomicStoreRelease( &s_ReadyVoiceIDs[i], 0 );
+    }
 
     // No longer initialized.
     s_IsInitialized = FALSE;
@@ -159,7 +198,7 @@ void audio_voice_mgr::Kill( void )
 
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 element* audio_voice_mgr::AcquireElement( void )
 {
@@ -189,7 +228,7 @@ element* audio_voice_mgr::AcquireElement( void )
     }
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_voice_mgr::ReleaseElement( element* pElement, xbool ReleaseChannel )
 {
@@ -203,7 +242,9 @@ xbool audio_voice_mgr::ReleaseElement( element* pElement, xbool ReleaseChannel )
     if( ReleaseChannel && pElement->pChannel )
     {
         if( !m_ElementChannels.ReleaseChannel( *this, pElement ) )
+        {
             return FALSE;
+        }
     }
 
     // Does the element have a voice?    
@@ -230,58 +271,60 @@ xbool audio_voice_mgr::ReleaseElement( element* pElement, xbool ReleaseChannel )
     return TRUE;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 inline void audio_voice_mgr::PauseElement( element* pElement )
 {
     m_ElementChannels.PauseElement( *this, pElement );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 inline void audio_voice_mgr::ResumeElement( element* pElement )
 {
     m_ElementChannels.ResumeElement( *this, pElement );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 inline void audio_voice_mgr::ApplyElementVolume( element* pElement )
 {
     m_ElementChannels.ApplyElementVolume( *this, pElement );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 inline void audio_voice_mgr::ApplyElementPan( element* pElement )
 {
     m_ElementChannels.ApplyElementPan( *this, pElement );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 inline void audio_voice_mgr::ApplyElementPitch( element* pElement )
 {
     m_ElementChannels.ApplyElementPitch( *this, pElement );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 inline void audio_voice_mgr::ApplyElementEffectSend( element* pElement )
 {
     m_ElementChannels.ApplyElementEffectSend( *this, pElement );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 inline void audio_voice_mgr::StartElement( element* pElement )
 {
     m_ElementChannels.StartElement( *this, pElement );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 extern void AudioDebug( const char* pString );
+
+//==============================================================================
 
 voice* audio_voice_mgr::AcquireVoice( s32 Priority, f32 AbsoluteVolume )
 {
@@ -311,7 +354,9 @@ voice* audio_voice_mgr::AcquireVoice( s32 Priority, f32 AbsoluteVolume )
             }
 #endif // defined(rbrannon)
             if( !FreeVoice( pVoice, FALSE ) )
+            {
                 pVoice = NULL;
+            }
         }
         else
         {
@@ -344,12 +389,11 @@ voice* audio_voice_mgr::AcquireVoice( s32 Priority, f32 AbsoluteVolume )
         PrioritizeVoice( pVoice, FALSE );  
     }
 
-
     // Tell the world
     return( pVoice );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 audio_voice_mgr::GetVoiceTime( voice* pVoice )
 {
@@ -357,7 +401,6 @@ f32 audio_voice_mgr::GetVoiceTime( voice* pVoice )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -387,8 +430,10 @@ f32 audio_voice_mgr::GetVoiceTime( voice* pVoice )
 
                 // Return longest time.
                 if( Time > Result )
+                {
                     Result = Time;
-                
+                }
+
                 // Walk the list
                 pElement = pNextElement;
             }
@@ -402,13 +447,12 @@ f32 audio_voice_mgr::GetVoiceTime( voice* pVoice )
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 audio_voice_mgr::GetLipSync( voice* pVoice )
 {
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -456,14 +500,13 @@ f32 audio_voice_mgr::GetLipSync( voice* pVoice )
     return 0.0f;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_voice_mgr::HasLipSync( voice* pVoice )
 {
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -493,7 +536,7 @@ xbool audio_voice_mgr::HasLipSync( voice* pVoice )
     return FALSE;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 s32 audio_voice_mgr::GetBreakPoints( voice* pVoice, f32* & BreakPoints )
 {
@@ -501,7 +544,6 @@ s32 audio_voice_mgr::GetBreakPoints( voice* pVoice, f32* & BreakPoints )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Default is not any...
     BreakPoints = NULL;
@@ -542,13 +584,12 @@ s32 audio_voice_mgr::GetBreakPoints( voice* pVoice, f32* & BreakPoints )
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 audio_voice_mgr::GetCurrentPlayTime( voice* pVoice )
 {
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -574,7 +615,9 @@ f32 audio_voice_mgr::GetCurrentPlayTime( voice* pVoice )
                 LOG_MESSAGE( PLAY_TIME_LOGGING, "nSamples: %d, nSamplesMax: %d", nSamples, pElement->pChannel->Sample.pHotSample->nSamples );
 #endif
                 if( nSamples > (u32)pElement->pChannel->Sample.pHotSample->nSamples )
+                {
                     nSamples = (u32)pElement->pChannel->Sample.pHotSample->nSamples;
+                }
 
                 f32 Result = (f32)nSamples / (f32)pElement->pChannel->Sample.pHotSample->SampleRate;
                 return Result;
@@ -589,7 +632,7 @@ f32 audio_voice_mgr::GetCurrentPlayTime( voice* pVoice )
     return 0.0f;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 const char* audio_voice_mgr::GetVoiceDescriptor( voice* pVoice )
 {
@@ -598,22 +641,21 @@ const char* audio_voice_mgr::GetVoiceDescriptor( voice* pVoice )
     // Error check.
     ASSERT( s_IsInitialized );
 
-
     // Grab descriptor if voice if valid
     if( pVoice )
+    {
         pDescriptor = pVoice->pDescriptorName;
+    }
 
-    
     return pDescriptor;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_voice_mgr::GetIsReady( voice* pVoice )
 {
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -647,13 +689,12 @@ xbool audio_voice_mgr::GetIsReady( voice* pVoice )
     return FALSE;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::ReleaseVoice( voice* pVoice, f32 Time )
 {
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -690,7 +731,7 @@ void audio_voice_mgr::ReleaseVoice( voice* pVoice, f32 Time )
 
 }
                                    
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::ReleaseAllVoices( void )
 {
@@ -700,7 +741,6 @@ void audio_voice_mgr::ReleaseAllVoices( void )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Get head/tail of active voices, first active voice
     pHeadVoice = UsedVoices();
@@ -722,7 +762,7 @@ void audio_voice_mgr::ReleaseAllVoices( void )
 
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::ReleasePackagesVoices( audio_package* pPackage )
 {
@@ -732,7 +772,6 @@ void audio_voice_mgr::ReleasePackagesVoices( audio_package* pPackage )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Get head/tail of active voices, first active voice
     pHeadVoice = UsedVoices();
@@ -758,19 +797,19 @@ void audio_voice_mgr::ReleasePackagesVoices( audio_package* pPackage )
 
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::StartVoice( voice* pVoice )
 {
     // Error check.
     ASSERT( s_IsInitialized );
 
-
     // Only if its valid.
     if( pVoice )
     {
         // Make it start...
         ASSERT( IsValidVoice(pVoice) );
+
         if( pVoice->State == STATE_NOT_STARTED )
         {
             pVoice->State = STATE_STARTING;
@@ -787,7 +826,7 @@ void audio_voice_mgr::StartVoice( voice* pVoice )
 
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_voice_mgr::Segue( voice* pVoice, voice* pVoiceToQ )
 {
@@ -795,18 +834,19 @@ xbool audio_voice_mgr::Segue( voice* pVoice, voice* pVoiceToQ )
 
     ASSERT( s_IsInitialized );
 
-
     // Only if its valid.
     if( pVoice )
     {
         // Make it start...
         ASSERT( IsValidVoice(pVoice) );
+
         if( pVoiceToQ )
         {
             ASSERT( IsValidVoice(pVoiceToQ) );
             pVoiceToQ->StartQ          = 0;
             pVoiceToQ->pSegueVoicePrev = pVoice;
         }
+
         pVoice->pSegueVoiceNext = pVoiceToQ;
         Result = TRUE;
     }
@@ -816,11 +856,10 @@ xbool audio_voice_mgr::Segue( voice* pVoice, voice* pVoiceToQ )
         Result = FALSE;
     }
 
-
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_voice_mgr::SetReleaseTime( voice* pVoice, f32 Time )
 {
@@ -828,14 +867,16 @@ xbool audio_voice_mgr::SetReleaseTime( voice* pVoice, f32 Time )
 
     ASSERT( s_IsInitialized );
 
-
     // Only if its valid.
     if( pVoice )
     {
         // Make it start...
         ASSERT( IsValidVoice(pVoice) );
+
         if( Time <= 0.0f )
+        {
             Time = 0.0f;
+        }
         pVoice->ReleaseTime = Time;
         pVoice->Dirty |= VOICE_DB_RELEASE_TIME_CHANGE;
         Result = TRUE;
@@ -846,26 +887,29 @@ xbool audio_voice_mgr::SetReleaseTime( voice* pVoice, f32 Time )
         Result = FALSE;
     }
 
-
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::PauseVoice( voice* pVoice )
 {
     // Error check.
     ASSERT( s_IsInitialized );
 
-
     // Only if its valid.
     if( pVoice )
     {
         // Make it start...
         ASSERT( IsValidVoice(pVoice) );
+
         if( pVoice->State == STATE_RUNNING )
         {
             pVoice->State = STATE_PAUSING;
+        }
+        else if( pVoice->State == STATE_RESUMING )
+        {
+            pVoice->State = STATE_PAUSED;
         }
         else
         {
@@ -879,19 +923,19 @@ void audio_voice_mgr::PauseVoice( voice* pVoice )
 
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::ResumeVoice( voice* pVoice )
 {
     // Error check.
     ASSERT( s_IsInitialized );
 
-
     // Only if its valid.
     if( pVoice )
     {
         // Make it start...
         ASSERT( IsValidVoice(pVoice) );
+
         if( pVoice->State == STATE_PAUSED )
         {
             pVoice->State = STATE_RESUMING;
@@ -908,7 +952,7 @@ void audio_voice_mgr::ResumeVoice( voice* pVoice )
 
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::PauseAllVoices( void )
 {
@@ -918,7 +962,6 @@ void audio_voice_mgr::PauseAllVoices( void )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Get head/tail of active voices, first active voice
     pHeadVoice = UsedVoices();
@@ -935,12 +978,22 @@ void audio_voice_mgr::PauseAllVoices( void )
         switch( pVoice->State )
         {
             case STATE_RUNNING:
+            {
                 pVoice->State = STATE_PAUSING;
                 break;
+            }
+
+            case STATE_RESUMING:
+            {
+                pVoice->State = STATE_PAUSED;
+                break;
+            }
 
             default:
+            {
                 // TODO: Warning message
                 break;
+            }
         }
 
         // Walk the list...
@@ -949,7 +1002,7 @@ void audio_voice_mgr::PauseAllVoices( void )
 
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::ResumeAllVoices( void )
 {
@@ -959,7 +1012,6 @@ void audio_voice_mgr::ResumeAllVoices( void )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Get head/tail of active voices, first active voice
     pHeadVoice = UsedVoices();
@@ -976,12 +1028,16 @@ void audio_voice_mgr::ResumeAllVoices( void )
         switch( pVoice->State )
         {
             case STATE_PAUSED:
+            {
                 pVoice->State = STATE_RESUMING;
                 break;
+            }
 
             default:
+            {
                 // TODO: Warning message
                 break;
+            }
         }
 
         // Walk the list...
@@ -990,7 +1046,7 @@ void audio_voice_mgr::ResumeAllVoices( void )
 
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_voice_mgr::IsVoicePlaying( voice* pVoice )
 {
@@ -998,7 +1054,6 @@ xbool audio_voice_mgr::IsVoicePlaying( voice* pVoice )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -1012,12 +1067,11 @@ xbool audio_voice_mgr::IsVoicePlaying( voice* pVoice )
         Result = FALSE;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_voice_mgr::IsVoiceStarting( voice* pVoice )
 {
@@ -1025,7 +1079,6 @@ xbool audio_voice_mgr::IsVoiceStarting( voice* pVoice )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -1039,12 +1092,11 @@ xbool audio_voice_mgr::IsVoiceStarting( voice* pVoice )
         Result = FALSE;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_voice_mgr::IsVoiceReleasing( voice* pVoice )
 {
@@ -1052,7 +1104,6 @@ xbool audio_voice_mgr::IsVoiceReleasing( voice* pVoice )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -1065,12 +1116,11 @@ xbool audio_voice_mgr::IsVoiceReleasing( voice* pVoice )
         Result = FALSE;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_voice_mgr::IsVoiceReady( voice* pVoice )
 {
@@ -1078,7 +1128,6 @@ xbool audio_voice_mgr::IsVoiceReady( voice* pVoice )
     ASSERT( s_IsInitialized );
 
     xbool Result = FALSE;
-
 
     // Only if its valid.
     if( pVoice )
@@ -1097,18 +1146,17 @@ xbool audio_voice_mgr::IsVoiceReady( voice* pVoice )
         }
     }
 
-
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
+
 s32 audio_voice_mgr::GetVoicePriority( voice* pVoice )
 {
     s32 Result = -1;
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -1122,12 +1170,11 @@ s32 audio_voice_mgr::GetVoicePriority( voice* pVoice )
         Result = -1;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 audio_voice_mgr::GetVoiceUserVolume( voice* pVoice )
 {
@@ -1135,7 +1182,6 @@ f32 audio_voice_mgr::GetVoiceUserVolume( voice* pVoice )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -1149,12 +1195,11 @@ f32 audio_voice_mgr::GetVoiceUserVolume( voice* pVoice )
         Result = 0.0f;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_voice_mgr::SetVoiceUserVolume( voice* pVoice, f32 Volume )
 {
@@ -1162,7 +1207,6 @@ xbool audio_voice_mgr::SetVoiceUserVolume( voice* pVoice, f32 Volume )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -1178,12 +1222,11 @@ xbool audio_voice_mgr::SetVoiceUserVolume( voice* pVoice, f32 Volume )
         Result = FALSE;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 audio_voice_mgr::GetVoiceRelativeVolume( voice* pVoice )
 {
@@ -1191,7 +1234,6 @@ f32 audio_voice_mgr::GetVoiceRelativeVolume( voice* pVoice )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -1205,12 +1247,11 @@ f32 audio_voice_mgr::GetVoiceRelativeVolume( voice* pVoice )
         Result = 0.0f;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_voice_mgr::SetVoiceRelativeVolume( voice* pVoice, f32 Volume )
 {
@@ -1218,7 +1259,6 @@ xbool audio_voice_mgr::SetVoiceRelativeVolume( voice* pVoice, f32 Volume )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -1234,12 +1274,11 @@ xbool audio_voice_mgr::SetVoiceRelativeVolume( voice* pVoice, f32 Volume )
         Result = FALSE;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 audio_voice_mgr::GetVoicePan( voice* pVoice )
 {
@@ -1247,7 +1286,6 @@ f32 audio_voice_mgr::GetVoicePan( voice* pVoice )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -1261,12 +1299,11 @@ f32 audio_voice_mgr::GetVoicePan( voice* pVoice )
         Result = 0.0f;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_voice_mgr::SetVoicePan( voice* pVoice, f32 Pan )
 {
@@ -1274,7 +1311,6 @@ xbool audio_voice_mgr::SetVoicePan( voice* pVoice, f32 Pan )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -1300,12 +1336,11 @@ xbool audio_voice_mgr::SetVoicePan( voice* pVoice, f32 Pan )
         Result = FALSE;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 audio_voice_mgr::GetVoiceUserPitch( voice* pVoice )
 {
@@ -1313,7 +1348,6 @@ f32 audio_voice_mgr::GetVoiceUserPitch( voice* pVoice )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -1327,12 +1361,11 @@ f32 audio_voice_mgr::GetVoiceUserPitch( voice* pVoice )
         Result = 0.0f;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_voice_mgr::SetVoiceUserPitch( voice* pVoice, f32 Pitch )
 {
@@ -1340,7 +1373,6 @@ xbool audio_voice_mgr::SetVoiceUserPitch( voice* pVoice, f32 Pitch )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -1356,12 +1388,11 @@ xbool audio_voice_mgr::SetVoiceUserPitch( voice* pVoice, f32 Pitch )
         Result = FALSE;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 audio_voice_mgr::GetVoiceRelativePitch( voice* pVoice )
 {
@@ -1369,7 +1400,6 @@ f32 audio_voice_mgr::GetVoiceRelativePitch( voice* pVoice )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -1383,12 +1413,11 @@ f32 audio_voice_mgr::GetVoiceRelativePitch( voice* pVoice )
         Result = 0.0f;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_voice_mgr::SetVoiceRelativePitch( voice* pVoice, f32 Pitch )
 {
@@ -1396,7 +1425,6 @@ xbool audio_voice_mgr::SetVoiceRelativePitch( voice* pVoice, f32 Pitch )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -1412,12 +1440,11 @@ xbool audio_voice_mgr::SetVoiceRelativePitch( voice* pVoice, f32 Pitch )
         Result = FALSE;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 audio_voice_mgr::GetVoiceUserEffectSend( voice* pVoice )
 {
@@ -1425,7 +1452,6 @@ f32 audio_voice_mgr::GetVoiceUserEffectSend( voice* pVoice )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -1439,12 +1465,11 @@ f32 audio_voice_mgr::GetVoiceUserEffectSend( voice* pVoice )
         Result = 0.0f;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_voice_mgr::SetVoiceUserEffectSend ( voice* pVoice, f32 EffectSend )
 {
@@ -1452,7 +1477,6 @@ xbool audio_voice_mgr::SetVoiceUserEffectSend ( voice* pVoice, f32 EffectSend )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -1468,12 +1492,11 @@ xbool audio_voice_mgr::SetVoiceUserEffectSend ( voice* pVoice, f32 EffectSend )
         Result = FALSE;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 f32 audio_voice_mgr::GetVoiceRelativeEffectSend( voice* pVoice )
 {
@@ -1481,7 +1504,6 @@ f32 audio_voice_mgr::GetVoiceRelativeEffectSend( voice* pVoice )
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -1495,12 +1517,11 @@ f32 audio_voice_mgr::GetVoiceRelativeEffectSend( voice* pVoice )
         Result = 0.0f;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_voice_mgr::SetVoiceRelativeEffectSend ( voice* pVoice, f32 EffectSend )
 {
@@ -1508,7 +1529,6 @@ xbool audio_voice_mgr::SetVoiceRelativeEffectSend ( voice* pVoice, f32 EffectSen
 
     // Error check.
     ASSERT( s_IsInitialized );
-
 
     // Only if its valid.
     if( pVoice )
@@ -1524,12 +1544,11 @@ xbool audio_voice_mgr::SetVoiceRelativeEffectSend ( voice* pVoice, f32 EffectSen
         Result = FALSE;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_voice_mgr::GetVoicePosition( voice* pVoice, vector3& Position, s32& ZoneID )
 {
@@ -1538,11 +1557,11 @@ xbool audio_voice_mgr::GetVoicePosition( voice* pVoice, vector3& Position, s32& 
     // Error check.
     ASSERT( s_IsInitialized );
 
-
     // Only if its valid.
     if( pVoice )
     {
         ASSERT( IsValidVoice(pVoice) );
+
         if( pVoice->IsPositional )
         {
             Position = pVoice->Position;
@@ -1561,12 +1580,11 @@ xbool audio_voice_mgr::GetVoicePosition( voice* pVoice, vector3& Position, s32& 
         Result = FALSE;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_voice_mgr::SetVoicePosition( voice* pVoice, const vector3& Position, s32 ZoneID )
 {
@@ -1575,11 +1593,11 @@ xbool audio_voice_mgr::SetVoicePosition( voice* pVoice, const vector3& Position,
     // Error check.
     ASSERT( s_IsInitialized );
 
-
     // Only if its valid.
     if( pVoice )
     {
         ASSERT( IsValidVoice(pVoice) );
+
         if( pVoice->IsPositional )
         {
             pVoice->Position = Position;
@@ -1598,12 +1616,11 @@ xbool audio_voice_mgr::SetVoicePosition( voice* pVoice, const vector3& Position,
         Result = FALSE;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_voice_mgr::SetVoiceUserFalloff( voice* pVoice, f32 Near, f32 Far )
 {
@@ -1612,11 +1629,11 @@ xbool audio_voice_mgr::SetVoiceUserFalloff( voice* pVoice, f32 Near, f32 Far )
     // Error check.
     ASSERT( s_IsInitialized );
 
-
     // Only if its valid.
     if( pVoice )
     {
         ASSERT( IsValidVoice(pVoice) );
+
         if( pVoice->IsPositional )
         {
             pVoice->UserFarFalloff  = Far;
@@ -1635,12 +1652,11 @@ xbool audio_voice_mgr::SetVoiceUserFalloff( voice* pVoice, f32 Near, f32 Far )
         Result = FALSE;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_voice_mgr::SetVoiceRelativeFalloff( voice* pVoice, f32 Near, f32 Far )
 {
@@ -1649,11 +1665,11 @@ xbool audio_voice_mgr::SetVoiceRelativeFalloff( voice* pVoice, f32 Near, f32 Far
     // Error check.
     ASSERT( s_IsInitialized );
 
-
     // Only if its valid.
     if( pVoice )
     {
         ASSERT( IsValidVoice(pVoice) );
+
         if( pVoice->IsPositional )
         {
             pVoice->Params.FarFalloff  = Far;
@@ -1674,12 +1690,11 @@ xbool audio_voice_mgr::SetVoiceRelativeFalloff( voice* pVoice, f32 Near, f32 Far
         Result = FALSE;
     }
 
-
     // Tell the world.
     return Result;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_voice_mgr::SetVoiceUserDiffuse( voice* pVoice, f32 Near, f32 Far )
 {
@@ -1690,6 +1705,7 @@ xbool audio_voice_mgr::SetVoiceUserDiffuse( voice* pVoice, f32 Near, f32 Far )
     if( pVoice )
     {
         ASSERT( IsValidVoice(pVoice) );
+
         if( pVoice->IsPositional )
         {
             pVoice->UserFarDiffuse  = Far;
@@ -1711,7 +1727,7 @@ xbool audio_voice_mgr::SetVoiceUserDiffuse( voice* pVoice, f32 Near, f32 Far )
     return FALSE;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 inline void audio_voice_mgr::UpdateStartPending( voice* pVoice )
 {
@@ -1804,7 +1820,7 @@ inline void audio_voice_mgr::UpdateStartPending( voice* pVoice )
     }
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 inline voice* audio_voice_mgr::UpdateCheckElements( voice* pVoice )
 {
@@ -1822,7 +1838,9 @@ inline voice* audio_voice_mgr::UpdateCheckElements( voice* pVoice )
     {
         // Free it
         if( !FreeVoice( pVoice, TRUE ) )
+        {
             return pVoice;
+        }
 
         // Its dead!
         return( NULL );
@@ -1847,7 +1865,9 @@ inline voice* audio_voice_mgr::UpdateCheckElements( voice* pVoice )
 
             // Find the highest priority element...
             if( (pElement->Params.Priority > Priority) && (pElement->State < ELEMENT_DONE) )
+            {
                 Priority = pElement->Params.Priority;
+            }
 
             // Walk the list
             pElement = pElement->Link.pNext;
@@ -1868,7 +1888,7 @@ inline voice* audio_voice_mgr::UpdateCheckElements( voice* pVoice )
     }
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::UpdateReleaseTime( voice* pVoice )
 {
@@ -1890,7 +1910,9 @@ void audio_voice_mgr::UpdateReleaseTime( voice* pVoice )
             
             // Set the release position.
             if( pChannel )
+            {
                 pChannel->ReleasePosition = (u32)(pVoice->ReleaseTime * (f32)pChannel->Sample.pHotSample->SampleRate);
+            }
 
             // Walk the list
             pElement = pElement->Link.pNext;
@@ -1898,7 +1920,7 @@ void audio_voice_mgr::UpdateReleaseTime( voice* pVoice )
     }
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 inline voice* audio_voice_mgr::UpdateStateStarting( voice* pVoice )
 {
@@ -1917,11 +1939,17 @@ inline voice* audio_voice_mgr::UpdateStateStarting( voice* pVoice )
     return pVoice;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 inline voice* audio_voice_mgr::UpdateStateResuming( voice* pVoice )
 {
     X_PROFILE_SCOPE_CATEGORY( "Context", "audio_voice_mgr::UpdateStateResuming" );
+
+    // Keep paused stream cursors stable until outstanding reads complete.
+    if( g_IoMgr.GetDeviceQueueStatus( IO_DEVICE_HOST ) )
+    {
+        return pVoice;
+    }
 
     // Calculate voice priority, find the next pending element...
     pVoice = UpdateCheckElements( pVoice );
@@ -1938,12 +1966,16 @@ inline voice* audio_voice_mgr::UpdateStateResuming( voice* pVoice )
         // For every element in the list...
         pHead    = (element*)&pVoice->Elements;
         pElement = pHead->Link.pNext;
+
         while( pHead != pElement )
         {
             // Resume each element.
             ASSERT( IsValidElement( pElement ) );
+
             if( pElement->State == ELEMENT_PAUSED )
+            {
                 ResumeElement( pElement );
+            }
 
             // Walk the list.
             pElement = pElement->Link.pNext;
@@ -1953,7 +1985,7 @@ inline voice* audio_voice_mgr::UpdateStateResuming( voice* pVoice )
     return pVoice;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 inline void audio_voice_mgr::UpdateVoice3d( voice* pVoice )
 {
@@ -1973,6 +2005,7 @@ inline void audio_voice_mgr::UpdateVoice3d( voice* pVoice )
     // For every element in the list...
     pHead    = (element*)&pVoice->Elements;
     pElement = pHead->Link.pNext;
+
     while( pHead != pElement )
     {
         // Stop each element.
@@ -2005,7 +2038,7 @@ inline void audio_voice_mgr::UpdateVoice3d( voice* pVoice )
     pVoice->Dirty |= VOICE_DB_VOLUME_CHANGE+VOICE_DB_PAN_CHANGE;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 inline void audio_voice_mgr::UpdateVoiceVolumeAndPan ( voice* pVoice )
 {
@@ -2022,6 +2055,7 @@ inline void audio_voice_mgr::UpdateVoiceVolumeAndPan ( voice* pVoice )
     // For every element in the list...
     pHead    = (element*)&pVoice->Elements;
     pElement = pHead->Link.pNext;
+
     while( pHead != pElement )
     {
         // Stop each element.
@@ -2029,6 +2063,7 @@ inline void audio_voice_mgr::UpdateVoiceVolumeAndPan ( voice* pVoice )
 
         // Calculate and apply the volume.
         pElement->Volume = CalculateElementVolume( pElement, AudioDuckingEnabled );
+
         if( pElement->State == ELEMENT_PLAYING ) 
         {
             ApplyElementVolume( pElement );
@@ -2039,6 +2074,7 @@ inline void audio_voice_mgr::UpdateVoiceVolumeAndPan ( voice* pVoice )
         {
             // Set and apply the pan.
             pElement->Params.Pan2d = pVoice->Params.Pan2d;
+
             if( pElement->State == ELEMENT_PLAYING )
             {
                 ApplyElementPan( pElement );
@@ -2054,7 +2090,7 @@ inline void audio_voice_mgr::UpdateVoiceVolumeAndPan ( voice* pVoice )
     }
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 inline void audio_voice_mgr::UpdateVoiceVolume( voice* pVoice )
 {
@@ -2071,6 +2107,7 @@ inline void audio_voice_mgr::UpdateVoiceVolume( voice* pVoice )
     // For every element in the list...
     pHead    = (element*)&pVoice->Elements;
     pElement = pHead->Link.pNext;
+
     while( pHead != pElement )
     {
         // Stop each element.
@@ -2078,6 +2115,7 @@ inline void audio_voice_mgr::UpdateVoiceVolume( voice* pVoice )
 
         // Calculate and apply the volume.
         pElement->Volume = CalculateElementVolume( pElement, AudioDuckingEnabled );
+
         if( pElement->State == ELEMENT_PLAYING ) 
         {
             ApplyElementVolume( pElement );
@@ -2088,7 +2126,7 @@ inline void audio_voice_mgr::UpdateVoiceVolume( voice* pVoice )
     }
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 inline void audio_voice_mgr::UpdateVoicePan( voice* pVoice )
 {
@@ -2100,6 +2138,7 @@ inline void audio_voice_mgr::UpdateVoicePan( voice* pVoice )
     // For every element in the list...
     pHead    = (element*)&pVoice->Elements;
     pElement = pHead->Link.pNext;
+
     while( pHead != pElement )
     {
         // Stop each element.
@@ -2110,6 +2149,7 @@ inline void audio_voice_mgr::UpdateVoicePan( voice* pVoice )
         {
             // Set and apply the pan.
             pElement->Params.Pan2d = pVoice->Params.Pan2d;
+
             if( pElement->State == ELEMENT_PLAYING ) 
             {
                 ApplyElementPan( pElement );
@@ -2125,7 +2165,7 @@ inline void audio_voice_mgr::UpdateVoicePan( voice* pVoice )
     }
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 inline void audio_voice_mgr::UpdateVoicePitch( voice* pVoice )
 {
@@ -2140,6 +2180,7 @@ inline void audio_voice_mgr::UpdateVoicePitch( voice* pVoice )
     // For every element in the list...
     pHead    = (element*)&pVoice->Elements;
     pElement = pHead->Link.pNext;
+
     while( pHead != pElement )
     {
         // Stop each element.
@@ -2147,6 +2188,7 @@ inline void audio_voice_mgr::UpdateVoicePitch( voice* pVoice )
 
         // Calculate and apply the elements pitch.
         pElement->Pitch = CalculateElementPitch( pElement );
+
         if( pElement->State == ELEMENT_PLAYING ) 
         {        
             ApplyElementPitch( pElement );
@@ -2157,7 +2199,7 @@ inline void audio_voice_mgr::UpdateVoicePitch( voice* pVoice )
     }
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 inline void audio_voice_mgr::UpdateVoiceEffectSend( voice* pVoice )
 {
@@ -2172,6 +2214,7 @@ inline void audio_voice_mgr::UpdateVoiceEffectSend( voice* pVoice )
     // For every element in the list...
     pHead    = (element*)&pVoice->Elements;
     pElement = pHead->Link.pNext;
+
     while( pHead != pElement )
     {
         // Stop each element.
@@ -2179,6 +2222,7 @@ inline void audio_voice_mgr::UpdateVoiceEffectSend( voice* pVoice )
 
         // Calculate and apply the elements pitch.
         pElement->EffectSend = CalculateElementEffectSend( pElement );
+
         if( pElement->State == ELEMENT_PLAYING ) 
         {        
             ApplyElementEffectSend( pElement );
@@ -2189,7 +2233,7 @@ inline void audio_voice_mgr::UpdateVoiceEffectSend( voice* pVoice )
     }
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 inline voice* audio_voice_mgr::UpdateStateRunning( voice* pVoice, f32 DeltaTime )
 {
@@ -2199,7 +2243,9 @@ inline voice* audio_voice_mgr::UpdateStateRunning( voice* pVoice, f32 DeltaTime 
 
     // Update the voices 3d stuff.
     if( pVoice->IsPositional )
+    {
         UpdateVoice3d( pVoice );
+    }
 
     // Is the voice releasing?
     if( pVoice->IsReleasing )
@@ -2209,7 +2255,9 @@ inline voice* audio_voice_mgr::UpdateStateRunning( voice* pVoice, f32 DeltaTime 
         {
             // Free the voice, put it in the free list.
             if( FreeVoice( pVoice, TRUE ) )
+            {
                 return NULL;
+            }
 
             return pVoice;
         }
@@ -2217,8 +2265,11 @@ inline voice* audio_voice_mgr::UpdateStateRunning( voice* pVoice, f32 DeltaTime 
         {
             // Update volume by delta
             pVoice->Params.Volume -= (pVoice->DeltaVolume * DeltaTime);
+
             if( pVoice->Params.Volume < 0.0f )
+            {
                 pVoice->Params.Volume = 0.0f;
+            }
             pVoice->Dirty |= VOICE_DB_VOLUME_CHANGE;
         }
     }
@@ -2301,7 +2352,6 @@ inline voice* audio_voice_mgr::UpdateStateRunning( voice* pVoice, f32 DeltaTime 
             Dirty &= ~VOICE_DB_ELEMENT_CHANGE;
         }
 
-
         // Voice still around?
         if( pVoice )
         {
@@ -2321,7 +2371,7 @@ inline voice* audio_voice_mgr::UpdateStateRunning( voice* pVoice, f32 DeltaTime 
     return pVoice;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 inline void audio_voice_mgr::UpdateStatePausing( voice* pVoice, f32 Time )
 {
@@ -2333,12 +2383,16 @@ inline void audio_voice_mgr::UpdateStatePausing( voice* pVoice, f32 Time )
     // For every element in the list...
     pHead    = (element*)&pVoice->Elements;
     pElement = pHead->Link.pNext;
+
     while( pHead != pElement )
     {
         // Stop each element.
         ASSERT( IsValidElement( pElement ) );
+
         if( pElement->State == ELEMENT_PLAYING )
+        {
             PauseElement( pElement );
+        }
 
         // Walk the list.
         pElement = pElement->Link.pNext;
@@ -2349,14 +2403,14 @@ inline void audio_voice_mgr::UpdateStatePausing( voice* pVoice, f32 Time )
     pVoice->State    = STATE_PAUSED;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 inline voice* audio_voice_mgr::UpdateCheckStreams( voice* pVoice )
 {
     return m_StreamBinder.UpdateCheckStreams( *this, pVoice );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::Update( f32 DeltaTime )
 {
@@ -2365,7 +2419,6 @@ void audio_voice_mgr::Update( f32 DeltaTime )
     voice*   pHeadVoice;
     voice*   pVoice;
     voice*   pNextVoice;
-
 
     // Get head/tail of active voices, first active voice
     pHeadVoice = UsedVoices();
@@ -2381,7 +2434,9 @@ void audio_voice_mgr::Update( f32 DeltaTime )
         if( (void*)pVoice->Elements.pNext == (void*)&pVoice->Elements )
         {
             if( FreeVoice( pVoice, TRUE ) )
+            {
                 pVoice = NULL;
+            }
         }
         else
         {
@@ -2395,36 +2450,47 @@ void audio_voice_mgr::Update( f32 DeltaTime )
             switch( pVoice->State )
             {
                 case STATE_NOT_STARTED:
+                {
 #ifdef UPDATE_STATE_LOGGING
                     LOG_MESSAGE( UPDATE_STATE_LOGGING, "pVoice: %08x, State: STATE_NOT_STARTED", pVoice );
 #endif
                     break;
+                }
  
                 case STATE_STARTING:
+                {
 #ifdef UPDATE_STATE_LOGGING
                     LOG_MESSAGE( UPDATE_STATE_LOGGING, "pVoice: %08x, State: STATE_STARTING", pVoice );
 #endif
                     pVoice = UpdateStateStarting( pVoice );
+
                     if( pVoice )
                     {
                         pVoice->StartTime  = Runtime().Audio.GetAudioTime();
                         pVoice = UpdateStateRunning( pVoice, 0.0f );
                     }
+
                     break;
+                }
  
                 case STATE_RESUMING:
+                {
 #ifdef UPDATE_STATE_LOGGING
                     LOG_MESSAGE( UPDATE_STATE_LOGGING, "pVoice: %08x, State: STATE_RESUMING", pVoice );
 #endif
                     pVoice = UpdateStateResuming( pVoice );
-                    if( pVoice )
+
+                    if( pVoice && pVoice->State == STATE_RUNNING )
                     {
                         pVoice->StartTime = Runtime().Audio.GetAudioTime()-pVoice->StopTime;
                         pVoice = UpdateStateRunning( pVoice, 0.0f );
                     }
+
                     break;
+                }
  
                 case STATE_RUNNING:
+                {
 #ifdef UPDATE_STATE_LOGGING
                     LOG_MESSAGE( UPDATE_STATE_LOGGING, "pVoice: %08x, State: STATE_RUNNING", pVoice );
 #endif
@@ -2432,19 +2498,24 @@ void audio_voice_mgr::Update( f32 DeltaTime )
                     pVoice->CursorTime += DeltaTime;
                     pVoice = UpdateStateRunning( pVoice, DeltaTime );
                     break;
+                }
  
                 case STATE_PAUSING:
+                {
 #ifdef UPDATE_STATE_LOGGING
                     LOG_MESSAGE( UPDATE_STATE_LOGGING, "pVoice: %08x, State: STATE_PAUSING", pVoice );
 #endif
                     UpdateStatePausing( pVoice, Runtime().Audio.GetAudioTime() );
                     break;
+                }
  
                 case STATE_PAUSED:
+                {
 #ifdef UPDATE_STATE_LOGGING
                     LOG_MESSAGE( UPDATE_STATE_LOGGING, "pVoice: %08x, State: STATE_PAUSED", pVoice );
 #endif
                     break;
+                }
             }
         }
     
@@ -2461,14 +2532,12 @@ void audio_voice_mgr::Update( f32 DeltaTime )
 
 }
 
-
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::UpdateCheckQueued( void )
 {
     voice* pVoice;
     voice* pHeadVoice;
-
 
     // Get head/tail of active voices, first active voice
     pHeadVoice = UsedVoices();
@@ -2489,6 +2558,7 @@ void audio_voice_mgr::UpdateCheckQueued( void )
                 UpdateStateRunning( pVoice, 0.0f );
                 UpdateStartPending( pVoice );
             }
+
             pVoice->StartQ = 2;
         }
 
@@ -2498,9 +2568,12 @@ void audio_voice_mgr::UpdateCheckQueued( void )
 
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
+
 s32 VOICE_PRIORITY_HIT=0;
 s32 VOICE_PRIORITY_MISS=0;
+
+//==============================================================================
 
 void audio_voice_mgr::PrioritizeVoice( voice* pVoice, xbool RemoveFromList )
 {
@@ -2536,18 +2609,24 @@ void audio_voice_mgr::PrioritizeVoice( voice* pVoice, xbool RemoveFromList )
     {
         // Remove the channel from its current list?
         if( RemoveFromList )
+        {
             RemoveVoiceFromList( pVoice );
+        }
 
         // Get first used voice.
         voice* pInsert = UsedVoices()->Link.pNext;
 
         // Find the insertion point (based on priority only).
         while( pInsert->Params.Priority > pVoice->Params.Priority )
+        {
             pInsert = pInsert->Link.pNext;
+        }
 
         // Volume is secondary key.
         while( (pInsert->Params.Priority == pVoice->Params.Priority) && (pInsert->Volume > pVoice->Volume) )
+        {
             pInsert = pInsert->Link.pNext;
+        }
 
         // Insert it into the used list.
         InsertVoiceIntoList( pVoice, pInsert );
@@ -2561,7 +2640,206 @@ void audio_voice_mgr::PrioritizeVoice( voice* pVoice, xbool RemoveFromList )
 
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
+
+xbool audio_voice_mgr::GetVoiceDescriptorCached( voice_id VoiceID, char* pName, s32 NameSize ) const
+{
+    if( !pName || NameSize <= 0 )
+    {
+        return FALSE;
+    }
+
+    pName[0]  = 0;
+    s32 Index = ( ( VoiceID & 0xffff ) - 1 );
+
+    if( !VoiceID || Index < 0 || Index >= m_NumVoices )
+    {
+        return FALSE;
+    }
+
+    s32 Size = MIN( NameSize - 1, AUDIO_PACKAGE_FILENAME_LENGTH - 1 );
+
+    for( s32 Offset = 0; Offset < Size; Offset += 4 )
+    {
+        u64 Entry = x_AtomicLoadAcquire( &s_VoiceNames[Index][Offset / 4] );
+
+        if( (u32)( Entry >> 32 ) != (u32)VoiceID )
+        {
+            pName[0] = 0;
+            return FALSE;
+        }
+
+        u32 Bytes = (u32)Entry;
+        x_memcpy( pName + Offset, &Bytes, MIN( 4, Size - Offset ) );
+    }
+
+    pName[Size] = 0;
+
+    if( !IsValidVoiceIdCached( VoiceID ) )
+    {
+        pName[0] = 0;
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+//==============================================================================
+
+f32 audio_voice_mgr::GetVolumeCached( voice_id VoiceID ) const
+{
+    s32 Index = ( ( VoiceID & 0xffff ) - 1 );
+
+    if( !VoiceID || Index < 0 || Index >= m_NumVoices )
+    {
+        return 0.0f;
+    }
+
+    u64 Entry = x_AtomicLoadAcquire( &s_VoiceVolumes[Index] );
+
+    if( (u32)( Entry >> 32 ) != (u32)VoiceID || !IsValidVoiceIdCached( VoiceID ) )
+    {
+        return 0.0f;
+    }
+
+    u32 Bits = (u32)Entry;
+    f32 Volume;
+    x_memcpy( &Volume, &Bits, sizeof( Bits ) );
+    return Volume;
+}
+
+//==============================================================================
+
+s32 audio_voice_mgr::GetPriorityCached( voice_id VoiceID ) const
+{
+    s32 Index = ( ( VoiceID & 0xffff ) - 1 );
+
+    if( !VoiceID || Index < 0 || Index >= m_NumVoices )
+    {
+        return 0;
+    }
+
+    u64 Entry = x_AtomicLoadAcquire( &s_VoicePriorities[Index] );
+
+    if( (u32)( Entry >> 32 ) != (u32)VoiceID || !IsValidVoiceIdCached( VoiceID ) )
+    {
+        return 0;
+    }
+
+    return (s32)(u32)Entry;
+}
+
+//==============================================================================
+
+xbool audio_voice_mgr::GetVoiceStateCached( voice_id VoiceID, audio_voice_state& State ) const
+{
+    x_memset( &State, 0, sizeof( State ) );
+    s32 Index = ( ( VoiceID & 0xffff ) - 1 );
+
+    if( !VoiceID || Index < 0 || Index >= m_NumVoices )
+    {
+        return FALSE;
+    }
+
+    x_AtomicStoreRelease( &s_VoiceStateRequests[Index], (u32)VoiceID );
+    u64 Length   = x_AtomicLoadAcquire( &s_VoiceLengths[Index] );
+    u64 PlayTime = x_AtomicLoadAcquire( &s_VoicePlayTimes[Index] );
+
+    if( (u32)( Length >> 32 ) != (u32)VoiceID || (u32)( PlayTime >> 32 ) != (u32)VoiceID ||
+        !IsValidVoiceIdCached( VoiceID ) )
+    {
+        return FALSE;
+    }
+
+    u32 LengthBits = (u32)Length;
+    u32 TimeBits   = (u32)PlayTime;
+    x_memcpy( &State.Length, &LengthBits, sizeof( LengthBits ) );
+    x_memcpy( &State.PlayTime, &TimeBits, sizeof( TimeBits ) );
+    State.Valid = TRUE;
+    State.Ready = x_AtomicLoadAcquire( &s_StateReadyVoiceIDs[Index] ) == (u32)VoiceID;
+    return TRUE;
+}
+
+//==============================================================================
+
+xbool audio_voice_mgr::IsValidVoiceIdCached( voice_id VoiceID ) const
+{
+    s32 Index = ( ( VoiceID & 0xffff ) - 1 );
+
+    if( ( VoiceID == 0 ) || ( Index < 0 ) || ( Index >= m_NumVoices ) )
+    {
+        return FALSE;
+    }
+
+    return x_AtomicLoadAcquire( &s_PublishedVoiceIDs[Index] ) == (u32)VoiceID;
+}
+
+//==============================================================================
+
+xbool audio_voice_mgr::IsVoiceReadyCached( voice_id VoiceID ) const
+{
+    s32 Index = ( ( VoiceID & 0xffff ) - 1 );
+
+    if( ( VoiceID == 0 ) || ( Index < 0 ) || ( Index >= m_NumVoices ) )
+    {
+        return FALSE;
+    }
+
+    return x_AtomicLoadAcquire( &s_ReadyVoiceIDs[Index] ) == (u32)VoiceID;
+}
+
+//==============================================================================
+
+void audio_voice_mgr::PublishVoiceReadiness( void )
+{
+    for( s32 i = 0; i < m_NumVoices; ++i )
+    {
+        u32 VoiceID = x_AtomicLoadAcquire( &s_PublishedVoiceIDs[i] );
+
+        if( VoiceID && x_AtomicLoadAcquire( &s_VoiceStateRequests[i] ) == VoiceID )
+        {
+            x_AtomicStoreRelease( &s_VoiceLengths[i], PackVoiceTime( VoiceID, GetVoiceTime( &m_FirstVoice[i] ) ) );
+            x_AtomicStoreRelease( &s_VoicePlayTimes[i], PackVoiceTime( VoiceID, GetCurrentPlayTime( &m_FirstVoice[i] ) ) );
+        }
+
+        if( VoiceID )
+        {
+            x_AtomicStoreRelease( &s_VoiceVolumes[i], PackVoiceTime( VoiceID, GetVoiceUserVolume( &m_FirstVoice[i] ) ) );
+            x_AtomicStoreRelease( &s_VoicePriorities[i], ( (u64)VoiceID << 32 ) | (u32)m_FirstVoice[i].Params.Priority );
+        }
+
+        u32 ReadyID = ( VoiceID && IsVoiceReady( &m_FirstVoice[i] ) ) ? VoiceID : 0;
+        x_AtomicStoreRelease( &s_ReadyVoiceIDs[i], ReadyID );
+        x_AtomicStoreRelease( &s_StateReadyVoiceIDs[i], VoiceID && GetIsReady( &m_FirstVoice[i] ) ? VoiceID : 0 );
+    }
+}
+
+//==============================================================================
+
+void audio_voice_mgr::PublishVoiceId( voice* pVoice, voice_id VoiceID )
+{
+    ASSERT( IsValidVoice( pVoice ) );
+    char Name[AUDIO_PACKAGE_FILENAME_LENGTH] = {};
+    x_strncpy( Name, pVoice->pDescriptorName ? pVoice->pDescriptorName : "NULL", sizeof( Name ) - 1 );
+
+    for( s32 Offset = 0; Offset < (s32)sizeof( Name ); Offset += 4 )
+    {
+        u32 Bytes;
+        x_memcpy( &Bytes, Name + Offset, sizeof( Bytes ) );
+        x_AtomicStoreRelease( &s_VoiceNames[pVoice - m_FirstVoice][Offset / 4], ( (u64)(u32)VoiceID << 32 ) | Bytes );
+    }
+
+    x_AtomicStoreRelease( &s_VoiceVolumes[pVoice - m_FirstVoice], PackVoiceTime( (u32)VoiceID, GetVoiceUserVolume( pVoice ) ) );
+    x_AtomicStoreRelease( &s_VoicePriorities[pVoice - m_FirstVoice], ( (u64)(u32)VoiceID << 32 ) | (u32)pVoice->Params.Priority );
+    x_AtomicStoreRelease( &s_VoiceStateRequests[pVoice - m_FirstVoice], 0 );
+    x_AtomicStoreRelease( &s_VoiceLengths[pVoice - m_FirstVoice], PackVoiceTime( (u32)VoiceID, GetVoiceTime( pVoice ) ) );
+    x_AtomicStoreRelease( &s_VoicePlayTimes[pVoice - m_FirstVoice], PackVoiceTime( (u32)VoiceID, GetCurrentPlayTime( pVoice ) ) );
+    x_AtomicStoreRelease( &s_ReadyVoiceIDs[pVoice - m_FirstVoice], IsVoiceReady( pVoice ) ? (u32)VoiceID : 0 );
+    x_AtomicStoreRelease( &s_StateReadyVoiceIDs[pVoice - m_FirstVoice], GetIsReady( pVoice ) ? (u32)VoiceID : 0 );
+    x_AtomicStoreRelease( &s_PublishedVoiceIDs[pVoice - m_FirstVoice], (u32)VoiceID );
+}
+
+//==============================================================================
 
 xbool audio_voice_mgr::FreeVoice( voice* pVoice, xbool PutInFreeList )
 {
@@ -2586,19 +2864,27 @@ xbool audio_voice_mgr::FreeVoice( voice* pVoice, xbool PutInFreeList )
     
         // Release this element and the elements channel.
         if( !ReleaseElement( pElement, TRUE ) )
+        {
             return FALSE;
+        }
 
         // Walk the list
         pElement = pNextElement;
     }
+
+    x_AtomicStoreRelease( &s_ReadyVoiceIDs[pVoice - m_FirstVoice], 0 );
+    x_AtomicStoreRelease( &s_PublishedVoiceIDs[pVoice - m_FirstVoice], 0 );
 
     // Remove voice from the used list
     RemoveVoiceFromList( pVoice );
 
     // Bump sequence.
     Sequence = pVoice->Sequence+1;
+
     if( Sequence >= 32768 )
+    {
         Sequence = 1;
+    }
 
     // Nuke it.
     x_memset( pVoice, 0, sizeof(voice) );
@@ -2616,7 +2902,7 @@ xbool audio_voice_mgr::FreeVoice( voice* pVoice, xbool PutInFreeList )
     return TRUE;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::SetPackageVoicesDirty( audio_package* pPackage, u32 Bits )
 {
@@ -2645,28 +2931,28 @@ void audio_voice_mgr::SetPackageVoicesDirty( audio_package* pPackage, u32 Bits )
     }
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::UpdateVoiceVolume( audio_package* pPackage )
 {
     SetPackageVoicesDirty( pPackage, VOICE_DB_VOLUME_CHANGE );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::UpdateVoicePitch( audio_package* pPackage )
 {
     SetPackageVoicesDirty( pPackage, VOICE_DB_PITCH_CHANGE );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::UpdateVoiceEffectSend( audio_package* pPackage )
 {
     SetPackageVoicesDirty( pPackage, VOICE_DB_EFFECTSEND_CHANGE );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::AppendElementToVoice( element* pElement, voice* pVoice )
 {
@@ -2687,16 +2973,16 @@ void audio_voice_mgr::AppendElementToVoice( element* pElement, voice* pVoice )
     pVoice->Dirty |= VOICE_DB_ELEMENT_CHANGE;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::InitSingleVoice( voice* pVoice, audio_package* pPackage )
 {
     ASSERT( pVoice );
     ASSERT( pPackage );
 
-
     // Set the voices package.
     pVoice->pPackage = pPackage;
+    pVoice->bPitchLock = IsPitchLockedDescriptor( pPackage->m_LookupName, pVoice->pDescriptorName );
 
     // Empty the element list.
     pVoice->Elements.pNext =
@@ -2738,13 +3024,12 @@ void audio_voice_mgr::InitSingleVoice( voice* pVoice, audio_package* pPackage )
 
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::InitSingleElement( element* pElement )
 {
     s32 n;
     f32 Sign;
-
 
     // Calculate the elements parameters.
     pElement->PositionalVolume = 1.0f;
@@ -2757,6 +3042,7 @@ void audio_voice_mgr::InitSingleElement( element* pElement )
 
         // Positive or negative?
         n = x_rand();
+
         if( n & 1 )
         {
             // Negative...
@@ -2784,6 +3070,7 @@ void audio_voice_mgr::InitSingleElement( element* pElement )
 
         // Positive or negative?
         n = x_rand();
+
         if( n & 1 )
         {
             // Negative...
@@ -2809,13 +3096,12 @@ void audio_voice_mgr::InitSingleElement( element* pElement )
 
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::UpdateAllVoiceVolumes( void )
 {
     voice*   pHeadVoice;
     voice*   pVoice;
-
 
     // Get head/tail of active voices, first active voice
     pHeadVoice = UsedVoices();
@@ -2836,7 +3122,7 @@ void audio_voice_mgr::UpdateAllVoiceVolumes( void )
 
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_voice_mgr::SetPitchLock( voice* pVoice, xbool bPitchLock )
 {
@@ -2844,4 +3130,16 @@ void audio_voice_mgr::SetPitchLock( voice* pVoice, xbool bPitchLock )
     // Lock or unlock the pitch (as the case may be...)
     pVoice->bPitchLock = bPitchLock;
 
+    element* pHead    = (element*)&pVoice->Elements;
+    element* pElement = pHead->Link.pNext;
+
+    while( pElement != pHead )
+    {
+        if( pElement->pChannel )
+        {
+            pElement->pChannel->Dirty |= CHANNEL_DB_PITCH;
+        }
+
+        pElement = pElement->Link.pNext;
+    }
 }

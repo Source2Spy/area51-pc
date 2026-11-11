@@ -409,6 +409,7 @@ s16 rsc_mgr::AllocEntry(  const char* pStr )
     m_FirstUsed = I;
 
     // reset the resource
+    m_pResource[I].LoadOnAccess = FALSE;
     m_pResource[I].State     = NOT_LOADED;
     m_pResource[I].bTagged   = FALSE;
     m_pResource[I].NextHash  = -1;
@@ -516,7 +517,7 @@ void rsc_mgr::Load( const char* pResourceName )
     // Check if resource is already loaded
     //
     s16 I = FindEntry( pResourceName );
-    if( (I != -1) && ((m_pResource[I].State == LOADED) || (m_pResource[I].State == FAILED_LOAD)) )
+    if( (I != -1) && (m_pResource[I].State == LOADED) )
     {
         return;
     }
@@ -704,6 +705,10 @@ void rsc_mgr::Load( const char* pResourceName )
     }
 #endif // defined(LOG_RESOURCES)
 
+#ifdef RSC_MGR_COLLECT_STATS
+    if( m_pResource[I].State == FAILED_LOAD )
+        Stats.numFailedLoadResources--;
+#endif
     m_pResource[I].pData            = pData;
     m_pResource[I].pLoader          = pLoader;
     m_pResource[I].State            = LOADED;
@@ -824,6 +829,21 @@ void rsc_mgr::TagResources( void )
 
 //==============================================================================
 
+xbool rsc_mgr::VisitLoadedResources( loaded_resource_fn* pFunction, void* pContext ) const
+{
+    ASSERT( pFunction );
+    for( s16 I = m_FirstUsed; I != -1; I = m_pResource[I].Next )
+    {
+        const resource& Resource = m_pResource[I];
+        if( Resource.State == LOADED &&
+            !pFunction( Resource.Name, Resource.pLoader->m_pExt, Resource.pData, pContext ) )
+            return FALSE;
+    }
+    return TRUE;
+}
+
+//==============================================================================
+
 void rsc_mgr::RefreshAll( void )
 {
     // Loop through all resources and call refresh
@@ -858,7 +878,7 @@ xbool rsc_mgr::IsLoaded( const char* pResourceName )
 //==============================================================================
 //==============================================================================
 
-void rsc_mgr::AddRHandle( rhandle_base& RHandle, const char* pResourceName )
+void rsc_mgr::AddRHandle( rhandle_base& RHandle, const char* pResourceName, xbool LoadOnBind )
 {
     s16 I;
 
@@ -875,7 +895,7 @@ void rsc_mgr::AddRHandle( rhandle_base& RHandle, const char* pResourceName )
             m_pResource[I].State    = NOT_LOADED;
             x_strncpy(m_pResource[I].Name,pResourceName,RESOURCE_NAME_SIZE);
 
-            if (!m_OnDemandLoading)
+            if( LoadOnBind && !m_OnDemandLoading )
             {
                Load(m_pResource[I].Name);
             }
@@ -909,6 +929,10 @@ void rsc_mgr::AddRHandle( rhandle_base& RHandle, const char* pResourceName )
 
     // Confirm resource is being used
     ASSERT( m_pResource[I].State != NOT_USED );
+
+    // Material declarations bind names without touching files or GPU resources.
+    if( !LoadOnBind )
+        m_pResource[I].LoadOnAccess = TRUE;
 
     // Fill out handle information
     RHandle.SetIndex( I );
@@ -947,7 +971,9 @@ void* rsc_mgr::GetPointerSlow( const rhandle_base& RHandle )
     // Check for on demand loading
     if( !m_pResource[I].pData )
     {
-        if( m_OnDemandLoading )
+        // Only an explicit load retries failures after new level files become available.
+        if( (m_OnDemandLoading || m_pResource[I].LoadOnAccess) &&
+            (m_pResource[I].State != FAILED_LOAD) )
         {
             Load( m_pResource[I].Name );
         }

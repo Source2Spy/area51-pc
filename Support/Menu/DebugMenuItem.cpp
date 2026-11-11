@@ -83,6 +83,8 @@ xbool debug_menu_item::InitInt( const char* pName,
                                s32         Min,
                                s32         Max )
 {
+    ASSERT( Min <= Max );
+    Value = x_clamp( Value, Min, Max );
     m_Type      = TYPE_INT;
     m_pName     = pName;
     m_pIntValue = &Value;
@@ -117,6 +119,8 @@ xbool debug_menu_item::InitEnum( const char*    pName,
                                  const char**   pValues,
                                  s32            nValues )
 {
+    ASSERT( pValues && nValues > 0 );
+    Value = x_clamp( Value, 0, nValues - 1 );
     m_Type          = TYPE_ENUM;
     m_pName         = pName;
     m_pEnumValue    = &Value;
@@ -180,29 +184,13 @@ debug_menu_item::type debug_menu_item::GetType( void )
 
 //==============================================================================
 
-void debug_menu_item::Render( s32   ScreenX, 
-                              s32   ScreenY,
-                              xbool bHighlight )
+void debug_menu_item::Render( s32 ScreenX, s32 ScreenY, xbool bHighlight )
 {
-    const s32 ITEM_FONT = 0;
-    const s32 ITEM_DATA_FONT = 0;
-
-    // Display item label.
-    irect TextPos;
-
-    // TODO: make this better.
-    TextPos.l = ScreenX;
-    TextPos.t = ScreenY;
-    TextPos.r = TextPos.l + 400;
-    TextPos.b = TextPos.t + 20;
-
-    ASSERT( m_pName != NULL );
-    debug_menu2::RenderLine( ITEM_FONT, m_pName, TextPos, bHighlight, m_iFlashCount != 0 );
-
-    // Update Cursor position for item state.
-    TextPos.l = 350;
-    debug_menu2::RenderLine( ITEM_DATA_FONT, GetValueAsString(), TextPos, bHighlight, m_iFlashCount != 0 );
-
+    const s32 Font = 0;
+    irect TextPos( ScreenX, ScreenY, ScreenX + 400, ScreenY + 20 );
+    debug_menu2::RenderLine( Font, m_pName, TextPos, bHighlight, m_iFlashCount != 0 );
+    TextPos.l = ScreenX + 300;
+    debug_menu2::RenderLine( Font, GetValueAsString(), TextPos, bHighlight, m_iFlashCount != 0 );
     if( m_iFlashCount > 0 )
         m_iFlashCount--;
 }
@@ -219,8 +207,10 @@ void debug_menu_item::SetName( const char* pName )
 
 void debug_menu_item::SetIntLimits( s32 Min, s32 Max )
 {
+    ASSERT( Min <= Max );
     m_IntMin = Min;
     m_IntMax = Max;
+    *m_pIntValue = x_clamp( *m_pIntValue, Min, Max );
 }
 
 //==============================================================================

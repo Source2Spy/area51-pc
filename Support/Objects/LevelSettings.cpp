@@ -117,7 +117,7 @@ void level_settings::OnEnumProp( prop_enum& List )
     List.PropEnumHeader  ( "LevelSettings",                "Level Settings", 0 );
     List.PropEnumFloat   ( "LevelSettings\\NearPlane",     "Camera distance where near objects clip out", 0 );
     List.PropEnumFloat   ( "LevelSettings\\FarPlane",      "Camera distance where far objects clip out", 0 );
-    List.PropEnumExternal( "LevelSettings\\FogPalette",    "Resource\0xbmp", "Resource File", 0 );
+    List.PropEnumExternal( "LevelSettings\\FogPalette",    "Resource\0xbmp\0", "Resource File", 0 );
     List.PropEnumGuid    ( "LevelSettings\\StartUpTrigger","Trigger to execute prior to level start", 0 );
 
     #ifdef X_EDITOR

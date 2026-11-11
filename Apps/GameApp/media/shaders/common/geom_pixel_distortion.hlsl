@@ -13,83 +13,75 @@
 //  FUNCTIONS
 //==============================================================================
 
-float3 GeomGetDistortionViewNormal( float3 worldNormal )
+float3 GeomGetDistortionViewNormal( float3 WorldNormal )
 {
-    float3 distortionViewNormal = mul( (float3x3)DistortionNormalMatrix, normalize( worldNormal ) );
-    return normalize( distortionViewNormal );
+    float3 DistortionViewNormal = mul( (float3x3)DistortionNormalMatrix, WorldNormal );
+    return normalize( DistortionViewNormal );
 }
 
 //==============================================================================
 
-float2 GeomGetDistortionSceneUV( GEOM_PIXEL_INPUT input, float3 worldNormal )
+float2 GeomGetDistortionSceneUV( GEOM_PIXEL_INPUT Input, float3 ViewNormal )
 {
-    float2 sceneUV  = input.Pos.xy * DistortionParams.zw;
-    float2 offset   = GeomGetDistortionViewNormal( worldNormal ).xy;
-    float  lengthSq = dot( offset, offset );
+    float2 SceneUV  = Input.Pos.xy * DistortionParams.zw;
+    float2 Offset   = ViewNormal.xy;
+    float  LengthSq = dot( Offset, Offset );
 
-    if( lengthSq > 1e-5f )
+    if( LengthSq > 1e-5f )
     {
-        offset *= rsqrt( lengthSq );
+        Offset *= rsqrt( LengthSq );
     }
     else
     {
-        offset = 0.0f;
+        Offset = 0.0f;
     }
 
-    sceneUV += offset * DistortionParams.x * DistortionParams.zw;
-    return saturate( sceneUV );
+    SceneUV += Offset * DistortionParams.x * DistortionParams.zw;
+    return saturate( SceneUV );
 }
 
 //==============================================================================
 
-float3 GeomSampleDistortionEnvironment( uint materialFlags, float3 worldNormal, float3 viewVector )
+float4 GeomShadeDistortionPixel( GEOM_PIXEL_INPUT Input, uint MaterialFlags, float FadeAlpha )
 {
-    float3 envColor = 0.0f;
+    const float3 ViewNormal = GeomGetDistortionViewNormal(Input.Normal);
+    const float2 SceneUV = GeomGetDistortionSceneUV(Input, ViewNormal);
+    const float2 SceneDx = ddx( SceneUV );
+    const float2 SceneDy = ddy( SceneUV );
+#if A51_RECIPE_ENV == 2
+    const float3 EnvCoordinate = normalize(Input.ViewVector);
+    // Keep implicit cube derivatives ahead of the coverage discard.
+    const float3 EnvColor = txEnvironmentCube.Sample( samEnvironmentCube, EnvCoordinate ).rgb;
+#elif A51_RECIPE_ENV == 1
+    const float2 EnvCoordinate = saturate(ViewNormal.xy * 0.5f + 0.5f);
+    const float2 EnvDx = ddx(EnvCoordinate);
+    const float2 EnvDy = ddy(EnvCoordinate);
+#endif
+#if A51_GEOM_ALPHA_TEST
+    const float2 UVDx = ddx( Input.UV );
+    const float2 UVDy = ddy( Input.UV );
+    if( txDiffuse.SampleGrad( samDiffuse, Input.UV, UVDx, UVDy ).a < AlphaRef ) discard;
+#endif
+    const float3 SceneColor = txDistortionScene.SampleGrad( samDistortion, SceneUV, SceneDx, SceneDy ).rgb;
 
-    if( materialFlags & MATERIAL_FLAG_ENV_CUBEMAP )
+    float3 FinalColor = SceneColor;
+
+#if A51_RECIPE_ENV != 0
+    if( MaterialFlags & MATERIAL_FLAG_DISTORTION_PERPOLY_ENV )
     {
-        float3 cubeDir = normalize( viewVector );
-        envColor = txEnvironmentCube.Sample( samEnvironmentCube, cubeDir ).rgb;
-    }
-    else
-    {
-        float2 envUV = GeomGetDistortionViewNormal( worldNormal ).xy * 0.5f + 0.5f;
-        envColor = txEnvironment.Sample( samEnvironment, saturate( envUV ) ).rgb;
-    }
+        const float  EnvBlend    = saturate( EnvParams.x );
+        const float  EnvStrength = EnvBlend * (1.0f - EnvBlend);
+#if A51_RECIPE_ENV == 1
+        const float3 EnvColor = txEnvironment.SampleGrad(samEnvironment, EnvCoordinate, EnvDx, EnvDy).rgb;
+#endif
 
-    return envColor;
-}
-
-//==============================================================================
-
-GEOM_PIXEL_OUTPUT GeomShadeDistortionPixel( GEOM_PIXEL_INPUT input, uint materialFlags, float fadeAlpha )
-{
-    GEOM_PIXEL_OUTPUT output;
-    output.FinalColor  = 0.0f;
-    output.NormalDepth = float4( 0.5f, 0.5f, 1.0f, GeomEncodeLinearDepth( input ).r );
-    output.Glow        = 0.0f;
-
-    const float2 sceneUV    = GeomGetDistortionSceneUV( input, input.Normal );
-    const float3 sceneColor = txDistortionScene.Sample( samDistortion, sceneUV ).rgb;
-
-    float3 finalColor = sceneColor;
-
-    if( materialFlags & MATERIAL_FLAG_DISTORTION_PERPOLY_ENV )
-    {
-        const float  envBlend    = saturate( EnvParams.x );
-        const float  envStrength = envBlend * (1.0f - envBlend);
-        const float3 envColor    = GeomSampleDistortionEnvironment( materialFlags, input.Normal, input.ViewVector );
-
-        finalColor = saturate( sceneColor + envColor * envStrength );
+        FinalColor = saturate( SceneColor + EnvColor * EnvStrength );
     }
 
-    finalColor = lerp( sceneColor, finalColor, fadeAlpha );
+#endif
+    FinalColor = lerp( SceneColor, FinalColor, FadeAlpha );
 
-    output.FinalColor  = float4( finalColor, fadeAlpha );
-    output.NormalDepth = float4( 0.5f, 0.5f, 1.0f, GeomEncodeLinearDepth( input ).r );
-    output.Glow        = float4( 0.0f, 0.0f, 0.0f, 0.0f );
-
-    return output;
+    return float4( FinalColor, FadeAlpha );
 }
 
 //==============================================================================

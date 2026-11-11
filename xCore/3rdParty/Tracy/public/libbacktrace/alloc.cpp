@@ -54,8 +54,8 @@ namespace tracy
 
 void *
 backtrace_alloc (struct backtrace_state *state ATTRIBUTE_UNUSED,
-         size_t size, backtrace_error_callback error_callback,
-         void *data)
+		 size_t size, backtrace_error_callback error_callback,
+		 void *data)
 {
   void *ret;
 
@@ -63,7 +63,7 @@ backtrace_alloc (struct backtrace_state *state ATTRIBUTE_UNUSED,
   if (ret == NULL)
     {
       if (error_callback)
-    error_callback (data, "malloc", errno);
+	error_callback (data, "malloc", errno);
     }
   return ret;
 }
@@ -72,9 +72,9 @@ backtrace_alloc (struct backtrace_state *state ATTRIBUTE_UNUSED,
 
 void
 backtrace_free (struct backtrace_state *state ATTRIBUTE_UNUSED,
-        void *p, size_t size ATTRIBUTE_UNUSED,
-        backtrace_error_callback error_callback ATTRIBUTE_UNUSED,
-        void *data ATTRIBUTE_UNUSED)
+		void *p, size_t size ATTRIBUTE_UNUSED,
+		backtrace_error_callback error_callback ATTRIBUTE_UNUSED,
+		void *data ATTRIBUTE_UNUSED)
 {
   tracy_free (p);
 }
@@ -83,8 +83,8 @@ backtrace_free (struct backtrace_state *state ATTRIBUTE_UNUSED,
 
 void *
 backtrace_vector_grow (struct backtrace_state *state ATTRIBUTE_UNUSED,
-               size_t size, backtrace_error_callback error_callback,
-               void *data, struct backtrace_vector *vec)
+		       size_t size, backtrace_error_callback error_callback,
+		       void *data, struct backtrace_vector *vec)
 {
   void *ret;
 
@@ -94,21 +94,21 @@ backtrace_vector_grow (struct backtrace_state *state ATTRIBUTE_UNUSED,
       void *base;
 
       if (vec->size == 0)
-    alc = 32 * size;
+	alc = 32 * size;
       else if (vec->size >= 4096)
-    alc = vec->size + 4096;
+	alc = vec->size + 4096;
       else
-    alc = 2 * vec->size;
+	alc = 2 * vec->size;
 
       if (alc < vec->size + size)
-    alc = vec->size + size;
+	alc = vec->size + size;
 
       base = tracy_realloc (vec->base, alc);
       if (base == NULL)
-    {
-      error_callback (data, "realloc", errno);
-      return NULL;
-    }
+	{
+	  error_callback (data, "realloc", errno);
+	  return NULL;
+	}
 
       vec->base = base;
       vec->alc = alc - vec->size;
@@ -124,9 +124,9 @@ backtrace_vector_grow (struct backtrace_state *state ATTRIBUTE_UNUSED,
 
 void *
 backtrace_vector_finish (struct backtrace_state *state,
-             struct backtrace_vector *vec,
-             backtrace_error_callback error_callback,
-             void *data)
+			 struct backtrace_vector *vec,
+			 backtrace_error_callback error_callback,
+			 void *data)
 {
   void *ret;
 
@@ -146,16 +146,16 @@ backtrace_vector_finish (struct backtrace_state *state,
 
 int
 backtrace_vector_release (struct backtrace_state *state ATTRIBUTE_UNUSED,
-              struct backtrace_vector *vec,
-              backtrace_error_callback error_callback,
-              void *data)
+			  struct backtrace_vector *vec,
+			  backtrace_error_callback error_callback,
+			  void *data)
 {
   vec->alc = 0;
 
   if (vec->size == 0)
     {
       /* As of C17, realloc with size 0 is marked as an obsolescent feature, use
-     free instead.  */
+	 free instead.  */
       tracy_free (vec->base);
       vec->base = NULL;
       return 1;

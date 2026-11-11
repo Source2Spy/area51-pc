@@ -11,18 +11,20 @@
 #include "RigidGeom.hpp"
 #include "GeomFile.hpp"
 #include "ResourceMgr/ResourceMgr.hpp"
+#include "FrameGraph/RenderFailure.hpp"
 
 //=========================================================================
 //  RESOURCE LOADER
 //=========================================================================
 
-static struct rigid_geom_loader : public rsc_loader
+static
+struct rigid_geom_loader : public rsc_loader
 {
     rigid_geom_loader( void ) : rsc_loader( "RIGID GEOM", ".rigidgeom" )
     {
     }
 
-    //--------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
 
     virtual void* PreLoad( X_FILE* pFile )
     {
@@ -32,21 +34,21 @@ static struct rigid_geom_loader : public rsc_loader
         xstring     error;
         if ( !geom_file::LoadRigid( pFile, pGeom, error ) )
         {
-            x_DebugMsg( "RIGIDGEOM: load failed: %s\n", (char const*)error );
+            RENDER_THROW( "RigidGeom", "load failed: %s", (char const*)error );
             x_throw( (char const*)error );
         }
 
         return ( pGeom );
     }
 
-    //--------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
 
     virtual void* Resolve( void* pData )
     {
         return ( pData );
     }
 
-    //--------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
 
     virtual void Unload( void* pData )
     {
@@ -63,7 +65,7 @@ static struct rigid_geom_loader : public rsc_loader
 //=========================================================================
 
 rigid_geom::rigid_geom( void )
-    : geom(), m_collision(), m_nSections( 0 ), m_pSection( NULL ), m_nIndices( 0 ), m_pIndex( NULL ),
+    : geom(), m_Collision(), m_nSections( 0 ), m_pSection( NULL ), m_nIndices( 0 ), m_pIndex( NULL ),
       m_nVertexData( 0 ), m_pVertex( NULL )
 {
 }
@@ -72,11 +74,11 @@ rigid_geom::rigid_geom( void )
 
 rigid_geom::~rigid_geom( void )
 {
-    delete[] m_collision.pHighCluster;
-    delete[] m_collision.pHighIndexToVert0;
-    delete[] m_collision.pLowCluster;
-    delete[] m_collision.pLowVector;
-    delete[] m_collision.pLowQuad;
+    delete[] m_Collision.pHighCluster;
+    delete[] m_Collision.pHighIndexToVert0;
+    delete[] m_Collision.pLowCluster;
+    delete[] m_Collision.pLowVector;
+    delete[] m_Collision.pLowQuad;
     delete[] m_pSection;
     delete[] m_pIndex;
     delete[] m_pVertex;

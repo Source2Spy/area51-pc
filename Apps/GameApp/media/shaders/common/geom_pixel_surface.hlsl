@@ -13,158 +13,186 @@
 //  FUNCTIONS
 //==============================================================================
 
-GeomDiffuseResult GeomEvaluateDiffuse( GEOM_PIXEL_INPUT input, uint materialFlags, float alphaRef )
+GeomDiffuseResult GeomEvaluateDiffuse( GEOM_PIXEL_INPUT Input, uint MaterialFlags, float AlphaRef, float2 UVDx, float2 UVDy )
 {
-    GeomDiffuseResult result;
-    result.Sample = txDiffuse.Sample( samDiffuse, input.UV );
-    result.Color  = result.Sample;
+    GeomDiffuseResult Result;
+    Result.Sample = txDiffuse.SampleGrad( samDiffuse, Input.UV, UVDx, UVDy );
+    Result.Color  = (A51Color4)Result.Sample;
+    Result.Damage = 1;
+#if A51_RECIPE_DAMAGE
+    Result.Damage = txDamage.SampleGrad(samDamage, Input.UV, UVDx, UVDy).r;
+    ClothDiscardDamagedPixel( Result.Sample.a, Result.Damage, CoverageUsesTextureAlpha != 0 );
+#endif
 
-    if( materialFlags & MATERIAL_FLAG_DETAIL )
+#if A51_RECIPE_DETAIL
+    if( MaterialFlags & MATERIAL_FLAG_DETAIL )
     {
-        float  detailScale = max( UVAnim.z, 1.0f );
-        float4 detailColor = txDetail.Sample( samDetail, input.UV * detailScale );
-        result.Color *= detailColor * 2.0f;
+        float  DetailScale = max( UVAnim.z, 1.0f );
+        float4 DetailColor = txDetail.SampleGrad( samDetail, Input.UV * DetailScale, UVDx * DetailScale, UVDy * DetailScale );
+        Result.Color = (A51Color4)( Result.Color * ( DetailColor * 2.0f ) );
     }
 
+#endif
 #if GEOM_HAS_VERTEX_COLOR
-    if( materialFlags & MATERIAL_FLAG_VERTEX_COLOR )
+    if( MaterialFlags & MATERIAL_FLAG_VERTEX_COLOR )
     {
-        result.Color.a *= input.Color.a;
+#if A51_COLOR_ARITHMETIC
+        Result.Color.a = (A51Color)( Result.Color.a * Input.Color.a );
+#else
+        Result.Color.a *= Input.Color.a;
+#endif
     }
 #endif
 
-    if( materialFlags & MATERIAL_FLAG_ALPHA_TEST )
+#if A51_GEOM_ALPHA_TEST
+    if( !A51_RECIPE_DAMAGE && (MaterialFlags & MATERIAL_FLAG_ALPHA_TEST) )
     {
-        if( result.Sample.a < alphaRef )
+        if( Result.Sample.a < AlphaRef )
         {
             discard;
         }
     }
 
-    result.Alpha = result.Color.a;
-    return result;
+#endif
+    Result.Alpha = Result.Color.a;
+    return Result;
 }
 
 //==============================================================================
 
-void GeomApplyEnvironment( inout GeomDiffuseResult diffuse, uint materialFlags, float3 normal, float3 viewVector )
+#if !A51_GEOM_SURFACE_ONLY
+void GeomApplyEnvironment( inout GeomDiffuseResult Diffuse, uint MaterialFlags, float3 Normal, float3 EnvironmentColor, GeomSurfaceGradients Gradients )
 {
-    float alphaValue = diffuse.Alpha;
+    float AlphaValue = Diffuse.Alpha;
 
-    if( materialFlags & MATERIAL_FLAG_ENVIRONMENT )
+    if( MaterialFlags & MATERIAL_FLAG_ENVIRONMENT )
     {
-        float3 worldNormal = normalize( normal );
-        float3 envColor    = 0.0f;
+        float3 WorldNormal = Normal;
+        float3 EnvColor    = 0.0f;
 
-        if( materialFlags & MATERIAL_FLAG_ENV_CUBEMAP )
+#if A51_RECIPE_ENV == 2
+        if( MaterialFlags & MATERIAL_FLAG_ENV_CUBEMAP )
         {
-            float3 cubeDir = normalize( viewVector );
-            envColor = txEnvironmentCube.Sample( samEnvironmentCube, cubeDir ).rgb;
+            EnvColor = EnvironmentColor;
         }
-        else
+#endif
+#if A51_RECIPE_ENV == 1
         {
-            float3 envVector;
+            float3 EnvVector;
+            float3 EnvDx = Gradients.NormalDx;
+            float3 EnvDy = Gradients.NormalDy;
 
-            if( materialFlags & MATERIAL_FLAG_ENV_VIEWSPACE )
+            if( MaterialFlags & MATERIAL_FLAG_ENV_VIEWSPACE )
             {
-                envVector = mul( (float3x3)View, worldNormal );
+                EnvVector = mul( (float3x3)View, WorldNormal );
+                EnvDx = mul( (float3x3)View, EnvDx );
+                EnvDy = mul( (float3x3)View, EnvDy );
             }
             else
             {
-                envVector = worldNormal;
+                EnvVector = WorldNormal;
             }
 
-            envVector = normalize( envVector );
+            EnvDx = GeomNormalizedGradient( EnvVector, EnvDx );
+            EnvDy = GeomNormalizedGradient( EnvVector, EnvDy );
+            EnvVector = normalize( EnvVector );
 
-            float2 envUV = envVector.xy * 0.5f + 0.5f;
-            envColor = txEnvironment.Sample( samEnvironment, envUV ).rgb;
+            float2 EnvUV = EnvVector.xy * 0.5f + 0.5f;
+            EnvColor = txEnvironment.SampleGrad( samEnvironment, EnvUV, EnvDx.xy * 0.5f, EnvDy.xy * 0.5f ).rgb;
         }
 
-        float envStrength = 1.0f;
-        if( materialFlags & MATERIAL_FLAG_ENV_CUBEMAP )
+#endif
+        float EnvStrength = 1.0f;
+        if( MaterialFlags & MATERIAL_FLAG_ENV_CUBEMAP )
         {
-            envStrength = EnvParams.y;
+            EnvStrength = EnvParams.y;
         }
 
-        float envBlend = 0.0f;
+        float EnvBlend = 0.0f;
 
-        if( materialFlags & MATERIAL_FLAG_DIFF_PERPIXEL_ENV )
+        if( MaterialFlags & MATERIAL_FLAG_DIFF_PERPIXEL_ENV )
         {
-            envBlend = diffuse.Sample.a * envStrength;
+            EnvBlend = Diffuse.Sample.a * EnvStrength;
         }
-        else if( materialFlags & MATERIAL_FLAG_ALPHA_PERPOLY_ENV )
+        else if( MaterialFlags & MATERIAL_FLAG_ALPHA_PERPOLY_ENV )
         {
-            envBlend = EnvParams.x * envStrength;
+            EnvBlend = EnvParams.x * EnvStrength;
         }
 
-        if( envBlend > 0.0f )
+        if( EnvBlend > 0.0f )
         {
-            if( materialFlags & MATERIAL_FLAG_ADDITIVE )
+            if( MaterialFlags & MATERIAL_FLAG_ADDITIVE )
             {
-                diffuse.Color.rgb = saturate( diffuse.Color.rgb + envColor * envBlend );
+                Diffuse.Color.rgb = (A51Color3)saturate( Diffuse.Color.rgb + EnvColor * EnvBlend );
             }
             else
             {
-                diffuse.Color.rgb = lerp( diffuse.Color.rgb, envColor, envBlend );
+                Diffuse.Color.rgb = (A51Color3)lerp( Diffuse.Color.rgb, EnvColor, EnvBlend );
             }
         }
     }
 
-    diffuse.Color.a = alphaValue;
+#if A51_COLOR_ARITHMETIC
+    Diffuse.Color.a = (A51Color)AlphaValue;
+#else
+    Diffuse.Color.a = AlphaValue;
+#endif
 }
-
-//==============================================================================
-
-float4 GeomComputeGlow( GEOM_PIXEL_INPUT input,
-                        uint materialFlags,
-                        inout float4 finalColor,
-                        float4 diffuseSample )
-{
-    float4 glow = float4( 0.0f, 0.0f, 0.0f, 0.0f );
-    const float4 ambient = GeomGetLightAmbCol( input );
-
-    if( materialFlags & INSTANCE_FLAG_GLOWING )
-    {
-        const float3 forcedGlowColor = saturate( ambient.rgb * diffuseSample.rgb * 2.0f );
-        finalColor.rgb = forcedGlowColor;
-        glow.rgb = forcedGlowColor;
-        glow.a   = 1.0f;
-        return glow;
-    }
-
-#if A51_DISABLE_ALPHA_ILLUMINATION
-    return glow;
 #endif
 
-    const bool bUseDiffuse           = ( materialFlags & MATERIAL_FLAG_ILLUM_USE_DIFFUSE ) != 0;
-    const bool bDiffusePerPixelIllum = ( materialFlags & MATERIAL_FLAG_DIFF_PERPIXEL_ILLUM ) != 0;
-    const bool bAlphaPerPixelIllum   = ( materialFlags & MATERIAL_FLAG_ALPHA_PERPIXEL_ILLUM ) != 0;
-    const bool bAlphaPerPolyIllum    = ( materialFlags & MATERIAL_FLAG_ALPHA_PERPOLY_ILLUM ) != 0;
+//==============================================================================
 
-    if( bAlphaPerPixelIllum )
+float4 GeomComputeGlow( GEOM_PIXEL_INPUT Input,
+                        uint MaterialFlags,
+                        inout float4 FinalColor,
+                        float4 DiffuseSample )
+{
+    float4 Glow = float4( 0.0f, 0.0f, 0.0f, 0.0f );
+    const float4 Ambient = GeomGetLightAmbCol( Input );
+
+    // Forward SceneColor alpha is the Xbox glow mask.  Ordinary surface
+    // coverage/alpha must not turn every opaque pixel into bloom.
+    Glow.a = 0.0f;
+
+    if( MaterialFlags & GEOM_INST_FLAG_GLOWING )
     {
-        glow = diffuseSample;
-
-        if( !bUseDiffuse )
-        {
-            finalColor.rgb = diffuseSample.rgb;
-        }
-    }
-    else if( bDiffusePerPixelIllum || bAlphaPerPolyIllum )
-    {
-        const float intensity = bAlphaPerPolyIllum ? saturate( EnvParams.x ) : saturate( diffuseSample.a );
-        const float3 illumRgb = lerp( finalColor.rgb, diffuseSample.rgb, intensity );
-
-        glow.rgb = illumRgb;
-        glow.a   = 1.0f;
-
-        if( !bUseDiffuse )
-        {
-            finalColor.rgb = illumRgb;
-        }
+        const float3 ForcedGlowColor = saturate( Ambient.rgb *
+                                                 DiffuseSample.rgb * 2.0f );
+        FinalColor.rgb = ForcedGlowColor;
+        Glow.rgb = ForcedGlowColor;
+        Glow.a   = 1.0f;
+        return Glow;
     }
 
-    return glow;
+    const bool BUseDiffuse           = IlluminationUsesDiffuse != 0;
+    const bool BDiffusePerPixelIllum = ( MaterialFlags & MATERIAL_FLAG_DIFF_PERPIXEL_ILLUM ) != 0;
+    const bool BAlphaPerPixelIllum   = ( MaterialFlags & MATERIAL_FLAG_ALPHA_PERPIXEL_ILLUM ) != 0;
+    const bool BAlphaPerPolyIllum    = ( MaterialFlags & MATERIAL_FLAG_ALPHA_PERPOLY_ILLUM ) != 0;
+
+    if( BAlphaPerPixelIllum )
+    {
+        Glow = DiffuseSample;
+
+        if( !BUseDiffuse )
+        {
+            FinalColor.rgb = DiffuseSample.rgb;
+        }
+    }
+    else if( BDiffusePerPixelIllum || BAlphaPerPolyIllum )
+    {
+        const float Intensity = saturate( DiffuseSample.a );
+        const float3 IllumRgb = lerp( FinalColor.rgb, DiffuseSample.rgb, Intensity );
+
+        Glow.rgb = IllumRgb;
+        Glow.a   = BAlphaPerPolyIllum ? saturate( EnvParams.x ) : Intensity;
+
+        if( !BUseDiffuse )
+        {
+            FinalColor.rgb = IllumRgb;
+        }
+    }
+
+    return Glow;
 }
 
 //==============================================================================

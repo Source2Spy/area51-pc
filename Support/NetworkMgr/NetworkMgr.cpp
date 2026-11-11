@@ -19,16 +19,17 @@
 #include "ServerVersion.hpp"
 #include "NetLimits.hpp"
 
-#include "GameMgr.hpp"
-#include "GameState.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
+#include "NetworkMgr/Connection/GameState.hpp"
 #include "Configuration/GameConfig.hpp"
-#include "GameServer.hpp"
-#include "GameClient.hpp"
+#include "NetworkMgr/Connection/GameServer.hpp"
+#include "NetworkMgr/Connection/GameClient.hpp"
 #include "InputMgr/GamePad.hpp"
 #include "Voice/VoiceMgr.hpp"
 #include "GameLib/LevelLoader.hpp"
 #include "StateMgr/StateMgr.hpp"
 #include "StateMgr/MapList.hpp"
+#include "ScriptMgr/ScriptMgr.hpp"
 
 //==============================================================================
 //  GLOBALS
@@ -84,11 +85,9 @@ network_mgr::~network_mgr( void )
 
 void network_mgr::Init( void )
 {
-#if defined(TARGET_DESKTOP)
     // Keep the network library alive for the lifetime of the application so
     // local networking remains available outside the online state.
     net_Init();
-#endif
     net_SetVersionKey( g_ServerVersion );
 }
 
@@ -101,10 +100,8 @@ void network_mgr::Kill( void )
         FinishOnlineStateChange();
     }
 
-#if defined(TARGET_DESKTOP)
     g_MatchMgr.Kill();
     net_Kill();
-#endif
 }
 
 //==============================================================================
@@ -124,10 +121,9 @@ void network_mgr::SetOnline( xbool IsOnline )
         if( !m_LocalSocket.IsEmpty() )
         {
             m_LocalSocket.Close();
+            m_CancelledConnections.Clear();
         }
-#if defined(TARGET_DESKTOP)
         g_MatchMgr.Kill();
-#endif
     }
 
     m_IsOnline = IsOnline;
@@ -206,6 +202,7 @@ void network_mgr::BeginFrame( f32 RealDeltaTime )
         LOG_WARNING( "network_mgr::BeginFrame", "Long frame: %2.02fsec between updates", RealDeltaTime );
     }
 
+    m_CancelledConnections.Update( m_LocalSocket, RealDeltaTime );
     g_VoiceMgr.Update( RealDeltaTime );
 
     // -------------------------------------------------------------------------
@@ -214,7 +211,6 @@ void network_mgr::BeginFrame( f32 RealDeltaTime )
     s32 MaxCount = 0;
     exit_reason const ExitReason = g_ActiveConfig.GetExitReason();
 
-#if defined(TARGET_DESKTOP)
     if( m_IsOnline && m_LocalSocket.IsConnected() )
     {
         // Check for interface loss (cable pull, network down, duplicate login).
@@ -233,32 +229,30 @@ void network_mgr::BeginFrame( f32 RealDeltaTime )
             // Closing the socket cascades through the state machines and causes
             // the server / client to shut themselves down cleanly.
             m_LocalSocket.Close();
+            m_CancelledConnections.Clear();
         }
         else
         {
             xtimer t;
             t.Start();
 
-            while( m_LocalSocket.IsConnected() && m_LocalSocket.Receive( Remote, BitStream ) )
+            while( m_LocalSocket.IsConnected() && BitStream.Receive( m_LocalSocket, Remote ) )
             {
-                Used = FALSE;
+                Used = (BitStream.GetNBytes() < (s32)(3 * sizeof(u16))) ||
+                       g_MatchMgr.ReceivePacket( Remote, BitStream );
+                if( !Used )
+                    Used = m_CancelledConnections.ReceivePacket( Remote, BitStream );
 
-                if( m_pServer )
+                if( !Used && m_pServer )
                 {
                     ASSERT( m_pClient == NULL );
                     Used = m_pServer->ReceivePacket( Remote, BitStream );
                 }
 
-                if( m_pClient )
+                if( !Used && m_pClient )
                 {
                     ASSERT( m_pServer == NULL );
                     Used = m_pClient->ReceivePacket( Remote, BitStream );
-                }
-
-                // Hand unrecognised packets to the match manager.
-                if( !Used )
-                {
-                    g_MatchMgr.ReceivePacket( Remote, BitStream );
                 }
 
                 // Bail out if we're spending too long in the receive loop.
@@ -272,7 +266,6 @@ void network_mgr::BeginFrame( f32 RealDeltaTime )
             }
         }
     }
-#endif // TARGET_DESKTOP
 }
 
 //==============================================================================
@@ -348,6 +341,8 @@ void network_mgr::EndFrame( f32 RealDeltaTime )
         g_ActiveConfig.SetExitReason( ExitReason );
     }
 
+    g_MatchMgr.Update( RealDeltaTime );
+
     LOG_FLUSH();
 }
 
@@ -379,6 +374,9 @@ void network_mgr::BecomeServer( void )
     game_config::Commit();
     SetLocalPlayerCount( g_ActiveConfig.GetPlayerCount() );
 
+    g_ScriptMgr.SetEnabled( (g_ActiveConfig.GetGameTypeID() == GAME_CAMPAIGN) ||
+                           g_ActiveConfig.IsCheatsAllowed() );
+
     m_pServer = new game_server;
 
     if( m_LocalSocket.IsEmpty() )
@@ -398,8 +396,17 @@ void network_mgr::BecomeServer( void )
 
 void network_mgr::BeginLogin( void )
 {
+    ASSERT( m_pClient == NULL );
+    g_ScriptMgr.SetEnabled( FALSE );
+
     m_pClient = new game_client;
-    m_pClient->Init( m_LocalSocket, g_ActiveConfig.GetRemoteAddress(), 1 );
+    if( !m_pClient->Init(m_LocalSocket, g_ActiveConfig.GetRemoteAddress(), 1) )
+    {
+        delete m_pClient;
+        m_pClient = NULL;
+        g_ActiveConfig.SetExitReason( GAME_EXIT_CANNOT_CONNECT );
+        g_ScriptMgr.SetEnabled( TRUE );
+    }
 }
 
 //==============================================================================
@@ -434,10 +441,17 @@ void network_mgr::Disconnect( void )
     if( m_pClient )
     {
         g_MatchMgr.SetState( MATCH_IDLE );
+        if( m_pClient->IsConnected() )
+        {
+            m_CancelledConnections.Add( m_pClient->GetAddress(), m_pClient->GetConnectionID() );
+            m_CancelledConnections.Update( m_LocalSocket, 0.0f );
+        }
         m_pClient->Kill();
         delete m_pClient;
         m_pClient = NULL;
     }
+
+    g_ScriptMgr.SetEnabled( TRUE );
 }
 
 //==============================================================================
@@ -464,6 +478,14 @@ void network_mgr::KickPlayer( s32 Index )
 {
     ASSERT( m_pServer );
     m_pServer->KickPlayer( Index );
+}
+
+//==============================================================================
+
+void network_mgr::BanPlayer( s32 Index )
+{
+    ASSERT( m_pServer );
+    m_pServer->BanPlayer( Index );
 }
 
 //==============================================================================
@@ -579,22 +601,6 @@ pain_queue* network_mgr::GetPainQueue( void )
         return m_pClient->GetPainQueue();
     }
     return NULL;
-}
-
-//==============================================================================
-
-xbool network_mgr::IsServerABuddy( const char* pSearch )
-{
-    ASSERT( m_pServer );
-    return m_pServer->IsServerABuddy( pSearch );
-}
-
-//==============================================================================
-
-xbool network_mgr::HasPlayerBuddy( const char* pSearch )
-{
-    ASSERT( m_pServer );
-    return m_pServer->HasPlayerBuddy( pSearch );
 }
 
 //==============================================================================

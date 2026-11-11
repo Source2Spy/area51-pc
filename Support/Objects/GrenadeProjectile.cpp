@@ -8,13 +8,13 @@
 #include "Render/PrimitiveDebug.hpp"
 #include "GrenadeProjectile.hpp"
 #include "AudioMgr/AudioMgr.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "Objects/AnimSurface.hpp"
 #include "Objects/ClothObject.hpp"
 #include "Objects/DestructibleObj.hpp"
 #include "Decals/DecalMgr.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "Objects/Actor/Actor.hpp"
 
 //=============================================================================================
@@ -75,6 +75,8 @@ f32 g_GrenadeRise = -0.35f;
 f32 g_GrenadeRun  =  0.60f;
 grenade_projectile::grenade_projectile()
 {
+    m_FloorProperties.Init( 1.0f, 0.128f );
+
     m_Spin                  = radian3(x_frand(-R_45,R_45), 0.0f, x_frand(-R_30,R_30));
     m_TotalSpin             = radian3(0.0f, 0.0f, 0.0f);
 
@@ -114,6 +116,21 @@ void grenade_projectile::DestroyTrail( void )
             g_ObjMgr.DestroyObject( m_EffectTrail );
     }
     m_EffectTrail = NULL_GUID;
+}
+
+//=============================================================================================
+
+void grenade_projectile::SetStart( const vector3& Position,
+                                   const radian3& Orientation,
+                                   const vector3& Velocity,
+                                   s32            Zone1,
+                                   s32            Zone2,
+                                   f32            Gravity )
+{
+    net_proj::SetStart( Position, Orientation, Velocity, Zone1, Zone2, Gravity );
+
+    m_FloorProperties.Init( 1.0f, 0.128f, GetGuid() );
+    m_FloorProperties.ForceUpdate( Position );
 }
 
 //=============================================================================================
@@ -163,7 +180,7 @@ bbox grenade_projectile::GetLocalBBox( void ) const
 
     if( pRigidGeom )
     {
-        return( pRigidGeom->m_collision.BBox );
+        return( pRigidGeom->m_Collision.BBox );
     }
     
     return( bbox( vector3( 10.0f, 10.0f, 10.0f),
@@ -175,6 +192,11 @@ radian3 g_GrenadeSpin = radian3(R_180, R_180, R_90);
 
 void grenade_projectile::OnAdvanceSimulation( f32 DeltaTime )
 {
+    if( !m_Exploded )
+    {
+        m_FloorProperties.Update( GetPosition(), DeltaTime );
+    }
+
     net_proj::OnAdvanceSimulation( DeltaTime );
     if( m_Exploded )
         return;
@@ -301,7 +323,7 @@ void grenade_projectile::OnExplode( void )
     net_proj::OnExplode();
 
     //add a light where the explosion occurred
-    g_LightMgr.AddFadingLight( GetPosition(), xcolor(152, 152, 76, 255), 300.0f, 1.0f, 1.8f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( GetPosition(), xcolor(152, 152, 76, 255), 300.0f, 1.0f, 1.8f );
 
     /*
     //render particle explosion
@@ -380,7 +402,7 @@ void grenade_projectile::OnRender( void )
     {
         u32 Flags = (GetFlagBits() & object::FLAG_CHECK_PLANES) ? render::CLIPPED : 0;
         
-        m_RigidInst.Render( &RenderL2W, Flags );
+        m_RigidInst.Render( &RenderL2W, Flags, m_FloorProperties.GetColor() );
     }
 
 #ifdef X_EDITOR

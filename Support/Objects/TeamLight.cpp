@@ -11,9 +11,9 @@
 #include "TeamLight.hpp"
 #include "AudioMgr/AudioMgr.hpp"
 #include "x_profile.hpp"
-#include "NetworkMgr/NetObjMgr.hpp"
+#include "NetworkMgr/Replication/NetObjMgr.hpp"
 #include "Player/Player.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 
 #ifndef X_EDITOR
 #include "GameLib/RenderContext.hpp"
@@ -228,12 +228,12 @@ void team_light::OnCollectLight( void )
                                  m_TransitionValue );
     f32 InnerRadius = MAX( 0.0f, m_Radius * ( 1.0f - m_Falloff ) );
 
-    g_LightMgr.AddDynamicLight( GetPosition(),
+    render::GetRenderPipeline().GetLightSystem().AddDynamicLight( GetPosition(),
                                 Color,
                                 m_Radius,
                                 m_Intensity,
                                 FALSE,
-                                light_mgr::LIGHT_SHAPE_OMNI,
+                                render::LightSystem::LIGHT_SHAPE_OMNI,
                                 FALSE,
                                 InnerRadius,
                                 vector3( 0.0f, 0.0f, 1.0f ),

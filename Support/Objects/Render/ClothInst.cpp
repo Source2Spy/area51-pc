@@ -11,6 +11,8 @@
 #include "Render/PrimitiveDebug.hpp"
 #include "ClothInst.hpp"
 #include "Entropy.hpp"
+#include "Render/Material.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 
 #ifdef X_EDITOR
 extern xbool g_game_running;
@@ -24,6 +26,9 @@ cloth_inst::cloth_inst()
 {
     m_RenderMask    = (u64)-1;
     m_MaterialIndex = -1;
+    m_pRenderNormalsSource = NULL;
+    m_RenderNormalsRevision = 0;
+    m_isTessellationInitialized = FALSE;
     m_DamageUploadPending = FALSE;
     m_DamageUploadMinX = 0;
     m_DamageUploadMinY = 0;
@@ -94,6 +99,9 @@ void cloth_inst::Init( cloth& Sim )
     ASSERT( Particles.GetCount() <= 65535 );
     m_RenderVertices.SetCapacity( Particles.GetCount() );
     m_RenderVertices.SetCount( Particles.GetCount() );
+    m_RenderNormals.SetCapacity( Particles.GetCount() );
+    m_RenderNormals.SetCount( Particles.GetCount() );
+
     m_RenderIndices.SetCapacity( Triangles.GetCount() * 3 );
     m_RenderIndices.SetCount( Triangles.GetCount() * 3 );
     for( s32 i = 0; i < Triangles.GetCount(); ++i )
@@ -121,10 +129,15 @@ void cloth_inst::Init( cloth& Sim )
 
 void cloth_inst::Kill( void )
 {
+    m_Tessellation.Kill();
+    m_isTessellationInitialized = FALSE;
     vram_DestroyTexture( m_DamageTexture );
     m_DamageUpload.SetCount( 0 );
     m_RenderVertices.SetCount( 0 );
+    m_RenderNormals.SetCount( 0 );
     m_RenderIndices.SetCount( 0 );
+    m_pRenderNormalsSource = NULL;
+    m_RenderNormalsRevision = 0;
     m_RenderMask    = (u64)-1;
     m_MaterialIndex = -1;
     m_DamageUploadPending = FALSE;
@@ -143,12 +156,19 @@ xbool cloth_inst::InitDamageTexture( cloth& Sim, texture const* pTexture )
         return FALSE;
     }
 
-    s32 const Width = MIN( pTexture->m_bitmap.GetWidth(), 512 );
-    s32 const Height = MIN( pTexture->m_bitmap.GetHeight(), 512 );
-    if( ( Width <= 0 ) || ( Height <= 0 ) )
+    s32 const TextureWidth = pTexture->m_bitmap.GetWidth();
+    s32 const TextureHeight = pTexture->m_bitmap.GetHeight();
+    if( ( TextureWidth <= 0 ) || ( TextureHeight <= 0 ) )
     {
         return FALSE;
     }
+
+    // Small diffuse maps still need room for narrow tears and loose yarns.
+    // Preserve the texture aspect ratio and keep the mask within 512 texels.
+    f32 const Scale = MIN( 512.0f / MAX( TextureWidth, TextureHeight ),
+                          MAX( 1.0f, 256.0f / MIN( TextureWidth, TextureHeight ) ) );
+    s32 const Width = MINMAX( 1, (s32)( TextureWidth * Scale ), 512 );
+    s32 const Height = MINMAX( 1, (s32)( TextureHeight * Scale ), 512 );
 
     Sim.InitDamageMap( Width, Height );
     m_DamageUpload.SetCapacity( Width * Height );
@@ -215,26 +235,90 @@ xbool cloth_inst::PrepareDamageUpload( cloth& Sim )
 // Render functions
 //==============================================================================
 
-void cloth_inst::UpdateRenderVertices( cloth const& Sim )
+void cloth_inst::ComputeRenderNormals( cloth const& Sim )
+{
+    if( ( m_pRenderNormalsSource == &Sim ) &&
+        ( m_RenderNormalsRevision == Sim.GetRenderRevision() ) )
+    {
+        return;
+    }
+
+    const xarray<cloth_particle>& Particles = Sim.GetParticles();
+    const xarray<cloth_triangle>& Triangles = Sim.GetTriangles();
+    ASSERT( m_RenderNormals.GetCount() == Particles.GetCount() );
+
+    for( s32 i = 0; i < Particles.GetCount(); ++i )
+        m_RenderNormals[i].Zero();
+
+    for( s32 i = 0; i < Triangles.GetCount(); ++i )
+    {
+        const cloth_triangle& Triangle = Triangles[i];
+        const vector3& P0 = Particles[(s32)Triangle.m_Particles[0]].m_Pos;
+        const vector3& P1 = Particles[(s32)Triangle.m_Particles[1]].m_Pos;
+        const vector3& P2 = Particles[(s32)Triangle.m_Particles[2]].m_Pos;
+        const vector3 Normal = ( P1 - P0 ).Cross( P2 - P0 );
+
+        m_RenderNormals[(s32)Triangle.m_Particles[0]] += Normal;
+        m_RenderNormals[(s32)Triangle.m_Particles[1]] += Normal;
+        m_RenderNormals[(s32)Triangle.m_Particles[2]] += Normal;
+    }
+
+    for( s32 i = 0; i < Particles.GetCount(); ++i )
+        m_RenderNormals[i].Normalize();
+
+    m_pRenderNormalsSource = &Sim;
+    m_RenderNormalsRevision = Sim.GetRenderRevision();
+}
+
+//==============================================================================
+
+void cloth_inst::BuildRenderVertices( cloth const& Sim )
 {
     xarray<cloth_particle> const& Particles = Sim.GetParticles();
     ASSERT( m_RenderVertices.GetCount() == Particles.GetCount() );
+
+    ComputeRenderNormals( Sim );
+
     for( s32 i = 0; i < Particles.GetCount(); ++i )
     {
         cloth_particle const& Particle = Particles[i];
-        dynamic_geometry_vertex& Vertex = m_RenderVertices[i];
+        dynamic_geom_vertex& Vertex = m_RenderVertices[i];
         Vertex.Position = Particle.m_Pos;
-        Vertex.Normal   = Particle.m_Normal;
+        Vertex.Normal   = m_RenderNormals[i];
         Vertex.UV       = Particle.m_UV;
-        Vertex.Color    = Particle.m_Color;
+        Vertex.Color    = XCOLOR_BLACK;
     }
 }
 
 //==============================================================================
 
-void cloth_inst::RenderClothGeometry( cloth& Sim, s32 VTexture /*= 0*/, u32 Flags /*= 0*/ )
+xbool cloth_inst::PrepareTessellation( cloth const& Sim )
 {
-    X_PROFILE_SCOPE_CATEGORY( "Context", "cloth_inst::RenderGeometry");
+    BuildRenderVertices( Sim );
+
+    if( !render::GetRenderPipeline().IsTessellationEnabled() )
+    {
+        return TRUE;
+    }
+
+    if( !m_isTessellationInitialized )
+    {
+        if( !m_Tessellation.Init( m_RenderVertices.GetCount(), m_RenderIndices.GetPtr(), m_RenderIndices.GetCount() ) )
+        {
+            RENDER_THROW( "cloth_inst", "failed to initialize compute tessellation" );
+            return FALSE;
+        }
+        m_isTessellationInitialized = TRUE;
+    }
+
+    return TRUE;
+}
+
+//==============================================================================
+
+void cloth_inst::RenderClothGeometry( cloth& Sim, xcolor Ambient, s32 VTexture /*= 0*/, u32 Flags /*= 0*/ )
+{
+    X_PROFILE_SCOPE_CATEGORY( "Context", "cloth_inst::RenderClothGeometry" );
 
     // Grab the texture that is currently being used by the cloth. Note
     // that we go through the render system to grab the texture out. Since
@@ -251,12 +335,22 @@ void cloth_inst::RenderClothGeometry( cloth& Sim, s32 VTexture /*= 0*/, u32 Flag
     // Render dynamic cloth?
     if( pTexture && PrepareDamageUpload( Sim ) )
     {
-        UpdateRenderVertices( Sim );
+        if( !PrepareTessellation( Sim ) )
+        {
+            return;
+        }
 
-        dynamic_geometry_draw Draw;
+        geom::material const& GeomMaterial = pGeom->m_pMaterial[m_MaterialIndex];
+        render::MaterialDesc const& Material = pGeom->GetPreparedMaterial( GeomMaterial.iVirtualMat ).GetDesc();
+
+        dynamic_geom_draw Draw;
+        Draw.pGpuMesh       = render::GetRenderPipeline().IsTessellationEnabled() ? m_Tessellation.GetMesh() : NULL;
+        Draw.pClothTessellation = Draw.pGpuMesh ? &m_Tessellation : NULL;
+        Draw.ClothRevision = Sim.GetRenderRevision();
         Draw.pVertices      = m_RenderVertices.GetPtr();
         Draw.pIndices       = m_RenderIndices.GetPtr();
         Draw.pDiffuseTexture = pTexture;
+        Draw.CoverageUsesTextureAlpha = Material.AlphaBlend || Material.AlphaTest;
         Draw.pDamageMask    = vram_GetShaderResource( m_DamageTexture );
         Draw.pDamageTexture = &m_DamageTexture;
         Draw.pDamageUploadPending = &m_DamageUploadPending;
@@ -271,8 +365,9 @@ void cloth_inst::RenderClothGeometry( cloth& Sim, s32 VTexture /*= 0*/, u32 Flag
         Draw.VertexCount    = m_RenderVertices.GetCount();
         Draw.IndexCount     = m_RenderIndices.GetCount();
         Draw.Bounds         = Sim.GetWorldBBox();
-        Draw.Flags          = Flags;
-        render::AddDynamicGeometry( Draw );
+        Draw.Ambient        = Ambient;
+        Draw.RenderFlags    = Flags;
+        render::GetRenderPipeline().GetSubmission().AddDynamicGeom( Draw );
     }
 }
 
@@ -285,7 +380,7 @@ void cloth_inst::RenderShadowCast( cloth& Sim, s32 VTexture, u64 ProjMask )
 
     u64 const RigidMask = m_RigidInst.GetLODMask( Sim.GetL2W() ) & m_RenderMask;
     if( RigidMask )
-        render::AddRigidCaster( m_RigidInst.GetInst(), &Sim.GetL2W(), RigidMask, ProjMask );
+        render::GetRenderPipeline().GetShadowSubmission().AddRigidCaster( m_RigidInst.GetInst(), &Sim.GetL2W(), RigidMask, ProjMask );
 
     texture* pTexture = NULL;
     geom const* pGeom = m_RigidInst.GetGeom();
@@ -295,12 +390,23 @@ void cloth_inst::RenderShadowCast( cloth& Sim, s32 VTexture, u64 ProjMask )
     if( !pTexture || !pTexture->GetShaderResource() || !PrepareDamageUpload( Sim ) )
         return;
 
-    UpdateRenderVertices( Sim );
+    if( !PrepareTessellation( Sim ) )
+    {
+        return;
+    }
 
-    dynamic_geometry_shadow_draw Draw;
+    geom::material const& GeomMaterial = pGeom->m_pMaterial[m_MaterialIndex];
+    render::MaterialDesc const& Material = pGeom->GetPreparedMaterial( GeomMaterial.iVirtualMat ).GetDesc();
+
+    dynamic_geom_shadow_draw Draw;
+    Draw.pGpuMesh = render::GetRenderPipeline().IsTessellationEnabled() ? m_Tessellation.GetMesh() : NULL;
+    Draw.pClothTessellation = Draw.pGpuMesh ? &m_Tessellation : NULL;
+    Draw.ClothRevision = Sim.GetRenderRevision();
+    Draw.Bounds = Sim.GetWorldBBox();
     Draw.pVertices = m_RenderVertices.GetPtr();
     Draw.pIndices = m_RenderIndices.GetPtr();
     Draw.pDiffuse = pTexture->GetShaderResource();
+    Draw.CoverageUsesTextureAlpha = Material.AlphaBlend || Material.AlphaTest;
     Draw.pDamageMask = vram_GetShaderResource( m_DamageTexture );
     Draw.pDamageTexture = &m_DamageTexture;
     Draw.pDamageUploadPending = &m_DamageUploadPending;
@@ -315,15 +421,15 @@ void cloth_inst::RenderShadowCast( cloth& Sim, s32 VTexture, u64 ProjMask )
     Draw.VertexCount = m_RenderVertices.GetCount();
     Draw.IndexCount = m_RenderIndices.GetCount();
     Draw.ShadowSourceMask = ProjMask;
-    render::AddDynamicShadowCaster( Draw );
+    render::GetRenderPipeline().GetShadowSubmission().AddDynamicCaster( Draw );
 }
 
 //==============================================================================
 
-void cloth_inst::RenderRigidGeometry( const cloth& Sim, u32 Flags )
+void cloth_inst::RenderRigidGeometry( const cloth& Sim, xcolor Ambient, u32 Flags )
 {
     // Render rigid instance
-    m_RigidInst.Render( &Sim.GetL2W(), Flags, m_RenderMask );
+    m_RigidInst.Render( &Sim.GetL2W(), Flags, m_RenderMask, Ambient );
 }
 
 //==============================================================================
@@ -333,6 +439,8 @@ void cloth_inst::RenderRigidGeometry( const cloth& Sim, u32 Flags )
 void cloth_inst::RenderSkeleton( const cloth& Sim )
 {
     X_PROFILE_SCOPE_CATEGORY( "Context", "cloth_inst::RenderSkeleton");
+
+    ComputeRenderNormals( Sim );
 
     s32 i;
 
@@ -383,7 +491,7 @@ void cloth_inst::RenderSkeleton( const cloth& Sim )
 
         // Draw particle and normal
         render::debug::Point(Particle.m_Pos, Color, Size );
-        render::debug::Arrow( Particle.m_Pos, Particle.m_Pos + (Particle.m_Normal * 15.0f), Color );
+        render::debug::Arrow( Particle.m_Pos, Particle.m_Pos + (m_RenderNormals[i] * 15.0f), Color );
 
         // Show mass
         render::debug::Label( Particle.m_Pos, Color, "\n\n\n\nP[%d]\nMass(%.2f)", i, Mass );

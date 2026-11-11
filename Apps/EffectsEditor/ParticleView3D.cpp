@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include "PartEd.h"
+#include "Render/Render.hpp"
 #include "MainFrm.h"
 #include "PartEdDoc.h"
 #include "ParticleView3D.h"
@@ -248,17 +249,9 @@ void CParticleView3D::OnPaint()
 
     if( !eng_BeginFrame() )
         return;
+    render::BeginFrame();
 
     eng_SetBackColor( xcolor(0x0f, 0x0f, 0x0f, 0xff) );
-
-    rtarget_backbuffer_pass_desc PassDesc;
-    PassDesc.bUseDepth = FALSE;
-    if( !rtarget_BeginBackBufferPass( PassDesc ) )
-    {
-        eng_ResetAfterException();
-        return;
-    }
-    rtarget_EndPass();
 
     //-------------------------------------------------------------------------
     //  Read the frame we are rendering, with sub frame accuracy
@@ -269,10 +262,12 @@ void CParticleView3D::OnPaint()
 
     //-------------------------------------------------------------------------
 
+    xbool sceneActive = FALSE;
     if( eng_Begin( "ParticleView3D" ) )
     {
-        VERIFY( render::BeginPrimitiveRender() );
-        render::BeginNormalRender();
+        sceneActive = render::BeginRenderScope();
+        if ( sceneActive )
+        {
 
         // Render effect background
         pDoc->m_Effect.RenderBackground( RenderFrame );
@@ -286,9 +281,8 @@ void CParticleView3D::OnPaint()
         // Render the effect
         pDoc->m_Effect.Render( RenderFrame );
 
-        render::EndNormalRender();
-        render::EndPrimitiveRender();
-        render::ExecuteForwardRender();
+            sceneActive = render::SubmitRenderScope();
+        }
         eng_End();
     }
 
@@ -333,7 +327,13 @@ void CParticleView3D::OnPaint()
     // Render the manipulators
     g_ManipulatorMgr.Render( m_View );
 
+    if( sceneActive && !render::EndRenderScope() )
+        return;
+
     // Done
+    if( !render::EndFrame( FALSE ) )
+        return;
+
     if( !eng_EndFrame() )
         return;
 

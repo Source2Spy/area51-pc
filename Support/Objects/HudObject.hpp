@@ -49,8 +49,6 @@ public:
     virtual const object_desc&  GetTypeDesc         ( void ) const;
     static  const object_desc&  GetObjectType       ( void );
 
-            void            ResetFrameRateInfo      ( void );
-            void            RenderFrameRateInfo     ( void );
             void            RenderTimer             ( const rect& ViewDimensions );
             
             void            GetBinaryResourceName   ( xstring& String );
@@ -79,16 +77,12 @@ public:
     xbool                               m_Initialized;
 
 protected:
-            rhandle<char>               m_hBinaryTextRsc[ MAX_BIN_TXT_RSC ];
+            rhandle<xstring>            m_hBinaryTextRsc[ MAX_BIN_TXT_RSC ];
 
             xbool                       m_LogicRunning;
 
             s32                         m_NumHuds;
 
-            s32                         m_FPSCount15;
-            s32                         m_FPSCount20;
-            s32                         m_FPSCount30;
-            xbool                       m_ShowBelow30Image;
 
             xbool                       m_bLetterBoxOn;
             f32                         m_LetterBoxTotalTime;
@@ -163,6 +157,17 @@ inline void RenderLine( const xwchar* pLine, irect& iRect, u8 Alpha, xcolor& Tex
 
 #endif
 }
+
+//==============================================================================
+
+void RenderLine( const ui_text_data& Text,
+                 irect& Rect,
+                 u8 Alpha,
+                 xcolor& Color,
+                 s32 FontNum,
+                 s32 Flags,
+                 xbool Shadow = FALSE,
+                 f32 FlareAmount = 0.0f );
 
 class flare_fader 
 { 

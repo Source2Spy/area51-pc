@@ -6,9 +6,10 @@
 
 #include "PlayerMovement.hpp"
 #include "Player.hpp"
+#include "CollisionMgr/CollisionPrimatives.hpp"
 #include "Objects/Ladders/Ladder_Field.hpp"
 #include "Objects/Turret.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "PerceptionMgr/PerceptionMgr.hpp"
 
 //=========================================================================
@@ -20,175 +21,8 @@ static const f32 s_MovementReferenceFrameRate = 30.0f;
 
 static f32  ComputeSoftLean             ( f32 LeanAmount );
 static f32  ComputeLean                 ( f32 SoftLeanAmount );
-static f32  ComputeLeanValueForPosition ( const vector3& Start,
-                                           const vector3& HitPoint,
-                                           xbool bLeaningRight );
 static void HideObject                  ( object* pObject );
 static void UnhideObject                ( object* pObject );
-
-PlayerMovementSpeeds::PlayerMovementSpeeds( void ) :
-    Forward( 0.0f ),
-    Strafe ( 0.0f )
-{
-}
-
-
-//=========================================================================
-
-PlayerMovement::PlayerMovement( void )
-{
-    Clear();
-}
-
-//=========================================================================
-
-void PlayerMovement::Clear( void )
-{
-    m_GamepadVelocity.Zero();
-}
-
-//=========================================================================
-
-void PlayerMovement::ShapeGamepadMoveVector( vector2& Move )
-{
-    f32 Magnitude = Move.Length();
-    if( Magnitude <= F32_MIN )
-    {
-        Move.Zero();
-        return;
-    }
-
-    if( Magnitude > 1.0f )
-    {
-        Move /= Magnitude;
-        Magnitude = 1.0f;
-    }
-
-    f32 const CurvedMagnitude = Magnitude * x_sqrt( Magnitude );
-    Move *= CurvedMagnitude / Magnitude;
-}
-
-//=========================================================================
-
-void PlayerMovement::BuildInput( PlayerMoveInput const& Source,
-                                 PlayerMoveInput&       Input ) const
-{
-    Input = Source;
-
-    vector2 GamepadMove( Source.GamepadStrafe, Source.GamepadForward );
-    ShapeGamepadMoveVector( GamepadMove );
-    Input.GamepadStrafe  = GamepadMove.X;
-    Input.GamepadForward = GamepadMove.Y;
-}
-
-//=========================================================================
-
-void PlayerMovement::BuildKeyboardSpeeds( PlayerMoveInput const& Input,
-                                          f32                    MaxSpeed,
-                                          PlayerMovementSpeeds& Speeds )
-{
-    Speeds.Forward = MaxSpeed * Input.KeyboardForward;
-    Speeds.Strafe  = MaxSpeed * Input.KeyboardStrafe;
-}
-
-//=========================================================================
-
-void PlayerMovement::ApproachGamepadVelocity( vector2 const& TargetVelocity,
-                                              f32            Acceleration,
-                                              f32            DecelerationFactor,
-                                              f32            DeltaTime,
-                                              vector2&       Velocity )
-{
-    Acceleration       = MAX( 0.0f, Acceleration );
-    DecelerationFactor = MAX( 0.0f, DecelerationFactor );
-    DeltaTime          = MAX( 0.0f, DeltaTime );
-
-    f32 const TargetSpeedSqr = TargetVelocity.LengthSquared();
-    f32 const CurrentSpeedSqr = Velocity.LengthSquared();
-    xbool const IsDecelerating = (TargetSpeedSqr <= F32_MIN) ||
-                                 (TargetSpeedSqr < CurrentSpeedSqr) ||
-                                 (v2_Dot( Velocity, TargetVelocity ) <= 0.0f);
-    f32 const Rate = Acceleration * (IsDecelerating ? DecelerationFactor : 1.0f);
-
-    vector2 Delta = TargetVelocity - Velocity;
-    f32 const Distance = Delta.Length();
-    if( Distance <= F32_MIN )
-    {
-        Velocity = TargetVelocity;
-        return;
-    }
-
-    f32 const Step = Rate * DeltaTime;
-    if( Step >= Distance )
-    {
-        Velocity = TargetVelocity;
-        return;
-    }
-
-    Velocity += Delta * (Step / Distance);
-}
-
-//=========================================================================
-
-void PlayerMovement::AdvanceGamepadSpeed( PlayerMoveInput const&        Input,
-                                          PlayerMovementSettings const& Settings,
-                                          f32                           DeltaTime,
-                                          PlayerMovementSpeeds&         Speeds )
-{
-    f32 const MaxSpeed = MAX( x_abs( Settings.MaxSpeed ), 0.0f );
-    vector2 const TargetVelocity( Input.GamepadStrafe * MaxSpeed,
-                                  Input.GamepadForward * MaxSpeed );
-
-    ApproachGamepadVelocity( TargetVelocity,
-                             Settings.Acceleration,
-                             Settings.DecelerationFactor,
-                             DeltaTime,
-                             m_GamepadVelocity );
-
-    f32 const Speed = m_GamepadVelocity.Length();
-    if( Speed > MaxSpeed )
-    {
-        m_GamepadVelocity *= MaxSpeed / Speed;
-    }
-
-    Speeds.Forward = m_GamepadVelocity.Y;
-    Speeds.Strafe  = m_GamepadVelocity.X;
-}
-
-//=========================================================================
-
-void PlayerMovement::CombineDeviceSpeeds( PlayerMovementSpeeds const& KeyboardSpeeds,
-                                          PlayerMovementSpeeds const& GamepadSpeeds,
-                                          f32                         MaxSpeed,
-                                          PlayerMovementSpeeds&       Speeds )
-{
-    Speeds.Forward = x_clamp( KeyboardSpeeds.Forward + GamepadSpeeds.Forward,
-                              -MaxSpeed,
-                               MaxSpeed );
-    Speeds.Strafe = x_clamp( KeyboardSpeeds.Strafe + GamepadSpeeds.Strafe,
-                             -MaxSpeed,
-                              MaxSpeed );
-}
-
-//=========================================================================
-
-void PlayerMovement::Evaluate( PlayerMoveInput const&        Input,
-                               PlayerMovementSettings const& Settings,
-                               f32                          DeltaTime,
-                               PlayerMovementSpeeds&        Speeds )
-{
-    f32 const MaxSpeed = MAX( x_abs( Settings.MaxSpeed ), 0.0f );
-
-    PlayerMovementSpeeds KeyboardSpeeds;
-    BuildKeyboardSpeeds( Input, MaxSpeed, KeyboardSpeeds );
-
-    PlayerMovementSpeeds GamepadSpeeds;
-    AdvanceGamepadSpeed( Input, Settings, DeltaTime, GamepadSpeeds );
-
-    // Device policies meet only here. Either device may augment or oppose the
-    // other, but neither is processed by the other device's response curve.
-    CombineDeviceSpeeds( KeyboardSpeeds, GamepadSpeeds, MaxSpeed, Speeds );
-}
 
 void player::Push( const vector3& PushVector )
 {
@@ -283,49 +117,19 @@ void player::UpdateWeaponPullback( void )
 
 void player::MoveAnimPlayer( const vector3& Pos )
 {
-    m_AnimPlayer.SetPosition( Pos + GetAnimPlayerOffset() );
+    m_AnimPlayer.SetPosition( Pos + GetAnimPlayerOffset() + vector3( 0.0f, m_StepView.GetOffset(), 0.0f ) );
 }
 
-void player::OnMove( const vector3& rNewPos )
+void player::OnMove( const vector3& NewPosition )
 {
     X_PROFILE_SCOPE_CATEGORY( "Context", "player::OnMove" );
-
-    OnMoveViewPosition( rNewPos );
-
-    //==========================================================================================
-    // Begin code from ghost.cpp
-    //==========================================================================================
-    
     if( GetAttrBits() & object::ATTR_DESTROY )
         return;
 
-    m_DeltaPos = rNewPos - GetPosition();
-
-    // HACKOMOTRON - 
-    //
-    // Problem: When the ghost spawns or is created, he is created essentially 
-    // at the origin and then moved to his starting point.  The above 
-    // computation for m_DeltaPos results in a large vector which is, in turn,
-    // used by the physics the first time the ghost runs his logic.  The poor
-    // ghost then proceeds to collide with several walls.
-    //
-    // Proper solution:
-    // (1) The ghost should not run physics or collision.
-    // (2) Upon creation or spawning, the ghost should not attempt to travel
-    //     long distances in the first frame following.
-    //
-    // HACK: If m_DeltaPos is too large, set it to 0.
-
-    if( m_DeltaPos.LengthSquared() > (500*500) )  // 5 meters squared
-        m_DeltaPos.Zero();
-
-    actor::OnMove( rNewPos );
-
-    m_Physics.SetPosition( rNewPos );
-
-    //==========================================================================================
-    // End code from ghost.cpp
-    //==========================================================================================
+    m_DeltaPos = NewPosition - GetPosition();
+    actor::OnMove( NewPosition );
+    m_Physics.SetPosition( NewPosition );
+    OnMoveViewPosition( NewPosition );
 }
 
 void player::OnMoveViewPosition( const vector3& rNewPos )
@@ -346,6 +150,7 @@ void player::OnMoveViewPosition( const vector3& rNewPos )
 
 void player::OnTransform( const matrix4& L2W )
 {
+    m_StepView.Clear();
     //==========================================================================================
     // Begin code from ghost.cpp
     //==========================================================================================
@@ -368,7 +173,7 @@ void player::OnTransform( const matrix4& L2W )
 
 void player::OnRidingPlatformMove( const vector3& NewPos, radian DeltaYaw )
 {
-    (void)DeltaYaw;
+    SetYaw( x_ModAngle2( m_Yaw + DeltaYaw ) );
     OnMove( NewPos );
 }
 
@@ -378,6 +183,7 @@ void player::UpdateMovement( f32 DeltaTime )
     {
         ASSERT( FALSE );
         m_DeltaPos.Zero();
+        m_StepView.Clear();
         return;
     }
 
@@ -391,12 +197,16 @@ void player::UpdateMovement( f32 DeltaTime )
         (IsCinemaRunning() && (GetCinemaCameraGuid() != 0)) )
     {
         m_DeltaPos.Zero();
+        m_StepView.Clear();
+        OnMoveViewPosition( GetPosition() );
         return;
     }
 
     if( UpdateLadderMovement( DeltaTime ) )
     {
         m_Movement.Clear();
+        m_StepView.Clear();
+        OnMoveViewPosition( GetPosition() );
         return;
     }
 
@@ -412,17 +222,17 @@ void player::UpdateMovement( f32 DeltaTime )
     ApplyMovementSpeedFactors();
 
     vector3 MovementVelocity = m_StrafeVelocity + m_ForwardVelocity;
-    if( m_bIsCrouching )
-    {
-        MovementVelocity *= 0.45f;
-    }
+    MovementVelocity *= 1.0f - 0.55f * m_fCurrentCrouchFactor;
 
     m_DeltaPos = MovementVelocity * DeltaTime;
 
     if( !m_bInTurret )
     {
         m_Physics.Advance( m_Physics.GetPosition() + m_DeltaPos, DeltaTime );
+        m_StepView.Advance( m_Physics.GetStepOffset(), DeltaTime, m_Physics.GetMovementSettings().StepHeight );
     }
+    else
+        m_StepView.Clear();
 
     ASSERT( m_ArmsOffset.IsValid() );
     ASSERT( m_ArmsVelocity.IsValid() );
@@ -556,24 +366,11 @@ void player::OnColCheck( void )
     Offset.GetY() = 0.0f;
     Pos += Offset;
 
-    vector3 SpherePos[16];
-    s32     nSpheres;
-    s32     i;
-
+    const f32 Radius = m_Physics.GetColRadius();
     g_CollisionMgr.StartApply( GetGuid() );
-
-    nSpheres = g_CollisionMgr.GetCylinderSpherePositions(  
-        Pos,
-        Pos + vector3(0,m_Physics.GetColHeight(),0),
-        m_Physics.GetColRadius(),
-        SpherePos,
-        object::MAT_TYPE_FLESH );
-
-    for( i=0; i<nSpheres; i++ )
-    {
-        g_CollisionMgr.ApplySphere( SpherePos[i], m_Physics.GetColRadius(), object::MAT_TYPE_FLESH );
-    }
-
+    g_CollisionMgr.ApplyCapsule( Pos + vector3( 0.0f, Radius, 0.0f ),
+        Pos + vector3( 0.0f, m_Physics.GetColHeight() - Radius, 0.0f ),
+        Radius, object::MAT_TYPE_FLESH );
     g_CollisionMgr.EndApply();
 }
 
@@ -631,42 +428,6 @@ void player::UpdateLean( f32 LeanValue, f32 DeltaTime )
 
     m_SoftLeanAmount = ComputeSoftLean( m_LeanAmount );
 
-    // check to make sure we aren't violating any collision
-    if ( (m_LeanState == LEAN_RIGHT) || (m_LeanState == LEAN_LEFT) )
-    {
-        // New position
-        vector3 StartPos( GetPosition() );
-        vector3 Offset  ( GetAnimPlayerOffset() );
-        Offset.GetY() = 0.0f;
-        vector3 EndPos  ( GetPosition() + Offset );
-
-        //
-        // We need to elevate our collision check to account for uneven floors
-        // that cause us to collide at our feet, when we're mostly just
-        // concerned about the player's head and weapon
-        //
-        static const f32 TweakLeanElevate = 10.0f;
-        StartPos.GetY() += TweakLeanElevate;
-        EndPos.GetY() += TweakLeanElevate;
-
-        const vector3 Delta( EndPos - StartPos );
-
-        if ( Delta.LengthSquared() > ZERO )
-        {
-            m_Physics.SetupPlayerCollisionCheck( StartPos, EndPos );
-            g_CollisionMgr.CheckCollisions( object::TYPE_ALL_TYPES, 
-                                            object::ATTR_BLOCKS_PLAYER_LOS, 
-                                            object::ATTR_COLLISION_PERMEABLE | object::ATTR_LIVING );
-
-            if ( g_CollisionMgr.m_nCollisions > 0 )
-            {
-                vector3 StopPos = StartPos + (Delta * g_CollisionMgr.m_Collisions[0].T);
-                m_SoftLeanAmount = ComputeLeanValueForPosition( StartPos, StopPos, m_LeanState == LEAN_RIGHT );
-                m_LeanAmount = ComputeLean( m_SoftLeanAmount );
-            }
-        }
-    }
-
 #ifndef X_EDITOR
     // Send across net?    
     if(     ( OldLeanState      != m_LeanState      )
@@ -697,6 +458,51 @@ vector3 player::GetLeanOffset( void )
 
     return Lean;
 }
+
+//=========================================================================
+
+void player::ConstrainLean( void )
+{
+    vector3 Delta = GetLeanOffset();
+    Delta.GetY() = 0.0f;
+    const f32 Distance = Delta.Length();
+    if( (Distance <= ZERO) || !m_Physics.IsLocoCollisionOn() )
+    {
+        return;
+    }
+
+    // Validate a virtual player capsule at the leaned position. The eye and its
+    // near plane stay inside this hull; arms spring offsets do not move the hull.
+    const vector3 Start = GetPosition();
+    m_Physics.SetupPlayerCollisionCheck( Start, Start + Delta );
+    g_CollisionMgr.UseLowPoly();
+    g_CollisionMgr.SetMaxCollisions( MAX_COLLISION_MGR_COLLISIONS );
+    g_CollisionMgr.DoNotRemoveDuplicateGuids();
+    g_CollisionMgr.CheckCollisions( object::TYPE_ALL_TYPES, object::ATTR_BLOCKS_PLAYER,
+                                     object::ATTR_COLLISION_PERMEABLE | object::ATTR_LIVING );
+
+    f32 Fraction = 1.0f;
+    for( s32 i = 0; i < g_CollisionMgr.m_nCollisions; i++ )
+    {
+        const collision_mgr::collision& Hit = g_CollisionMgr.m_Collisions[i];
+        if( Hit.SlipPlane.Normal.Dot( Delta ) < -ZERO )
+        {
+            Fraction = MIN( Fraction, x_max( 0.0f, Hit.T - PlayerView::ClearanceMargin / Distance ) );
+        }
+    }
+    if( Fraction >= 1.0f )
+    {
+        return;
+    }
+
+    m_SoftLeanAmount *= Fraction;
+    m_LeanAmount = ComputeLean( m_SoftLeanAmount );
+#ifndef X_EDITOR
+    m_NetDirtyBits |= LEAN_BIT;
+#endif
+}
+
+//=========================================================================
 
 void player::UpdateArmsOffsetForLean( f32 DeltaTime )
 {
@@ -764,10 +570,14 @@ void player::UpdateArmsOffsetForLean( f32 DeltaTime )
     ASSERT( m_LeanWeaponOffset.IsValid() );
 }
 
+//=========================================================================
+
 vector3 player::GetAnimPlayerOffset( void )
 {
     return m_ArmsOffset + GetLeanOffset() + m_LeanWeaponOffset;
 }
+
+//=========================================================================
 
 void player::ManTurret( guid TurretGuid, 
                         guid Turret2Guid, 
@@ -833,6 +643,8 @@ void player::ManTurret( guid TurretGuid,
     m_bInTurret  = TRUE;
 }
 
+//=========================================================================
+
 void player::ExitTurret( void )
 {
     if ( m_bInTurret )
@@ -848,7 +660,7 @@ void player::ExitTurret( void )
                   PlayerTeleportVelocityPolicy::Clear );
         loco* pLoco = GetLocoPointer();
         if( pLoco )
-            pLoco->m_Physics.SetVelocity( vector3(0.0f,0.0f,0.0f) );
+            pLoco->m_Physics.SetMotionVelocity( vector3(0.0f,0.0f,0.0f) );
         SwitchWeapon2( m_Turret.PreviousWeapon );
         m_Inventory2.RemoveAmount( INVEN_WEAPON_TRA, 1 );
         m_bInTurret  = FALSE;
@@ -865,6 +677,8 @@ void player::ExitTurret( void )
 
     }
 }
+
+//=========================================================================
 
 void player::Teleport( const vector3& Position,
                        zone_mgr::zone_id Zone1,
@@ -894,7 +708,7 @@ void player::Teleport( const vector3& Position,
                        xbool DoBlend,
                        xbool DoEffect )
 {
-    vector3 Velocity = m_Physics.GetVelocity();
+    vector3 Velocity = m_Physics.GetMotionVelocity();
     if( VelocityPolicy == PlayerTeleportVelocityPolicy::Keep )
     {
         radian const DeltaYaw = x_MinAngleDiff( Yaw, GetYaw() );
@@ -925,33 +739,22 @@ void player::Teleport( const vector3& Position,
     m_bApplyingTeleport = FALSE;
     m_DeltaPos.Zero();
 
+    m_StepView.Clear();
     m_Physics.InitialGroundCheck( Position );
     g_ZoneMgr.RebaseZoneTracking( *this,
                                   m_ZoneTracker,
                                   Position,
                                   Zone1,
-                                  Zone2,
-                                  zone_mgr::SeedSource::Destination );
+                                  Zone2 );
+    g_ZoneMgr.AdvanceZoneTracking( *this, m_ZoneTracker, GetZoneTrackingPosition() );
 
-    if( !m_RenderViewZoneUsesCameraSeed &&
-        !m_ViewController.IsBlending() )
-    {
-        g_ZoneMgr.RebaseZoneTracking( m_RenderViewZoneTracker,
-                                      GetDefaultViewPos(),
-                                      Zone1,
-                                      Zone2,
-                                      zone_mgr::SeedSource::Destination );
-        m_RenderViewZoneInitialized = TRUE;
-        m_RenderViewZoneSourceGuid = NULL_GUID;
-        m_RebaseRenderViewZone = FALSE;
-    }
     ResetFallStateAfterDiscontinuity();
-    m_Physics.ZeroVelocity();
+    m_Physics.ClearMotionVelocity();
     if( VelocityPolicy == PlayerTeleportVelocityPolicy::Keep )
     {
-        m_Physics.AddVelocity( Velocity );
+        m_Physics.ApplyImpulse( Velocity );
     }
-    SetIsAirborn( m_Physics.IsAirborn() );
+    SetIsAirborn( m_Physics.IsAirborne() );
 
     if( !DoBlend )
     {
@@ -976,6 +779,8 @@ void player::Teleport( const vector3& Position,
     AttachWeapon();
 }
 
+//=========================================================================
+
 xbool player::IsAvatar( void )
 {
     xbool bRenderAvatar = !m_bActivePlayer
@@ -993,6 +798,8 @@ xbool player::IsAvatar( void )
     return bRenderAvatar;
 }
 
+//=========================================================================
+
 xbool player::UsingLoco( void )
 {
 #if defined( X_EDITOR )
@@ -1002,6 +809,8 @@ xbool player::UsingLoco( void )
     return ( GameMgr.IsGameMultiplayer() );
 #endif
 }
+
+//=========================================================================
 
 static f32 ComputeSoftLean( f32 LeanAmount )
 {
@@ -1015,6 +824,8 @@ static f32 ComputeSoftLean( f32 LeanAmount )
     return( Sign * (1.0f - ((x_sin( Period + Phase ) + 1.0f) / 2.0f)) );
 }
 
+//=========================================================================
+
 static f32 ComputeLean( f32 SoftLeanAmount )
 {
     SoftLeanAmount = MAX( -1.0f, SoftLeanAmount );
@@ -1026,19 +837,7 @@ static f32 ComputeLean( f32 SoftLeanAmount )
     return Sign * LeanAmount;
 }
 
-static f32 ComputeLeanValueForPosition( const vector3& Start, const vector3& HitPoint, xbool bLeaningRight )
-{
-    vector3 Lean( HitPoint - Start );
-    Lean.GetY() = 0.0f;
-
-    f32 LeanAmount = (Lean / GetTweakF32( "LeanX" )).Length();
-    if ( bLeaningRight )
-    {
-        LeanAmount *= -1.0f;
-    }
-
-    return LeanAmount;
-}
+//=========================================================================
 
 static void HideObject( object* pObj )
 {
@@ -1049,6 +848,8 @@ static void HideObject( object* pObj )
         pObj->OnMove( Pos );
     }
 }
+
+//=========================================================================
 
 static void UnhideObject( object* pObj )
 {
@@ -1069,7 +870,7 @@ void player::UpdateGhostLoco( f32 DeltaTime )
         return;
     }
 
-    m_pLoco->SetGhostIsMoving( m_Physics.GetVelocity().LengthSquared() > x_sqr( 0.01f ) );
+    m_pLoco->SetGhostIsMoving( m_Physics.GetMotionVelocity().LengthSquared() > x_sqr( 0.01f ) );
     m_pLoco->SetPitch( m_Pitch );
     m_pLoco->SetYaw( m_Yaw );
     OnAdvanceGhostLogic( DeltaTime );

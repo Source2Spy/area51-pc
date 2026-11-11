@@ -11,6 +11,7 @@
 
 #include "Player.hpp"
 #include "Render/PrimitiveDebug.hpp"
+#include "Render/RenderScope.hpp"
 #include "GameLib/RenderContext.hpp"
 #include "Objects/HudObject.hpp"
 #include "Objects/LoreObject.hpp"
@@ -46,6 +47,9 @@ void player::OnRenderTransparent(void)
 {
     actor::OnRenderTransparent();
 
+    if( render::GetActiveRenderScopeDesc().Purpose == render::RENDER_VIEW_SCENE_CAPTURE && !IsAvatar() )
+        return;
+
 #ifndef X_EDITOR
     if ( m_CurrentAnimState == ANIM_STATE_MISSION_FAILED )
     {
@@ -73,7 +77,7 @@ void player::OnRenderTransparent(void)
         {
             // display a localized text message instead of the bitmap            
             irect Rect( 0, 100, 512, 130 );
-            RenderLine( (xwchar*)g_StringTableMgr( "ui", "IDS_MISSION_FAILED" ), Rect, 255, g_HudColor, 0, ui_font::h_center | ui_font::v_top  );
+            RenderLine( g_StringTableMgr( "ui", "IDS_MISSION_FAILED" ), Rect, 255, g_HudColor, 0, ui_font::h_center | ui_font::v_top );
         }
 
         const s32 mfx = 0;
@@ -82,7 +86,7 @@ void player::OnRenderTransparent(void)
         irect Rect;
         Rect.Set( mfx, mfy + 50, 512, mfy+51 );
         Color.Set( XCOLOR_YELLOW );
-        RenderLine( (xwchar*)g_StringTableMgr( g_StringMgr.GetString( m_MissionFailedTableName ), g_StringMgr.GetString( m_MissionFailedReasonName ) ), Rect, 255, Color, 0, ui_font::h_center | ui_font::v_top  );
+        RenderLine( g_StringTableMgr( g_StringMgr.GetString( m_MissionFailedTableName ), g_StringMgr.GetString( m_MissionFailedReasonName ) ), Rect, 255, Color, 0, ui_font::h_center | ui_font::v_top );
     }
 #endif
 
@@ -181,9 +185,34 @@ void player::OnRenderTransparent(void)
     }
 }
 
+//=============================================================================
+
+void player::UpdateFirstPersonArmsVisibility( void )
+{
+    const xbool IsEnteringMutation = (m_CurrentAnimState == ANIM_STATE_SWITCH_TO)
+                                 && (m_PrevWeaponItem != INVEN_WEAPON_MUTATION);
+    const xbool IsMutationAnimation = (m_CurrentAnimState == ANIM_STATE_CHANGE_MUTATION)
+                                  && (m_AnimStage < 3);
+    const xbool ShowHumanHands = (m_CurrentWeaponItem != INVEN_WEAPON_MUTATION)
+                             || IsEnteringMutation || IsMutationAnimation;
+    const xbool HasMutation = m_Inventory2.HasItem( INVEN_WEAPON_MUTATION );
+
+    m_Skin.SetVMeshBit( "MESH_Arms_Hazmat",  TRUE );
+    m_Skin.SetVMeshBit( "MESH_Hands_Bare",   ShowHumanHands && HasMutation );
+    m_Skin.SetVMeshBit( "MESH_Hands_Hazmat", ShowHumanHands && !HasMutation );
+}
+
+//=============================================================================
+
 void player::OnRender( void )
 {
     X_PROFILE_SCOPE_CATEGORY( "Context", "player::OnRender" );
+
+    if( render::GetActiveRenderScopeDesc().Purpose == render::RENDER_VIEW_SCENE_CAPTURE && !IsAvatar() )
+    {
+        actor::OnRender();
+        return;
+    }
 
     //
     // Make sure 1st person/3rd person weapon is in correct position for rendering!
@@ -226,24 +255,7 @@ void player::OnRender( void )
         return;
     }
 
-    if ( !m_bIsMutated )
-    {
-        if ( m_Inventory2.GetAmount( INVEN_GLOVES ) > 0.0f )
-        {
-            // set virtual mesh for gloves
-            m_Skin.SetVMeshBit( "MESH_Arms_Hazmat",  TRUE  );
-            m_Skin.SetVMeshBit( "MESH_Hands_Bare",   FALSE );
-            m_Skin.SetVMeshBit( "MESH_Hands_Hazmat", TRUE  );
-
-        }
-        else
-        {
-            // set virtual mesh for no gloves
-            m_Skin.SetVMeshBit( "MESH_Arms_Hazmat",  TRUE  );
-            m_Skin.SetVMeshBit( "MESH_Hands_Bare",   TRUE  );
-            m_Skin.SetVMeshBit( "MESH_Hands_Hazmat", FALSE );
-        }
-    }
+    UpdateFirstPersonArmsVisibility();
 
 #if defined(X_EDITOR)
     if ( g_ShowPlayerPos )
@@ -273,7 +285,7 @@ void player::OnRender( void )
         // gather flags and ambient color
         xcolor Ambient;
         u32    Flags = (GetFlagBits() & object::FLAG_CHECK_PLANES) ? render::CLIPPED : 0;
-        if ( g_RenderContext.m_bIsMutated && !g_RenderContext.m_bIsPipRender && m_bAllowedToGlow )
+        if ( g_RenderContext.m_bIsMutated && render::GetActiveRenderScopeDesc().EnablePostProcessing && m_bAllowedToGlow )
         {
             Flags  |= render::GLOWING;
 
@@ -358,7 +370,7 @@ void player::OnRender( void )
             SkinInst.Render( &GetL2W(),
                             pBone, 
                             nBones, 
-                            Flags | render::CLIPPED | render::DISABLE_SPOTLIGHT, 
+                            Flags | render::CLIPPED | render::DISABLE_PROJ_LIGHT | render::FIRST_PERSON, 
                             SkinInst.GetLODMask(GetL2W()),
                             Ambient );
         }
@@ -437,8 +449,7 @@ void player::OnEditorRender( void )
                                                     render::PRIMITIVE_BLEND_OPAQUE,
                                                     render::PRIMITIVE_DEPTH_READ_WRITE,
                                                     render::PRIMITIVE_RASTER_SOLID,
-                                                    render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                    render::PRIMITIVE_LAYER_SURFACE );
+                                                    render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
         render::PrimitiveBatch Batch( Material );
         // draw a cone
         // draw each vertex in the z plane then transform it

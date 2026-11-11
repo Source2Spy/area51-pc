@@ -48,6 +48,7 @@
 mono_crash.*
 
 # Build results
+build/
 /build/
 [Dd]ebug/
 [Dd]ebugPublic/

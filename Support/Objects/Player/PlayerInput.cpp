@@ -27,18 +27,18 @@
 #include "Objects/WeaponSniper.hpp"
 #include "Objects/WeaponSMP.hpp"
 #include "Objects/Corpse.hpp"
-#include "NetworkMgr/NetObjMgr.hpp"
+#include "NetworkMgr/Replication/NetObjMgr.hpp"
 #include "NetworkMgr/Voice/VoiceMgr.hpp"
 #include "Objects/Ladders/Ladder_Field.hpp"
 #include "Objects/GrenadeProjectile.hpp"
 #include "Objects/GravChargeProjectile.hpp"
 #include "Objects/JumpingBeanProjectile.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "Objects/Door.hpp"
 #include "Objects/Projector.hpp"
 #include "Objects/WeaponMutation.hpp"
 #include "StateMgr/StateMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "Objects/HudObject.hpp"
 #include "Characters/ActorEffects.hpp"
 #include "Configuration/GameConfig.hpp"
@@ -53,7 +53,7 @@
 #ifdef X_EDITOR
 #include "../../../Apps/Editor/Project.hpp"
 #else
-#include "NetworkMgr/MsgMgr.hpp"
+#include "NetworkMgr/Messages/MsgMgr.hpp"
 #include "Menu/DebugMenu2.hpp"
 #endif
 
@@ -391,7 +391,7 @@ void player::OnButtonInput( f32 DeltaTime )
         if( Input.WasPressed( PlayerAction::Jump ) )
             m_JumpBufferTime = s_JumpBufferDuration;
 
-        if( (m_JumpBufferTime > 0.0f) && !m_Physics.GetFallMode() )
+        if( (m_JumpBufferTime > 0.0f) && (m_bOnLadder || m_Physics.IsGrounded()) )
         {
             if( Jump() )
             {
@@ -428,15 +428,11 @@ void player::OnButtonInput( f32 DeltaTime )
     // So, this is where we get the button press values
     //
     PlayerActionState const& MutationInput   = Input.GetAction( PlayerAction::Mutation );
-    PlayerActionState const& MPMutationInput = Input.GetAction( PlayerAction::MultiplayerMutation );
     
     const xbool IsLeaning = x_abs( m_SoftLeanAmount ) > 0.1f;
     const f32 ActionMutation   = IsLeaning ? MutationInput.Value   : MutationInput.PressedValue;
-    const f32 ActionMPMutation = IsLeaning ? MPMutationInput.Value : MPMutationInput.PressedValue;
 
-    xbool MutationPressed = Multiplayer
-                          ? (ActionMutation > 0.25f)
-                          : (ActionMPMutation > 0.25f);
+    xbool MutationPressed = ActionMutation > 0.25f;
 
     static const f32 MinTimeSinceUseToThrowGrenade = 1.0f;
     static const f32 MinTimeSinceUseToMutate = 1.0f;
@@ -458,7 +454,7 @@ void player::OnButtonInput( f32 DeltaTime )
 
         if ( IsLeaning )
         {
-            MutationValue = Multiplayer ? MutationInput.Value : MPMutationInput.Value;
+            MutationValue = MutationInput.Value;
         }
 
         ASSERTS( MutationValue > 0.0f, "Mutation input is zero when toggling mutation; check the input mapping" );
@@ -503,9 +499,7 @@ void player::OnButtonInput( f32 DeltaTime )
     //
     // NOTE: TWEEK THIS, WE MIGHT WANT TO MAKE THE RAMP DOWN FIRST BEFORE DOING MELEE.
     //
-    xbool MeleePressed = m_bIsMutated
-                        ? Input.IsHeld( PlayerAction::MutantMelee )
-                        : Input.IsHeld( PlayerAction::MeleeAttack );
+    xbool MeleePressed = Input.IsHeld( PlayerAction::MeleeAttack );
     if( !m_bInTurret && MeleePressed )
     {
         animation_state MeleeState = ANIM_STATE_MELEE;
@@ -618,9 +612,7 @@ void player::OnButtonInput( f32 DeltaTime )
     }
 
     // flashlight button
-    xbool FlashlightPressed = Multiplayer
-                             ? Input.WasPressed( PlayerAction::MultiplayerFlashlight )
-                             : Input.WasPressed( PlayerAction::Flashlight );
+    xbool FlashlightPressed = Input.WasPressed( PlayerAction::Flashlight );
 
     if ( FlashlightPressed && !IsMutated() )
     {

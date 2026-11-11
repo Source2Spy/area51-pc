@@ -5,7 +5,7 @@
 #include "Obj_mgr/obj_mgr.hpp"
 #include "Objects/Render/RenderInst.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/NetObjMgr.hpp"
+#include "NetworkMgr/Replication/NetObjMgr.hpp"
 #include "Configuration/GameConfig.hpp"
 //=========================================================================
 // VARIABLES
@@ -344,7 +344,8 @@ void bin_level::AddPropertyToObject( prop_entry& pe, object* pObject )
     case PROP_TYPE_EXTERNAL:
         {
             MEMORY_OWNER_DETAIL("PROP_TYPE_EXTERNAL");
-            m_BitStream.ReadString(cData);
+            if( !m_BitStream.ReadString( cData, sizeof(cData) ) )
+                return;
             pq.WQueryExternal( m_pDictionary->GetString(pe.NameIndex), cData);
             pObject->OnProperty(pq);
         }
@@ -352,7 +353,8 @@ void bin_level::AddPropertyToObject( prop_entry& pe, object* pObject )
     case PROP_TYPE_BUTTON:  
         {
             MEMORY_OWNER_DETAIL("PROP_TYPE_BUTTON");
-            m_BitStream.ReadString(cData);
+            if( !m_BitStream.ReadString( cData, sizeof(cData) ) )
+                return;
             pq.WQueryButton( m_pDictionary->GetString(pe.NameIndex), cData);
             pObject->OnProperty(pq);
         }
@@ -360,7 +362,8 @@ void bin_level::AddPropertyToObject( prop_entry& pe, object* pObject )
     case PROP_TYPE_FILENAME:     
         {
             MEMORY_OWNER_DETAIL("PROP_TYPE_FILENAME");
-            m_BitStream.ReadString(cData);
+            if( !m_BitStream.ReadString( cData, sizeof(cData) ) )
+                return;
             pq.WQueryFileName( m_pDictionary->GetString(pe.NameIndex), cData);
             pObject->OnProperty(pq);
         }
@@ -368,7 +371,8 @@ void bin_level::AddPropertyToObject( prop_entry& pe, object* pObject )
     case PROP_TYPE_ENUM:  
         {
             MEMORY_OWNER_DETAIL("PROP_TYPE_ENUM");
-            m_BitStream.ReadString(cData);
+            if( !m_BitStream.ReadString( cData, sizeof(cData) ) )
+                return;
             pq.WQueryEnum( m_pDictionary->GetString(pe.NameIndex), cData);
             pObject->OnProperty(pq);
         }
@@ -376,7 +380,8 @@ void bin_level::AddPropertyToObject( prop_entry& pe, object* pObject )
     case PROP_TYPE_STRING:   
         {
             MEMORY_OWNER_DETAIL("PROP_TYPE_STRING");
-            m_BitStream.ReadString(cData);
+            if( !m_BitStream.ReadString( cData, sizeof(cData) ) )
+                return;
             pq.WQueryString( m_pDictionary->GetString(pe.NameIndex), cData);
             pObject->OnProperty(pq);
         }

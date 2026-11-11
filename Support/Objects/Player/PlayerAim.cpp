@@ -23,7 +23,7 @@
 #include "Objects/WeaponMutation.hpp"
 #include "Objects/WeaponSniper.hpp"
 #include "Objects/WeaponSMP.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "Objects/HudObject.hpp"
 #include "Configuration/GameConfig.hpp"
 
@@ -201,7 +201,7 @@ xbool BuildAimTargetInfo( actor&         Actor,
     loco* pLoco = Actor.GetLocoPointer();
     if( pLoco )
     {
-        TargetVelocity = pLoco->m_Physics.GetVelocity();
+        TargetVelocity = pLoco->m_Physics.GetContactVelocity();
     }
 
     vector3 RelativeVelocity = TargetVelocity - PlayerVelocity;
@@ -554,7 +554,7 @@ void player::RenderAimAssistDebugInfo( void )
                 vector3 SpineTop;
                 vector3 SpineBot;
                 {
-                    ((character*)pActor)->GetHeadAndRootPosition( SpineTop, SpineBot );
+                    pActor->GetHeadAndRootPosition( SpineTop, SpineBot );
                 }
 
                 //
@@ -718,7 +718,7 @@ void player::UpdateReticleRadius( f32 DeltaTime )
     //
     // First, figure out what the movement penalty is
     //
-    f32 Speed = m_Physics.GetVelocity().Length();
+    f32 Speed = m_Physics.GetMotionVelocity().Length();
     f32 DesiredRadius = ReticleParams.m_MaxRadius; // we'll apply penalties for movement and shooting to this
 
     if ( Speed >= SmallReticleSpeed )
@@ -921,7 +921,7 @@ void player::UpdateCurrentAimTarget( f32 DeltaTime )
 {
     const view& View              = GetSimulationView();
     const vector3 Position        = GetPosition();
-    const vector3 PlayerVelocity  = m_Physics.GetVelocity();
+    const vector3 PlayerVelocity  = m_Physics.GetContactVelocity();
     const f32 TargetCullDot       = x_cos( R_20 );
     const xbool bAimAssistActive  = IsAimAssistInputActive();
     (void)DeltaTime;
@@ -1028,7 +1028,7 @@ void player::UpdateReticleTarget( f32 DeltaTime )
 {
     const view& View              = GetSimulationView();
     const vector3 Position        = GetPosition();
-    const vector3 PlayerVelocity  = m_Physics.GetVelocity();
+    const vector3 PlayerVelocity  = m_Physics.GetContactVelocity();
     const f32 TargetCullDot       = x_cos( R_20 );
     xbool bReticleOn              = FALSE;
     f32 ReticleBestDist           = F32_MAX;

@@ -10,6 +10,8 @@
 #ifndef DEBUG_MENU_PAGE_ADV_CHECKPOINTS_HPP
 #define DEBUG_MENU_PAGE_ADV_CHECKPOINTS_HPP
 
+#include "CheckPointMgr/CheckPointMgr.hpp"
+
 //==============================================================================
 // Defines
 
@@ -21,7 +23,12 @@ public:
                                         debug_menu_page_adv_checkpoints     ( );
     virtual                             ~debug_menu_page_adv_checkpoints    ( ) { };
 
+    virtual void                        OnFocus     ( void );
+    virtual void                        OnChangeItem( debug_menu_item* pItem );
+
 protected:
+    xstring                             m_Names[MAX_CHECKPOINTS];
+    debug_menu_item*                    m_Checkpoints[MAX_CHECKPOINTS];
 };
 
 //==============================================================================

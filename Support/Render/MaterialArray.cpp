@@ -1,12 +1,12 @@
-//=============================================================================
+//=========================================================================
 //
 //  MaterialArray.cpp
 //
-//=============================================================================
+//=========================================================================
 
-//=============================================================================
-// Includes
-//=============================================================================
+//=========================================================================
+//  INCLUDES
+//=========================================================================
 
 #include "Render.hpp"
 
@@ -14,16 +14,16 @@
 #include "MaterialArray.hpp"
 #undef RENDER_PRIVATE
 
-//=============================================================================
-// Implementation
-//=============================================================================
+//=========================================================================
+//  IMPLEMENTATION
+//=========================================================================
 
 MaterialArray::MaterialArray( void )
-    : m_sorted( FALSE ), m_capacity( FALSE ), m_nNodes( 0 ), m_pNodes( NULL ), m_pIndices( NULL )
+    : m_isSorted( FALSE ), m_Capacity( FALSE ), m_nNodes( 0 ), m_pNodes( NULL ), m_pIndices( NULL )
 {
 }
 
-//=============================================================================
+//=========================================================================
 
 MaterialArray::~MaterialArray( void )
 {
@@ -34,7 +34,7 @@ MaterialArray::~MaterialArray( void )
     }
 }
 
-//=============================================================================
+//=========================================================================
 
 s32 NodeCompareFn( void const* pA, void const* pB )
 {
@@ -51,27 +51,27 @@ s32 NodeCompareFn( void const* pA, void const* pB )
     {
         return -1;
     }
-    if ( pMatA->m_diffuseMap.GetPointer() > pMatB->m_diffuseMap.GetPointer() )
+    if ( pMatA->m_DiffuseMap.GetIndex() > pMatB->m_DiffuseMap.GetIndex() )
     {
         return 1;
     }
-    if ( pMatA->m_diffuseMap.GetPointer() < pMatB->m_diffuseMap.GetPointer() )
+    if ( pMatA->m_DiffuseMap.GetIndex() < pMatB->m_DiffuseMap.GetIndex() )
     {
         return -1;
     }
-    if ( pMatA->m_environmentMap.GetPointer() > pMatB->m_environmentMap.GetPointer() )
+    if ( pMatA->m_EnvironmentMap.GetIndex() > pMatB->m_EnvironmentMap.GetIndex() )
     {
         return 1;
     }
-    if ( pMatA->m_environmentMap.GetPointer() < pMatB->m_environmentMap.GetPointer() )
+    if ( pMatA->m_EnvironmentMap.GetIndex() < pMatB->m_EnvironmentMap.GetIndex() )
     {
         return -1;
     }
-    if ( pMatA->m_detailMap.GetPointer() > pMatB->m_detailMap.GetPointer() )
+    if ( pMatA->m_DetailMap.GetIndex() > pMatB->m_DetailMap.GetIndex() )
     {
         return 1;
     }
-    if ( pMatA->m_detailMap.GetPointer() < pMatB->m_detailMap.GetPointer() )
+    if ( pMatA->m_DetailMap.GetIndex() < pMatB->m_DetailMap.GetIndex() )
     {
         return -1;
     }
@@ -79,11 +79,11 @@ s32 NodeCompareFn( void const* pA, void const* pB )
     return 0;
 }
 
-//=============================================================================
+//=========================================================================
 
 void MaterialArray::Sort( void )
 {
-    if ( m_sorted )
+    if ( m_isSorted )
     {
         return;
     }
@@ -96,7 +96,7 @@ void MaterialArray::Sort( void )
         // remap the material indices
         for ( s32 i = 0; i < m_nNodes; i++ )
         {
-            ASSERT( ( m_pNodes[i].Handle.Handle >= 0 ) && ( m_pNodes[i].Handle.Handle < m_capacity ) );
+            ASSERT( ( m_pNodes[i].Handle.Handle >= 0 ) && ( m_pNodes[i].Handle.Handle < m_Capacity ) );
             m_pIndices[m_pNodes[i].Handle] = i;
         }
     }
@@ -110,10 +110,10 @@ void MaterialArray::Sort( void )
         }
     }
 
-    m_sorted = TRUE;
+    m_isSorted = TRUE;
 }
 
-//=============================================================================
+//=========================================================================
 
 void MaterialArray::Clear( void )
 {
@@ -126,29 +126,32 @@ void MaterialArray::Clear( void )
     }
 
     // clear all of the handle indices
-    for ( i = 0; i < m_capacity; i++ )
+    for ( i = 0; i < m_Capacity; i++ )
     {
         m_pIndices[i] = -1;
     }
 
     m_nNodes = 0;
-    m_sorted = FALSE;
+    m_FreeHandles.SetCount( 0 );
+    for ( s32 Handle = m_Capacity - 1; Handle >= 0; --Handle )
+        m_FreeHandles.Append() = Handle;
+    m_isSorted = FALSE;
 }
 
-//=============================================================================
+//=========================================================================
 
 void MaterialArray::GrowListBy( s32 nNodes )
 {
     ASSERT( nNodes > 0 );
 
     // increase the capacity
-    s32 newCapacity = m_capacity + nNodes;
+    s32 NewCapacity = m_Capacity + nNodes;
 
     // allocate the new arrays
-    node_info* pNewNodes = static_cast<node_info*>( x_malloc( ( sizeof( node_info ) + sizeof( s32 ) ) * newCapacity ) );
+    node_info* pNewNodes = static_cast<node_info*>( x_malloc( ( sizeof( node_info ) + sizeof( s32 ) ) * NewCapacity ) );
     ASSERT( pNewNodes );
 
-    s32* pNewIndices = reinterpret_cast<s32*>( pNewNodes + newCapacity );
+    s32* pNewIndices = reinterpret_cast<s32*>( pNewNodes + NewCapacity );
     ASSERT( pNewIndices );
 
     // copy all the previous nodes to the new arrays
@@ -157,17 +160,22 @@ void MaterialArray::GrowListBy( s32 nNodes )
         ASSERT( m_pNodes );
         x_memcpy( pNewNodes, m_pNodes, sizeof( node_info ) * m_nNodes );
     }
-    if ( m_capacity )
+    if ( m_Capacity )
     {
         ASSERT( m_pIndices );
-        x_memcpy( pNewIndices, m_pIndices, sizeof( s32 ) * m_capacity );
+        x_memcpy( pNewIndices, m_pIndices, sizeof( s32 ) * m_Capacity );
     }
 
     // set the new indices to -1
-    for ( s32 i = m_capacity; i < newCapacity; i++ )
+    for ( s32 i = m_Capacity; i < NewCapacity; i++ )
     {
         pNewIndices[i] = -1;
     }
+
+    if ( m_FreeHandles.GetCapacity() < NewCapacity )
+        m_FreeHandles.SetCapacity( NewCapacity );
+    for ( s32 Handle = NewCapacity - 1; Handle >= m_Capacity; --Handle )
+        m_FreeHandles.Append() = Handle;
 
     // update the arrays
     if ( m_pNodes )
@@ -176,29 +184,23 @@ void MaterialArray::GrowListBy( s32 nNodes )
     }
     m_pNodes = pNewNodes;
     m_pIndices = pNewIndices;
-    m_capacity = newCapacity;
+    m_Capacity = NewCapacity;
 }
 
-//=============================================================================
+//=========================================================================
 
 material& MaterialArray::Add( xhandle& hHandle )
 {
     // do we need to grow?
-    if ( m_nNodes >= m_capacity )
+    if ( m_nNodes >= m_Capacity )
     {
-        GrowListBy( MAX( m_capacity / 2, 100 ) );
+        GrowListBy( MAX( m_Capacity / 2, 100 ) );
     }
 
-    // find the first available index
-    s32 iHandle;
-    for ( iHandle = 0; iHandle < m_capacity; iHandle++ )
-    {
-        if ( m_pIndices[iHandle] == -1 )
-        {
-            break;
-        }
-    }
-    ASSERT( iHandle != m_capacity );
+    ASSERT( m_FreeHandles.GetCount() > 0 );
+    s32 const LastFree = m_FreeHandles.GetCount() - 1;
+    s32 const iHandle = m_FreeHandles[LastFree];
+    m_FreeHandles.SetCount( LastFree );
 
     // fill in the index information
     m_pIndices[iHandle] = m_nNodes;
@@ -210,12 +212,12 @@ material& MaterialArray::Add( xhandle& hHandle )
     m_nNodes++;
 
     // we'll need to re-sort
-    m_sorted = FALSE;
+    m_isSorted = FALSE;
 
     return m_pNodes[m_pIndices[iHandle]].Item;
 }
 
-//=============================================================================
+//=========================================================================
 
 void MaterialArray::DeleteByHandle( xhandle hHandle )
 {
@@ -227,21 +229,24 @@ void MaterialArray::DeleteByHandle( xhandle hHandle )
 
     // clear out the index
     m_pIndices[hHandle.Handle] = -1;
+    m_FreeHandles.Append() = hHandle.Handle;
 
     // copy the last node into the deleted node
     if ( index != ( m_nNodes - 1 ) )
     {
+        xConstruct( &m_pNodes[index].Item );
         m_pNodes[index].Item = m_pNodes[m_nNodes - 1].Item;
         m_pNodes[index].Handle = m_pNodes[m_nNodes - 1].Handle;
         m_pIndices[m_pNodes[index].Handle.Handle] = index;
+        ( reinterpret_cast<destructor*>( &m_pNodes[m_nNodes - 1].Item ) )->~destructor();
     }
     m_nNodes--;
 
     // flag that we'll need to sort again
-    m_sorted = FALSE;
+    m_isSorted = FALSE;
 }
 
-//=============================================================================
+//=========================================================================
 
 xbool MaterialArray::SanityCheck( void ) const
 {
@@ -252,7 +257,7 @@ xbool MaterialArray::SanityCheck( void ) const
         ASSERT( m_pIndices[m_pNodes[i].Handle.Handle] == i );
     }
 
-    for ( i = 0; i < m_capacity; i++ )
+    for ( i = 0; i < m_Capacity; i++ )
     {
         if ( m_pIndices[i] != -1 )
         {
@@ -263,15 +268,15 @@ xbool MaterialArray::SanityCheck( void ) const
     return TRUE;
 }
 
-//=============================================================================
+//=========================================================================
 
-void MaterialArray::Update( f32 deltaTime )
+void MaterialArray::Update( f32 DeltaTime )
 {
     for ( s32 i = 0; i < GetCount(); i++ )
     {
         material&         mat = operator[]( i );
-        material::uvanim& uvAnim = mat.m_uvAnim;
-        if ( uvAnim.nFrames <= 1 )
+        material::uvanim& UvAnim = mat.m_UVAnim;
+        if ( UvAnim.nFrames <= 1 )
         {
             continue;
         }
@@ -280,63 +285,65 @@ void MaterialArray::Update( f32 deltaTime )
         // with the sketal animations (this is to make blending and
         // looped anims work). We really don't want to do this for
         // uv anims, so consider nFrames to be one smaller.
-        s32 nFrames = uvAnim.nFrames - 1;
+        s32 nFrames = UvAnim.nFrames - 1;
 
         // calculate the next frame
-        uvAnim.CurrentFrame += deltaTime * uvAnim.FPS * uvAnim.Dir;
+        UvAnim.CurrentFrame += DeltaTime * UvAnim.FPS * UvAnim.Dir;
 
         // determine the type of animation
-        switch ( uvAnim.Type )
+        switch ( UvAnim.Type )
         {
             case geom::material::uvanim::FIXED:
                 {
-                    uvAnim.Dir = 0;
-                    uvAnim.CurrentFrame = static_cast<f32>( uvAnim.StartFrame );
+                    UvAnim.Dir = 0;
+                    UvAnim.CurrentFrame = static_cast<f32>( UvAnim.StartFrame );
                 }
                 break;
             case geom::material::uvanim::LOOPED:
                 {
-                    uvAnim.Dir = 1;
-                    if ( uvAnim.CurrentFrame >= static_cast<f32>( nFrames ) )
+                    UvAnim.Dir = 1;
+                    if ( UvAnim.CurrentFrame >= static_cast<f32>( nFrames ) )
                     {
-                        uvAnim.CurrentFrame = static_cast<f32>( uvAnim.StartFrame );
+                        UvAnim.CurrentFrame = static_cast<f32>( UvAnim.StartFrame );
                     }
                 }
                 break;
             case geom::material::uvanim::PINGPONG:
                 {
-                    if ( uvAnim.Dir > 0 )
+                    if ( UvAnim.Dir > 0 )
                     {
-                        uvAnim.Dir = 1;
-                        if ( uvAnim.CurrentFrame >= static_cast<f32>( nFrames ) )
+                        UvAnim.Dir = 1;
+                        if ( UvAnim.CurrentFrame >= static_cast<f32>( nFrames ) )
                         {
-                            uvAnim.CurrentFrame = static_cast<f32>( nFrames - 1 );
-                            uvAnim.Dir = -uvAnim.Dir;
+                            UvAnim.CurrentFrame = static_cast<f32>( nFrames - 1 );
+                            UvAnim.Dir = -UvAnim.Dir;
                         }
                     }
                     else
                     {
-                        uvAnim.Dir = -1;
-                        if ( uvAnim.CurrentFrame <= 0.0f )
+                        UvAnim.Dir = -1;
+                        if ( UvAnim.CurrentFrame <= 0.0f )
                         {
-                            uvAnim.CurrentFrame = 0.0f;
-                            uvAnim.Dir = -uvAnim.Dir;
+                            UvAnim.CurrentFrame = 0.0f;
+                            UvAnim.Dir = -UvAnim.Dir;
                         }
                     }
                 }
                 break;
             case geom::material::uvanim::ONESHOT:
                 {
-                    uvAnim.Dir = 1;
-                    if ( uvAnim.CurrentFrame >= static_cast<f32>( nFrames ) )
+                    UvAnim.Dir = 1;
+                    if ( UvAnim.CurrentFrame >= static_cast<f32>( nFrames ) )
                     {
-                        uvAnim.CurrentFrame = static_cast<f32>( nFrames - 1 );
-                        uvAnim.Dir = 0;
+                        UvAnim.CurrentFrame = static_cast<f32>( nFrames - 1 );
+                        UvAnim.Dir = 0;
                     }
                 }
                 break;
         }
 
-        uvAnim.iFrame = static_cast<s8>( x_floor( uvAnim.CurrentFrame ) );
+        UvAnim.iFrame = static_cast<s8>( x_floor( UvAnim.CurrentFrame ) );
     }
 }
+
+//=========================================================================

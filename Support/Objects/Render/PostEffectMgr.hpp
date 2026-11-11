@@ -7,6 +7,11 @@
 #include "x_color.hpp"
 #include "Objects/Player/Player.hpp"
 
+namespace render
+{
+    struct SceneColorGradeParams;
+}
+
 //=========================================================================
 
 class post_effect_mgr
@@ -20,6 +25,7 @@ public:
     void    Render      ( void );
     void    SetFilmGrainStrength( s32 Strength );
     void    SetBackgroundBlurEnabled( xbool Enabled );
+    void    SetSceneColorGrade( render::SceneColorGradeParams const& Params );
 
     // Fog must be done separately for particles to get fogged properly
     void    RenderFog   ( void );
@@ -38,6 +44,8 @@ protected:
     xbool   m_bDoPainBlur[MAX_LOCAL_PLAYERS];
     f32     m_PainBlurOffset[MAX_LOCAL_PLAYERS];
     xcolor  m_PainBlurColor[MAX_LOCAL_PLAYERS];
+    f32     m_PainBlurRed[MAX_LOCAL_PLAYERS];
+    f32     m_PainBlurAlpha[MAX_LOCAL_PLAYERS];
 
     // data related to screen fades (for begin/end of level campaign effects)
     xcolor  m_StartFadeColor;
@@ -47,6 +55,8 @@ protected:
     xbool   m_bFadeAudio;           // WARNING: HACK - SEE CPP FILE FOR DETAILS
     s32     m_FilmGrainStrength;
     xbool   m_bBackgroundBlurEnabled;
+    f32     m_SceneBrightness;
+    f32     m_SceneContrast;
 };
 
 //=========================================================================

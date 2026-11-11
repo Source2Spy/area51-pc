@@ -192,8 +192,7 @@ void spatial_dbase::Render( s32 MinLevel, s32 MaxLevel ) const
                                                 render::PRIMITIVE_BLEND_ALPHA,
                                                 render::PRIMITIVE_DEPTH_READ_ONLY,
                                                 render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                render::PRIMITIVE_LAYER_TRANSPARENT );
+                                                render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
     render::PrimitiveBatch Batch( Material );
     Batch.Reserve( m_nCells * 8, m_nCells * ARRAYSIZE( Index ) );
 
@@ -267,11 +266,6 @@ u16 spatial_dbase::AllocCell( s32 X, s32 Y, s32 Z, s32 Level )
         {
             ASSERT( 0 );
             x_throw( "Must Make the spacial data base bigger" );
-            #if defined( CONFIG_VIEWER )
-            extern void x_DebugSetCause( const char* pCause );
-            x_DebugSetCause( "Spatial database needs more Cells!" );
-            *(u32*)1 = 0;
-            #endif
         }
 
         // WARNING:

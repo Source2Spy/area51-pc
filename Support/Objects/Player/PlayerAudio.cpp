@@ -11,7 +11,6 @@
 #include "Player.hpp"
 #include "e_Audio.hpp"
 #include "Sound//EventSoundEmitter.hpp"
-#include "PerceptionMgr//PerceptionMgr.hpp"
 
 //=========================================================================
 //  IMPLEMENTATION
@@ -37,6 +36,7 @@ static const f32 s_MinDamageFallVelocity = 1100.0f;
 static const f32 s_FallVolumeAttenuation = 900.0f;
 
 //=========================================================================
+
 void player::UpdateBulletSounds( f32 DeltaTime )
 {
     // Look for active fly bys...
@@ -45,11 +45,16 @@ void player::UpdateBulletSounds( f32 DeltaTime )
         // Only if its active...
         if( m_BulletFlyBy[i].bIsActive )
         {
+            if( g_AudioMgr.IsVoicePending( m_BulletFlyBy[i].VoiceID ) )
+                continue;
+            if( m_BulletFlyBy[i].Lifetime <= 0.0f )
+                m_BulletFlyBy[i].Lifetime = g_AudioMgr.GetLengthSecondsCached( m_BulletFlyBy[i].VoiceID );
+
             // Update lifetime...
             m_BulletFlyBy[i].Age += DeltaTime;
 
             // Still alive?
-            if( (m_BulletFlyBy[i].Age < m_BulletFlyBy[i].Lifetime) && g_AudioMgr.IsValidVoiceId( m_BulletFlyBy[i].VoiceID ) )
+            if( (m_BulletFlyBy[i].Age < m_BulletFlyBy[i].Lifetime) && g_AudioMgr.IsValidVoiceIdCached( m_BulletFlyBy[i].VoiceID ) )
             {
                 f32 Scale = m_BulletFlyBy[i].Age / m_BulletFlyBy[i].Lifetime; 
                 vector3 Pos = m_BulletFlyBy[i].Start + Scale * (m_BulletFlyBy[i].End - m_BulletFlyBy[i].Start);
@@ -66,6 +71,7 @@ void player::UpdateBulletSounds( f32 DeltaTime )
 
 
 //=========================================================================
+
 void player::HandleBulletFlyby( bullet_projectile& Bullet )
 {
     vector3 ClosestPoint;
@@ -97,7 +103,7 @@ void player::HandleBulletFlyby( bullet_projectile& Bullet )
                     m_BulletFlyBy[i].End       = ClosestPoint + (Velocity * 1200);
                     m_BulletFlyBy[i].VoiceID   = g_AudioMgr.PlayVolumeClipped( "BulletFlyBy", m_BulletFlyBy[i].Start, GetZone1(), TRUE );
                     m_BulletFlyBy[i].Age       = 0.0f;
-                    m_BulletFlyBy[i].Lifetime  = g_AudioMgr.GetLengthSeconds( m_BulletFlyBy[i].VoiceID );
+                    m_BulletFlyBy[i].Lifetime  = 0.0f;
                     m_BulletFlyBy[i].bIsActive = TRUE;
                     break;
                 }
@@ -105,6 +111,8 @@ void player::HandleBulletFlyby( bullet_projectile& Bullet )
         }
     }
 }
+
+//=========================================================================
 
 f32 player::GetMovementNoiseLevel()
 {
@@ -116,9 +124,11 @@ f32 player::GetMovementNoiseLevel()
     }
     else
     {
-        return GetCurrentVelocity()/MaxVelocity;
+        return x_clamp( GetCurrentVelocity() / MaxVelocity, 0.0f, 1.0f );
     }
 }
+
+//=========================================================================
 
 xbool player::InvalidSound( void )
 {
@@ -131,6 +141,8 @@ xbool player::InvalidSound( void )
     
     return FALSE;
 }
+
+//=========================================================================
 
 void player::UpdateAudio( f32 DeltaTime )
 {
@@ -150,6 +162,8 @@ void player::UpdateAudio( f32 DeltaTime )
     ProcessSfxEvents();    
 }
 
+//=========================================================================
+
 void player::ProcessSfxEvents ( void )
 {
     // Did we jump?
@@ -159,35 +173,26 @@ void player::ProcessSfxEvents ( void )
         g_AudioMgr.PlayVolumeClipped( "HumanMale_JumpGrunt", GetPosition(), GetZone1(), TRUE );
     }
             
-    // Are we going to land.
-    if( (m_Physics.GetFallMode()) && (m_Physics.GetVelocity().GetY() < 0.0f) )
+    if( m_Physics.HasLanded() )
     {
-        m_PeakLandVelocity = (m_Physics.GetVelocity().GetY()) * -1.0f;
-    }
-    else if( (m_PeakLandVelocity != -1.0f) && !(m_Physics.GetFallMode()) )
-    {        
-        if( m_PeakLandVelocity > s_MinFallVelocity )
+        const f32 ImpactSpeed = m_Physics.GetLandingSpeed();
+        if( ImpactSpeed > s_MinFallVelocity )
         {
-                
-            if( m_PeakLandVelocity > s_MinDamageFallVelocity )
+            if( ImpactSpeed > s_MinDamageFallVelocity )
             {
                 g_AudioMgr.PlayVolumeClipped( "HumanMale_LandGrunt", GetPosition(), GetZone1(), TRUE );
             }
 
-            f32 ImpactVolume = m_PeakLandVelocity / s_FallVolumeAttenuation;
-
-            if( ImpactVolume > 1.0f )
-                ImpactVolume = 1.0f;
-
-            m_PeakLandVelocity = -1.0f;
-
-            s32 VoiceId = g_AudioMgr.PlayVolumeClipped( GetFootfallLandSweetner( GetFloorMaterial() ), GetPosition(), GetZone1(), TRUE );
+            const f32 ImpactVolume = x_min( 1.0f, ImpactSpeed / s_FallVolumeAttenuation );
+            const s32 VoiceId = g_AudioMgr.PlayVolumeClipped( GetFootfallLandSweetner( GetFloorMaterial() ),
+                                                              GetPosition(), GetZone1(), TRUE );
             g_AudioMgr.SetVolume( VoiceId, ImpactVolume );
-
             g_AudioMgr.PlayVolumeClipped( GetFootfallHeel( GetFloorMaterial() ), GetPosition(), GetZone1(), TRUE );
-         }
+        }
     }
 }
+
+//=========================================================================
 
 void player::PlayFootfall( f32 DeltaTime )
 {
@@ -212,10 +217,6 @@ void player::PlayFootfall( f32 DeltaTime )
         m_DistanceTraveled = m_DistanceTraveled + (CurrentVel*DeltaTime);
     m_IsRunning = FALSE;
 
-    // Don't pitch down the footfalls...
-    const f32 AudioTimeDilation = MAX( 0.01f, g_PerceptionMgr.GetAudioTimeDialation() );
-    const f32 Pitch = 1.0f / AudioTimeDilation;
-
     // Going forward.
     if( YVel >= 0.0f )
     {
@@ -226,7 +227,6 @@ void player::PlayFootfall( f32 DeltaTime )
             
             // Play the heel sound and set the volume level depending on the speed.
             m_HeelID = g_AudioMgr.Play( GetFootfallHeel( GetFloorMaterial() ), GetPosition(), GetZone1(), TRUE );
-            g_AudioMgr.SetPitch( m_HeelID, Pitch );
             g_AudioManager.NewAudioAlert( m_HeelID, audio_manager::FOOT_STEP, GetPosition(), GetZone1(), GetGuid() );
 
             f32 Volume  = 0.0f;
@@ -245,7 +245,6 @@ void player::PlayFootfall( f32 DeltaTime )
             if( AbsXVel > kStrafeInit )
             {
                 m_SlideID = g_AudioMgr.Play( GetFootfallSlide( GetFloorMaterial()) );
-                g_AudioMgr.SetPitch( m_SlideID, Pitch );
 
                 f32 StrafeVolume = MAX(AbsXVel-kStrafeInit, 0.0f)*(1.0f/kStrafeInit);
                 StrafeVolume     *= (AbsYVel > kVertStrafeCutOff) ? 0.0f : ( (kVertStrafeCutOff-AbsYVel)/kVertStrafeCutOff );
@@ -264,7 +263,6 @@ void player::PlayFootfall( f32 DeltaTime )
                 f32 Volume  = kLowestVolume + (1.0f-kLowestVolume)*(MIN(ComboVel, 1.0f)*(1.0f/kFalloff));
 
                 m_ToeID     = g_AudioMgr.PlayVolumeClipped( GetFootfallToe( GetFloorMaterial() ), GetPosition(), GetZone1(), TRUE );
-                g_AudioMgr.SetPitch( m_ToeID, Pitch );
                 g_AudioMgr.SetVolume( m_ToeID, Volume );
                 m_HeelID = 0;
 
@@ -287,7 +285,6 @@ void player::PlayFootfall( f32 DeltaTime )
             {
                 f32 Volume  = kLowestVolume + (1.0f-kLowestVolume)*(AbsYVel*(1.0f/kFalloff));
                 m_ToeID     = g_AudioMgr.PlayVolumeClipped( GetFootfallToe( GetFloorMaterial()), GetPosition(), GetZone1(), TRUE );
-                g_AudioMgr.SetPitch( m_ToeID, Pitch );
                 g_AudioMgr.SetVolume( m_ToeID, Volume );
             }
         
@@ -313,13 +310,11 @@ void player::PlayFootfall( f32 DeltaTime )
 
                 m_HeelID = g_AudioMgr.Play( GetFootfallHeel( GetFloorMaterial()), GetPosition(), GetZone1(), TRUE );
                 g_AudioManager.NewAudioAlert( m_HeelID, audio_manager::FOOT_STEP, GetPosition(), GetZone1(), GetGuid() );
-                g_AudioMgr.SetPitch( m_HeelID, Pitch );
                 g_AudioMgr.SetVolume( m_HeelID, Volume );
 
                 if( AbsXVel > kStrafeInit )
                 {
                     m_SlideID = g_AudioMgr.Play( GetFootfallSlide( GetFloorMaterial()) );
-                    g_AudioMgr.SetPitch( m_SlideID, Pitch );
 
                     f32 StrafeVolume = MAX(AbsXVel-kStrafeInit, 0.0f)*(1.0f/kStrafeInit);
                     StrafeVolume     *= (AbsYVel > kVertStrafeCutOff) ? 0.0f : ( (kVertStrafeCutOff-AbsYVel)/kVertStrafeCutOff );
@@ -335,6 +330,8 @@ void player::PlayFootfall( f32 DeltaTime )
             m_DelayTillNextStep = 0.0f;
     }
 }
+
+//=========================================================================
 
 char* player::GetFootfallHeel( s32 Material )
 {
@@ -372,15 +369,19 @@ char* player::GetFootfallHeel( s32 Material )
     }
 }
 
+//=========================================================================
+
 xbool player::DoFootfallCollisions( void )
 {
-    if( m_Physics.GetJumpMode() || m_Physics.GetFallMode() )
+    if( m_Physics.IsAirborne() )
     {
         return FALSE;
     }
 
     return TRUE;
 }
+
+//=========================================================================
 
 char* player::GetFootfallSlide( s32 Material )
 {
@@ -418,6 +419,8 @@ char* player::GetFootfallSlide( s32 Material )
     }
 }
 
+//=========================================================================
+
 char* player::GetFootfallLandSweetner( s32 Material )
 {
     switch( Material )
@@ -453,6 +456,8 @@ char* player::GetFootfallLandSweetner( s32 Material )
         break;
     }
 }
+
+//=========================================================================
 
 char* player::GetFootfallToe( s32 Material )
 {

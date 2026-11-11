@@ -142,15 +142,12 @@ void poly_cache::DisplayStats( void )
 {
 #if !defined(X_EDITOR)
     irect Rect;
-    s32 XRes,YRes;
-
-    eng_GetRes(XRes,YRes);
-
-    s32 x = 350;
-    s32 y = 20;
+    const irect Bounds = g_UIRenderer.GetViewport().GetLogicalClipBounds();
+    s32 x = Bounds.r - 160;
+    s32 y = Bounds.t + 40;
     s32 font = g_UiMgr->FindFont("small");
 
-    Rect.Set( x-5, y, x + 150, y + (g_UiMgr->GetLineHeight(font) * 4) );
+    Rect.Set( x-5, y, x + 150, y + (g_UiMgr->GetLineHeight(font) * 5) );
     g_UIRenderer.DrawRect( Rect, xcolor(0,0,0,128) );
 
     xwstring Text1 = (const char*)xfs( "Cache Hit: %d", g_PolyCache.m_nCacheHits ); 
@@ -487,7 +484,6 @@ void poly_cache::AddClusterGeometry( render::PrimitiveBatch& Batch, cluster* pCL
         vector3* P0 = &pCL->pPoint[ QD.iP[0] ];
         vector3* P1 = &pCL->pPoint[ QD.iP[1] ];
         vector3* P2 = &pCL->pPoint[ QD.iP[2] ];
-        vector3* P3 = &pCL->pPoint[ QD.iP[3] ];
 
         const render::primitive_vertex V0( *P0, vector2( 0.0f, 0.0f ), C );
         const render::primitive_vertex V1( *P1, vector2( 0.0f, 0.0f ), C );
@@ -496,6 +492,7 @@ void poly_cache::AddClusterGeometry( render::PrimitiveBatch& Batch, cluster* pCL
 
         if( pCL->pBounds[i].Flags & BOUNDS_IS_QUAD )
         {
+            vector3* P3 = &pCL->pPoint[ QD.iP[3] ];
             const render::primitive_vertex V3( *P3, vector2( 0.0f, 0.0f ), C );
             Batch.AddTriangle( V0, V2, V3 );
         }
@@ -516,14 +513,15 @@ void poly_cache::AddClusterNormals( render::PrimitiveBatch& Batch, cluster* pCL 
         vector3* P0 = (vector3*)(&pCL->pPoint[ QD.iP[0] ]);
         vector3* P1 = (vector3*)(&pCL->pPoint[ QD.iP[1] ]);
         vector3* P2 = (vector3*)(&pCL->pPoint[ QD.iP[2] ]);
-        vector3* P3 = (vector3*)(&pCL->pPoint[ QD.iP[3] ]);
         {
             vector3 Center = (*P0+*P1+*P2)*0.333f;
             plane Plane(*P0,*P1,*P2);
             vector3 Tip = Center + (Plane.Normal * 10.0f); 
             Batch.AddLine( Center, Tip, XCOLOR_RED, XCOLOR_RED );
         }
+        if( pCL->pBounds[i].Flags & BOUNDS_IS_QUAD )
         {
+            vector3* P3 = &pCL->pPoint[ QD.iP[3] ];
             vector3 Center = (*P0+*P2+*P3)*0.333f;
             plane Plane(*P0,*P2,*P3);
             vector3 Tip = Center + (Plane.Normal * 10.0f); 
@@ -592,25 +590,24 @@ void poly_cache::Render( void )
                                                     render::PRIMITIVE_BLEND_OPAQUE,
                                                     render::PRIMITIVE_DEPTH_READ_ONLY,
                                                     render::PRIMITIVE_RASTER_COLLISION_BIASED,
-                                                    render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                    render::PRIMITIVE_LAYER_SURFACE );
+                                                    render::PRIMITIVE_SAMPLER_LINEAR_CLAMP );
         render::PrimitiveBatch Batch( Material );
 
         s32 iCL;
 
-        for( iCL=0; iCL<POLYCACHE_MAX_8_CLUSTERS; iCL++ )
+        for( iCL=0; iCL<m_n8Clusters; iCL++ )
         {
             if( m_Cluster_8[iCL].nHits )
                 AddClusterGeometry( Batch, (cluster*)(&m_Cluster_8[iCL]), Intensity );
         }
 
-        for( iCL=0; iCL<POLYCACHE_MAX_16_CLUSTERS; iCL++ )
+        for( iCL=0; iCL<m_n16Clusters; iCL++ )
         {
             if( m_Cluster_16[iCL].nHits )
                 AddClusterGeometry( Batch, (cluster*)(&m_Cluster_16[iCL]), Intensity );
         }
 
-        for( iCL=0; iCL<POLYCACHE_MAX_32_CLUSTERS; iCL++ )
+        for( iCL=0; iCL<m_n32Clusters; iCL++ )
         {
             if( m_Cluster_32[iCL].nHits )
                 AddClusterGeometry( Batch, (cluster*)(&m_Cluster_32[iCL]), Intensity );
@@ -629,25 +626,24 @@ void poly_cache::Render( void )
                                                     render::PRIMITIVE_BLEND_ALPHA,
                                                     render::PRIMITIVE_DEPTH_READ_ONLY,
                                                     render::PRIMITIVE_RASTER_COLLISION_BIASED,
-                                                    render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                    render::PRIMITIVE_LAYER_TRANSPARENT );
+                                                    render::PRIMITIVE_SAMPLER_LINEAR_CLAMP );
         render::PrimitiveBatch Batch( Material );
 
         s32 iCL;
 
-        for( iCL=0; iCL<POLYCACHE_MAX_8_CLUSTERS; iCL++ )
+        for( iCL=0; iCL<m_n8Clusters; iCL++ )
         {
             if( m_Cluster_8[iCL].nHits )
                 AddClusterNormals( Batch, (cluster*)(&m_Cluster_8[iCL]) );
         }
 
-        for( iCL=0; iCL<POLYCACHE_MAX_16_CLUSTERS; iCL++ )
+        for( iCL=0; iCL<m_n16Clusters; iCL++ )
         {
             if( m_Cluster_16[iCL].nHits )
                 AddClusterNormals( Batch, (cluster*)(&m_Cluster_16[iCL]) );
         }
 
-        for( iCL=0; iCL<POLYCACHE_MAX_32_CLUSTERS; iCL++ )
+        for( iCL=0; iCL<m_n32Clusters; iCL++ )
         {
             if( m_Cluster_32[iCL].nHits )
                 AddClusterNormals( Batch, (cluster*)(&m_Cluster_32[iCL]) );
@@ -663,19 +659,19 @@ void poly_cache::Render( void )
     {
         s32 iCL;
 
-        for( iCL=0; iCL<POLYCACHE_MAX_8_CLUSTERS; iCL++ )
+        for( iCL=0; iCL<m_n8Clusters; iCL++ )
         {
             if( m_Cluster_8[iCL].nHits )
                 render::debug::Box( m_Cluster_8[iCL].BBox, XCOLOR_RED );
         }
 
-        for( iCL=0; iCL<POLYCACHE_MAX_16_CLUSTERS; iCL++ )
+        for( iCL=0; iCL<m_n16Clusters; iCL++ )
         {
             if( m_Cluster_16[iCL].nHits )
                 render::debug::Box( m_Cluster_16[iCL].BBox, XCOLOR_RED );
         }
 
-        for( iCL=0; iCL<POLYCACHE_MAX_32_CLUSTERS; iCL++ )
+        for( iCL=0; iCL<m_n32Clusters; iCL++ )
         {
             if( m_Cluster_32[iCL].nHits )
                 render::debug::Box( m_Cluster_32[iCL].BBox, XCOLOR_RED );
@@ -686,7 +682,7 @@ void poly_cache::Render( void )
     {
         s32 iCL;
 
-        for( iCL=0; iCL<POLYCACHE_MAX_8_CLUSTERS; iCL++ )
+        for( iCL=0; iCL<m_n8Clusters; iCL++ )
         if( m_Cluster_8[iCL].nHits )
         {
             nClustersHit++;
@@ -694,7 +690,7 @@ void poly_cache::Render( void )
             m_Cluster_8[iCL].nHits = 0;
         }
 
-        for( iCL=0; iCL<POLYCACHE_MAX_16_CLUSTERS; iCL++ )
+        for( iCL=0; iCL<m_n16Clusters; iCL++ )
         if( m_Cluster_16[iCL].nHits )
         {
             nClustersHit++;
@@ -702,7 +698,7 @@ void poly_cache::Render( void )
             m_Cluster_16[iCL].nHits = 0;
         }
 
-        for( iCL=0; iCL<POLYCACHE_MAX_32_CLUSTERS; iCL++ )
+        for( iCL=0; iCL<m_n32Clusters; iCL++ )
         if( m_Cluster_32[iCL].nHits )
         {
             nClustersHit++;
@@ -710,13 +706,13 @@ void poly_cache::Render( void )
             m_Cluster_32[iCL].nHits = 0;
         }
 
-        for( iCL=0; iCL<POLYCACHE_MAX_8_CLUSTERS; iCL++ )
+        for( iCL=0; iCL<m_n8Clusters; iCL++ )
             n8ClustersRefd += (m_Cluster_8[iCL].nReferences>0) ? (1):(0);
 
-        for( iCL=0; iCL<POLYCACHE_MAX_16_CLUSTERS; iCL++ )
+        for( iCL=0; iCL<m_n16Clusters; iCL++ )
             n16ClustersRefd += (m_Cluster_16[iCL].nReferences>0) ? (1):(0);
 
-        for( iCL=0; iCL<POLYCACHE_MAX_32_CLUSTERS; iCL++ )
+        for( iCL=0; iCL<m_n32Clusters; iCL++ )
             n32ClustersRefd += (m_Cluster_32[iCL].nReferences>0) ? (1):(0);
     }
 

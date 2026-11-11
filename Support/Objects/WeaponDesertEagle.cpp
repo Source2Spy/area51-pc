@@ -6,11 +6,12 @@
 // INCLUDES
 //=========================================================================
 #include "Obj_mgr/obj_mgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "ProjectileBullett.hpp"
 #include "WeaponDesertEagle.hpp"
 #include "Debris/debris_mgr.hpp"
 #include "Objects/Projector.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "Objects/Player/Player.hpp"
 #include "Objects/ParticleEmiter.hpp"
 
@@ -150,7 +151,7 @@ xbool weapon_desert_eagle::FireNPCWeaponProtected( const vector3& BaseVelocity ,
         FireBullet(  InitPos, RandomRot, BaseVelocity, Owner, isHit );
 
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
         // Play the sound associated with this actor's faction.
         object* pObj = g_ObjMgr.GetObjectByGuid( Owner );
@@ -194,7 +195,7 @@ xbool weapon_desert_eagle::FireWeaponProtected( const vector3& InitPos , const v
         FireBullet(  InitPos, InitRot, BaseVelocity, Owner, TRUE );
 
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
         
         // decrement count of bullets in current clip
         DecrementAmmo();
@@ -225,7 +226,7 @@ xbool weapon_desert_eagle::FireSecondaryProtected( const vector3& InitPos , cons
         FireBullet( InitPos, InitRot, BaseVelocity, Owner, TRUE );
  
         // add a muzzle light where the bullet was fired from (will fade out really quickly)
-        g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
         // decrement count of bullets in current clip
         DecrementAmmo();

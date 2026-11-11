@@ -350,6 +350,7 @@ protected:
         bbox    Bounds;
         vector3 GeometricNormal;
         xcolor  Ambient;
+        f32     FadeElapsed;
         xbool   IsValid;
     };
 
@@ -373,7 +374,6 @@ protected:
         position_data*      m_pPositions;
         uv_data*            m_pUVs;
         u32*                m_pColors;
-        f32*                m_pElapsedTimes;
         decal_span*         m_pDynamicSpans;
         s32                 m_nDynamicSpans;
         s32                 m_nDynamicSpansAllocated;
@@ -470,11 +470,6 @@ protected:
     //==========================================================================
     // Update functions
     //==========================================================================
-    void        UpdateAlphaFade     ( f32                DeltaTime,
-                                      f32                FadeTime,
-                                      s32                nVerts,
-                                      u32*               pColor,
-                                      f32*               pTimeElapsed );
 
     //==========================================================================
     // Finally, some data!

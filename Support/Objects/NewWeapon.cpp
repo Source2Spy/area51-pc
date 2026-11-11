@@ -20,7 +20,7 @@
 #include "TemplateMgr/TemplateMgr.hpp"
 #include "EventMgr/EventMgr.hpp"
 #include "Dictionary/Global_Dictionary.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "GameLib/RenderContext.hpp"
 #include "hud_Player.hpp"
 #include "HudObject.hpp"
@@ -29,11 +29,11 @@
 #include "Characters/Character.hpp"
 
 #include "e_RenderTarget.hpp"
-#include "Render/PC/GBufferMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 
 #if !defined(X_EDITOR)
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/MsgMgr.hpp"
+#include "NetworkMgr/Messages/MsgMgr.hpp"
 #endif
 #include "GameLib/DebugCheats.hpp"
 
@@ -318,7 +318,8 @@ new_weapon::new_weapon( void ) :
         rtarget_desc Desc;
         Desc.Width          = kScopeTextureW;
         Desc.Height         = kScopeTextureH;
-        Desc.Format         = RTARGET_FORMAT_RGBA8;
+        // The capture pass converts this texture from the resolved scene format.
+        Desc.Format         = render::RenderQualityProfile::PlatformDefault().Formats.SceneColorFormat;
         Desc.SampleCount    = 1;
         Desc.SampleQuality  = 0;
         Desc.bBindAsTexture = TRUE;
@@ -949,7 +950,7 @@ xbool new_weapon::FireGhostPrimary( s32 iFirePoint, xbool bUseFireAt, vector3& F
     CreateBullet( GetLogicalName(), InitPos, InitRot, s_ZeroVec, m_ParentGuid, PainHandle, AMMO_PRIMARY, TRUE, iFirePoint );
 
     // add a muzzle light where the bullet was fired from (will fade out really quickly)
-    g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
     
     // Play the sound associated with this actor's faction.
     object* pObj = g_ObjMgr.GetObjectByGuid( m_ParentGuid );
@@ -1222,8 +1223,8 @@ void new_weapon::RenderWeapon( xbool bDebug, const xcolor& Ambient, xbool Cloake
         u32 Flags;
         if ( m_CurrentRenderState == RENDER_STATE_PLAYER )
         {
-            Flags = render::CLIPPED | render::DISABLE_SPOTLIGHT;
-            if ( g_RenderContext.m_bIsMutated && !g_RenderContext.m_bIsPipRender )
+            Flags = render::CLIPPED | render::DISABLE_PROJ_LIGHT | render::FIRST_PERSON;
+            if ( g_RenderContext.m_bIsMutated && render::GetActiveRenderScopeDesc().EnablePostProcessing )
                 Flags |= render::GLOWING;
         }
         else
@@ -1286,12 +1287,14 @@ void new_weapon::RenderWeapon( xbool bDebug, const xcolor& Ambient, xbool Cloake
 
                 // render the scope mesh
                 MeshMask &= ~ScopeMask;
+                u32 const ScopeFlags = Flags & ~render::GLOWING;
                 SkinInst.Render( &GetL2W(),
                                  pBone,
                                  nBones,
-                                 Flags,
+                                 ScopeFlags,
                                  ScopeMask,
-                                 Ambient );
+                                 Ambient,
+                                 render::RENDER_CONTRIBUTION_SUPPRESS_BLOOM );
             }
 
             // render the normal mesh
@@ -1883,10 +1886,10 @@ void new_weapon::OnEnumProp( prop_enum& PropEnumList )
 
 
     PropEnumList.PropEnumHeader  ( "Weapon", "This is the properties that are unique for the weapons", 0 );
-    PropEnumList.PropEnumExternal( "Weapon\\Audio Package",  "Resource\0audiopkg",   "The audio package associated with this weapon.", 0 );
+    PropEnumList.PropEnumExternal( "Weapon\\Audio Package",  "Resource\0audiopkg\0",   "The audio package associated with this weapon.", 0 );
 
-    PropEnumList.PropEnumExternal( "Weapon\\Muzzle Flash Primary",  "Resource\0fxo",   "The particle effect associated with the primary muzzle flash.", 0 );
-    PropEnumList.PropEnumExternal( "Weapon\\Muzzle Flash Secondary",  "Resource\0fxo",   "The particle effect associated with the secondary muzzle flash", 0 );
+    PropEnumList.PropEnumExternal( "Weapon\\Muzzle Flash Primary",  "Resource\0fxo\0",   "The particle effect associated with the primary muzzle flash.", 0 );
+    PropEnumList.PropEnumExternal( "Weapon\\Muzzle Flash Secondary",  "Resource\0fxo\0",   "The particle effect associated with the secondary muzzle flash", 0 );
 
     PropEnumList.PropEnumExternal( "Weapon\\Reticle Center", "Resource\0xbmp\0", "The center reticle piece", 0 );
     PropEnumList.PropEnumExternal( "Weapon\\Reticle Edge", "Resource\0xbmp\0", "The edge reticle piece", 0 );
@@ -3443,8 +3446,7 @@ void new_weapon::CreateScopeTexture( void )
     if( !rtarget_HasTexture( s_ScopeRenderTarget ) )
         return;
 
-    const rtarget* pSceneTarget = g_GBufferMgr.GetGBufferTarget( GBufferTarget::FinalColor );
-    if( !pSceneTarget || !rtarget_HasTexture( *pSceneTarget ) )
+    if( !render::GetRenderPipeline().GetFrame() )
         return;
 
     const view* pActiveView = eng_GetView();
@@ -3464,13 +3466,5 @@ void new_weapon::CreateScopeTexture( void )
     s32 SrcLeft   = L + (ViewportWidth  - SrcWidth)  / 2;
     s32 SrcTop    = T + (ViewportHeight - SrcHeight) / 2;
 
-    rtarget_EndPass();
-    rtarget_CopyRegion( s_ScopeRenderTarget,
-                        0,
-                        0,
-                        *pSceneTarget,
-                        SrcLeft,
-                        SrcTop,
-                        SrcWidth,
-                        SrcHeight );
+    render::GetRenderPipeline().CopySceneColorRegion( s_ScopeRenderTarget, SrcLeft, SrcTop, SrcWidth, SrcHeight );
 }

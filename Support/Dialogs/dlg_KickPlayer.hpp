@@ -18,7 +18,7 @@
 #include "UI/ui_playerlist.hpp"
 
 #include "dlg_PopUp.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 
 //==============================================================================
 //  dlg_kick_player
@@ -58,6 +58,8 @@ protected:
 
     dlg_popup*          m_PopUp;
     s32                 m_PopUpResult;
+    s32                 m_SelectedPlayer;
+    u64                 m_SelectedIdentifier;
 
     player_score        m_PlayerData[NET_MAX_PLAYERS];
 

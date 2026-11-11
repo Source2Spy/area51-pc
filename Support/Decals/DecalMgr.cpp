@@ -85,6 +85,7 @@ decal_mgr::decal_span::decal_span( void ) :
     Bounds          ( vector3( 0.0f, 0.0f, 0.0f ) ),
     GeometricNormal ( 0.0f, 1.0f, 0.0f ),
     Ambient         ( 64, 64, 64, 255 ),
+    FadeElapsed     ( 0.0f ),
     IsValid         ( FALSE )
 {
 }
@@ -99,7 +100,6 @@ decal_mgr::registration_info::registration_info( void ) :
     m_pPositions        ( NULL ),
     m_pUVs              ( NULL ),
     m_pColors           ( NULL ),
-    m_pElapsedTimes     ( NULL ),
     m_pDynamicSpans     ( NULL ),
     m_nDynamicSpans     ( 0 ),
     m_nDynamicSpansAllocated( 0 ),
@@ -148,7 +148,6 @@ void decal_mgr::registration_info::Kill( void )
     m_pPositions      = NULL;
     m_pUVs            = NULL;
     m_pColors         = NULL;
-    m_pElapsedTimes   = NULL;
     m_pDynamicSpans   = NULL;
     m_nDynamicSpans   = 0;
     m_nDynamicSpansAllocated = 0;
@@ -181,8 +180,6 @@ s32 decal_mgr::registration_info::GetAllocSize( s32 nVerts )
     AllocSize += ALIGN_16( nVerts * sizeof(position_data) );
     AllocSize += ALIGN_16( nVerts * sizeof(uv_data) );
     AllocSize += ALIGN_16( nVerts * sizeof(u32) );
-    if( m_Flags & decal_definition::DECAL_FLAG_FADE_OUT )
-        AllocSize += ALIGN_16( nVerts * sizeof(f32) );
     return AllocSize;
 }
 
@@ -205,11 +202,6 @@ void decal_mgr::registration_info::AllocVertList( s32 nVerts )
         pAllocAddress       += ALIGN_16( m_nVertsAllocated * sizeof(uv_data) );
         m_pColors            = (u32*)pAllocAddress;
         pAllocAddress       += ALIGN_16( m_nVertsAllocated * sizeof(u32) );
-        if( m_Flags & decal_definition::DECAL_FLAG_FADE_OUT )
-        {
-            m_pElapsedTimes  = (f32*)pAllocAddress;
-            pAllocAddress   += ALIGN_16( m_nVertsAllocated * sizeof(f32) );
-        }
         ASSERT( pAllocAddress == ((byte*)m_pPositions)+AllocSize );
 
         m_nDynamicSpansAllocated = MAX( 1, nVerts / 3 );
@@ -492,7 +484,6 @@ void  decal_mgr::CreateBulletHole( const decal_definition& Def,
             position_data*  pPos   = &RegInfo.m_pPositions[iDecalStart];
             uv_data*        pUV    = &RegInfo.m_pUVs[iDecalStart];
             u32*            pColor = &RegInfo.m_pColors[iDecalStart];
-            f32*            pTime  = (RegInfo.m_Flags & decal_definition::DECAL_FLAG_FADE_OUT) ? &RegInfo.m_pElapsedTimes[iDecalStart] : NULL;
 
             #ifdef X_EDITOR
             u32 Color = RegInfo.m_Color;
@@ -513,12 +504,6 @@ void  decal_mgr::CreateBulletHole( const decal_definition& Def,
             pUV[0]          = m_TriangleTemplateUV[0];
             pUV[1]          = m_TriangleTemplateUV[1];
             pUV[2]          = m_TriangleTemplateUV[2];
-            if( pTime )
-            {
-                pTime[0] = 0.0f;
-                pTime[1] = 0.0f;
-                pTime[2] = 0.0f;
-            }
 
             BuildDynamicSpans( RegInfo, iDecalStart, 3 );
         }
@@ -1021,7 +1006,7 @@ void decal_mgr::CalcDecalVertsFromVolume( const bbox&    WorldBBox,
         render::GeometryInstanceHandle  hGeomInst  = RigidInst.GetInst();
         const rigid_geom*   pRigidGeom = (const rigid_geom*)render::GetGeom( hGeomInst );
 
-        if ( pRigidGeom && (pRigidGeom->m_collision.nHighClusters!=0) )
+        if ( pRigidGeom && (pRigidGeom->m_Collision.nHighClusters!=0) )
         {
             AddGeometryToDecal( pRigidGeom, Surface.GetL2W(), OrthoProjection, ProjectionRay, WD );
         }
@@ -1038,7 +1023,7 @@ void decal_mgr::CalcDecalVertsFromVolume( const bbox&    WorldBBox,
         render::GeometryInstanceHandle hGeomInst  = pSurface->RenderInst;
         const rigid_geom*  pRigidGeom = (const rigid_geom*)render::GetGeom( hGeomInst );
 
-        if ( pRigidGeom && (pRigidGeom->m_collision.nHighClusters!=0) )
+        if ( pRigidGeom && (pRigidGeom->m_Collision.nHighClusters!=0) )
         {
             AddGeometryToDecal( pRigidGeom, pSurface->L2W, OrthoProjection, ProjectionRay, WD );
         }
@@ -1285,9 +1270,9 @@ void decal_mgr::AddGeometryToDecal( const rigid_geom* pRigidGeom,
     vector3 ClipVerts[2][10];   // a clipped tri has at most 9 verts, plus duplicate the first for simplicity
     s32     Buff = 0;
     
-    for ( s32 iCluster = 0; iCluster < pRigidGeom->m_collision.nHighClusters; iCluster++ )
+    for ( s32 iCluster = 0; iCluster < pRigidGeom->m_Collision.nHighClusters; iCluster++ )
     {
-        for ( s32 iTri = 0; iTri < pRigidGeom->m_collision.pHighCluster[iCluster].nTris; iTri++ )
+        for ( s32 iTri = 0; iTri < pRigidGeom->m_Collision.pHighCluster[iCluster].nTris; iTri++ )
         {
             s32 Key = (iCluster<<16) | iTri;
             
@@ -2522,10 +2507,6 @@ void decal_mgr::AddDecal( xhandle                 RegInfoHandle,
                                                        (RegInfo.m_Color.B<<16) +
                                                        (RegInfo.m_Color.A<<24);
             #endif
-            if( RegInfo.m_Flags & decal_definition::DECAL_FLAG_FADE_OUT )
-            {
-                RegInfo.m_pElapsedTimes[DecalStart+i] = 0.0f;
-            }
         }
 
         RegInfo.m_pPositions[DecalStart].Flags |= decal_vert::FLAG_DECAL_START;
@@ -2788,7 +2769,14 @@ xbool decal_mgr::SubmitSpan( const registration_info& RegInfo,
         vector3 const position( pPos[sourceIndex].Pos.X, pPos[sourceIndex].Pos.Y, pPos[sourceIndex].Pos.Z );
         vector2 const uv( static_cast<f32>( pUV[sourceIndex].U ) * UVScale,
                           static_cast<f32>( pUV[sourceIndex].V ) * UVScale );
-        vertices[i] = render::decal_vertex( position, uv, GetDecalColor( pColor[sourceIndex] ) );
+        xcolor Color = GetDecalColor( pColor[sourceIndex] );
+        if ( RegInfo.m_Flags & decal_definition::DECAL_FLAG_FADE_OUT )
+        {
+            f32 const FadeTime = MAX( RegInfo.m_FadeoutTime, 0.0001f );
+            f32 const Fade = x_clamp( 1.0f - ( Span.FadeElapsed / FadeTime ), 0.0f, 1.0f );
+            Color.A = static_cast<u8>( static_cast<f32>( Color.A ) * Fade );
+        }
+        vertices[i] = render::decal_vertex( position, uv, Color );
     }
 
     xbool windingCW = TRUE;
@@ -2921,89 +2909,21 @@ void decal_mgr::OnRenderEditorWireframes( void )
 
 //==============================================================================
 
-void decal_mgr::UpdateAlphaFade( f32 DeltaTime, f32 FadeTime, s32 nVerts, u32* pColor, f32* pTimeElapsed )
-{
-    s32 i;
-    for( i = 0; i < nVerts; i++ )
-    {
-        pTimeElapsed[i] += DeltaTime;
-        f32 T = 1.0f - (pTimeElapsed[i] / FadeTime);
-        T = MIN( T, 1.0f );
-        T = MAX( T, 0.0f );
-        pColor[i] &= 0x00ffffff;
-        pColor[i] |= ((u8)(T*255.0f) << 24);
-    }
-}
-
-//==============================================================================
-
 void decal_mgr::OnUpdate( f32 DeltaTime )
 {
     X_PROFILE_SCOPE_CATEGORY( "Context", "decal_mgr::OnUpdate" );
-    (void)DeltaTime;
 
-    // update any fading decals
-    s32 i;
-    for( i = 0; i < m_RegisteredDefs.GetCount(); i++ )
+    // Track fade time per span instead of updating every vertex.
+    for( s32 i = 0; i < m_RegisteredDefs.GetCount(); ++i )
     {
         registration_info& RegInfo = m_RegisteredDefs[i];
         if( RegInfo.m_Flags & decal_definition::DECAL_FLAG_FADE_OUT )
         {
-            s32 HWBufferSize = render::GetHardwareBufferSize();
-            if( RegInfo.m_End > RegInfo.m_Start )
+            for( s32 SpanIndex = 0; SpanIndex < RegInfo.m_nDynamicSpans; ++SpanIndex )
             {
-                // the verts are in order
-                s32 VertStart  = RegInfo.m_Start / HWBufferSize;
-                VertStart     *= HWBufferSize;
-                UpdateAlphaFade( DeltaTime,
-                                 RegInfo.m_FadeoutTime,
-                                 RegInfo.m_End - VertStart,
-                                 &RegInfo.m_pColors[VertStart],
-                                 &RegInfo.m_pElapsedTimes[VertStart] );
-            }
-            else
-            {
-                // the vert buffer is wrapped around...do the start and end positions
-                // share the same hw buffer?
-                if( (RegInfo.m_End / HWBufferSize) ==
-                    (RegInfo.m_Start / HWBufferSize) )
-                {
-                    s32 nVerts = RegInfo.m_Blank;
-
-                    // just update everything to the blank point
-                    if( nVerts )
-                    {
-                        UpdateAlphaFade( DeltaTime,
-                                         RegInfo.m_FadeoutTime,
-                                         nVerts,
-                                         RegInfo.m_pColors,
-                                         RegInfo.m_pElapsedTimes );
-                    }
-                }
-                else
-                {
-                    // update everything up to the end point
-                    s32 nVerts = RegInfo.m_End;
-                    UpdateAlphaFade( DeltaTime,
-                                     RegInfo.m_FadeoutTime,
-                                     nVerts,
-                                     RegInfo.m_pColors,
-                                     RegInfo.m_pElapsedTimes );
-
-                    // update everything after the end point skipping blank space
-                    // if we can
-                    s32 VertStart = RegInfo.m_Start / HWBufferSize;
-                    VertStart *= HWBufferSize;
-                    nVerts = RegInfo.m_Blank-VertStart;
-                    if( nVerts )
-                    {
-                        UpdateAlphaFade( DeltaTime,
-                                         RegInfo.m_FadeoutTime,
-                                         nVerts,
-                                         &RegInfo.m_pColors[VertStart],
-                                         &RegInfo.m_pElapsedTimes[VertStart] );
-                    }
-                }
+                decal_span& Span = RegInfo.m_pDynamicSpans[SpanIndex];
+                if ( IsDynamicSpanActive( RegInfo, Span ) )
+                    Span.FadeElapsed += DeltaTime;
             }
         }
     }

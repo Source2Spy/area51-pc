@@ -20,7 +20,6 @@
 #include "e_RenderState.hpp"
 #include "e_RenderTarget.hpp"
 #include "e_Composite.hpp"
-#include "e_Frame.hpp"
 #include "e_Input.hpp"
 #include "Input/e_InputActions.hpp"
 #include "e_ScratchMem.hpp"
@@ -79,6 +78,13 @@ enum eng_present_mode
     ENG_PRESENT_IMMEDIATE   = 2
 };
 
+enum eng_present_target_result
+{
+    ENG_PRESENT_TARGET_READY     = 0,
+    ENG_PRESENT_TARGET_SUSPENDED = 1,
+    ENG_PRESENT_TARGET_FAILED    = 2
+};
+
 enum reboot_reason
 {
     REBOOT_HALT,
@@ -114,6 +120,8 @@ typedef void*        eng_native_instance_handle;
 
 void            eng_Init                ( void );
 void            eng_Kill                ( void );
+void            eng_SetPipelineCacheDirectory( const char* pDirectory );
+xbool           eng_SavePipelineCache   ( void );
 
 void            eng_GetRes              ( s32& XRes, s32& YRes );
 void            eng_GetPALMode          ( xbool& PALMode );
@@ -134,11 +142,19 @@ s32             eng_ScreenShotY         ( void );
 
 xbool           eng_BeginFrame          ( void );
 xbool           eng_EndFrame            ( void );
+eng_present_target_result
+                eng_AcquirePresentTarget( void );
+xbool           eng_EnsurePresentTarget ( void );
 xbool           eng_Begin               ( const char* pTaskName=NULL );
 void            eng_End                 ( void );
 xbool           eng_InBeginEnd          ( void );
 void            eng_ResetAfterException ( void );
 void            eng_Sync                ( void );
+u32             eng_GetCurrentFrameSlot ( void );
+u64             eng_GetCurrentFrameSerial( void );
+u64             eng_GetFrameLifetimeSerial( void );
+u32             eng_GetFramesInFlight    ( void );
+xbool           eng_IsFrameComplete     ( u64 FrameSerial );
 
 void            eng_SetViewport         ( const view& View );
 

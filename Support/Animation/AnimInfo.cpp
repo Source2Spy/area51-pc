@@ -12,6 +12,11 @@
 
 //=========================================================================
 
+static const f32 CAMERA_CUT_POS_THRESHOLD = 50.0f;
+static const f32 CAMERA_CUT_ROT_THRESHOLD = R_10;
+
+//=========================================================================
+
 anim_info::anim_info( void )
 {
 }
@@ -36,6 +41,36 @@ void anim_info::GetInterpKey( f32  Frame, s32 iBone, anim_key& Key ) const
 {
     Frame = x_fmod(Frame,(f32)(m_nFrames-1));
     m_AnimKeys.GetInterpKey( *m_pAnimGroup, Frame, iBone, Key );
+}
+
+//=========================================================================
+
+xbool anim_info::IsCameraCut( s32 iBone, s32 iFrame0, s32 iFrame1 ) const
+{
+    ASSERT( (iBone >= 0) && (iBone < m_pAnimGroup->GetNBones()) );
+
+    matrix4 Pose0, Pose1;
+    Pose0.Identity();
+    Pose1.Identity();
+    for( s32 Bone=iBone; Bone != -1; Bone=m_pAnimGroup->GetBoneParent( Bone ) )
+    {
+        anim_key Key;
+        matrix4 Local;
+        GetRawKey( iFrame0, Bone, Key );
+        Key.Setup( Local );
+        Pose0 = Local * Pose0;
+        GetRawKey( iFrame1, Bone, Key );
+        Key.Setup( Local );
+        Pose1 = Local * Pose1;
+    }
+    Pose0 = Pose0 * m_pAnimGroup->GetBoneBindInvMatrix( iBone );
+    Pose1 = Pose1 * m_pAnimGroup->GetBoneBindInvMatrix( iBone );
+
+    vector3 const Delta = Pose1.GetTranslation() - Pose0.GetTranslation();
+    vector3 const Forward0 = Pose0.RotateVector( vector3( 0, 0, 1 ) );
+    vector3 const Forward1 = Pose1.RotateVector( vector3( 0, 0, 1 ) );
+    return (Delta.LengthSquared() >= x_sqr( CAMERA_CUT_POS_THRESHOLD )) ||
+           (x_abs( v3_AngleBetween( Forward0, Forward1 ) ) >= CAMERA_CUT_ROT_THRESHOLD);
 }
 
 //=========================================================================

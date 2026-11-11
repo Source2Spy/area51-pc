@@ -105,6 +105,8 @@ void audio_channel_mgr::Kill( void )
 
 xbool DEBUG_ACQUIRE_CHANNEL_FAIL = 0;
 
+//==============================================================================
+
 xbool audio_channel_mgr::Acquire( element* pElement )
 {
     X_PROFILE_SCOPE_CATEGORY( "Context", "audio_channel_mgr::Acquire" );
@@ -116,7 +118,6 @@ xbool audio_channel_mgr::Acquire( element* pElement )
     // Error check.
     ASSERT( s_IsInitialized );
     ASSERT( Runtime().Voices.IsValidElement(pElement) );
-
 
     // Get head/tail of free list and first free channel.
     pHead    = FreeList();
@@ -224,7 +225,6 @@ xbool audio_channel_mgr::Acquire( element* pElement )
         }
     }
 
-
     #if !defined(X_RETAIL) || defined(X_QA)
     if( pResult == NULL && DEBUG_ACQUIRE_CHANNEL_FAIL )
     {
@@ -246,7 +246,6 @@ xbool audio_channel_mgr::Release( channel* pChannel )
     // Error check.
     ASSERT( s_IsInitialized );
     ASSERT( Runtime().Backend.IsValidChannel(pChannel) );
-
 
     // Free the channel, put it into the free channel list, Don't nuke the element.
     return Free( pChannel, TRUE, FALSE );
@@ -320,7 +319,6 @@ void audio_channel_mgr::SetPriority( channel* pChannel, s32 Priority )
     ASSERT( Runtime().Backend.IsValidChannel(pChannel) );
     ASSERT( (Priority >= 0) && (Priority <= 255) );
 
-
     // Set the channels priority.
     pChannel->Priority = Priority;
 
@@ -347,7 +345,6 @@ void audio_channel_mgr::SetVolume( channel* pChannel, f32 Volume )
     // Error check.
     ASSERT( s_IsInitialized );
     ASSERT( Runtime().Backend.IsValidChannel(pChannel) );
-
 
     // Limit the volume.
     if( Volume < 0.0f )
@@ -511,13 +508,14 @@ void audio_channel_mgr::Update( void )
                 element* pElement;
                 element* pStereo=NULL;
 
-
                 // Get the channels element.
                 pElement = pChannel->pElement;
             
                 // Get the elements stereo partner.
                 if( pElement )
+                {
                     pStereo = pElement->pStereoElement;
+                }
 
                 // Free the channel, put it in the free channel list, nuke the element as well.
                 (void)Free( pChannel, TRUE, TRUE );
@@ -556,7 +554,6 @@ void audio_channel_mgr::Update( void )
                     }
                 }
 
-
             }
 
             // Next!
@@ -579,7 +576,9 @@ xbool audio_channel_mgr::Free( channel* pChannel, xbool PutInFreeList, xbool Fre
     
     ASSERT(pChannel->pElement->Type != (element_type)-1);
     if( !Runtime().Backend.ReleaseChannel( pChannel ) )
+    {
         return FALSE;
+    }
 
     // Get the channels element.
     pElement = pChannel->pElement;
@@ -629,11 +628,15 @@ void audio_channel_mgr::UpdatePriorityList( channel* pChannel, xbool RemoveFromL
 
     // Find the insertion point (based on priority only).
     while( pInsert->Priority > pChannel->Priority )
+    {
         pInsert = pInsert->Link.pNext;
+    }
 
     // Volume is secondary key.
     while( (pInsert->Priority == pChannel->Priority) && (pInsert->Volume > pChannel->Volume) )
+    {
         pInsert = pInsert->Link.pNext;
+    }
 
     // Insert it into the used list.
     InsertChannelIntoList( pChannel, pInsert );

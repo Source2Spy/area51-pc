@@ -146,6 +146,13 @@ bbox& render_inst::GetBBox( void ) const
 
 u64 render_inst::GetLODMask( const matrix4& L2W )
 {
+    return GetLODMask( L2W, m_VMeshMask.VMeshMask );
+}
+
+//=============================================================================
+
+u64 render_inst::GetLODMask( const matrix4& L2W, u32 VMeshMask )
+{
     // Compute screen size of object
     const view* pView = eng_GetView();
     geom* pGeom = GetGeom();
@@ -161,7 +168,7 @@ u64 render_inst::GetLODMask( const matrix4& L2W )
         ScreenSize = 65000.0f;
 
     // Get correct LOD Mask based on screen size
-    return pGeom->GetLODMask( m_VMeshMask, (u16)ScreenSize );   // instead of -1, make a mask!!!!
+    return pGeom->GetLODMask( VMeshMask, (u16)ScreenSize );
 }
 
 //=============================================================================

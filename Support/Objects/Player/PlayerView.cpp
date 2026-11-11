@@ -10,7 +10,7 @@
 #include "Objects/Camera.hpp"
 #include "Objects/LevelSettings.hpp"
 #include "StateMgr/StateMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "GameLib/DebugCheats.hpp"
 
 //=========================================================================
@@ -19,7 +19,6 @@ static const f32 DeathCamStartBackDist = 800.0f;
 static const f32 DeathCamEndDist       = 500.0f;
 static const f32 DeathCamSphereRadius  = 20.0f;
 static const f32 s_ArmViewPct          = 0.3f;
-static const f32 s_MaxCameraDelta      = 28.0f;
 
 extern view g_View;
 
@@ -32,11 +31,15 @@ void player::ResetView( void )
     m_ViewInfo.XFOV = m_OriginalViewInfo.XFOV;
 }
 
+//=========================================================================
+
 void player::SetFieldOfView( radian FieldOfView )
 {
     m_OriginalViewInfo.XFOV = x_clamp( FieldOfView, R_60, DEG_TO_RAD( 120.0f ) );
     m_ViewInfo.XFOV = m_OriginalViewInfo.XFOV;
 }
+
+//=========================================================================
 
 void player::InitZoneTracking( void )
 {
@@ -44,30 +47,30 @@ void player::InitZoneTracking( void )
                                   m_ZoneTracker,
                                   GetPosition(),
                                   GetZone1(),
-                                  GetZone2(),
-                                  zone_mgr::SeedSource::Player );
-
-    if( !m_RenderViewZoneUsesCameraSeed &&
-        !m_ViewController.IsBlending() )
-    {
-        g_ZoneMgr.RebaseZoneTracking( m_RenderViewZoneTracker,
-                                      GetDefaultViewPos(),
-                                      m_ZoneTracker.GetMainZone(),
-                                      m_ZoneTracker.GetZone2(),
-                                      zone_mgr::SeedSource::Player );
-        m_RenderViewZoneInitialized = TRUE;
-        m_RenderViewZoneSourceGuid = NULL_GUID;
-        m_RebaseRenderViewZone = FALSE;
-    }
+                                  GetZone2() );
+    g_ZoneMgr.AdvanceZoneTracking( *this, m_ZoneTracker, GetZoneTrackingPosition() );
 }
+
+//=========================================================================
 
 void player::UpdateZoneTrack ( void )
 {
     if( m_bApplyingTeleport )
         return;
 
-    g_ZoneMgr.AdvanceZoneTracking( *this, m_ZoneTracker, GetPosition() );
+    g_ZoneMgr.AdvanceZoneTracking( *this, m_ZoneTracker, GetZoneTrackingPosition() );
 }
+
+//=========================================================================
+
+vector3 player::GetZoneTrackingPosition( void )
+{
+    vector3 Offset = m_EyesOffset;
+    Offset.RotateY( m_Yaw );
+    return vector3( GetPosition().GetX(), GetBBox().Max.GetY(), GetPosition().GetZ() ) + Offset;
+}
+
+//=========================================================================
 
 zone_mgr::zone_id player::GetPlayerObjectZone ( void ) const
 {
@@ -75,10 +78,14 @@ zone_mgr::zone_id player::GetPlayerObjectZone ( void ) const
     return m_ZoneTracker.GetMainZone();
 }
 
+//=========================================================================
+
 zone_mgr::zone_id player::GetPlayerViewZone( void ) const
 {
     return m_RenderViewZoneTracker.GetMainZone();
 }
+
+//=========================================================================
 
 void player::ShakeView ( f32 Time, f32 Amount, f32 Speed )
 {
@@ -87,6 +94,8 @@ void player::ShakeView ( f32 Time, f32 Amount, f32 Speed )
     m_ShakeAmount           = Amount;
     m_ShakeSpeed            = Speed;
 }
+
+//=========================================================================
 
 void player::UpdateCameraShake( f32 DeltaTime )
 {
@@ -118,6 +127,8 @@ void player::UpdateCameraShake( f32 DeltaTime )
     else if (m_RollMod < 0)
         m_RollMod  = MIN(0, MAX(m_RollMod  + (R_40*DeltaTime), -R_20));
 }
+
+//=========================================================================
 
 void player::PushViewCinematic( lock_view_node* pLockViewBuffer )
 {
@@ -153,6 +164,8 @@ void player::PushViewCinematic( lock_view_node* pLockViewBuffer )
     }
 }
 
+//=========================================================================
+
 void player::OnMoveFreeCam( view& View )
 {
     vector3 const ViewPosition = View.GetPosition();
@@ -164,6 +177,8 @@ void player::OnMoveFreeCam( view& View )
                 m_RenderViewZoneTracker.GetMainZone(),
                 m_ZoneTracker.GetMainZone() );
 }
+
+//=========================================================================
 
 void player::OnExitFreeCam( vector3& NewPos )
 {
@@ -190,6 +205,8 @@ void player::OnExitFreeCam( vector3& NewPos )
 #endif
 }
 
+//=========================================================================
+
 vector3 player::GetDefaultViewPos( void )
 {
     vector3 FinalPos( 0.0f, 0.0f, 0.0f );
@@ -198,19 +215,6 @@ vector3 player::GetDefaultViewPos( void )
         vector3 const AnimBonePos = m_AnimPlayer.GetBonePosition( m_iCameraBone );
         vector3 const Offset = m_vRigOffset - (m_ArmsOffset * s_ArmViewPct);
         FinalPos = AnimBonePos + Offset;
-
-        // Preserve the original first-person camera contract: authored
-        // camera-bone translation is the view position. Only prevent the
-        // camera from moving too far behind the player.
-        vector3 const Forward( radian3( 0.0f, m_Yaw, 0.0f ) );
-        vector3 const LimitPosition = GetPosition() - (s_MaxCameraDelta * Forward);
-        plane LimitPlane;
-        LimitPlane.Setup( LimitPosition, Forward );
-
-        if( LimitPlane.InBack( FinalPos ) )
-        {
-            FinalPos -= LimitPlane.Normal * LimitPlane.Distance( FinalPos );
-        }
     }
     else
     {
@@ -220,10 +224,46 @@ vector3 player::GetDefaultViewPos( void )
 
         FinalPos.Set( Position.GetX(), GetBBox().Max.GetY(), Position.GetZ() );
         FinalPos += EyesOffset;
+        FinalPos.GetY() += m_StepView.GetOffset();
     }
 
     return FinalPos;
 }
+
+//=========================================================================
+
+void player::GetFirstPersonViewClearance( f32& NearClip, f32& Clearance )
+{
+    // Use the widest current gameplay FOV so zoom changes do not move the rig.
+    radian XFOV = MAX( m_ViewInfo.XFOV, m_OriginalViewInfo.XFOV );
+    new_weapon* pWeapon = GetCurrentWeaponPtr();
+    if( pWeapon && pWeapon->IsZoomEnabled() )
+    {
+        XFOV = MAX( XFOV, pWeapon->GetXFOV() );
+    }
+    view Projection = GetSimulationView();
+    Projection.SetXFOV( XFOV );
+    PlayerView::ComputeFirstPersonClearance( m_Physics.GetColRadius(), XFOV, Projection.GetYFOV(),
+                                              NearClip, Clearance );
+}
+
+//=========================================================================
+
+vector3 player::ConstrainFirstPersonViewPosition( const vector3& Position )
+{
+    f32 NearClip, Clearance;
+    GetFirstPersonViewClearance( NearClip, Clearance );
+
+    // Lean is intentional movement, validated separately with the player capsule.
+    // Its downward eye offset is still bounded by the capsule's floor clearance.
+    vector3 Lean = GetLeanOffset();
+    Lean.GetY() = 0.0f;
+    return PlayerView::ConstrainFirstPersonPosition( Position, GetPosition() + Lean,
+                                                     m_Physics.GetColHeight(),
+                                                     m_Physics.GetColRadius(), Clearance );
+}
+
+//=========================================================================
 
 void player::ComputeStunnedPitchYawOffset( radian& PitchOffset, radian& YawOffset )
 {
@@ -236,6 +276,8 @@ void player::ComputeStunnedPitchYawOffset( radian& PitchOffset, radian& YawOffse
     YawOffset *= m_MaxStunPitchOffset;
     PitchOffset *= m_MaxStunYawOffset;
 }
+
+//=========================================================================
 
 PlayerViewContext player::BuildPlayerViewContext( void ) const
 {
@@ -255,6 +297,8 @@ PlayerViewContext player::BuildPlayerViewContext( void ) const
     return Context;
 }
 
+//=========================================================================
+
 PlayerViewSample player::BuildFirstPersonViewSample( void )
 {
     xbool const ApplyLockedRotation = m_LockedView.IsActive() &&
@@ -265,9 +309,21 @@ PlayerViewSample player::BuildFirstPersonViewSample( void )
                     ? PlayerViewMode::LockedFirstPerson
                     : PlayerViewMode::FirstPerson;
     Sample.XFOV = m_ViewInfo.XFOV;
+    Sample.HasZoneSnapshot = TRUE;
+    Sample.ZoneSnapshot = m_ZoneTracker;
 
     radian3 Rot( 0.0f, 0.0f, 0.0f );
-    vector3 const Pos = GetDefaultViewPos();
+    vector3 Pos = GetDefaultViewPos();
+    if( !IsAvatar() && IsAlive() && !IsCinemaRunning() )
+    {
+        // Also cover startup and strains with no camera bone/arms animation.
+        if( m_iCameraBone < 0 )
+        {
+            Pos += GetLeanOffset();
+        }
+        Pos = ConstrainFirstPersonViewPosition( Pos );
+        GetFirstPersonViewClearance( Sample.NearClip, Sample.FirstPersonClearance );
+    }
 
     if( (m_CurrentWeaponItem != INVEN_NULL) && (m_iCameraBone != -1) )
     {
@@ -301,6 +357,8 @@ PlayerViewSample player::BuildFirstPersonViewSample( void )
             m_ViewInfo.XFOV = m_OriginalViewInfo.XFOV;
         }
         Sample.XFOV = m_ViewInfo.XFOV;
+    Sample.HasZoneSnapshot = TRUE;
+    Sample.ZoneSnapshot = m_ZoneTracker;
     }
 
     if( (m_CurrentAnimState != ANIM_STATE_DEATH) &&
@@ -359,6 +417,8 @@ PlayerViewSample player::BuildDeathViewSample( void ) const
     PlayerViewSample Sample;
     Sample.Mode = PlayerViewMode::Death;
     Sample.XFOV = m_ViewInfo.XFOV;
+    Sample.HasZoneSnapshot = TRUE;
+    Sample.ZoneSnapshot = m_ZoneTracker;
 
     PlayerDeathCameraPose const Pose = m_DeathCamera.GetPose();
     view DeathView;
@@ -386,73 +446,24 @@ void player::ApplyViewSample( view& View, const PlayerViewSample& Sample )
     m_EyesPosition = View.GetPosition();
     View.GetPitchYaw( m_EyesPitch, m_EyesYaw );
 
-    xbool const UsesCameraSeed =
-        (Sample.Mode == PlayerViewMode::Cinema) &&
-        (m_CinemaSettings.CameraGuid != 0);
-    xbool const CameraChanged =
-        UsesCameraSeed &&
-        !m_ViewController.IsBlending() &&
-        (m_RenderViewZoneSourceGuid != m_CinemaSettings.CameraGuid);
-    xbool const CameraViewEnded =
-        m_RenderViewZoneUsesCameraSeed &&
-        !UsesCameraSeed &&
-        !m_ViewController.IsBlending();
-    xbool const RebaseViewZone =
-        !m_RenderViewZoneInitialized ||
-        m_RebaseRenderViewZone ||
-        CameraChanged ||
-        CameraViewEnded;
+    xbool const SourceChanged = Sample.HasZoneSnapshot &&
+        ((Sample.ZoneSourceGuid != m_RenderViewZoneSourceGuid) ||
+         ((Sample.Mode == PlayerViewMode::Death) !=
+          (m_RenderViewZoneMode == PlayerViewMode::Death)));
+    xbool const SeedChanged = Sample.HasZoneSnapshot &&
+        (Sample.ZoneSnapshot.GetSeedRevision() != m_RenderViewZoneSeedRevision);
 
-    zone_mgr::zone_id SeedZone1 = m_ZoneTracker.GetMainZone();
-    zone_mgr::zone_id SeedZone2 = m_ZoneTracker.GetZone2();
-    zone_mgr::SeedSource SeedSource = zone_mgr::SeedSource::Player;
-    object_ptr<camera> pCamera( m_CinemaSettings.CameraGuid );
-    xbool const UsesCameraSampleZone = UsesCameraSeed && Sample.HasZoneSnapshot;
-
-    if( UsesCameraSampleZone )
+    if( !m_RenderViewZoneInitialized || SourceChanged || SeedChanged )
     {
-        // Keep the zone state paired with the exact camera transform sample.
-        // The live camera object may already have advanced to the next path
-        // sample by the time this view is presented.
-        SeedZone1 = Sample.Zone1;
-        SeedZone2 = Sample.Zone2;
-        SeedSource = zone_mgr::SeedSource::Camera;
-
-        g_ZoneMgr.RebaseZoneTracking( m_RenderViewZoneTracker,
-                                      View.GetPosition(),
-                                      SeedZone1,
-                                      SeedZone2,
-                                      SeedSource );
-
+        g_ZoneMgr.RebaseZoneTracking( m_RenderViewZoneTracker, Sample.ZoneSnapshot );
+        g_ZoneMgr.AdvanceZoneTracking( m_RenderViewZoneTracker, View.GetPosition() );
         m_RenderViewZoneInitialized = TRUE;
-        m_RenderViewZoneUsesCameraSeed = TRUE;
-        m_RenderViewZoneSourceGuid = m_CinemaSettings.CameraGuid;
-        m_RebaseRenderViewZone = FALSE;
-    }
-    else if( RebaseViewZone )
-    {
-        if( UsesCameraSeed )
+        if( Sample.HasZoneSnapshot )
         {
-            if( pCamera )
-            {
-                SeedZone1 = static_cast<zone_mgr::zone_id>( pCamera->GetZone1() );
-                SeedZone2 = static_cast<zone_mgr::zone_id>( pCamera->GetZone2() );
-                SeedSource = zone_mgr::SeedSource::Camera;
-            }
+            m_RenderViewZoneSourceGuid = Sample.ZoneSourceGuid;
+            m_RenderViewZoneMode = Sample.Mode;
+            m_RenderViewZoneSeedRevision = Sample.ZoneSnapshot.GetSeedRevision();
         }
-
-        g_ZoneMgr.RebaseZoneTracking( m_RenderViewZoneTracker,
-                                      View.GetPosition(),
-                                      SeedZone1,
-                                      SeedZone2,
-                                      SeedSource );
-
-        m_RenderViewZoneInitialized = TRUE;
-        m_RenderViewZoneUsesCameraSeed = UsesCameraSeed;
-        m_RenderViewZoneSourceGuid = UsesCameraSeed
-                                   ? m_CinemaSettings.CameraGuid
-                                   : NULL_GUID;
-        m_RebaseRenderViewZone = FALSE;
     }
     else
     {
@@ -495,12 +506,7 @@ void player::UpdatePlayerView( f32 DeltaTime )
         break;
     }
 
-    xbool const WasBlending = m_ViewController.IsBlending();
     m_SimulationViewSample = m_ViewController.Evaluate( Target, DeltaTime );
-    if( WasBlending && !m_ViewController.IsBlending() )
-    {
-        m_RebaseRenderViewZone = TRUE;
-    }
     m_SimulationViewInitialized = TRUE;
     ComputeView( GetSimulationView(), player::VIEW_NULL );
 }
@@ -521,6 +527,8 @@ void player::ComputeView( view& View, view_flags Flags )
 
     ApplyViewSample( View, m_SimulationViewSample );
 }
+
+//=========================================================================
 
 f32 player::GetDeathCameraClearDistance( const vector3& Direction,
                                          f32 MaxDistance ) const
@@ -563,6 +571,8 @@ f32 player::GetDeathCameraClearDistance( const vector3& Direction,
 
     return MAX( 0.0f, ClearDistance );
 }
+
+//=========================================================================
 
 void player::StartDeathCamera( void )
 {
@@ -634,6 +644,8 @@ void player::StartDeathCamera( void )
                          ClearDistances[BestDirection] );
 }
 
+//=========================================================================
+
 void player::UpdateDeathCamera( f32 DeltaTime )
 {
     if( !m_DeathCamera.IsActive() )
@@ -664,6 +676,8 @@ void player::UpdateDeathCamera( f32 DeltaTime )
     m_DeathCamera.Advance( DeltaTime, ClearDistance );
 }
 
+//=========================================================================
+
 void player::StopDeathCamera( void )
 {
     if( m_DeathCamera.IsActive() )
@@ -671,6 +685,8 @@ void player::StopDeathCamera( void )
         m_DeathCamera.Stop();
     }
 }
+
+//=========================================================================
 
 view& player::GetLiveView( s32 Player ) 
 { 
@@ -680,6 +696,8 @@ view& player::GetLiveView( s32 Player )
     return m_Views[Player]; 
 }
 
+//=========================================================================
+
 view& player::GetSimulationView( void )
 {
 #ifdef X_EDITOR
@@ -688,6 +706,25 @@ view& player::GetSimulationView( void )
     return GetLiveView( GetLocalSlot() );
 #endif
 }
+
+//=========================================================================
+
+void player::SetViewViewport( s32 X0, s32 Y0, s32 X1, s32 Y1 )
+{
+    view& View = GetSimulationView();
+    View.SetViewport( X0, Y0, X1, Y1 );
+
+    if( m_SimulationViewInitialized && (m_SimulationViewSample.FirstPersonClearance > 0.0f) )
+    {
+        // Rendering can resize/split the viewport after simulation. Preserve the
+        // already-resolved eye/rig pose and fit the new projection into its margin.
+        const f32 UnitRadius = PlayerView::GetNearPlaneRadius( 1.0f, View.GetXFOV(), View.GetYFOV() );
+        const f32 MaxNearClip = (m_SimulationViewSample.FirstPersonClearance - PlayerView::ClearanceMargin) / UnitRadius;
+        View.SetZLimits( MIN( m_SimulationViewSample.NearClip, MaxNearClip ), m_SimulationViewSample.FarClip );
+    }
+}
+
+//=========================================================================
 
 const view& player::GetRenderView( void ) const
 {

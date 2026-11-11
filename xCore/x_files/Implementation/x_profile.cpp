@@ -24,6 +24,7 @@
 #include "../x_plus.hpp"
 #include "../x_threads.hpp"
 #include "x_profile_tracy.hpp"
+#include "x_profile_nvtx.hpp"
 
 //==============================================================================
 //  CONSTANTS
@@ -61,6 +62,10 @@ struct xprofiler::implementation
         xprofile_id          Id;
         xtick                BeginTick;
         xprofile_tracy_scope TracyScope;
+        #if defined( X_PROFILE_NVTX ) && X_PROFILE_NVTX
+        u64                  NvtxRange;
+        u64                  BeginCpuNs;
+        #endif
     };
 
     //---------------------------------------------------------------------
@@ -98,6 +103,9 @@ struct xprofiler::implementation
         u32                     Hash;
         u32                     TracyMetricId;
         char                    ExternalName[XPROFILE_EXTERNAL_NAME_LENGTH];
+        #if defined( X_PROFILE_NVTX ) && X_PROFILE_NVTX
+        xbool                   NvtxCpuTiming;
+        #endif
         xprofile_metric_sample* pSamples;
     };
 
@@ -426,6 +434,9 @@ struct xprofiler::implementation
                            XPROFILE_EXTERNAL_NAME_LENGTH,
                            Metric.Info.Category,
                            Metric.Info.Name );
+        #if defined( X_PROFILE_NVTX ) && X_PROFILE_NVTX
+        Metric.NvtxCpuTiming = x_ProfileNvtxCpuZoneEnabled( Metric.ExternalName );
+        #endif
         Metric.TracyMetricId = x_ProfileTracyRegisterMetric(
             Metric.ExternalName,
             Metric.Info.File,
@@ -467,7 +478,14 @@ struct xprofiler::implementation
 
         active_scope& Scope = pThread->pScopes[pThread->ScopeCount];
         Scope.TracyScope = x_ProfileTracyBeginZone( pMetrics[Id].TracyMetricId );
+        #if defined( X_PROFILE_NVTX ) && X_PROFILE_NVTX
+        Scope.NvtxRange = x_ProfileNvtxBeginZone( pMetrics[Id].ExternalName,
+                                                GetCategoryColor( pMetrics[Id].Info.Category ) );
+        #endif
         const xtick Tick = x_GetTime();
+        #if defined( X_PROFILE_NVTX ) && X_PROFILE_NVTX
+        Scope.BeginCpuNs = pMetrics[Id].NvtxCpuTiming ? x_ProfileNvtxReadThreadCpuTime() : 0;
+        #endif
         Scope.Id         = Id;
         Scope.BeginTick  = Tick;
         EmitTimelineEvent( *pThread,
@@ -490,10 +508,22 @@ struct xprofiler::implementation
         if( !pThread || (pThread->ScopeCount == 0) )
             return;
 
+        #if defined( X_PROFILE_NVTX ) && X_PROFILE_NVTX
+        const u64 EndCpuNs = pThread->pScopes[pThread->ScopeCount - 1].BeginCpuNs
+                                 ? x_ProfileNvtxReadThreadCpuTime() : 0;
+        #endif
         const xtick Tick = x_GetTime();
         const u32 ScopeIndex = --pThread->ScopeCount;
         const active_scope Scope = pThread->pScopes[ScopeIndex];
         x_ProfileTracyEndZone( Scope.TracyScope );
+        #if defined( X_PROFILE_NVTX ) && X_PROFILE_NVTX
+        x_ProfileNvtxEndZone( Scope.NvtxRange );
+        if( Scope.BeginCpuNs && EndCpuNs )
+        {
+            x_ProfileNvtxCpuTiming( pMetrics[Scope.Id].ExternalName, Scope.BeginCpuNs, EndCpuNs,
+                                   x_TicksToMs( Tick - Scope.BeginTick ) );
+        }
+        #endif
 
         if( FrameActive )
         {
@@ -881,6 +911,10 @@ void xprofiler::Init( const xprofile_config* pConfig )
     if( m_pImplementation )
         return;
 
+    #if defined( X_PROFILE_NVTX ) && X_PROFILE_NVTX
+    x_ProfileNvtxInit();
+    #endif
+
     xprofile_config Config = pConfig ? *pConfig : xprofile_config();
     Config.FrameCapacity         = MAX( Config.FrameCapacity,         1u );
     Config.MetricCapacity        = MAX( Config.MetricCapacity,        1u );
@@ -1172,6 +1206,9 @@ void xprofiler::EndFrame( void )
     implementation* pImpl = m_pImplementation;
     const xtick EndTick = x_GetTime();
     x_ProfileTracyFrameMark();
+    #if defined( X_PROFILE_NVTX ) && X_PROFILE_NVTX
+    x_ProfileNvtxFrame( pImpl->CurrentFrameNumber );
+    #endif
     pImpl->RecordDuration( pImpl->FrameDurationMetric,
                            EndTick - pImpl->FrameBeginTick );
     const u32 FrameIndex = (u32)((pImpl->CurrentFrameNumber - 1) %

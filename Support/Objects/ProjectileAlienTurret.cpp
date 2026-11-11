@@ -9,7 +9,7 @@
 #include "ProjectileAlienTurret.hpp"
 #include "Objects/ParticleEmiter.hpp"
 #include "AudioMgr/AudioMgr.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "../Support/Tracers/TracerMgr.hpp"
 #include "Objects/Actor/Actor.hpp"
 #include "Decals/DecalMgr.hpp"
@@ -130,7 +130,7 @@ bbox alien_turret_projectile::GetLocalBBox( void ) const
 
     if( pRigidGeom )
     {
-        return( pRigidGeom->m_collision.BBox );
+        return( pRigidGeom->m_Collision.BBox );
     }
     */
     return( bbox( vector3( 10.0f, 10.0f, 10.0f),
@@ -255,7 +255,7 @@ void alien_turret_projectile::OnPain( const pain& Pain )
 void alien_turret_projectile::OnExplode( void )
 {
     //add a light where the explosion occurred
-    g_LightMgr.AddFadingLight( GetPosition(), xcolor(152, 152, 76, 255), 300.0f, 1.0f, 1.8f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( GetPosition(), xcolor(152, 152, 76, 255), 300.0f, 1.0f, 1.8f );
 
     if (m_EffectTrail) 
     {

@@ -17,8 +17,8 @@
 #include "StateMgr/StateMgr.hpp"
 #include "StringMgr/StringMgr.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/MatchMgr.hpp"
-#include "NetworkMgr/GameClient.hpp"
+#include "NetworkMgr/Match/MatchMgr.hpp"
+#include "NetworkMgr/Connection/GameClient.hpp"
 #include "AudioMgr/AudioMgr.hpp"
 #include "Configuration/GameConfig.hpp"
 
@@ -33,18 +33,6 @@ ui_manager::dialog_tem LoginDialog =
     NULL,
     0
 };
-
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
 
 //=========================================================================
 //  Registration function
@@ -244,6 +232,9 @@ void dlg_online_login::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     MEMORY_OWNER("dlg_online_login::OnUpdate");
     (void)pWin;
     (void)DeltaTime;
+
+    if( m_State != DIALOG_STATE_ACTIVE )
+        return;
 
     // scale window if necessary
     if( g_UiMgr->IsScreenScaling() )
@@ -527,6 +518,12 @@ const char* dlg_online_login::GetStateName( dlg_login_state LoginState )
 //------------------------------------------------------------------------------
 void dlg_online_login::UpdateInitConnection( void )
 {
+    if( m_PopUpResult != DLG_POPUP_IDLE )
+    {
+        OnCancel( this );
+        return;
+    }
+
     // Wait until we get a response: connected or failed
     if( g_MatchMgr.GetState() == MATCH_IDLE )
     {
@@ -539,19 +536,18 @@ void dlg_online_login::UpdateInitConnection( void )
             SetLoginState( LOGIN_WAIT_FOR_LOGIN );
         }
     }
-    // The user must have cancelled the login attempt
-    if( (m_PopUpResult!=DLG_POPUP_IDLE) && (GetState()==DIALOG_STATE_ACTIVE) )
-    {
-        // Make sure matchmgr gives up on the login request.
-        g_NetworkMgr.Disconnect();
-        SetState( DIALOG_STATE_CANCEL );
-    }
 }
 
 
 //------------------------------------------------------------------------------
 void dlg_online_login::UpdateWaitForLogin( void )
 {
+    if( m_PopUpResult != DLG_POPUP_IDLE )
+    {
+        OnCancel( this );
+        return;
+    }
+
     match_conn_status ConnectStatus;
 
     ConnectStatus = g_MatchMgr.GetConnectStatus();
@@ -587,13 +583,6 @@ void dlg_online_login::UpdateWaitForLogin( void )
         }
     }
 
-    // The user must have cancelled the login attempt
-    if( (m_PopUpResult!=DLG_POPUP_IDLE) && (GetState()==DIALOG_STATE_ACTIVE) )
-    {
-        // Make sure matchmgr gives up on the login request.
-        g_NetworkMgr.Disconnect();
-        SetState( DIALOG_STATE_CANCEL );
-    }
 }
 
 //------------------------------------------------------------------------------

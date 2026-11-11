@@ -48,6 +48,8 @@ void corpse_pain::Read( const bitstream& BS )
     s32 V;
 
     BS.ReadRangedS32( V, 0, TYPE_COUNT );
+    if( V >= TYPE_COUNT )
+        BS.SetReadError();
     m_Type = V;
 
     BS.ReadRangedS32( V, -1, 15 );
@@ -62,7 +64,7 @@ void corpse_pain::Read( const bitstream& BS )
     BS.ReadRangedVector( m_Position, 10, -100*50.0f, 100*50.0f );
     BS.ReadUnitVector( m_Direction, 20 );
     BS.ReadRangedF32( m_Force, 20, 0.0f, 10000.0f );
-    BS.ReadRangedF32( m_ForceFarDist, 20, 0.0f, 100*100.0f );
+    BS.ReadRangedF32( m_ForceFarDist, 20, 0.0f, 10001.0f );
 }
 
 //==============================================================================
@@ -117,13 +119,12 @@ void corpse_pain::Setup( const pain& Pain, corpse& Corpse )
 
     // Lookup pain info
     f32   ForceFarDist = 100.0f * 10.0f;
-    xbool bSplash  = FALSE;
+    xbool bSplash  = CorpsePain.IsExplosion();
     pain_handle hPain = CorpsePain.GetPainHandle();
     const pain_profile* pPainProfile = hPain.GetPainProfile();
     if( pPainProfile )
     {
         ForceFarDist = pPainProfile->m_ForceFarDist;
-        bSplash      = pPainProfile->m_bSplash;
     }
 
     // Lookup rigid body that was hit due to a collision?

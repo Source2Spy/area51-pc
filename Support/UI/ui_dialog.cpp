@@ -108,7 +108,7 @@ xbool ui_dialog::Create( s32                        UserID,
         if( pDialogTem->StringID )
         {
             const xwchar* pLabel = g_StringTableMgr( "ui", pDialogTem->StringID );
-            ASSERTS( pLabel, ".stringbin files might not be compiled!" );
+            ASSERTS( pLabel, "Missing localized dialog label" );
             m_Label = pLabel;
         }
         else
@@ -143,7 +143,7 @@ xbool ui_dialog::Create( s32                        UserID,
             if( pControlTem->StringID )
             {
                 pLabel = g_StringTableMgr( "ui", pControlTem->StringID );
-                ASSERTS( pLabel, ".stringbin files might not be compiled!" );
+                ASSERTS( pLabel, "Missing localized control label" );
             }
             pControl->SetLabel( pLabel );
             if( x_strcmp( pControlTem->pClass, "edit" ) == 0 )

@@ -3,7 +3,7 @@
 #include "Objects/PlaySurface.hpp"
 #include "Objects/ProxyPlaySurface.hpp"
 #include "GameLib/RigidGeomCollision.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 
 //=========================================================================
 // typedefs and structures
@@ -957,6 +957,15 @@ s32 playsurface_mgr::VisCheck( const bbox& BBox, u32 CheckPlaneMask )
 
 void playsurface_mgr::RenderZone( zone_info& ZoneInfo, zone_mgr::zone_id Zone1, zone_mgr::zone_id Zone2 )
 {
+    static xprofile_counter playSurfaceCandidates =
+        x_GetProfiler().RegisterCounter( "PlaySurfaceCandidates", "RenderCounter" );
+    static xprofile_counter playSurfaceZoneCulled =
+        x_GetProfiler().RegisterCounter( "PlaySurfaceZoneCulled", "RenderCounter" );
+    static xprofile_counter playSurfaceFrustumCulled =
+        x_GetProfiler().RegisterCounter( "PlaySurfaceFrustumCulled", "RenderCounter" );
+    static xprofile_counter playSurfaceSubmissions =
+        x_GetProfiler().RegisterCounter( "PlaySurfaceSubmissions", "RenderCounter" );
+
     s32 i;
 
     // if this zone isn't loaded fully, we can't render it
@@ -965,6 +974,8 @@ void playsurface_mgr::RenderZone( zone_info& ZoneInfo, zone_mgr::zone_id Zone1, 
 
     if ( ZoneInfo.NSurfaces == 0 )
         return;
+
+    playSurfaceCandidates.Add( ZoneInfo.NSurfaces );
 
     // use the starting zone to determine whether we should do a zone vis check
     s32   StartingZone = g_ZoneMgr.GetStartingZone();
@@ -1012,6 +1023,7 @@ void playsurface_mgr::RenderZone( zone_info& ZoneInfo, zone_mgr::zone_id Zone1, 
             // check if this surface is in the zone
             if ( bNotInStartingZone && !g_ZoneMgr.IsBBoxVisible(pSpadSurface->WorldBBox, Zone1, Zone2 ) )
             {
+                playSurfaceZoneCulled.Add();
                 continue;
             }
 
@@ -1019,6 +1031,7 @@ void playsurface_mgr::RenderZone( zone_info& ZoneInfo, zone_mgr::zone_id Zone1, 
             s32 Vis = VisCheck(pSpadSurface->WorldBBox, XBIN(111111));
             if ( Vis == -1 )
             {
+                playSurfaceFrustumCulled.Add();
                 continue;
             }
 
@@ -1039,11 +1052,12 @@ void playsurface_mgr::RenderZone( zone_info& ZoneInfo, zone_mgr::zone_id Zone1, 
                 Flags |= render::CLIPPED;
 
             // render it
-            render::AddRigidInstanceSimple( pSpadSurface->RenderInst,
+            render::GetRenderPipeline().GetSubmission().AddRigidInstanceSimple( pSpadSurface->RenderInst,
                                             (const u32*)pSpadSurface->pColor,
                                             &pSurface->L2W,
                                             pSpadSurface->WorldBBox,
                                             Flags );
+            playSurfaceSubmissions.Add();
 
             // clear any accumulated flags for the next frame
             pSurface->RenderFlags &= ~render::CLIPPED;

@@ -85,6 +85,8 @@ void audio_spatial_mgr::Kill( void )
 
 void audio_spatial_mgr::GetEar( ear_id EarID, matrix4& W2V, vector3& Position, s32& ZoneID, f32& Volume )
 {
+    m_EarLock.Acquire();
+
     // Convert id.
     audio_spatial_ear* pEar = IdToEar( EarID );
     ASSERT( pEar );
@@ -96,12 +98,16 @@ void audio_spatial_mgr::GetEar( ear_id EarID, matrix4& W2V, vector3& Position, s
         Volume   = pEar->Volume;
         ZoneID   = pEar->ZoneID;
     }
+
+    m_EarLock.Release();
 }
 
 //==============================================================================
 
 void audio_spatial_mgr::SetEar( ear_id EarID, const matrix4& W2V, const vector3& Position, s32 ZoneID, f32 Volume )
 {
+    m_EarLock.Acquire();
+
     ASSERT( (Volume >= 0.0f) && (Volume <= 1.0f) );
 
     // Convert id.
@@ -115,6 +121,8 @@ void audio_spatial_mgr::SetEar( ear_id EarID, const matrix4& W2V, const vector3&
         pEar->Position = Position;
         pEar->ZoneID   = ZoneID;
     }
+
+    m_EarLock.Release();
 }
 
 //==============================================================================
@@ -220,7 +228,9 @@ void audio_spatial_mgr::Calculate3dVolume( f32               NearClipOrig,
 
         // Is this ear more dominant? (= is required, do NOT remove it!)
         if( EarVolume >= Volume )
+        {
             Volume = EarVolume;
+        }
 
         // Walk the list.
         pEar = pEar->pNext;
@@ -238,10 +248,15 @@ void audio_spatial_mgr::Calculate2dPan( f32      Pan2d,
     Pan2d *= 90;
 
     i = (s32)Pan2d;
+
     if( i < -90 )
+    {
         i = -90;
+    }
     if( i > 90 )
+    {
         i = 90;
+    }
 
     // Get the stereo pan.
     Pan3d = m_StereoPan[ i+90 ];
@@ -404,10 +419,15 @@ void audio_spatial_mgr::Calculate3dVolumeAndPan( f32            NearClipOrig,
             // +90 degrees is off your right shoulder.
             //
             f32 Angle = RAD_TO_DEG( x_atan2( -Position.GetX(), Position.GetZ() ) );
+
             while( Angle < 0.0f )
+            {
                 Angle += 360.0f;
+            }
             while( Angle >= 360.0f )
+            {
                 Angle -= 360.0f;
+            }
             s32 i = (s32)Angle;
             ASSERT( i>=0 );
             ASSERT( i<360 );
@@ -418,8 +438,16 @@ void audio_spatial_mgr::Calculate3dVolumeAndPan( f32            NearClipOrig,
             // Get Delta to new sound position and and apply to old position % 720
             radian Delta = x_MinAngleDiff( DEG_TO_RAD(DegreesToSound), DEG_TO_RAD(PrevDegreesToSound % 360) );
             DegreesToSound = PrevDegreesToSound + (s32)(RAD_TO_DEG(Delta));
-            while( DegreesToSound <    0 ) DegreesToSound += 720;
-            while( DegreesToSound >= 720 ) DegreesToSound -= 720;
+
+            while( DegreesToSound <    0 )
+            {
+                DegreesToSound += 720;
+            }
+
+            while( DegreesToSound >= 720 )
+            {
+                DegreesToSound -= 720;
+            }
 
             // Store off position as previous position
             PrevDegreesToSound = DegreesToSound;
@@ -470,6 +498,7 @@ void audio_spatial_mgr::SetSpeakerAngles( s32 FrontLeft, s32 FrontRight, s32 Bac
 
     // Default the stereo pan.
     DeltaTheta = 180.0f;
+
     for( i=0 ; i<180 ; i++ )
     {
         Angle = (f32)(i);
@@ -478,12 +507,14 @@ void audio_spatial_mgr::SetSpeakerAngles( s32 FrontLeft, s32 FrontRight, s32 Bac
         P1 = x_sqrt( Q );
         m_StereoPan[i].Set( P0, P1, 0.0f, 0.0f );
     }
+
     m_StereoPan[180].Set( 0.0f, 1.0f, 0.0f, 0.0f );
 
     switch( nSpeakers )
     {
         // Mono
         case 1:
+        {
             // Set the diffuse vector for 1 speaker.
             m_Diffuse.Set( 1.0f, 1.0f, 0.0f, 0.0f );
 
@@ -496,10 +527,13 @@ void audio_spatial_mgr::SetSpeakerAngles( s32 FrontLeft, s32 FrontRight, s32 Bac
             {
                 m_StereoPan[i].Set( 1.0f, 0.0f, 0.0f, 0.0f );
             }
+
             break;
 
         // Stereo
+        }
         case 2:
+        {
             ASSERT( FrontLeft  <= 0 );
             ASSERT( FrontRight >= 0 );
 
@@ -508,11 +542,15 @@ void audio_spatial_mgr::SetSpeakerAngles( s32 FrontLeft, s32 FrontRight, s32 Bac
             m_Diffuse.Set( P0, P0, 0.0f, 0.0f );
 
             DeltaTheta = (f32)x_abs( FrontRight - FrontLeft );
+
             for( i=FrontLeft ; (i<=FrontRight)  && (i<360) ; i++ )
             {
                 j = i;
+
                 if( j<0 )
+                {
                     j += 360;
+                }
                 Angle = (f32)(i-FrontLeft);
                 Q = Angle / DeltaTheta;
                 P0 = x_sqrt( 1.0f - Q );
@@ -521,6 +559,7 @@ void audio_spatial_mgr::SetSpeakerAngles( s32 FrontLeft, s32 FrontRight, s32 Bac
             }
 
             DeltaTheta = (f32)x_abs( FrontLeft+360 - FrontRight );
+
             for( i=FrontRight ; (i<= FrontLeft+360) && (i<360) ; i++ )
             {
                 Angle = (f32)(i-FrontRight);
@@ -529,11 +568,15 @@ void audio_spatial_mgr::SetSpeakerAngles( s32 FrontLeft, s32 FrontRight, s32 Bac
                 P1 = x_sqrt( Q );
                 m_Pan[i].Set( P1, P0, 0.0f, 0.0f );
             }
+
             break;
+        }
 
         default:
+        {
             ASSERT(0);
             break;
+        }
     }
 }
 
@@ -565,9 +608,13 @@ audio_spatial_mgr::audio_spatial_ear* audio_spatial_mgr::IdToEar( ear_id EarID )
 
     // Does the sequence match?
     if( ((pEar+Index)->Sequence & 0x0000ffff) == Sequence )
+    {
         return pEar+Index;
+    }
     else
+    {
         return NULL;
+    }
 }
 
 //==============================================================================
@@ -582,14 +629,41 @@ ear_id audio_spatial_mgr::EarToId( audio_spatial_ear* pEar )
 
 //==============================================================================
 
+xbool audio_spatial_mgr::IsEarInBox( const bbox& Box )
+{
+    xbool Result = FALSE;
+
+    m_EarLock.Acquire();
+
+    for( audio_spatial_ear* pEar = m_pUsedEars; pEar; pEar = pEar->pNext )
+    {
+        if( pEar->Volume && Box.Intersect( pEar->Position ) )
+        {
+            Result = TRUE;
+            break;
+        }
+    }
+
+    m_EarLock.Release();
+
+    return Result;
+}
+
+//==============================================================================
+
 ear_id audio_spatial_mgr::GetFirstEar( void )
 {
     ASSERT( m_pCurrentEar == NULL );
     m_pCurrentEar = m_pUsedEars;
+
     if( m_pCurrentEar )
+    {
         return EarToId(m_pCurrentEar);
+    }
     else
+    {
         return 0;
+    }
 }
 
 //==============================================================================
@@ -618,6 +692,7 @@ void audio_spatial_mgr::ResetCurrentEar( void )
 
 ear_id audio_spatial_mgr::CreateEar( void )
 {
+    m_EarLock.Acquire();
     // Nuke the current ear.
     m_pCurrentEar = NULL;
 
@@ -635,6 +710,8 @@ ear_id audio_spatial_mgr::CreateEar( void )
         m_pUsedEars = pEar;
 
         // Initialize it.
+        pEar->W2V.Identity();
+        pEar->Position.Zero();
         pEar->Volume   = 1.0f;
         pEar->ZoneID   = ZONELESS;
 
@@ -645,10 +722,14 @@ ear_id audio_spatial_mgr::CreateEar( void )
         }
 
         // its all good
-        return EarToId( pEar );
+        ear_id EarID = EarToId( pEar );
+        m_EarLock.Release();
+        return EarID;
     }
     else
     {
+        m_EarLock.Release();
+
         // Out of ears!
         x_DebugMsg( "Out of audio ears.\n" );
         return 0;
@@ -659,6 +740,8 @@ ear_id audio_spatial_mgr::CreateEar( void )
 
 void audio_spatial_mgr::DestroyEar( ear_id EarID )
 {
+    m_EarLock.Acquire();
+
     audio_spatial_ear* pEar = IdToEar( EarID );
 
     if( pEar )
@@ -671,14 +754,18 @@ void audio_spatial_mgr::DestroyEar( ear_id EarID )
 
         // Bump sequence
         if( ++pEar->Sequence >= 32768 )
+        {
             pEar->Sequence = 1;
+        }
 
         // Walk the entire list (all 4 of em!!!)
         while( pCurr )
         {
             // Found it?
             if( pCurr == pEar )
+            {
                 break;
+            }
 
             // Next!
             pPrev = pCurr;
@@ -710,6 +797,8 @@ void audio_spatial_mgr::DestroyEar( ear_id EarID )
         // Trying to destroy an invalid ear...
         x_DebugMsg( "Trying to destroy an invalid ear.\n" );
     }
+
+    m_EarLock.Release();
 }
 
 //==============================================================================
@@ -721,14 +810,22 @@ void audio_spatial_mgr::SetSpeakerConfig( s32 SpeakerConfig )
     switch( SpeakerConfig )
     {
         case SPEAKERS_MONO:
+        {
             SetSpeakerAngles( 0, 0, 0, 0, 1 );
             break;
+        }
+
         case SPEAKERS_STEREO:
+        {
             SetSpeakerAngles( -90, 90, 0, 0, 2 );
             break;
+        }
+
         default:
+        {
             ASSERT( 0 );
             break;
+        }
     }
 }
 
@@ -759,6 +856,7 @@ void audio_spatial_mgr::UpdateEarZoneVolume( ear_id EarID, s32 ZoneID, f32 Volum
     if( pEar )
     {
         ASSERT( (ZoneID >= 0) && (ZoneID <MAX_ZONES) );
+
         if( (ZoneID >= 0) && (ZoneID <MAX_ZONES) )
         {
             pEar->ZoneVolumes[ ZoneID ] = Volume;

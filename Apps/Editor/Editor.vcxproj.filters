@@ -128,9 +128,6 @@
     <ClCompile Include="TextEditorView.cpp">
       <Filter>Source Files\MFCStuff</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Support\Font\font.cpp">
-      <Filter>Font</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Support\GenericDialog\GenericDialog.hpp">
@@ -240,9 +237,6 @@
     </ClInclude>
     <ClInclude Include="Resource.h">
       <Filter>Resource Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Support\Font\font.hpp">
-      <Filter>Font</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

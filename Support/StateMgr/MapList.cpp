@@ -10,7 +10,7 @@
 #include "Parsing/TextIn.hpp"
 #include "StringMgr/StringMgr.hpp"
 #include "ResourceMgr/ResourceMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "StateMgr/StateMgr.hpp"
 
 //=========================================================================
@@ -594,9 +594,9 @@ void FillString( const char* pString )
         if(( *pText > 0x10 ) && (*pText != 0x20))
         {
             // check for button code pairs
-            if( *pText == 0xAB)
+            if( *pText == '{' )
             {
-                while(*pText && *pText != 0xBB)
+                while(*pText && *pText != '}')
                     pText++;
             }
             // check for bracket pairs
@@ -606,7 +606,7 @@ void FillString( const char* pString )
                     pText++;
             }
             if( *pText == 0 ) break;
-            if( (*pText != 0xBB) && (*pText != '>') )
+            if( (*pText != '}') && (*pText != '>') )
                 *pText = 'x';
         }
         pText++;

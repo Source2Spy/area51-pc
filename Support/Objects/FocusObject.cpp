@@ -22,7 +22,7 @@
 
 #ifndef X_EDITOR
 #include "GameLib/RenderContext.hpp"
-#include "NetworkMgr/MsgMgr.hpp"
+#include "NetworkMgr/Messages/MsgMgr.hpp"
 #endif
 
 //=========================================================================
@@ -206,19 +206,14 @@ focus_object::focus_object( void )
 
     m_Bracket.SetName( PRELOAD_FILE("Bracket.xbmp") );
 
-    m_CircleFocusObj[0].BMP.SetName(PRELOAD_FILE("HUD_Campaign_lorereticle_1.xbmp"));
-    m_CircleFocusObj[1].BMP.SetName(PRELOAD_FILE("HUD_Campaign_lorereticle_2.xbmp"));
-    m_CircleFocusObj[2].BMP.SetName(PRELOAD_FILE("HUD_Campaign_lorereticle_3.xbmp"));
+    m_CircleFocusObj[0].BMP.SetName(PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_LORERETICLE_1.XBMP"));
+    m_CircleFocusObj[1].BMP.SetName(PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_LORERETICLE_2.XBMP"));
+    m_CircleFocusObj[2].BMP.SetName(PRELOAD_FILE("HUD/CAMPAIGN/HUD_CAMPAIGN_LORERETICLE_3.XBMP"));
 
     m_CircleFocusObj[0].Rotation = 0.0f;
     m_CircleFocusObj[1].Rotation = 0.0f;
     m_CircleFocusObj[2].Rotation = 0.0f;
 
-    m_CircleFocusColorAlpha = 0.0f;
-    m_CircleFocusFadeIN = FALSE;
-    m_CircleFocusFadeOUT = FALSE;
-    m_CircleFocusFadeStep = 0.0f;
-    m_CircleFocusFadeStepIndex = 0;
 
 }
 
@@ -299,7 +294,11 @@ void focus_object::OnRender( void )
                 vector2( CenterOnScreen.GetX(), CenterOnScreen.GetY() ),
                 ScreenViewport );
 
-            if( (m_bHasLOS && m_bInViewRange) || m_CircleFocusColorAlpha > 0 )
+            // scale the FO circle with the focus box's size on screen
+            const f32 CircleSize = rView.CalcScreenSize( GetBBox().GetCenter(), LongestDim * 0.5f ) /
+                                   g_UIRenderer.GetViewport().GetHudScale( ScreenViewport );
+
+            if( m_MaxAlpha > 0 )
             {
                 // render all of the 3 circle pc of art to make up the FO
                 for( s32 circle = 0 ; circle < NUM_CIRCLE_SECTIONS ; circle++ )
@@ -320,17 +319,19 @@ void focus_object::OnRender( void )
                         vector2 UV1(1,1);  
                         vector2 WH (W,H);
 
+                        WH.Scale( 0.5f * CircleSize / x_max( W, H ) );
+
                         xcolor FO_Color = m_pCurrState->m_SelectedColor2;
 
                         if( HasFocus() )
                             FO_Color = m_pCurrState->m_SelectedColor1;
 
-                        FO_Color.A = pPlayer->IsMutated()
-                                   ? (u8)x_clamp( m_CircleFocusColorAlpha, 0.0f, 255.0f )
-                                   : 255;
+                        // fade the FO circle using the same alpha as the brackets
+                        FO_Color.A = x_min( m_MaxAlpha,
+                                            pPlayer->IsMutated() ? m_pCurrState->m_SelectedColor1.A : (u8)255 );
 
                         g_UIRenderer.DrawImage( *pTexture,
-                                                CirclePosition,
+                                                CirclePosition - WH * 0.5f,
                                                 WH,
                                                 UV0,
                                                 UV1,
@@ -468,7 +469,7 @@ void focus_object::OnRender( void )
                 irect LabelPos( (s32)P3D[ 0 ].GetX(), (s32)P3D[ 0 ].GetY(), (s32)P3D[ 1 ].GetX(), (s32)P3D[ 1 ].GetY() );
                 xcolor White            = XCOLOR_WHITE;
                 const xwchar* pDisplayStr     = 
-                    (xwchar*)g_StringTableMgr( g_StringMgr.GetString( m_pCurrState->m_DisplayStrTable ), 
+                    g_StringTableMgr( g_StringMgr.GetString( m_pCurrState->m_DisplayStrTable ),
                     g_StringMgr.GetString( m_pCurrState->m_DisplayStrTitle ) );
 
 #if !defined(CONFIG_RETAIL) | defined(CONFIG_QA)
@@ -571,21 +572,6 @@ void focus_object::OnAdvanceSimulation( f32 DeltaTime )
         // Only check collision with trigger and LOS if we're within viewable distance.
         if( m_bInViewRange )
         {
-            // Rather than pop the FO in, fade it over 10 simulation updates.
-            if( m_CircleFocusFadeIN == FALSE )
-            {
-                m_CircleFocusFadeStep = (m_pCurrState->m_SelectedColor1.A / 10.0f);
-                m_CircleFocusFadeStepIndex = 0;
-                m_CircleFocusColorAlpha = 0.0f;
-                m_CircleFocusFadeIN = TRUE;
-                m_CircleFocusFadeOUT = FALSE;
-            }
-            else if( m_CircleFocusFadeStepIndex < 10 )
-            {
-                m_CircleFocusColorAlpha += m_CircleFocusFadeStep;
-                m_CircleFocusFadeStepIndex++;
-            }
-
             //
             // Check the spatial trigger, if any.
             //
@@ -642,23 +628,8 @@ void focus_object::OnAdvanceSimulation( f32 DeltaTime )
         else
         {
             m_bHasLOS = FALSE;
-
-            // Fade the circle out when it leaves the view range.
-            if( m_CircleFocusFadeOUT == FALSE )
-            {
-                m_CircleFocusFadeOUT = TRUE;
-                m_CircleFocusFadeIN = FALSE;
-                m_CircleFocusFadeStepIndex = 0;
-            }
-            else if( m_CircleFocusFadeStepIndex < 10 )
-            {
-                m_CircleFocusColorAlpha -= m_CircleFocusFadeStep;
-                m_CircleFocusFadeStepIndex++;
-            }
         }
     }
-
-    m_CircleFocusColorAlpha = x_clamp( m_CircleFocusColorAlpha, 0.0f, 255.0f );
 
     // Pulse the focus color using simulation time.
     m_ColorPhase += 2.0f * DeltaTime;
@@ -770,7 +741,7 @@ xbool focus_object::TestPress( void )
     {
         
 #ifndef X_EDITOR    
-        const xwchar* pString = (xwchar*)g_StringTableMgr( g_StringMgr.GetString( m_pCurrState->m_InteractStrTable ), 
+        const xwchar* pString = g_StringTableMgr( g_StringMgr.GetString( m_pCurrState->m_InteractStrTable ),
             g_StringMgr.GetString( m_pCurrState->m_InteractStrTitle ) );
 
         // AHARP todo - this needs to be removed from any release builds.

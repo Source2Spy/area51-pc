@@ -48,17 +48,23 @@ xbool audio_stream_decoder_factory::Open( audio_stream* pStream )
     ASSERT( pStream );
 
     if( pStream == NULL )
+    {
         return FALSE;
+    }
 
     ASSERT( pStream->pDecoder == NULL );
+
     if( pStream->pDecoder != NULL )
+    {
         return FALSE;
+    }
 
     xbool Result = FALSE;
 
     switch( pStream->CompressionType )
     {
         case MP3:
+        {
             pStream->WaveformCursor    = 0;
             pStream->StreamDone        = FALSE;
             pStream->DecodeWriteCursor = 0;
@@ -66,24 +72,40 @@ xbool audio_stream_decoder_factory::Open( audio_stream* pStream )
             pStream->DecodedEndFrame   = 0;
 
             if( (pStream->FileHandle == NULL) || (pStream->WaveformLength == 0) )
+            {
                 Result = FALSE;
+            }
             else
             {
-                pStream->pDecoder = new audio_mp3_stream_decoder( m_FileSystem, pStream );
-                ASSERT( pStream->pDecoder );
-                Result = (pStream->pDecoder != NULL);
+                audio_mp3_stream_decoder* pDecoder = new audio_mp3_stream_decoder( m_FileSystem, pStream );
+                Result                             = pDecoder && pDecoder->IsValid();
+
+                if( Result )
+                {
+                    pStream->pDecoder = pDecoder;
+                }
+                else
+                {
+                    delete pDecoder;
+                }
             }
+
             break;
+        }
 
         case PCM:
         case ADPCM:
+        {
             Result = TRUE;
             break;
+        }
 
         default:
+        {
             ASSERT( 0 );
             Result = FALSE;
             break;
+        }
     }
 
     return Result;
@@ -94,7 +116,9 @@ xbool audio_stream_decoder_factory::Open( audio_stream* pStream )
 void audio_stream_decoder_factory::Close( audio_stream_decoder* pDecoder )
 {
     if( pDecoder == NULL )
+    {
         return;
+    }
 
     delete pDecoder;
 }
@@ -112,11 +136,8 @@ xbool audio_stream_decoder_factory::UsesRuntimeDecode( compression_types Compres
 {
     switch( CompressionType )
     {
-        case MP3:
-            return TRUE;
-
-        default:
-            return FALSE;
+        case MP3: return TRUE; break;
+        default:  return FALSE; break;
     }
 }
 
@@ -125,7 +146,9 @@ xbool audio_stream_decoder_factory::UsesRuntimeDecode( compression_types Compres
 xbool audio_stream_decoder_factory::UsesRuntimeDecode( const audio_stream* pStream ) const
 {
     if( pStream == NULL )
+    {
         return FALSE;
+    }
 
     return UsesRuntimeDecode( pStream->CompressionType );
 }

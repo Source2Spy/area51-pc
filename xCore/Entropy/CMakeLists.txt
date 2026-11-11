@@ -44,6 +44,7 @@ a51_add_project( Entropy STATIC
         "${CMAKE_CURRENT_LIST_DIR}/SDLEngine/sdleng_composite.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/SDLEngine/sdleng_core.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/SDLEngine/sdleng_font.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/SDLEngine/sdleng_pipeline_cache.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/SDLEngine/sdleng_renderdraw.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/SDLEngine/sdleng_renderbuffer.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/SDLEngine/sdleng_rtarget.cpp"
@@ -57,7 +58,7 @@ a51_add_project( Entropy STATIC
         ${A51_ENTROPY_INPUT_BACKEND}
         "${CMAKE_CURRENT_LIST_DIR}/Common/e_ScratchMem.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Common/e_SimpleAllocator.cpp"
-        "${CMAKE_CURRENT_LIST_DIR}/Common/e_ECS.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/Shader/ecs_package_source.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Common/e_Text.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Common/e_View.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Common/e_Platform.cpp"
@@ -83,7 +84,6 @@ a51_add_project( Entropy STATIC
         "${CMAKE_CURRENT_LIST_DIR}/e_Audio.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/e_Composite.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/e_Engine.hpp"
-        "${CMAKE_CURRENT_LIST_DIR}/e_Frame.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/e_Input.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/Input/e_InputActions.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/Input/e_Input_Gadget_Defines.hpp"
@@ -93,6 +93,8 @@ a51_add_project( Entropy STATIC
         "${CMAKE_CURRENT_LIST_DIR}/e_RenderTarget.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/e_RenderBuffer.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/e_RenderState.hpp"
+        "${CMAKE_CURRENT_LIST_DIR}/e_RenderPipelineKey.hpp"
+        "${CMAKE_CURRENT_LIST_DIR}/e_RenderPipelineKey.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/e_Shader.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/e_ECS.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/e_ScratchMem.hpp"
@@ -103,6 +105,7 @@ a51_add_project( Entropy STATIC
         "${CMAKE_CURRENT_LIST_DIR}/Audio/audio_channel_mgr.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/Audio/audio_command.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/Audio/audio_command_queue.hpp"
+        "${CMAKE_CURRENT_LIST_DIR}/Audio/audio_deferred_voice.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/Audio/audio_runtime.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/Audio/audio_stream_decoder_factory.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/Audio/audio_descriptor_runtime.hpp"
@@ -138,6 +141,7 @@ a51_add_project( Entropy STATIC
         "${CMAKE_CURRENT_LIST_DIR}/Network/NetSocket.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/Network/NetStream.hpp"
     DEPENDENCIES
+        a51_ecs_codec
         ${A51_ENTROPY_NETWORK_DEPENDENCIES}
     PRIVATE_INCLUDE_DIRECTORIES
         "${CMAKE_SOURCE_DIR}/Support"

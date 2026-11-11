@@ -38,11 +38,15 @@ public:
     virtual void        RenderShadowCast    ( const matrix4* pL2W,
                                               u32            Flags,
                                               u64            ProjMask );
+            void        RenderShadowCast    ( const matrix4* pL2W,
+                                              u32            Flags,
+                                              u64            ProjMask,
+                                              u32            VMeshMask );
 
-    void                Render              ( const matrix4* pL2W, u32 Flags );
-    void                Render              ( const matrix4* pL2W, u32 Flags, u64 Mask );
-    void                Render              ( const matrix4* pL2W, u32 Flags, u64 Mask, u8 Alpha );
-    void                Render              ( const matrix4* pL2W, u32 Flags, u32 VTextureMask, s32 Alpha = 255 );
+    void                Render              ( const matrix4* pL2W, u32 Flags, xcolor Ambient = XCOLOR_WHITE );
+    void                Render              ( const matrix4* pL2W, u32 Flags, u64 Mask, xcolor Ambient = XCOLOR_WHITE );
+    void                Render              ( const matrix4* pL2W, u32 Flags, u64 Mask, u8 Alpha, xcolor Ambient = XCOLOR_WHITE );
+    void                Render              ( const matrix4* pL2W, u32 Flags, u32 VTextureMask, s32 Alpha = 255, xcolor Ambient = XCOLOR_WHITE );
 
 protected:
 

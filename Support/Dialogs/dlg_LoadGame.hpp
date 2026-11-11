@@ -99,6 +99,7 @@ protected:
     xwstring            m_NameText;
 
     slideshow_state     m_SlideshowState;
+    xbool               m_AllowSkip;
     xbool               m_LoadingComplete;
     xbool               m_FinalFadeoutStarted;
     f32                 m_ElapsedTime;

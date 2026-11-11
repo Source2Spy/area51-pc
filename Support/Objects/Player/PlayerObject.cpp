@@ -7,7 +7,7 @@
 #include "InputMgr/GamePad.hpp"
 #include "GameLib/StatsMgr.hpp"
 #include "StateMgr/StateMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "Objects/HudObject.hpp"
 #include "Characters/ActorEffects.hpp"
 #include "Configuration/GameConfig.hpp"
@@ -267,7 +267,6 @@ player::player( void ) :
     // The title for this player
     m_pPlayerTitle = "Unknown Mutation";
     
-    m_PeakLandVelocity      = -1.0f;
     m_bJumpStarted          = FALSE;
 
     // Get the players ear id.
@@ -295,8 +294,8 @@ player::player( void ) :
     m_SimulationViewInitialized    = FALSE;
     m_RenderViewZoneSourceGuid      = NULL_GUID;
     m_RenderViewZoneInitialized     = FALSE;
-    m_RenderViewZoneUsesCameraSeed  = FALSE;
-    m_RebaseRenderViewZone          = FALSE;
+    m_RenderViewZoneMode            = PlayerViewMode::FirstPerson;
+    m_RenderViewZoneSeedRevision    = 0;
     m_bApplyingTeleport             = FALSE;
     m_iCameraBone = -1;
     m_iCameraTargetBone = -1;
@@ -401,7 +400,7 @@ player::player( void ) :
 
     //-- Mission Failer code
     {
-       m_MissionFailedBmp.SetName( PRELOAD_FILE("UI_Mission_failed.xbmp") );
+       m_MissionFailedBmp.SetName( PRELOAD_FILE("SCREENS/UI_MISSION_FAILED.XBMP") );
     }  
 }
 
@@ -467,6 +466,7 @@ void player::OnInit( void )
     }
 
     m_Physics.Init( GetGuid() );
+    m_StepView.Clear();
     m_Physics.SetSolveActorCollisions( TRUE );
 
     // Call base
@@ -548,8 +548,7 @@ void player::OnInit( void )
     {
         m_Skin.SetUpSkinGeom( PRELOAD_FILE("FP_PLR_Human_BIND.skingeom") );
         m_Skin.SetVMeshMask( 0 );
-        m_Skin.SetVMeshBit( "MESH_Arms_Hazmat", TRUE );
-        m_Skin.SetVMeshBit( "MESH_Hands_Hazmat", TRUE );
+        UpdateFirstPersonArmsVisibility();
 
         // WARNING:
         // It may be some problem here. The resource handles can't start counting references 
@@ -692,6 +691,11 @@ void player::SetLocalPlayer( s32 LocalIndex )
     g_GameInput.SetPlayerDevice( LocalIndex, 0 );
 #endif
 
+#ifndef X_EDITOR
+    const player_profile& InputProfile = g_StateMgr.GetActiveProfile( g_StateMgr.GetProfileListIndex( LocalIndex ) );
+    g_GameInput.ApplyKeyboardBindings( LocalIndex, InputProfile.GetKeyboardBindings() );
+#endif
+
     ASSERT( g_GameInput.GetPlayerDevice( LocalIndex ) != -1 );
 }
 
@@ -719,7 +723,7 @@ void player::OnAdvanceSimulation( f32 DeltaTime )
     m_bCanDie = !DEBUG_INVULNERABLE;
 #endif
 
-    const xbool WasFlung = m_Physics.Flung();
+    const xbool HadLaunchResponse = m_Physics.HasLaunchResponse();
 
     if( !x_isvalid( DeltaTime ) || (DeltaTime < 0.0f) )
     {
@@ -767,7 +771,7 @@ void player::OnAdvanceSimulation( f32 DeltaTime )
     UpdateMultiplayerDeath();
     UpdateWeaponVisibility();
     UpdateJBGLoreUnlock();
-    UpdateFallState( WasFlung );
+    UpdateFallState( HadLaunchResponse );
 
     // Handled by player
     WakeUpDoors();
@@ -812,6 +816,12 @@ void player::OnAdvanceSimulation( f32 DeltaTime )
     
     // Keep this ordering: ghost loco must be current before the weapon is
     // positioned and the first-person animation is advanced.
+    if( !IsAvatar() && IsAlive() && !IsCinemaRunning() )
+    {
+        // Validate lean at the final physics position before both poses and
+        // replicated lean consume it, including platform motion/returning lean.
+        ConstrainLean();
+    }
     UpdateGhostLoco( DeltaTime );
     UpdateArmsAnimation( pWeapon, DeltaTime );
 

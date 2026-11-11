@@ -4,13 +4,12 @@
 //
 //=========================================================================
 
-// TODO: GS: Implement ini loading + key mapping in settings
-
 //=========================================================================
 //  INCLUDES
 //=========================================================================
 
 #include "GamePad.hpp"
+#include "StringMgr/StringMgr.hpp"
 
 //=========================================================================
 //  GLOBAL STATE
@@ -103,7 +102,6 @@ const logical_definition s_GameplayLogicals[] =
     { ingame_pad::ACTION_MUTATION,               "Toggle Mutation" },
     { ingame_pad::ACTION_FIRE_PARASITES,         "Fire Parasites" },
     { ingame_pad::ACTION_FIRE_CONTAGION,         "Fire Contagion" },
-    { ingame_pad::ACTION_MUTANT_MELEE,           "Mutant Melee" },
     { ingame_pad::ACTION_CYCLE_RIGHT,            "Cycle Weapons Right" },
     { ingame_pad::ACTION_CYCLE_LEFT,             "Cycle Weapons Left" },
     { ingame_pad::ACTION_USE,                    "Use Object" },
@@ -131,8 +129,6 @@ const logical_definition s_GameplayLogicals[] =
 
     { ingame_pad::ACTION_CHAT,                 "Voice Chat" },
     { ingame_pad::ACTION_TALK_MODE_TOGGLE,     "Talk: Mode Toggle" },
-    { ingame_pad::ACTION_MP_FLASHLIGHT,        "Multiplayer Toggle Flashlight" },
-    { ingame_pad::ACTION_MP_MUTATE,            "Multiplayer Toggle Mutation" },
     { ingame_pad::ACTION_DROP_FLAG,            "Drop Flag" },
     { ingame_pad::ACTION_SCOREBOARD,           "Show Scoreboard" },
 };
@@ -179,6 +175,208 @@ const logical_definition s_DebugMenuLogicals[] =
 //  MAPPING DEFINITIONS
 //=========================================================================
 
+struct keyboard_definition
+{
+    ingame_pad::logical_id LogicalID;
+    input_gadget          DefaultKey;
+    const char*           pLabel;
+};
+
+//-------------------------------------------------------------------------
+
+static const keyboard_definition s_KeyboardActions[] =
+{
+    { ingame_pad::MOVE_FORWARD, INPUT_KBD_W, "MOVE_FORWARD" },
+    { ingame_pad::MOVE_BACKWARD, INPUT_KBD_S, "MOVE_BACKWARD" },
+    { ingame_pad::STRAFE_LEFT, INPUT_KBD_A, "STRAFE_LEFT" },
+    { ingame_pad::STRAFE_RIGHT, INPUT_KBD_D, "STRAFE_RIGHT" },
+    { ingame_pad::ACTION_JUMP, INPUT_KBD_SPACE, "JUMP" },
+    { ingame_pad::ACTION_CROUCH, INPUT_KBD_LCONTROL, "CROUCH" },
+    { ingame_pad::ACTION_RELOAD, INPUT_KBD_R, "RELOAD" },
+    { ingame_pad::ACTION_MUTATION, INPUT_KBD_X, "TOGGLE_MUTATION" },
+    { ingame_pad::ACTION_USE, INPUT_KBD_TAB, "USE" },
+    { ingame_pad::ACTION_FLASHLIGHT, INPUT_KBD_F, "TOGGLE_FLASHLIGHT" },
+    { ingame_pad::ACTION_THROW_GRENADE, INPUT_KBD_G, "THROW_A_GRENADE" },
+    { ingame_pad::ACTION_MELEE_ATTACK, INPUT_KBD_V, "MELEE_ATTACK" },
+    { ingame_pad::ACTION_SWITCH_TO_SCANNER, INPUT_KBD_1, "SWITCH_TO_SCANNER" },
+    { ingame_pad::ACTION_SWITCH_TO_PISTOL, INPUT_KBD_2, "SWITCH_TO_PISTOL" },
+    { ingame_pad::ACTION_SWITCH_TO_SMP, INPUT_KBD_3, "SWITCH_TO_SMP" },
+    { ingame_pad::ACTION_SWITCH_TO_SHOTGUN, INPUT_KBD_4, "SWITCH_TO_SHOTGUN" },
+    { ingame_pad::ACTION_SWITCH_TO_SNIPER_RIFLE, INPUT_KBD_5, "SWITCH_TO_SNIPER_RIFLE" },
+    { ingame_pad::ACTION_SWITCH_TO_BBG, INPUT_KBD_6, "SWITCH_TO_BBG" },
+    { ingame_pad::ACTION_SWITCH_TO_MESON_CANNON, INPUT_KBD_7, "SWITCH_TO_MESON_CANNON" },
+    { ingame_pad::ACTION_VOTE_MENU_ON, INPUT_KBD_F1, "IDS_BIND_ACTION_VOTE_MENU_ON" },
+    { ingame_pad::ACTION_VOTE_MENU_OFF, INPUT_KBD_F1, "IDS_BIND_ACTION_VOTE_MENU_OFF" },
+    { ingame_pad::ACTION_VOTE_YES, INPUT_KBD_F2, "VOTE_YES" },
+    { ingame_pad::ACTION_VOTE_NO, INPUT_KBD_F3, "VOTE_NO" },
+    { ingame_pad::ACTION_VOTE_ABSTAIN, INPUT_KBD_F4, "VOTE_ABSTAIN" },
+    { ingame_pad::ACTION_CHAT, INPUT_KBD_T, "CHAT" },
+    { ingame_pad::LEAN_LEFT, INPUT_KBD_Q, "LEAN_LEFT" },
+    { ingame_pad::LEAN_RIGHT, INPUT_KBD_E, "LEAN_RIGHT" },
+    { ingame_pad::ACTION_TALK_MODE_TOGGLE, INPUT_KBD_Y, "IDS_BIND_ACTION_TALK_MODE_TOGGLE" },
+    { ingame_pad::ACTION_DROP_FLAG, INPUT_KBD_N, "DROP_FLAG" },
+    { ingame_pad::ACTION_SCOREBOARD, INPUT_KBD_TAB, "SHOW_SCORE" },
+};
+
+//-------------------------------------------------------------------------
+
+struct keyboard_key_definition
+{
+    input_gadget Key;
+    const char*  pLabel;
+};
+
+//-------------------------------------------------------------------------
+
+static const keyboard_key_definition s_KeyboardKeys[] =
+{
+    { INPUT_KBD_1, "1" },
+    { INPUT_KBD_2, "2" },
+    { INPUT_KBD_3, "3" },
+    { INPUT_KBD_4, "4" },
+    { INPUT_KBD_5, "5" },
+    { INPUT_KBD_6, "6" },
+    { INPUT_KBD_7, "7" },
+    { INPUT_KBD_8, "8" },
+    { INPUT_KBD_9, "9" },
+    { INPUT_KBD_0, "0" },
+    { INPUT_KBD_MINUS, "MINUS" },
+    { INPUT_KBD_EQUALS, "EQUALS" },
+    { INPUT_KBD_BACK, "BACK" },
+    { INPUT_KBD_TAB, "TAB" },
+    { INPUT_KBD_Q, "Q" },
+    { INPUT_KBD_W, "W" },
+    { INPUT_KBD_E, "E" },
+    { INPUT_KBD_R, "R" },
+    { INPUT_KBD_T, "T" },
+    { INPUT_KBD_Y, "Y" },
+    { INPUT_KBD_U, "U" },
+    { INPUT_KBD_I, "I" },
+    { INPUT_KBD_O, "O" },
+    { INPUT_KBD_P, "P" },
+    { INPUT_KBD_LBRACKET, "LBRACKET" },
+    { INPUT_KBD_RBRACKET, "RBRACKET" },
+    { INPUT_KBD_RETURN, "RETURN" },
+    { INPUT_KBD_LCONTROL, "LCONTROL" },
+    { INPUT_KBD_A, "A" },
+    { INPUT_KBD_S, "S" },
+    { INPUT_KBD_D, "D" },
+    { INPUT_KBD_F, "F" },
+    { INPUT_KBD_G, "G" },
+    { INPUT_KBD_H, "H" },
+    { INPUT_KBD_J, "J" },
+    { INPUT_KBD_K, "K" },
+    { INPUT_KBD_L, "L" },
+    { INPUT_KBD_SEMICOLON, "SEMICOLON" },
+    { INPUT_KBD_APOSTROPHE, "APOSTROPHE" },
+    { INPUT_KBD_GRAVE, "GRAVE" },
+    { INPUT_KBD_LSHIFT, "LSHIFT" },
+    { INPUT_KBD_BACKSLASH, "BACKSLASH" },
+    { INPUT_KBD_Z, "Z" },
+    { INPUT_KBD_X, "X" },
+    { INPUT_KBD_C, "C" },
+    { INPUT_KBD_V, "V" },
+    { INPUT_KBD_B, "B" },
+    { INPUT_KBD_N, "N" },
+    { INPUT_KBD_M, "M" },
+    { INPUT_KBD_COMMA, "COMMA" },
+    { INPUT_KBD_PERIOD, "PERIOD" },
+    { INPUT_KBD_SLASH, "SLASH" },
+    { INPUT_KBD_RSHIFT, "RSHIFT" },
+    { INPUT_KBD_MULTIPLY, "MULTIPLY" },
+    { INPUT_KBD_LMENU, "LMENU" },
+    { INPUT_KBD_SPACE, "SPACE" },
+    { INPUT_KBD_CAPITAL, "CAPITAL" },
+    { INPUT_KBD_F1, "F1" },
+    { INPUT_KBD_F2, "F2" },
+    { INPUT_KBD_F3, "F3" },
+    { INPUT_KBD_F4, "F4" },
+    { INPUT_KBD_F5, "F5" },
+    { INPUT_KBD_F6, "F6" },
+    { INPUT_KBD_F7, "F7" },
+    { INPUT_KBD_F8, "F8" },
+    { INPUT_KBD_F9, "F9" },
+    { INPUT_KBD_F10, "F10" },
+    { INPUT_KBD_NUMLOCK, "NUMLOCK" },
+    { INPUT_KBD_SCROLL, "SCROLL" },
+    { INPUT_KBD_NUMPAD7, "NUMPAD7" },
+    { INPUT_KBD_NUMPAD8, "NUMPAD8" },
+    { INPUT_KBD_NUMPAD9, "NUMPAD9" },
+    { INPUT_KBD_SUBTRACT, "SUBTRACT" },
+    { INPUT_KBD_NUMPAD4, "NUMPAD4" },
+    { INPUT_KBD_NUMPAD5, "NUMPAD5" },
+    { INPUT_KBD_NUMPAD6, "NUMPAD6" },
+    { INPUT_KBD_ADD, "ADD" },
+    { INPUT_KBD_NUMPAD1, "NUMPAD1" },
+    { INPUT_KBD_NUMPAD2, "NUMPAD2" },
+    { INPUT_KBD_NUMPAD3, "NUMPAD3" },
+    { INPUT_KBD_NUMPAD0, "NUMPAD0" },
+    { INPUT_KBD_DECIMAL, "DECIMAL" },
+    { INPUT_KBD_OEM_102, "OEM_102" },
+    { INPUT_KBD_F11, "F11" },
+    { INPUT_KBD_F12, "F12" },
+    { INPUT_KBD_F13, "F13" },
+    { INPUT_KBD_F14, "F14" },
+    { INPUT_KBD_F15, "F15" },
+    { INPUT_KBD_KANA, "KANA" },
+    { INPUT_KBD_ABNT_C1, "ABNT_C1" },
+    { INPUT_KBD_CONVERT, "CONVERT" },
+    { INPUT_KBD_NOCONVERT, "NOCONVERT" },
+    { INPUT_KBD_YEN, "YEN" },
+    { INPUT_KBD_ABNT_C2, "ABNT_C2" },
+    { INPUT_KBD_NUMPADEQUALS, "NUMPADEQUALS" },
+    { INPUT_KBD_PREVTRACK, "PREVTRACK" },
+    { INPUT_KBD_AT, "AT" },
+    { INPUT_KBD_COLON, "COLON" },
+    { INPUT_KBD_UNDERLINE, "UNDERLINE" },
+    { INPUT_KBD_KANJI, "KANJI" },
+    { INPUT_KBD_STOP, "STOP" },
+    { INPUT_KBD_AX, "AX" },
+    { INPUT_KBD_UNLABELED, "UNLABELED" },
+    { INPUT_KBD_NEXTTRACK, "NEXTTRACK" },
+    { INPUT_KBD_NUMPADENTER, "NUMPADENTER" },
+    { INPUT_KBD_RCONTROL, "RCONTROL" },
+    { INPUT_KBD_MUTE, "MUTE" },
+    { INPUT_KBD_CALCULATOR, "CALCULATOR" },
+    { INPUT_KBD_PLAYPAUSE, "PLAYPAUSE" },
+    { INPUT_KBD_MEDIASTOP, "MEDIASTOP" },
+    { INPUT_KBD_VOLUMEDOWN, "VOLUMEDOWN" },
+    { INPUT_KBD_VOLUMEUP, "VOLUMEUP" },
+    { INPUT_KBD_WEBHOME, "WEBHOME" },
+    { INPUT_KBD_NUMPADCOMMA, "NUMPADCOMMA" },
+    { INPUT_KBD_DIVIDE, "DIVIDE" },
+    { INPUT_KBD_SYSRQ, "SYSRQ" },
+    { INPUT_KBD_RMENU, "RMENU" },
+    { INPUT_KBD_PAUSE, "PAUSE_GAME" },
+    { INPUT_KBD_HOME, "HOME" },
+    { INPUT_KBD_UP, "UP" },
+    { INPUT_KBD_PRIOR, "PRIOR" },
+    { INPUT_KBD_LEFT, "LEFT" },
+    { INPUT_KBD_RIGHT, "RIGHT" },
+    { INPUT_KBD_END, "END" },
+    { INPUT_KBD_DOWN, "DOWN" },
+    { INPUT_KBD_NEXT, "NEXT" },
+    { INPUT_KBD_INSERT, "INSERT" },
+    { INPUT_KBD_DELETE, "DELETE" },
+    { INPUT_KBD_LWIN, "LWIN" },
+    { INPUT_KBD_RWIN, "RWIN" },
+    { INPUT_KBD_APPS, "APPS" },
+    { INPUT_KBD_POWER, "POWER" },
+    { INPUT_KBD_SLEEP, "SLEEP" },
+    { INPUT_KBD_WAKE, "WAKE" },
+    { INPUT_KBD_WEBSEARCH, "WEBSEARCH" },
+    { INPUT_KBD_WEBFAVORITES, "WEBFAVORITES" },
+    { INPUT_KBD_WEBREFRESH, "WEBREFRESH" },
+    { INPUT_KBD_WEBSTOP, "WEBSTOP" },
+    { INPUT_KBD_WEBFORWARD, "WEBFORWARD" },
+    { INPUT_KBD_WEBBACK, "WEBBACK" },
+    { INPUT_KBD_MYCOMPUTER, "MYCOMPUTER" },
+    { INPUT_KBD_MAIL, "MAIL" },
+    { INPUT_KBD_MEDIASELECT, "MEDIASELECT" },
+};
+
+//-------------------------------------------------------------------------
+
 static
 const mapping_definition s_GameplayMappings[] =
 {
@@ -211,53 +409,17 @@ const mapping_definition s_GameplayMappings[] =
     { ingame_pad::ACTION_TALK_MODE_TOGGLE,               INPUT_XBOX_BTN_WHITE,      1.0f,   INGAME_CONTEXT },
     { ingame_pad::ACTION_FIRE_PARASITES,                 INPUT_XBOX_R_TRIGGER,      1.0f,   INGAME_CONTEXT },
     { ingame_pad::ACTION_FIRE_CONTAGION,                 INPUT_XBOX_L_TRIGGER,      1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_MUTANT_MELEE,                   INPUT_XBOX_BTN_R_STICK,    1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_MP_FLASHLIGHT,                  INPUT_XBOX_BTN_DOWN,       1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_MP_MUTATE,                      INPUT_XBOX_BTN_UP,         1.0f,   INGAME_CONTEXT },
     { ingame_pad::ACTION_DROP_FLAG,                      INPUT_XBOX_BTN_DOWN,       1.0f,   INGAME_CONTEXT },
     { ingame_pad::ACTION_SCOREBOARD,                     INPUT_XBOX_BTN_BACK,       1.0f,   INGAME_CONTEXT },
 
-    { ingame_pad::MOVE_FORWARD,                          INPUT_KBD_W,               1.0f,   INGAME_CONTEXT },
-    { ingame_pad::MOVE_BACKWARD,                         INPUT_KBD_S,               1.0f,   INGAME_CONTEXT },
-    { ingame_pad::STRAFE_LEFT,                           INPUT_KBD_A,               1.0f,   INGAME_CONTEXT },
-    { ingame_pad::STRAFE_RIGHT,                          INPUT_KBD_D,               1.0f,   INGAME_CONTEXT },
     { ingame_pad::LOOK_HORIZONTAL,                       INPUT_MOUSE_X_REL,         1.0f,   INGAME_CONTEXT },
     { ingame_pad::LOOK_VERTICAL,                         INPUT_MOUSE_Y_REL,         1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_JUMP,                           INPUT_KBD_SPACE,           1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_CROUCH,                         INPUT_KBD_LCONTROL,        1.0f,   INGAME_CONTEXT },
     { ingame_pad::ACTION_PRIMARY,                        INPUT_MOUSE_BTN_L,         1.0f,   INGAME_CONTEXT },
     { ingame_pad::ACTION_SECONDARY,                      INPUT_MOUSE_BTN_R,         1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_RELOAD,                         INPUT_KBD_R,               1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_MUTATION,                       INPUT_KBD_X,               1.0f,   INGAME_CONTEXT },
     { ingame_pad::ACTION_CYCLE_RIGHT,                    INPUT_MOUSE_WHEEL_REL,     1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_USE,                            INPUT_KBD_TAB,             1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_FLASHLIGHT,                     INPUT_KBD_F,               1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_THROW_GRENADE,                  INPUT_KBD_G,               1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_MELEE_ATTACK,                   INPUT_KBD_V,               1.0f,   INGAME_CONTEXT },
     { ingame_pad::ACTION_CYCLE_LEFT,                     INPUT_MOUSE_WHEEL_REL,     -1.0f,  INGAME_CONTEXT },
-    { ingame_pad::ACTION_SWITCH_TO_SCANNER,              INPUT_KBD_1,               1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_SWITCH_TO_PISTOL,               INPUT_KBD_2,               1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_SWITCH_TO_SMP,                  INPUT_KBD_3,               1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_SWITCH_TO_SHOTGUN,              INPUT_KBD_4,               1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_SWITCH_TO_SNIPER_RIFLE,         INPUT_KBD_5,               1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_SWITCH_TO_BBG,                  INPUT_KBD_6,               1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_SWITCH_TO_MESON_CANNON,         INPUT_KBD_7,               1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_VOTE_MENU_ON,                   INPUT_KBD_F1,              1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_VOTE_MENU_OFF,                  INPUT_KBD_F1,              1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_VOTE_YES,                       INPUT_KBD_F2,              1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_VOTE_NO,                        INPUT_KBD_F3,              1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_VOTE_ABSTAIN,                   INPUT_KBD_F4,              1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_CHAT,                           INPUT_KBD_T,               1.0f,   INGAME_CONTEXT },
-    { ingame_pad::LEAN_LEFT,                             INPUT_KBD_Q,               1.0f,   INGAME_CONTEXT },
-    { ingame_pad::LEAN_RIGHT,                            INPUT_KBD_E,               1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_TALK_MODE_TOGGLE,               INPUT_KBD_Y,               1.0f,   INGAME_CONTEXT },
     { ingame_pad::ACTION_FIRE_PARASITES,                 INPUT_MOUSE_BTN_L,         1.0f,   INGAME_CONTEXT },
     { ingame_pad::ACTION_FIRE_CONTAGION,                 INPUT_MOUSE_BTN_R,         1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_MUTANT_MELEE,                   INPUT_KBD_V,               1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_MP_FLASHLIGHT,                  INPUT_KBD_F,               1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_MP_MUTATE,                      INPUT_KBD_X,               1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_DROP_FLAG,                      INPUT_KBD_N,               1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_SCOREBOARD,                     INPUT_KBD_TAB,             1.0f,   INGAME_CONTEXT },
 
     { ingame_pad::MOVE_FORWARD,                          INPUT_PS2_STICK_LEFT_Y,    1.0f,   INGAME_CONTEXT, INPUT_ACTION_VALUE_POSITIVE_AXIS },
     { ingame_pad::MOVE_BACKWARD,                         INPUT_PS2_STICK_LEFT_Y,    -1.0f,  INGAME_CONTEXT, INPUT_ACTION_VALUE_POSITIVE_AXIS },
@@ -289,9 +451,6 @@ const mapping_definition s_GameplayMappings[] =
     { ingame_pad::ACTION_TALK_MODE_TOGGLE,               INPUT_PS2_BTN_SELECT,      1.0f,   INGAME_CONTEXT },
     { ingame_pad::ACTION_FIRE_PARASITES,                 INPUT_PS2_BTN_R1,          1.0f,   INGAME_CONTEXT },
     { ingame_pad::ACTION_FIRE_CONTAGION,                 INPUT_PS2_BTN_R2,          1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_MUTANT_MELEE,                   INPUT_PS2_BTN_R_STICK,     1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_MP_FLASHLIGHT,                  INPUT_PS2_BTN_L_STICK,     1.0f,   INGAME_CONTEXT },
-    { ingame_pad::ACTION_MP_MUTATE,                      INPUT_PS2_BTN_L_UP,        1.0f,   INGAME_CONTEXT },
     { ingame_pad::ACTION_DROP_FLAG,                      INPUT_PS2_BTN_L_DOWN,      1.0f,   INGAME_CONTEXT },
     { ingame_pad::ACTION_SCOREBOARD,                     INPUT_PS2_BTN_SELECT,      1.0f,   INGAME_CONTEXT },
 };
@@ -471,18 +630,18 @@ const prompt_definition s_PromptDefinitions[] =
 //  HELPER FUNCTIONS
 //=========================================================================
 
-template< class T, int Count >
+template <class T, s32 Count>
 static
-s32 CountOf( const T (&)[Count] )
+s32 CountOf( const T ( & )[Count] )
 {
     return Count;
 }
 
 //=========================================================================
 
-template< typename TPad, int Count >
+template <typename TPad, s32 Count>
 static
-void RegisterLogicalNames( TPad& Pad, const logical_definition (&Definitions)[Count] )
+void RegisterLogicalNames( TPad& Pad, const logical_definition ( &Definitions )[Count] )
 {
     for( s32 i = 0; i < Count; i++ )
     {
@@ -492,9 +651,9 @@ void RegisterLogicalNames( TPad& Pad, const logical_definition (&Definitions)[Co
 
 //=========================================================================
 
-template< typename TPad, int Count >
+template <typename TPad, s32 Count>
 static
-void RegisterInputMappings( TPad& Pad, const mapping_definition (&Definitions)[Count] )
+void RegisterInputMappings( TPad& Pad, const mapping_definition ( &Definitions )[Count] )
 {
     for( s32 i = 0; i < Count; i++ )
     {
@@ -509,9 +668,9 @@ void RegisterInputMappings( TPad& Pad, const mapping_definition (&Definitions)[C
 
 //=========================================================================
 
-template< int Count >
+template <s32 Count>
 static
-const char* FindRegisteredLogicalName( const logical_definition (&Definitions)[Count], s32 LogicalID )
+const char* FindRegisteredLogicalName( const logical_definition ( &Definitions )[Count], s32 LogicalID )
 {
     for( s32 i = 0; i < Count; i++ )
     {
@@ -524,9 +683,9 @@ const char* FindRegisteredLogicalName( const logical_definition (&Definitions)[C
 
 //=========================================================================
 
-template< int Count >
+template <s32 Count>
 static
-ingame_pad::logical_id FindRegisteredLogicalID( const logical_definition (&Definitions)[Count], const char* pName )
+ingame_pad::logical_id FindRegisteredLogicalID( const logical_definition ( &Definitions )[Count], const char* pName )
 {
     ASSERT( pName );
 
@@ -555,7 +714,7 @@ xbool PromptTokenMatches( const xwchar* pToken, const char* pReference )
 
     while( *pReference )
     {
-        if( (*pToken == 0) || (*pToken == 0xBB) )
+        if( *pToken == 0 )
             return FALSE;
 
         if( (char)*pToken != *pReference )
@@ -565,7 +724,7 @@ xbool PromptTokenMatches( const xwchar* pToken, const char* pReference )
         pReference++;
     }
 
-    return( (*pToken == 0) || (*pToken == 0xBB) );
+    return ( *pToken == 0 );
 }
 
 //=========================================================================
@@ -576,9 +735,7 @@ xbool IsPromptTokenComposite( const xwchar* pToken )
     if( !pToken )
         return FALSE;
 
-    return(   PromptTokenMatches( pToken, "UPDOWN" )
-           || PromptTokenMatches( pToken, "LEFTRIGHT" )
-           || PromptTokenMatches( pToken, "LEAN" ) );
+    return ( PromptTokenMatches( pToken, "UPDOWN" ) || PromptTokenMatches( pToken, "LEFTRIGHT" ) || PromptTokenMatches( pToken, "LEAN" ) );
 }
 
 //=========================================================================
@@ -600,15 +757,15 @@ const prompt_definition* FindPromptToken( const xwchar* pToken )
 
 //=========================================================================
 
-template< int Count >
+template <s32 Count>
 static
-const mapping_definition* FindLogicalMapping( const mapping_definition (&Mappings)[Count], s32 LogicalID, input_platform Platform )
+const mapping_definition* FindLogicalMapping( const mapping_definition ( &Mappings )[Count], s32 LogicalID, input_platform Platform )
 {
     for( s32 i = 0; i < Count; i++ )
     {
-        if( (Mappings[i].LogicalID == LogicalID) &&
-            (Mappings[i].GadgetID != INPUT_UNDEFINED) &&
-            (input_system::GetGadgetPlatform( Mappings[i].GadgetID ) == Platform) )
+        if( ( Mappings[i].LogicalID == LogicalID ) &&
+            ( Mappings[i].GadgetID != INPUT_UNDEFINED ) &&
+            ( input_system::GetGadgetPlatform( Mappings[i].GadgetID ) == Platform ) )
         {
             return &Mappings[i];
         }
@@ -684,13 +841,17 @@ void ingame_pad::OnActionValue( s32 ActionID, f32 Value )
 
 void ingame_pad::OnInitialize( void )
 {
-    ASSERT( CountOf( s_GameplayLogicals ) == (GAMEPLAY_ACTION_END - GAMEPLAY_ACTION_FIRST) );
+    ASSERT( CountOf( s_GameplayLogicals ) == ( GAMEPLAY_ACTION_END - GAMEPLAY_ACTION_FIRST ) );
 
     SetActionCount( MAX_ACTION );
 
     RegisterLogicalNames( *this, s_GameplayLogicals );
 
     RegisterInputMappings( *this, s_GameplayMappings );
+
+    keyboard_bindings Bindings;
+    ResetKeyboardBindings( Bindings );
+    ApplyKeyboardBindings( Bindings );
 }
 
 //=========================================================================
@@ -698,6 +859,7 @@ void ingame_pad::OnInitialize( void )
 const char* ingame_pad::GetLogicalIDName( s32 Index )
 {
     const char* pName = FindRegisteredLogicalName( s_GameplayLogicals, Index );
+
     if( pName )
         return pName;
 
@@ -716,8 +878,8 @@ const char* ingame_pad::GetLogicalIDEnum( void )
 
     for( s32 i = 0; i < CountOf( s_GameplayLogicals ); i++ )
     {
-        const char* pName = s_GameplayLogicals[i].pName;
-        const s32 Length  = x_strlen( pName );
+        const char* pName  = s_GameplayLogicals[i].pName;
+        const s32   Length = x_strlen( pName );
 
         for( s32 j = 0; j <= Length; j++ )
         {
@@ -734,6 +896,134 @@ const char* ingame_pad::GetLogicalIDEnum( void )
 ingame_pad::logical_id ingame_pad::GetLogicalIDByName( const char* pName )
 {
     return FindRegisteredLogicalID( s_GameplayLogicals, pName );
+}
+
+//=========================================================================
+
+void ingame_pad::ResetKeyboardBindings( keyboard_bindings& Bindings )
+{
+    static_assert( sizeof( s_KeyboardActions ) / sizeof( s_KeyboardActions[0] ) == KEYBOARD_ACTION_COUNT );
+
+    x_memset( &Bindings, 0, sizeof( Bindings ) );
+
+    for( s32 Action = 0; Action < KEYBOARD_ACTION_COUNT; Action++ )
+        Bindings.Keys[Action][0] = s_KeyboardActions[Action].DefaultKey;
+}
+
+//=========================================================================
+
+xbool ingame_pad::IsKeyboardKey( input_gadget Key )
+{
+    for( const keyboard_key_definition& Definition : s_KeyboardKeys )
+        if( Definition.Key == Key )
+            return TRUE;
+
+    return FALSE;
+}
+
+//=========================================================================
+
+xbool ingame_pad::KeyboardBindingsAreValid( const keyboard_bindings& Bindings )
+{
+    for( s32 Action = 0; Action < KEYBOARD_ACTION_COUNT; Action++ )
+        for( s32 Slot = 0; Slot < KEYBOARD_SLOT_COUNT; Slot++ )
+        {
+            input_gadget Key = (input_gadget)Bindings.Keys[Action][Slot];
+
+            if( ( Key != INPUT_UNDEFINED ) && !IsKeyboardKey( Key ) )
+                return FALSE;
+        }
+
+    return TRUE;
+}
+
+//=========================================================================
+
+const char* ingame_pad::GetKeyboardActionLabel( s32 Action )
+{
+    ASSERT( ( Action >= 0 ) && ( Action < KEYBOARD_ACTION_COUNT ) );
+    return s_KeyboardActions[Action].pLabel;
+}
+
+//=========================================================================
+
+xwstring ingame_pad::GetKeyboardKeyLabel( input_gadget Key )
+{
+    if( Key == INPUT_UNDEFINED )
+        return xwstring( g_StringTableMgr( "ui", "IDS_BIND_UNBOUND" ) );
+
+    for( const keyboard_key_definition& Definition : s_KeyboardKeys )
+        if( Definition.Key == Key )
+            return xwstring( g_StringTableMgr( "ui", Definition.pLabel ) );
+
+    ASSERT( FALSE );
+    return xwstring( "" );
+}
+
+//=========================================================================
+
+xbool ingame_pad::HasKeyboardConflict( const keyboard_bindings& Bindings, s32 Action, input_gadget Key )
+{
+    if( Key == INPUT_UNDEFINED )
+        return FALSE;
+
+    for( s32 Other = 0; Other < KEYBOARD_ACTION_COUNT; Other++ )
+        for( s32 Slot = 0; Slot < KEYBOARD_SLOT_COUNT; Slot++ )
+            if( ( Other != Action ) && ( Bindings.Keys[Other][Slot] == Key ) )
+                return TRUE;
+
+    return FALSE;
+}
+
+//=========================================================================
+
+void ingame_pad::SetKeyboardBinding( keyboard_bindings& Bindings, s32 Action, s32 Slot, input_gadget Key, xbool Replace )
+{
+    ASSERT( ( Action >= 0 ) && ( Action < KEYBOARD_ACTION_COUNT ) );
+    ASSERT( ( Slot >= 0 ) && ( Slot < KEYBOARD_SLOT_COUNT ) );
+    ASSERT( ( Key == INPUT_UNDEFINED ) || IsKeyboardKey( Key ) );
+
+    if( ( Action < 0 ) || ( Action >= KEYBOARD_ACTION_COUNT ) ||
+        ( Slot < 0 ) || ( Slot >= KEYBOARD_SLOT_COUNT ) ||
+        ( ( Key != INPUT_UNDEFINED ) && !IsKeyboardKey( Key ) ) )
+        return;
+
+    // Replacing a binding removes the key from other actions before assigning it.
+    if( Replace && ( Key != INPUT_UNDEFINED ) )
+        for( s32 Other = 0; Other < KEYBOARD_ACTION_COUNT; Other++ )
+            for( s32 OtherSlot = 0; OtherSlot < KEYBOARD_SLOT_COUNT; OtherSlot++ )
+                if( ( Other != Action ) && ( Bindings.Keys[Other][OtherSlot] == Key ) )
+                    Bindings.Keys[Other][OtherSlot] = INPUT_UNDEFINED;
+
+    Bindings.Keys[Action][Slot] = Key;
+}
+
+//=========================================================================
+
+void ingame_pad::ApplyKeyboardBindings( const keyboard_bindings& Bindings )
+{
+    ASSERT( KeyboardBindingsAreValid( Bindings ) );
+
+    if( !KeyboardBindingsAreValid( Bindings ) )
+        return;
+
+    // Replace only keyboard bindings; gamepad mappings remain registered.
+    for( s32 Action = 0; Action < KEYBOARD_ACTION_COUNT; Action++ )
+    {
+        s32 LogicalID = s_KeyboardActions[Action].LogicalID;
+        RemoveBindings( LogicalID, INPUT_DEVICE_KEYBOARD );
+
+        for( s32 Slot = 0; Slot < KEYBOARD_SLOT_COUNT; Slot++ )
+        {
+            input_gadget Key = (input_gadget)Bindings.Keys[Action][Slot];
+
+            if( Key != INPUT_UNDEFINED )
+                AddBinding( LogicalID, Key, 1.0f, INGAME_CONTEXT );
+        }
+    }
+
+    // Do not carry held or pressed state across a binding change.
+    ClearAllActions();
 }
 
 //=========================================================================
@@ -796,7 +1086,7 @@ void frontend_pad::OnInitialize( void )
 {
     ASSERT( CountOf( s_FrontendLogicals ) == UI_HELP + 1 );
 #if defined( ENABLE_DEBUG_MENU )
-    ASSERT( CountOf( s_DebugMenuLogicals ) == (MAX_ACTION - DEBUG_MENU_NEXT_PAGE) );
+    ASSERT( CountOf( s_DebugMenuLogicals ) == ( MAX_ACTION - DEBUG_MENU_NEXT_PAGE ) );
 #endif
 
     SetActionCount( MAX_ACTION );
@@ -851,7 +1141,7 @@ void frontend_input::SampleFrame( input_snapshot const& Snapshot, f32 DeltaTime,
 
 frontend_pad& frontend_input::GetPad( s32 ControllerID )
 {
-    ASSERT( (ControllerID >= 0) && (ControllerID < MAX_CONTROLLERS) );
+    ASSERT( ( ControllerID >= 0 ) && ( ControllerID < MAX_CONTROLLERS ) );
     return m_Pads[ControllerID];
 }
 
@@ -859,7 +1149,7 @@ frontend_pad& frontend_input::GetPad( s32 ControllerID )
 
 const frontend_pad& frontend_input::GetPad( s32 ControllerID ) const
 {
-    ASSERT( (ControllerID >= 0) && (ControllerID < MAX_CONTROLLERS) );
+    ASSERT( ( ControllerID >= 0 ) && ( ControllerID < MAX_CONTROLLERS ) );
     return m_Pads[ControllerID];
 }
 
@@ -877,9 +1167,10 @@ game_input::game_input( void )
 
 xbool game_input::UpdateFrame( f32 DeltaTime, u32 Context )
 {
-    xbool const ExitRequested = g_Input.CaptureFrameInput();
-    input_snapshot const& Snapshot = g_Input.GetFrameSnapshot();
+    xbool const           ExitRequested = g_Input.CaptureFrameInput();
+    input_snapshot const& Snapshot      = g_Input.GetFrameSnapshot();
 
+    // All action maps consume the same captured snapshot for this frame.
     for( s32 i = 0; i < MAX_LOCAL_PLAYERS; i++ )
     {
         m_Players[i].SetActiveContext( Context );
@@ -910,7 +1201,7 @@ void game_input::ClearInput( void )
 
 const ingame_pad& game_input::GetPlayer( s32 PlayerIndex ) const
 {
-    ASSERT( (PlayerIndex >= 0) && (PlayerIndex < MAX_LOCAL_PLAYERS) );
+    ASSERT( ( PlayerIndex >= 0 ) && ( PlayerIndex < MAX_LOCAL_PLAYERS ) );
     return m_Players[PlayerIndex];
 }
 
@@ -921,10 +1212,22 @@ const ingame_pad& game_input::operator[]( s32 PlayerIndex ) const
     return GetPlayer( PlayerIndex );
 }
 
+//=========================================================================
+
+void game_input::ApplyKeyboardBindings( s32 PlayerIndex, const ingame_pad::keyboard_bindings& Bindings )
+{
+    ASSERT( ( PlayerIndex >= 0 ) && ( PlayerIndex < MAX_LOCAL_PLAYERS ) );
+
+    if( ( PlayerIndex >= 0 ) && ( PlayerIndex < MAX_LOCAL_PLAYERS ) )
+        m_Players[PlayerIndex].ApplyKeyboardBindings( Bindings );
+}
+
+//=========================================================================
+
 void game_input::SetPlayerDevice( s32 PlayerIndex, s32 DeviceID )
 {
-    ASSERT( (PlayerIndex >= 0) && (PlayerIndex < MAX_LOCAL_PLAYERS) );
-    ASSERT( (DeviceID >= 0) && (DeviceID < frontend_input::MAX_CONTROLLERS) );
+    ASSERT( ( PlayerIndex >= 0 ) && ( PlayerIndex < MAX_LOCAL_PLAYERS ) );
+    ASSERT( ( DeviceID >= 0 ) && ( DeviceID < frontend_input::MAX_CONTROLLERS ) );
     m_Players[PlayerIndex].SetDeviceID( DeviceID );
 }
 
@@ -939,7 +1242,7 @@ s32 game_input::GetPlayerDevice( s32 PlayerIndex ) const
 
 void game_input::ClearPlayerDevice( s32 PlayerIndex )
 {
-    ASSERT( (PlayerIndex >= 0) && (PlayerIndex < MAX_LOCAL_PLAYERS) );
+    ASSERT( ( PlayerIndex >= 0 ) && ( PlayerIndex < MAX_LOCAL_PLAYERS ) );
     m_Players[PlayerIndex].SetDeviceID( -1 );
     m_Players[PlayerIndex].ClearAllActions();
 }
@@ -958,7 +1261,7 @@ void game_input::ClearPlayerDevices( void )
 
 void game_input::ClearPlayerActions( s32 PlayerIndex )
 {
-    ASSERT( (PlayerIndex >= 0) && (PlayerIndex < MAX_LOCAL_PLAYERS) );
+    ASSERT( ( PlayerIndex >= 0 ) && ( PlayerIndex < MAX_LOCAL_PLAYERS ) );
     m_Players[PlayerIndex].ClearAllActions();
 }
 
@@ -969,8 +1272,9 @@ s32 game_input::GetPauseController( void ) const
     for( s32 i = 0; i < MAX_LOCAL_PLAYERS; i++ )
     {
         s32 const DeviceID = GetPlayerDevice( i );
-        if( (DeviceID >= 0) && (DeviceID < frontend_input::MAX_CONTROLLERS) &&
-            (m_SystemPads[DeviceID].GetFrameLogical( system_pad::PAUSE ).GetWasValue() > 0.25f) )
+
+        if( ( DeviceID >= 0 ) && ( DeviceID < frontend_input::MAX_CONTROLLERS ) &&
+            ( m_SystemPads[DeviceID].GetFrameLogical( system_pad::PAUSE ).GetWasValue() > 0.25f ) )
         {
             return DeviceID;
         }
@@ -989,12 +1293,15 @@ input_gadget input_GetPromptGadget( const xwchar* pToken, input_platform Platfor
         return INPUT_UNDEFINED;
 
     const prompt_definition* pPrompt = FindPromptToken( pToken );
+
     if( !pPrompt || IsPromptTokenComposite( pToken ) )
         return INPUT_UNDEFINED;
 
-    if( (Platform != INPUT_PLATFORM_XBOX) && (Platform != INPUT_PLATFORM_PS2) )
+    if( ( Platform != INPUT_PLATFORM_XBOX ) && ( Platform != INPUT_PLATFORM_PS2 ) )
         return INPUT_UNDEFINED;
 
     const mapping_definition* pMapping = FindPromptLogicalMapping( *pPrompt, Platform );
     return pMapping ? pMapping->GadgetID : INPUT_UNDEFINED;
 }
+
+//=========================================================================

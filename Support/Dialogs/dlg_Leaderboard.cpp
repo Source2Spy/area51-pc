@@ -16,14 +16,10 @@
 
 #include "StateMgr/StateMgr.hpp"
 #include "StringMgr/StringMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "NetworkMgr/Voice/VoiceMgr.hpp"
 
-#ifdef CONFIG_VIEWER
-#include "../../Apps/ArtistViewer/Config.hpp"
-#else
 #include "../../Apps/GameApp/Config.hpp"    
-#endif
 
 //=========================================================================
 //  Team Leaderboard Dialog
@@ -48,14 +44,6 @@ ui_manager::dialog_tem LeaderboardDialog =
     &LeaderboardControls[0],
     0
 };
-
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
 
 //=========================================================================
 //  Data
@@ -170,13 +158,13 @@ xbool dlg_leaderboard::Create( s32                        UserID,
     SetNavTextVisible( FALSE );
                
     // Grab a bunch of strings.
-    m_pStrLevelDesc  = g_StringTableMgr( "ui", "IDS_NAV_LEVEL_DESC"  );
-    m_pStrPlayer     = g_StringTableMgr( "ui", "IDS_HEADER_PLAYER"   );
-    m_pStrScore      = g_StringTableMgr( "ui", "IDS_HEADER_SCORE"    );
-    m_pStrIconKills  = g_StringTableMgr( "ui", "IDS_ICON_KILLS"      );
-    m_pStrIconDeaths = g_StringTableMgr( "ui", "IDS_ICON_DEATHS"     );
-    m_pStrIconTKs    = g_StringTableMgr( "ui", "IDS_ICON_TEAM_KILLS" );
-    m_pStrIconVotes  = g_StringTableMgr( "ui", "IDS_ICON_VOTES"      );
+    m_StrLevelDesc  = g_StringTableMgr( "ui", "IDS_NAV_LEVEL_DESC"  );
+    m_StrPlayer     = g_StringTableMgr( "ui", "IDS_HEADER_PLAYER"   );
+    m_StrScore      = g_StringTableMgr( "ui", "IDS_HEADER_SCORE"    );
+    m_StrIconKills  = g_StringTableMgr( "ui", "IDS_ICON_KILLS"      );
+    m_StrIconDeaths = g_StringTableMgr( "ui", "IDS_ICON_DEATHS"     );
+    m_StrIconTKs    = g_StringTableMgr( "ui", "IDS_ICON_TEAM_KILLS" );
+    m_StrIconVotes  = g_StringTableMgr( "ui", "IDS_ICON_VOTES"      );
 
     // disable the highlight
     g_UiMgr->DisableScreenHighlight();
@@ -340,7 +328,7 @@ void dlg_leaderboard::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
     case LEADERBOARD_INTERLEVEL:
     {
-        NavText = m_pStrLevelDesc;
+        NavText = m_StrLevelDesc;
 
         xwstring LoadText("");
         switch( (s32)(m_LoadTimeElapsed*4.0f) % 4 )
@@ -578,42 +566,42 @@ void dlg_leaderboard::RenderScoreList( s32 ox, s32 oy )
     // leave space for speaker icon   
     r.l += 16;
 
-    m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center, ch, m_pStrPlayer );
+    m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center, ch, m_StrPlayer );
     
     r.l += PlayerSize + 5;
     r.r = r.l + 30;
 
     if( ScoreData.ScoreFieldMask & SCORE_POINTS )
     {
-        m_pManager->RenderText( m_Font, r, ui_font::h_right|ui_font::v_center, ch, m_pStrScore );
+        m_pManager->RenderText( m_Font, r, ui_font::h_right|ui_font::v_center, ch, m_StrScore );
     }
     
     if( ScoreData.ScoreFieldMask & SCORE_KILLS )
     {
         r.l += 35;
         r.r += 35;
-        m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_pStrIconKills );
+        m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_StrIconKills );
     }
 
     if( ScoreData.ScoreFieldMask & SCORE_TKS )
     {
         r.l += 35;
         r.r += 35;
-        m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_pStrIconTKs );
+        m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_StrIconTKs );
     }
 
     if( ScoreData.ScoreFieldMask & SCORE_DEATHS )
     {
         r.l += 35;
         r.r += 35;
-        m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_pStrIconDeaths );       
+        m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_StrIconDeaths );
     }
 
     if( ScoreData.ScoreFieldMask & SCORE_VOTES )
     {
         r.l += 35;
         r.r += 35;
-        m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_pStrIconVotes );       
+        m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_StrIconVotes );
     }
 
     // render bars
@@ -692,7 +680,7 @@ void dlg_leaderboard::RenderScoreList( s32 ox, s32 oy )
 
             r.l += 16;
             r.r = r.l + PlayerSize;
-            m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, c1, m_PlayerData[i].NName );            
+            m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, c1, m_PlayerData[i].Name );
 
             r.l += PlayerSize + 5;
             r.r = r.l + 30;

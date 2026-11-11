@@ -11,6 +11,7 @@
 //==============================================================================
 
 #include "common/shader_bindings.hlsl"
+#include "a51_shader_contract.hlsl"
 #include "common/cloth_damage.hlsl"
 
 //==============================================================================
@@ -19,8 +20,7 @@
 
 A51_CBUFFER_ATTR(0, 0) cbuffer cbShadowCast A51_CBUFFER_BIND(0, 0)
 {
-    float4x4 ShadowViewProjection;
-    uint4    ShadowCastPadding;
+    A51_ABI_FIELDS_ShadowCastData
 };
 
 A51_SAMPLED_TEXTURE_ATTR(0, 0) Texture2D txDiffuse A51_SAMPLED_TEXTURE_BIND(0, 0);
@@ -44,25 +44,27 @@ struct VS_OUTPUT
 {
     float4 Position : SV_POSITION;
     float2 UV       : TEXCOORD0;
+    nointerpolation uint UsesTextureAlpha : TEXCOORD1;
 };
 
 //==============================================================================
 //  SHADERS
 //==============================================================================
 
-VS_OUTPUT VSMain( VS_INPUT input )
+VS_OUTPUT VSMain( VS_INPUT Input )
 {
-    VS_OUTPUT output;
-    output.Position = mul( ShadowViewProjection, float4( input.Position, 1.0f ) );
-    output.UV = input.UV;
-    return output;
+    VS_OUTPUT Output;
+    Output.Position = mul( ShadowViewProjection, float4( Input.Position - ShadowOrigin.xyz, 1.0f ) );
+    Output.UV = Input.UV;
+    Output.UsesTextureAlpha = CoverageUsesTextureAlpha;
+    return Output;
 }
 
 //==============================================================================
 
-void PSMain( VS_OUTPUT input )
+void PSMain( VS_OUTPUT Input )
 {
-    float const diffuseAlpha = txDiffuse.Sample( samDiffuse, input.UV ).a;
-    float const damage = ClothDamageCoverage( txDamage, samDamage, input.UV );
-    clip( diffuseAlpha * damage - 0.05f );
+    float const DiffuseAlpha = txDiffuse.Sample( samDiffuse, Input.UV ).a;
+    float const Damage = ClothDamageCoverage( txDamage, samDamage, Input.UV );
+    ClothDiscardDamagedPixel( DiffuseAlpha, Damage, Input.UsesTextureAlpha != 0 );
 }

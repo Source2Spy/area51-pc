@@ -20,7 +20,7 @@ void LocoUtil_OnEnumPropAnimFlags( prop_enum& rPropList,
                                           u32 PropAnimFlags,
                                           u32 CurrAnimFlags )
 {
-    rPropList.PropEnumExternal( "AnimGroupName", "Resource\0animexternal", "Select the animation group and animation.", PROP_TYPE_MUST_ENUM | PROP_TYPE_EXTERNAL );
+    rPropList.PropEnumExternal( "AnimGroupName", "Resource\0animexternal\0", "Select the animation group and animation.", PROP_TYPE_MUST_ENUM | PROP_TYPE_EXTERNAL );
     
     rPropList.PropEnumString  ( "AnimName",   "Name of the animation to play.", PROP_TYPE_MUST_ENUM);
 

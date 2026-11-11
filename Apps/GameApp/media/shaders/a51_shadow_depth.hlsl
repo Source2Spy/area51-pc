@@ -1,57 +1,17 @@
-//==============================================================================
-//
-//  a51_shadow_depth.hlsl
-//
-//  Depth-only shadow caster pixel shaders.
-//
-//==============================================================================
-
-//==============================================================================
-//  INCLUDES
-//==============================================================================
-
+// Coverage is an offline shadow recipe; opaque depth has no sampled resources.
 #include "common/shader_bindings.hlsl"
-
-//==============================================================================
-//  RESOURCES
-//==============================================================================
-
+#include "a51_shader_contract.hlsl"
+#if A51_SHADOW_MASKED
 A51_SAMPLED_TEXTURE_ATTR(0, 0) Texture2D txDiffuse A51_SAMPLED_TEXTURE_BIND(0, 0);
 A51_SAMPLER_ATTR(0, 0) SamplerState samDiffuse A51_SAMPLER_BIND(0, 0);
-
-//------------------------------------------------------------------------------
-
 A51_CBUFFER_ATTR(1, 0) cbuffer cbShadowAlpha A51_CBUFFER_BIND(1, 0)
 {
-    float  AlphaRef;
-    float  Padding;
-    float2 UVOffset;
+    A51_ABI_FIELDS_ShadowAlphaData
 };
-
-//==============================================================================
-//  TYPES
-//==============================================================================
-
-struct PS_CAST_INPUT
+#endif
+void PSMain( A51_SHADOW_PIXEL_INPUT Input )
 {
-    float4 Position : SV_POSITION;
-    float2 UV       : TEXCOORD0;
-};
-
-//==============================================================================
-//  SHADERS
-//==============================================================================
-
-void PSCastOpaqueDepth( PS_CAST_INPUT input )
-{
-}
-
-//==============================================================================
-
-void PSCastAlphaDepth( PS_CAST_INPUT input )
-{
-    if( txDiffuse.Sample( samDiffuse, input.UV + UVOffset ).a < AlphaRef )
-    {
-        discard;
-    }
+#if A51_SHADOW_MASKED
+    if( txDiffuse.Sample(samDiffuse, Input.UV + UVOffset).a < AlphaRef ) discard;
+#endif
 }

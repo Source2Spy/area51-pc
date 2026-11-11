@@ -41,6 +41,8 @@ enum rtarget_format
     RTARGET_FORMAT_R32F,
     RTARGET_FORMAT_DEPTH_STENCIL,
     RTARGET_FORMAT_DEPTH32F,
+    RTARGET_FORMAT_R8_UINT,
+    RTARGET_FORMAT_R32_UINT,
     RTARGET_FORMAT_COUNT
 };
 
@@ -86,9 +88,12 @@ struct rtarget_desc
     u32             Width;
     u32             Height;
     rtarget_format  Format;
+    u32             MipCount;
     u32             SampleCount;
     u32             SampleQuality;
     xbool           bBindAsTexture;
+    xbool           bRenderTarget;
+    u32             StorageUsage;
     f32             ClearColor[4];
     f32             ClearDepth;
     u8              ClearStencil;
@@ -98,9 +103,12 @@ struct rtarget_desc
         Width         ( 0 ),
         Height        ( 0 ),
         Format        ( RTARGET_FORMAT_RGBA8 ),
+        MipCount      ( 1 ),
         SampleCount   ( 1 ),
         SampleQuality ( 0 ),
         bBindAsTexture( TRUE ),
+        bRenderTarget ( TRUE ),
+        StorageUsage  ( 0 ),
         ClearDepth    ( 1.0f ),
         ClearStencil  ( 0 ),
         pDebugName    ( NULL )
@@ -245,39 +253,6 @@ struct rtarget_pass_desc
 
 //------------------------------------------------------------------------------
 
-struct rtarget_backbuffer_pass_desc
-{
-    rtarget_load_op  ColorLoadOp;
-    rtarget_store_op ColorStoreOp;
-    f32              ClearColor[4];
-    xbool            bUseDepth;
-    rtarget_load_op  DepthLoadOp;
-    rtarget_store_op DepthStoreOp;
-    rtarget_load_op  StencilLoadOp;
-    rtarget_store_op StencilStoreOp;
-    f32              ClearDepth;
-    u8               ClearStencil;
-
-    rtarget_backbuffer_pass_desc( void ) :
-        ColorLoadOp  ( RTARGET_LOAD_CLEAR ),
-        ColorStoreOp ( RTARGET_STORE_STORE ),
-        bUseDepth    ( TRUE ),
-        DepthLoadOp  ( RTARGET_LOAD_CLEAR ),
-        DepthStoreOp ( RTARGET_STORE_STORE ),
-        StencilLoadOp( RTARGET_LOAD_CLEAR ),
-        StencilStoreOp( RTARGET_STORE_STORE ),
-        ClearDepth   ( 1.0f ),
-        ClearStencil ( 0 )
-    {
-        ClearColor[0] = 0.0f;
-        ClearColor[1] = 0.0f;
-        ClearColor[2] = 0.0f;
-        ClearColor[3] = 1.0f;
-    }
-};
-
-//------------------------------------------------------------------------------
-
 struct rtarget_copy_desc
 {
     rtarget*        pDestination;
@@ -335,7 +310,7 @@ void                rtarget_Destroy             ( rtarget& Target );
 xbool               rtarget_Register            ( rtarget& Target, const rtarget_registration& Reg );
 xbool               rtarget_GetOrCreate         ( rtarget& Target, const rtarget_registration& Reg );
 void                rtarget_Unregister          ( rtarget& Target );
-void                rtarget_NotifyResolutionChanged( void );
+xbool               rtarget_NotifyResolutionChanged( void );
 void                rtarget_ReleaseBackBufferTargets( void );
 
 //==============================================================================
@@ -346,10 +321,10 @@ xbool               rtarget_BeginPass           ( const rtarget_pass_desc& Desc 
 xbool               rtarget_BeginPass           ( const rtarget_color_attachment_desc* pColors,
                                                   u32 ColorCount,
                                                   const rtarget_depth_attachment_desc* pDepthStencil = NULL );
-xbool               rtarget_BeginBackBufferPass ( const rtarget_backbuffer_pass_desc& Desc );
 void                rtarget_EndPass             ( void );
-xbool               rtarget_IsBackBufferPassActive ( void );
+void                rtarget_SetGraphPassOwner   ( const char* pPassName );
 
+rtarget_format     rtarget_GetBackBufferFormat  ( void );
 const rtarget*      rtarget_GetBackBuffer       ( void );
 const rtarget*      rtarget_GetCurrentTarget    ( u32 Index );
 u32                 rtarget_GetCurrentCount     ( void );
@@ -361,14 +336,7 @@ const rtarget*      rtarget_GetCurrentDepth     ( void );
 
 xbool               rtarget_Copy                ( const rtarget_copy_desc& Desc );
 xbool               rtarget_Copy                ( rtarget& Destination, const rtarget& Source );
-xbool               rtarget_CopyRegion          ( rtarget& Destination,
-                                                  u32 DstX,
-                                                  u32 DstY,
-                                                  const rtarget& Source,
-                                                  u32 SrcX,
-                                                  u32 SrcY,
-                                                  u32 Width,
-                                                  u32 Height );
+xbool               rtarget_Copy                ( rtarget& Destination, const rtarget& Source, xbool bCycle );
 
 xbool               rtarget_IsValid             ( const rtarget& Target );
 xbool               rtarget_HasTexture          ( const rtarget& Target );
@@ -384,6 +352,7 @@ const shader_resource*
 //==============================================================================
 
 xbool               rtarget_IsDepthFormat       ( rtarget_format Format );
+xbool               rtarget_IsSampleCountSupported( rtarget_format Format, u32 SampleCount );
 const char*         rtarget_GetFormatName       ( rtarget_format Format );
 
 //==============================================================================

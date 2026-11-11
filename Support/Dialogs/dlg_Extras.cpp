@@ -19,13 +19,9 @@
 #include "ResourceMgr/ResourceMgr.hpp"
 #include "Parsing/TextIn.hpp"
 #include "StateMgr/MapList.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 
-#ifdef CONFIG_VIEWER
-#include "../../Apps/ArtistViewer/Config.hpp"
-#else
 #include "../../Apps/GameApp/Config.hpp"    
-#endif
 
 #include "Configuration/GameConfig.hpp"
 //=========================================================================
@@ -148,14 +144,6 @@ char s_MovieNames[30][32] =
     ID_EDGAR_STRING          ,   
     ID_OUTRO_STRING                 
 };
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
 
 //=========================================================================
 //  Registration function

@@ -57,10 +57,8 @@ protected:
     ui_text*            m_pLabelGolds;
     ui_text*            m_pLabelSilvers;
     ui_text*            m_pLabelBronzes;
-#ifndef TARGET_XBOX
     ui_text*            m_pLabelKicks;
     ui_text*            m_pLabelVotes;
-#endif
 
     ui_text*            m_pTextTime;
     ui_text*            m_pTextKills;
@@ -70,10 +68,8 @@ protected:
     ui_text*            m_pTextGolds;
     ui_text*            m_pTextSilvers;
     ui_text*            m_pTextBronzes;
-#ifndef TARGET_XBOX
     ui_text*            m_pTextKicks;
     ui_text*            m_pTextVotes;
-#endif
 
     s32                 m_CurrHL;
     xbool               m_bRenderBlackout;    

@@ -125,7 +125,7 @@ void anim_surface::UpdateSpatialState( const vector3& NewPos )
     BBox += GetBBox() ;
 
     rigid_geom* pRigidGeom = m_Inst.GetRigidGeom();
-    if( pRigidGeom && pRigidGeom->m_collision.nLowClusters > 0 )
+    if( pRigidGeom && pRigidGeom->m_Collision.nLowClusters > 0 )
         g_PolyCache.InvalidateCells( BBox, GetGuid() );
 }
  
@@ -140,7 +140,7 @@ void anim_surface::OnTransform( const matrix4& L2W )
  
     BBox += GetBBox() ;
     rigid_geom* pRigidGeom = m_Inst.GetRigidGeom();
-    if( pRigidGeom && pRigidGeom->m_collision.nLowClusters > 0 )
+    if( pRigidGeom && pRigidGeom->m_Collision.nLowClusters > 0 )
         g_PolyCache.InvalidateCells( BBox, GetGuid() );
 
     // Make sure to track the object across zones
@@ -174,7 +174,7 @@ void anim_surface::OnAdvanceSimulation( f32 DeltaTime )
                 (m_AnimPlayer.GetCycle() != m_AnimPlayer.GetPrevCycle()) )
             {
                 rigid_geom* pRigidGeom = m_Inst.GetRigidGeom();
-                if( pRigidGeom && pRigidGeom->m_collision.nLowClusters > 0 )
+                if( pRigidGeom && pRigidGeom->m_Collision.nLowClusters > 0 )
                     g_PolyCache.InvalidateCells( GetBBox(), GetGuid() );
             }
         }
@@ -336,15 +336,14 @@ xbool anim_surface::OnProperty( prop_query& I )
     if( play_surface::OnProperty( I ) )
     {
         // Iniitialize the tracker
-        if( I.IsVar( "Base\\Position" ) ||
-            I.IsVar( "Base\\ZoneInfo" ) )
+        if( !I.IsRead() &&
+            (I.IsVar( "Base\\Position" ) || I.IsVar( "Base\\ZoneInfo" )) )
         {
             g_ZoneMgr.RebaseZoneTracking( *this,
                                           m_ZoneTracker,
                                           GetPosition(),
                                           GetZone1(),
-                                          GetZone2(),
-                                          zone_mgr::SeedSource::Object );
+                                          GetZone2() );
         }
 
         return( TRUE );

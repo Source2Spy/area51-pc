@@ -10,13 +10,15 @@
 #include "Animation/AnimData.hpp"
 #include "Animation/AnimPlayer.hpp"
 
-#include "GameLib/RenderContext.hpp"
+#include "Render/RenderScope.hpp"
 
 struct shader_resource;
 
 //=========================================================================
 // CLASS
 //=========================================================================
+
+struct audio_request;
 
 class pip : public object
 {
@@ -145,6 +147,7 @@ protected:
 
     // Camera ear
     guid                    m_EarGuid ;         // Current ear guid
+    audio_request*          m_pEarRequest = NULL;
     s32                     m_EarID ;           // Currnet ear id
 
     // Misc
@@ -153,7 +156,8 @@ protected:
     guid                    m_WorldObjectGuids[MAX_WORLD_OBJECTS];  // Guid of objects to control
     texture_ref             m_TextureRefs[MAX_TEXTURE_REFS] ;       // List of texture refs
     s32                     m_nTextureRefs ;                        // # of texture refs
-    pip_render_target       m_RenderTarget;
+    render::RenderTargetSurface m_RenderTarget;
+    u64                     m_LastRenderFrameSerial;
 };
 
 //=========================================================================

@@ -18,9 +18,6 @@
 
 #include "dlg_PopUp.hpp"
 
-#ifdef TARGET_XBOX
-#include "UI/ui_bitmap.hpp"
-#endif
 
 //==============================================================================
 //  DEFINES
@@ -32,15 +29,10 @@ enum pause_online_controls
     IDC_PAUSE_ONLINE_SWITCH_TEAM,
     IDC_PAUSE_ONLINE_VOTE_MAP,
     IDC_PAUSE_ONLINE_VOTE_KICK,
-    IDC_PAUSE_ONLINE_FRIENDS,
     IDC_PAUSE_ONLINE_PLAYERS,
     IDC_PAUSE_ONLINE_OPTIONS,
     IDC_PAUSE_ONLINE_SETTINGS,
     IDC_PAUSE_ONLINE_CONFIG,
-#ifdef TARGET_XBOX
-    IDC_PAUSE_ONLINE_FRIEND_INV, // friend invitation
-    IDC_PAUSE_ONLINE_GAME_INV,   // game invitation
-#endif
     IDC_PAUSE_ONLINE_QUIT,
 };
 
@@ -78,19 +70,15 @@ public:
 
 protected:
     ui_frame*           m_pFrame1;
-    ui_button*            m_pButtonSuicide;
-    ui_button*            m_pButtonSwitchTeam;     
-    ui_button*            m_pButtonVoteMap;     
-    ui_button*            m_pButtonVoteKick;     
-    ui_button*            m_pButtonFriends;     
-    ui_button*            m_pButtonPlayers;     
-    ui_button*            m_pButtonOptions;     
+    ui_button*          m_pButtonSuicide;
+    ui_button*          m_pButtonSwitchTeam;
+    ui_button*          m_pButtonVoteMap;
+    ui_button*          m_pButtonVoteKick;
+    ui_button*          m_pButtonPlayers;
+    ui_button*          m_pButtonOptions;
     ui_button*          m_pButtonSettings;
-    ui_button*            m_pButtonConfig;     
-#ifdef TARGET_XBOX
-    ui_bitmap*          m_pFriendInvite;
-    ui_bitmap*          m_pGameInvite;
-#endif
+    ui_button*          m_pButtonConfig;
+    ui_button*          m_pButtonQuit;
 
     dlg_popup*          m_PopUp;
     s32                 m_PopUpResult;

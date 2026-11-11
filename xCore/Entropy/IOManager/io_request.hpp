@@ -37,6 +37,7 @@ friend void ProcessEndOfRequest         ( io_device* pDevice, s32 Status );
 //------------------------------------------------------------------------------
 
 friend class io_mgr;
+friend class io_fs;
 friend class io_device;
 friend class audio_stream_mgr;
 

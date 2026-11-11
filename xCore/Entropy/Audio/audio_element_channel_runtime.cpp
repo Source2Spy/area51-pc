@@ -4,6 +4,10 @@
 //
 //==============================================================================
 
+//==============================================================================
+//  INCLUDES
+//==============================================================================
+
 #include "Audio/audio_element_channel_runtime.hpp"
 #include "Audio/audio_channel_mgr.hpp"
 #include "Audio/audio_runtime.hpp"
@@ -30,27 +34,27 @@ audio_element_channel_runtime::audio_element_channel_runtime( void )
     m_pRuntime = NULL;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 audio_element_channel_runtime::~audio_element_channel_runtime( void )
 {
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_element_channel_runtime::Init( audio_runtime& Runtime )
 {
     m_pRuntime = &Runtime;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_element_channel_runtime::Kill( void )
 {
     m_pRuntime = NULL;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 xbool audio_element_channel_runtime::ReleaseChannel( audio_voice_mgr& Voices, element* pElement )
 {
@@ -69,7 +73,9 @@ xbool audio_element_channel_runtime::ReleaseChannel( audio_voice_mgr& Voices, el
 
     // Give up the hardware resource.
     if( !Runtime().Backend.ReleaseChannel( pElement->pChannel ) )
+    {
         return FALSE;
+    }
 
     // Now remove it from the channel list damnit.
     RemoveChannelFromList( pElement->pChannel );
@@ -79,7 +85,7 @@ xbool audio_element_channel_runtime::ReleaseChannel( audio_voice_mgr& Voices, el
     return TRUE;
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_element_channel_runtime::PauseElement( audio_voice_mgr& Voices, element* pElement )
 {
@@ -97,7 +103,7 @@ void audio_element_channel_runtime::PauseElement( audio_voice_mgr& Voices, eleme
     }
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_element_channel_runtime::ResumeElement( audio_voice_mgr& Voices, element* pElement )
 {
@@ -114,7 +120,7 @@ void audio_element_channel_runtime::ResumeElement( audio_voice_mgr& Voices, elem
     }
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_element_channel_runtime::ApplyElementVolume( audio_voice_mgr& Voices, element* pElement )
 {
@@ -126,7 +132,7 @@ void audio_element_channel_runtime::ApplyElementVolume( audio_voice_mgr& Voices,
     Runtime().Channels.SetVolume( pElement->pChannel, pElement->Volume );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_element_channel_runtime::ApplyElementPan( audio_voice_mgr& Voices, element* pElement )
 {
@@ -145,7 +151,7 @@ void audio_element_channel_runtime::ApplyElementPan( audio_voice_mgr& Voices, el
     Runtime().Channels.SetPan( pElement->pChannel, pElement->Params.Pan3d );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_element_channel_runtime::ApplyElementPitch( audio_voice_mgr& Voices, element* pElement )
 {
@@ -157,7 +163,7 @@ void audio_element_channel_runtime::ApplyElementPitch( audio_voice_mgr& Voices, 
     Runtime().Channels.SetPitch( pElement->pChannel, pElement->Pitch );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_element_channel_runtime::ApplyElementEffectSend( audio_voice_mgr& Voices, element* pElement )
 {
@@ -169,7 +175,7 @@ void audio_element_channel_runtime::ApplyElementEffectSend( audio_voice_mgr& Voi
     Runtime().Channels.SetEffectSend( pElement->pChannel, pElement->EffectSend );
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
 
 void audio_element_channel_runtime::StartElement( audio_voice_mgr& Voices, element* pElement )
 {

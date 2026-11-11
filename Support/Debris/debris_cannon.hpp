@@ -15,6 +15,7 @@
 #include "FX/fx_Mgr.hpp"
 #include "AudioMgr/AudioMgr.hpp"
 #include "../Objects/Player/Player.hpp"
+#include "Characters/FloorProperties.hpp"
 
 //=============================================================================
 class debris_cannon : public object
@@ -72,6 +73,7 @@ protected:
         vector3             m_RotationAxis;
         radian              m_RotationAmount;
         vector3             m_OldPosition;          // position last frame
+        floor_properties    m_FloorProperties;
         
         u64                 m_MeshMask;             // mask for submesh selection
         fx_handle           m_FX;                   // trailing fx, not mandatory
@@ -91,6 +93,7 @@ protected:
             void        ReleaseFragment ( s32 iFragment );
             void        SetupFlyby      ( s32 iFragment, const vector3& PlayerPos, player* pPlayer );
             void        UpdateFlyby     ( f32 DeltaTime );
+            void        InitializeFragmentLighting ( const vector3& Position );
 
             void        InitializeFragmentsForPlayerDirectedExplosion ( const vector3&  Pos,
                                                                         const vector3&  Dir,

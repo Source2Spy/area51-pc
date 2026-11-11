@@ -61,9 +61,6 @@ enum class PlayerAction
     TalkModeToggle,
     FireParasites,
     FireContagion,
-    MutantMelee,
-    MultiplayerFlashlight,
-    MultiplayerMutation,
     DropFlag,
     Scoreboard,
     Count

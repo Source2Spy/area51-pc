@@ -122,7 +122,7 @@ void alien_spawn_tube::OnEnumProp      ( prop_enum&    List )
                       "Resource for this item",
                       PROP_TYPE_MUST_ENUM );
 
-    List.PropEnumExternal( "Alien Spawn Tube\\Spawned Object", "global\0global_guid", 
+    List.PropEnumExternal( "Alien Spawn Tube\\Spawned Object", "global\0global_guid\0", 
         "(Optional) Global Variable (type guid) where we can store the guid of the object that was spawned; leave blank to not store this info.", PROP_TYPE_MUST_ENUM );
 
     List.PropEnumGuid    ( "Alien Spawn Tube\\Spawn Group", "Guid of group object that should store the spawned object guid", PROP_TYPE_MUST_ENUM );

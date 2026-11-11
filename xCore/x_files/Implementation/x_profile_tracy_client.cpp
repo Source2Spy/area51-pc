@@ -94,7 +94,7 @@ u32 x_ProfileTracyRegisterMetric( const char* pName,
 
 xprofile_tracy_scope x_ProfileTracyBeginZone( u32 MetricId )
 {
-    xprofile_tracy_scope Scope = { 0, 0 };
+    xprofile_tracy_scope Scope = { 0, 0, 0 };
     if( (MetricId == 0) || (MetricId > s_MetricCount) )
         return Scope;
 
@@ -103,6 +103,9 @@ xprofile_tracy_scope x_ProfileTracyBeginZone( u32 MetricId )
         1 );
     Scope.Id     = TracyScope.id;
     Scope.Active = TracyScope.active;
+#ifdef TRACY_ON_DEMAND
+    Scope.ConnectionId = TracyScope.connectionId;
+#endif
     return Scope;
 }
 
@@ -110,7 +113,12 @@ xprofile_tracy_scope x_ProfileTracyBeginZone( u32 MetricId )
 
 void x_ProfileTracyEndZone( xprofile_tracy_scope Scope )
 {
-    TracyCZoneCtx TracyScope = { Scope.Id, Scope.Active };
+    TracyCZoneCtx TracyScope = {};
+    TracyScope.id     = Scope.Id;
+    TracyScope.active = Scope.Active;
+#ifdef TRACY_ON_DEMAND
+    TracyScope.connectionId = Scope.ConnectionId;
+#endif
     ___tracy_emit_zone_end( TracyScope );
 }
 

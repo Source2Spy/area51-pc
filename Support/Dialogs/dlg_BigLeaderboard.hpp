@@ -19,7 +19,7 @@
 #include "dlg_Leaderboard.hpp"
 
 #include "StateMgr/StateMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 
 //==============================================================================
 //  DEFINES
@@ -108,14 +108,14 @@ protected:
     dlg_popup*          m_pPopUp;
     s32                 m_PopUpResult;
 
-    const xwchar*       m_pStrLevelDesc;
-    const xwchar*       m_pStrPlayer;
-    const xwchar*       m_pStrScore;
-    const xwchar*       m_pStrIconKills;
-    const xwchar*       m_pStrIconDeaths;
-    const xwchar*       m_pStrIconTKs;
-    const xwchar*       m_pStrIconFlags;
-    const xwchar*       m_pStrIconVotes;
+    xwstring            m_StrLevelDesc;
+    xwstring            m_StrPlayer;
+    xwstring            m_StrScore;
+    xwstring            m_StrIconKills;
+    xwstring            m_StrIconDeaths;
+    xwstring            m_StrIconTKs;
+    xwstring            m_StrIconFlags;
+    xwstring            m_StrIconVotes;
 };
 
 //==============================================================================

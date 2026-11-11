@@ -9,6 +9,11 @@
 #include "Tracker.hpp"
 #include "TriggerEx/Affecters/object_affecter.hpp"
 
+namespace render
+{
+struct RenderScopeDesc;
+}
+
 //=========================================================================
 // CLASS
 //=========================================================================
@@ -34,8 +39,8 @@ public:
     virtual void            OnEnumProp      ( prop_enum& List );
     virtual xbool           OnProperty      ( prop_query& I );
     virtual void            OnMove          ( const vector3& NewPos   );        
-    virtual void            OnTransform     ( const matrix4& L2W      ); 
-    virtual zone_mgr::TrackingMode GetZoneTrackingMode ( void ) const;
+    virtual void            OnTransform     ( const matrix4& L2W      );
+            void            OnCameraCut     ( const matrix4& L2W      );
 
     virtual const object_desc&  GetTypeDesc     ( void ) const;
     static  const object_desc&  GetObjectType   ( void );
@@ -57,7 +62,7 @@ protected:
 // PRIVATE FUNCTIONS
 //=====================================================================
             
-    virtual void            UpdateTrackedTransform ( xbool bSendKeyEvents ) ;
+    virtual void            UpdateTrackedTransform ( xbool bSendKeyEvents, xbool bDiscontinuous = FALSE ) ;
 
 //=====================================================================
 // PUBLIC FUNCTIONS
@@ -65,6 +70,7 @@ protected:
 public:
 
             void            RenderView          ( const irect& Viewport ) ;
+            void            RenderView          ( const irect& Viewport, render::RenderScopeDesc const& Scope );
 
             view&           GetView             ( void ) { return m_View ; }
       const view&           GetView             ( void ) const { return m_View ; }

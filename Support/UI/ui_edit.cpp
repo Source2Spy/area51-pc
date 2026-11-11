@@ -94,7 +94,8 @@ void ui_edit::Render( s32 ox, s32 oy )
         irect rt = r2;
         rt.l += 1;
         rt.r -= 3;
-        m_pManager->RenderText( m_Font, rt, ui_font::h_center|ui_font::v_center|ui_font::clip_ellipsis|ui_font::clip_l_justify, TextColor, m_Label );
+        m_pManager->RenderText( m_Font, rt, ui_font::h_center|ui_font::v_center|ui_font::clip_ellipsis|ui_font::clip_l_justify,
+                               TextColor, m_Label.GetLength() ? m_Label : m_Placeholder );
 
         // Clear the clip window
         m_pManager->PopClipWindow();

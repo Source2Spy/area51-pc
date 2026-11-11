@@ -73,7 +73,9 @@ static
 xbool net_ResolveInterfaceFunctions( void )
 {
     if( s_InterfaceFunctionsResolved )
+    {
         return (s_GetIfAddrs != NULL) && (s_FreeIfAddrs != NULL);
+    }
 
     s_InterfaceFunctionsResolved = TRUE;
     s_GetIfAddrs = (net_getifaddrs_fn)dlsym( RTLD_DEFAULT, "getifaddrs" );
@@ -87,7 +89,9 @@ static
 xbool net_GetIfAddrs( struct ifaddrs** ppInterfaces )
 {
     if( !net_ResolveInterfaceFunctions() )
+    {
         return FALSE;
+    }
 
     return (s_GetIfAddrs( ppInterfaces ) == 0);
 }
@@ -98,7 +102,9 @@ static
 void net_FreeIfAddrs( struct ifaddrs* pInterfaces )
 {
     if( pInterfaces && net_ResolveInterfaceFunctions() )
+    {
         s_FreeIfAddrs( pInterfaces );
+    }
 }
 
 //==============================================================================
@@ -106,7 +112,7 @@ void net_FreeIfAddrs( struct ifaddrs* pInterfaces )
 static
 u32 net_GetFallbackLocalAddress( void )
 {
-    const int ProbeSocket = socket( AF_INET, SOCK_DGRAM, IPPROTO_UDP );
+    const s32 ProbeSocket = socket( AF_INET, SOCK_DGRAM, IPPROTO_UDP );
     if( ProbeSocket >= 0 )
     {
         sockaddr_in Remote;
@@ -125,7 +131,9 @@ u32 net_GetFallbackLocalAddress( void )
                 const u32 Address = ntohl( Local.sin_addr.s_addr );
                 close( ProbeSocket );
                 if( Address != 0 )
+                {
                     return Address;
+                }
             }
         }
 
@@ -151,39 +159,57 @@ u32 net_GetLocalAddress( void )
 
 #if defined(TARGET_ANDROID)
     if( !net_GetIfAddrs( &pInterfaces ) )
+    {
         return net_GetFallbackLocalAddress();
+    }
 #else
     if( getifaddrs( &pInterfaces ) != 0 )
+    {
         return 0;
+    }
 #endif
 
     for( pInterface = pInterfaces; pInterface; pInterface = pInterface->ifa_next )
     {
         if( !pInterface->ifa_addr || (pInterface->ifa_addr->sa_family != AF_INET) )
+        {
             continue;
+        }
 
         if( (pInterface->ifa_flags & IFF_UP) == 0 )
+        {
             continue;
+        }
 
         const sockaddr_in* pAddress = (const sockaddr_in*)pInterface->ifa_addr;
         const u32 Address = ntohl( pAddress->sin_addr.s_addr );
         if( Address == 0 )
+        {
             continue;
+        }
 
         if( FirstAddress == 0 )
+        {
             FirstAddress = Address;
+        }
 
         const xbool IsRunning = (pInterface->ifa_flags & IFF_RUNNING) != 0;
         if( IsRunning && (FirstRunningAddress == 0) )
+        {
             FirstRunningAddress = Address;
+        }
 
         if( (pInterface->ifa_flags & IFF_LOOPBACK) == 0 )
         {
             if( FirstNonLoopbackAddress == 0 )
+            {
                 FirstNonLoopbackAddress = Address;
+            }
 
             if( IsRunning && (FirstNonLoopbackRunning == 0) )
+            {
                 FirstNonLoopbackRunning = Address;
+            }
         }
     }
 
@@ -194,11 +220,17 @@ u32 net_GetLocalAddress( void )
 #endif
 
     if( FirstNonLoopbackRunning != 0 )
+    {
         return FirstNonLoopbackRunning;
+    }
     if( FirstNonLoopbackAddress != 0 )
+    {
         return FirstNonLoopbackAddress;
+    }
     if( FirstRunningAddress != 0 )
+    {
         return FirstRunningAddress;
+    }
     return FirstAddress;
 }
 
@@ -240,13 +272,17 @@ xbool net_socket::Bind( s32 StartPort, s32 Flags )
     ASSERT( s_Inited );
 
     struct sockaddr_in Address;
-    int Socket;
+    s32 Socket;
 
     if( StartPort <= 0 )
+    {
         StartPort = x_irand( 8192, 16384 );
+    }
 
     if( StartPort > 65535 )
+    {
         return FALSE;
+    }
 
     x_memset( &Address, 0, sizeof(Address) );
     Address.sin_family      = AF_INET;
@@ -254,15 +290,19 @@ xbool net_socket::Bind( s32 StartPort, s32 Flags )
     Address.sin_addr.s_addr = htonl( INADDR_ANY );
 
     if( Flags & NET_FLAGS_VDP )
+    {
         ASSERTS( FALSE, "NET_FLAGS_VDP is not supported on Linux" );
+    }
 
     Socket = socket( AF_INET, SOCK_DGRAM, IPPROTO_UDP );
     if( Socket < 0 )
+    {
         return FALSE;
+    }
 
     while( bind( Socket, (struct sockaddr*)&Address, sizeof(Address) ) < 0 )
     {
-        if( (errno == EADDRINUSE) && (StartPort < 65535) )
+        if( (errno == EADDRINUSE) && (StartPort < 65535) && !(Flags & NET_FLAGS_BIND_EXACT) )
         {
             StartPort++;
             Address.sin_port = htons( (u16)StartPort );
@@ -276,7 +316,7 @@ xbool net_socket::Bind( s32 StartPort, s32 Flags )
 
     if( (Flags & NET_FLAGS_BLOCKING) == 0 )
     {
-        const int CurrentFlags = fcntl( Socket, F_GETFL, 0 );
+        const s32 CurrentFlags = fcntl( Socket, F_GETFL, 0 );
         if( (CurrentFlags < 0) || (fcntl( Socket, F_SETFL, CurrentFlags | O_NONBLOCK ) < 0) )
         {
             close( Socket );
@@ -296,7 +336,7 @@ xbool net_socket::Bind( s32 StartPort, s32 Flags )
 
     if( Flags & NET_FLAGS_BROADCAST )
     {
-        const int Broadcast = 1;
+        const s32 Broadcast = 1;
         setsockopt( Socket, SOL_SOCKET, SO_BROADCAST, &Broadcast, sizeof(Broadcast) );
     }
 
@@ -312,11 +352,13 @@ void net_socket::Close( void )
 
     if( m_Socket != BAD_SOCKET )
     {
-        close( (int)m_Socket );
+        close( (s32)m_Socket );
         m_Socket = BAD_SOCKET;
 
         if( s_STAT_NAddressesBound > 0 )
+        {
             s_STAT_NAddressesBound--;
+        }
     }
 
     m_Address.Clear();
@@ -331,13 +373,13 @@ xbool sys_net_Receive( net_socket& Local,
 {
     struct sockaddr_in From;
     socklen_t           AddressSize = sizeof(From);
-    ssize_t             RetSize;
+    saddr               RetSize;
 
     ASSERT( s_Inited );
 
-    RetSize = recvfrom( (int)Local.m_Socket,
+    RetSize = recvfrom( (s32)Local.m_Socket,
                         pBuffer,
-                        (size_t)BufferSize,
+                        (usize)BufferSize,
                         0,
                         (struct sockaddr*)&From,
                         &AddressSize );
@@ -354,7 +396,9 @@ xbool sys_net_Receive( net_socket& Local,
     }
 
     if( (RetSize < 0) && !net_IsWouldBlockError( errno ) && (errno != ECONNRESET) )
+    {
         x_DebugMsg( "RecvFrom returned an error %d\n", errno );
+    }
 
     BufferSize = 0;
     return FALSE;
@@ -368,7 +412,7 @@ void sys_net_Send( net_socket& Local,
                    s32 BufferSize )
 {
     struct sockaddr_in To;
-    ssize_t            Status;
+    saddr              Status;
 
     ASSERT( s_Inited );
 
@@ -380,14 +424,16 @@ void sys_net_Send( net_socket& Local,
     To.sin_port        = htons( (u16)Remote.GetPort() );
     To.sin_addr.s_addr = htonl( (u32)Remote.GetIP() );
 
-    Status = sendto( (int)Local.m_Socket,
+    Status = sendto( (s32)Local.m_Socket,
                      pBuffer,
-                     (size_t)BufferSize,
+                     (usize)BufferSize,
                      0,
                      (struct sockaddr*)&To,
                      sizeof(To) );
     if( (Status < 0) && !net_IsWouldBlockError( errno ) )
+    {
         x_DebugMsg( "SendTo returned an error code %d\n", errno );
+    }
 }
 
 //==============================================================================
@@ -421,7 +467,9 @@ void net_GetInterfaceInfo( s32 ID, interface_info& Info )
     }
 #else
     if( getifaddrs( &pInterfaces ) != 0 )
+    {
         return;
+    }
 #endif
 
     for( pInterface = pInterfaces; pInterface && (Count < 64); pInterface = pInterface->ifa_next )
@@ -433,7 +481,9 @@ void net_GetInterfaceInfo( s32 ID, interface_info& Info )
         }
 
         if( (pInterface->ifa_flags & IFF_UP) == 0 )
+        {
             continue;
+        }
 
         const sockaddr_in* pAddress = (const sockaddr_in*)pInterface->ifa_addr;
         const sockaddr_in* pNetmask = (const sockaddr_in*)pInterface->ifa_netmask;
@@ -451,7 +501,9 @@ void net_GetInterfaceInfo( s32 ID, interface_info& Info )
 #endif
 
     if( Count == 0 )
+    {
         return;
+    }
 
     if( Selected < 0 )
     {
@@ -478,11 +530,15 @@ void net_GetInterfaceInfo( s32 ID, interface_info& Info )
         }
 
         if( Selected < 0 )
+        {
             Selected = 0;
+        }
     }
 
     if( Selected >= Count )
+    {
         return;
+    }
 
     Info.Address     = (s32)Interfaces[Selected].Address;
     Info.Netmask     = (s32)Interfaces[Selected].Netmask;
@@ -602,11 +658,13 @@ void net_GetConnectStatus( connect_status& Status )
 
 xbool net_socket::CanReceive( void )
 {
-    const int      Socket = (int)m_Socket;
+    const s32      Socket = (s32)m_Socket;
     struct pollfd   Poll;
 
     if( m_Socket == BAD_SOCKET )
+    {
         return FALSE;
+    }
 
     Poll.fd      = Socket;
     Poll.events  = POLLIN;
@@ -619,11 +677,13 @@ xbool net_socket::CanReceive( void )
 
 xbool net_socket::CanSend( void )
 {
-    const int      Socket = (int)m_Socket;
+    const s32      Socket = (s32)m_Socket;
     struct pollfd   Poll;
 
     if( m_Socket == BAD_SOCKET )
+    {
         return FALSE;
+    }
 
     Poll.fd      = Socket;
     Poll.events  = POLLOUT;

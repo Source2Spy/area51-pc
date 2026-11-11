@@ -73,7 +73,9 @@ inline
 dfs_subfile* dfs_GetSubFileTable( dfs_header* pHeader )
 {
     if( pHeader->SubFileTableOffset == 0 )
+    {
         return NULL;
+    }
     return (dfs_subfile*)((byte*)pHeader + pHeader->SubFileTableOffset);
 }
 
@@ -83,7 +85,9 @@ inline
 const dfs_subfile* dfs_GetSubFileTable( const dfs_header* pHeader )
 {
     if( pHeader->SubFileTableOffset == 0 )
+    {
         return NULL;
+    }
     return (const dfs_subfile*)((const byte*)pHeader + pHeader->SubFileTableOffset);
 }
 
@@ -93,7 +97,9 @@ inline
 dfs_file* dfs_GetFiles( dfs_header* pHeader )
 {
     if( pHeader->FilesOffset == 0 )
+    {
         return NULL;
+    }
     return (dfs_file*)((byte*)pHeader + pHeader->FilesOffset);
 }
 
@@ -103,7 +109,9 @@ inline
 const dfs_file* dfs_GetFiles( const dfs_header* pHeader )
 {
     if( pHeader->FilesOffset == 0 )
+    {
         return NULL;
+    }
     return (const dfs_file*)((const byte*)pHeader + pHeader->FilesOffset);
 }
 
@@ -113,7 +121,9 @@ inline
 u16* dfs_GetChecksums( dfs_header* pHeader )
 {
     if( pHeader->ChecksumsOffset == 0 )
+    {
         return NULL;
+    }
     return (u16*)((byte*)pHeader + pHeader->ChecksumsOffset);
 }
 
@@ -123,7 +133,9 @@ inline
 const u16* dfs_GetChecksums( const dfs_header* pHeader )
 {
     if( pHeader->ChecksumsOffset == 0 )
+    {
         return NULL;
+    }
     return (const u16*)((const byte*)pHeader + pHeader->ChecksumsOffset);
 }
 
@@ -133,7 +145,9 @@ inline
 char* dfs_GetStrings( dfs_header* pHeader )
 {
     if( pHeader->StringsOffset == 0 )
+    {
         return NULL;
+    }
     return (char*)((byte*)pHeader + pHeader->StringsOffset);
 }
 
@@ -143,7 +157,9 @@ inline
 const char* dfs_GetStrings( const dfs_header* pHeader )
 {
     if( pHeader->StringsOffset == 0 )
+    {
         return NULL;
+    }
     return (const char*)((const byte*)pHeader + pHeader->StringsOffset);
 }
 

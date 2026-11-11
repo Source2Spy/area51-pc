@@ -4,7 +4,7 @@
 #include "Entropy.hpp"
 #include "CollisionMgr/CollisionMgr.hpp"
 #include "Render/Editor/EditorIcons.hpp"
-#include "Render/ProjTextureMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 
 //=========================================================================
 // OBJECT DESCRIPTION
@@ -133,11 +133,11 @@ void projector_obj::OnRender( void )
     {
         if( IsShadow() )
         {
-            g_ProjTextureMgr.AddProjShadow( GetL2W(), GetFOV(), GetLength(), GetTexture() );
+            render::GetRenderPipeline().GetProjectionTextureRegistry().AddProjShadow( GetL2W(), GetFOV(), GetLength(), GetTexture() );
         }
         else
         {
-            g_ProjTextureMgr.AddProjLight( GetL2W(), GetFOV(), GetLength(), GetTexture() );
+            render::GetRenderPipeline().GetProjectionTextureRegistry().AddProjLight( GetL2W(), GetFOV(), GetLength(), GetTexture() );
         }
     }
 }

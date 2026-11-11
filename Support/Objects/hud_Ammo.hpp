@@ -101,8 +101,8 @@ public:
     xbool                       m_WarningNads;
     xbool                       m_CriticalNads;
 
-    s32                         m_WarningClipALPHA;
-    s32                         m_WarningResvALPHA;
+    f32                         m_WarningClipALPHA;
+    f32                         m_WarningResvALPHA;
     s32                         m_WarningNadsALPHA;
 
     voice_id                    m_CriticalSoundID;

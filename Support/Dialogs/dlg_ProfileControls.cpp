@@ -42,7 +42,7 @@ ui_manager::control_tem ProfileControlsControls[] =
 {
     { IDC_CONTROLS_MOUSE_MENU,             "IDS_PROFILE_MOUSE_CONTROLS",   "button",  40, 165, 220, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
     { IDC_CONTROLS_GAMEPAD_MENU,           "IDS_PROFILE_GAMEPAD_CONTROLS", "button",  40, 200, 220, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_CONTROLS_KEYBOARD_MENU,          "IDS_PROFILE_KEYBOARD_CONTROLS", "button",  40, 235, 220, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_DISABLED },
+    { IDC_CONTROLS_KEYBOARD_MENU,          "IDS_PROFILE_KEYBOARD_BINDINGS", "button",  40, 235, 220, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE },
     { IDC_CONTROLS_TOGGLE_CROUCH,          "IDS_NULL",                     "check",  300,  40, 120, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
     { IDC_CONTROLS_TOGGLE_AIM,             "IDS_NULL",                     "check",  300,  75, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
     { IDC_CONTROLS_TOGGLE_AUTO_SWITCH,     "IDS_NULL",                     "check",  300, 110, 120, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
@@ -238,7 +238,8 @@ void dlg_profile_controls::OnAccept( ui_win* pWin )
     }
 
     if( (pWin == static_cast<ui_win*>( m_pMouseMenu )) ||
-        (pWin == static_cast<ui_win*>( m_pGamepadMenu )) )
+        (pWin == static_cast<ui_win*>( m_pGamepadMenu )) ||
+        (pWin == static_cast<ui_win*>( m_pKeyboardMenu )) )
     {
         ApplyCommonControls( g_StateMgr.GetPendingProfile() );
         g_AudioMgr.Play( "Select_Norm" );
@@ -456,6 +457,17 @@ void dlg_profile_controls::OnUpdate( ui_win* pWin, f32 DeltaTime )
         m_pGamepadMenu->SetLabelColor( xcolor( 126, 220, 60, 255 ) );
     }
 
+    if( m_pKeyboardMenu->IsFocused() )
+    {
+        Highlight = 5;
+        m_pKeyboardMenu->SetLabelColor( xcolor( 255, 252, 204, 255 ) );
+        g_UiMgr->SetScreenHighlight( m_pKeyboardMenu->GetPosition() );
+    }
+    else
+    {
+        m_pKeyboardMenu->SetLabelColor( xcolor( 126, 220, 60, 255 ) );
+    }
+
     if( m_pToggleCrouch->IsFocused() )
     {
         Highlight = 0;
@@ -491,7 +503,7 @@ void dlg_profile_controls::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pButtonAccept->IsFocused() )
     {
-        Highlight = 5;
+        Highlight = 6;
         m_pButtonAccept->SetLabelColor( xcolor( 255, 252, 204, 255 ) );
         g_UiMgr->SetScreenHighlight( m_pButtonAccept->GetPosition() );
     }

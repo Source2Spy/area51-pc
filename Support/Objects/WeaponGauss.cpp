@@ -4,7 +4,7 @@
 #include "Objects/ParticleEmiter.hpp"
 #include "Objects/GrenadeProjectile.hpp"
 #include "Objects/Projector.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 
 
 //=========================================================================
@@ -177,7 +177,7 @@ xbool weapon_gauss::FireWeaponProtected( const vector3& InitPos , const vector3&
         DecrementAmmo();
 
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        g_LightMgr.AddFadingLight( InitPos, xcolor(0,124,120), 400.0f, 1.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor(0,124,120), 400.0f, 1.0f, 0.1f );
         
         SynchGunToCount() ;
         return TRUE;
@@ -271,7 +271,7 @@ xbool weapon_gauss::FireSecondaryProtected( const vector3& InitPos , const vecto
         DecrementAmmo(AMMO_SECONDARY);
 
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        g_LightMgr.AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
 
         return TRUE;
     }

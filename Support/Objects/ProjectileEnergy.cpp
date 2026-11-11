@@ -16,10 +16,10 @@
 #include "GameLib/StatsMgr.hpp"
 #include "Decals/DecalMgr.hpp"
 #include "Characters/Character.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "../Support/Tracers/TracerMgr.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "Objects/Player/Player.hpp"
 
 #ifndef X_EDITOR
@@ -360,7 +360,7 @@ bbox energy_projectile::GetLocalBBox( void ) const
     rigid_geom* pRigidGeom = m_RigidInst.GetRigidGeom();
     if( pRigidGeom )
     {
-        return( pRigidGeom->m_collision.BBox );
+        return( pRigidGeom->m_Collision.BBox );
     }
     else
     {
@@ -452,7 +452,7 @@ void energy_projectile::OnExplode( void )
     DestroyParticles();
 
     //add a light where the explosion occurred
-    g_LightMgr.AddFadingLight( GetPosition(), xcolor(55, 55, 135, 255), 175.0f, 1.0f, 1.3f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( GetPosition(), xcolor(55, 55, 135, 255), 175.0f, 1.0f, 1.3f );
 
     //render particle explosion
     guid ExplosionGuid = particle_emitter::CreatePresetParticleAndOrient( 

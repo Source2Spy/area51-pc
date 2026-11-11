@@ -8,7 +8,7 @@
 #include "GameLib/RigidGeomCollision.hpp"
 #include "Render/Render.hpp"
 #include "EventMgr/EventMgr.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "AudioMgr/AudioMgr.hpp"
 #include "Objects/ParticleEmiter.hpp"
 #include "Turret.hpp"
@@ -921,7 +921,7 @@ void alien_orb::OnAdvanceSimulation  ( f32 DeltaTime )
 void alien_orb::DoCollisionHit( const collision_mgr::collision& C )
 {
     //add a light where the hit occurred
-    g_LightMgr.AddFadingLight( C.Point, xcolor(152, 152, 76, 255), 200.0f, 1.0f, 1.8f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( C.Point, xcolor(152, 152, 76, 255), 200.0f, 1.0f, 1.8f );
 
     radian3 Orient;
     Orient.Zero();

@@ -9,6 +9,8 @@
 #include "GameLib/RenderContext.hpp"
 #include "AudioMgr/AudioMgr.hpp"
 
+#include "x_math.hpp"
+
 ///////////////////////////////////////////////////////////////////////////
 // data
 ///////////////////////////////////////////////////////////////////////////
@@ -18,6 +20,23 @@ post_effect_mgr     g_PostEffectMgr;
 static const f32    kNormalBlurOffset = 0.0f;
 static const xcolor kNormalBlurColor(128,128,128,16);
 static const s32    kDefaultFilmGrainStrength = 100;
+
+static const f32    kSceneBrightness     = 0.0f;
+static const f32    kSceneContrast       = 1.0f;
+
+static f32 FadePainChannel( f32 Value, f32 Normal, f32 DeltaTime )
+{
+    f32 Excess = MAX( 0.0f, Value - Normal );
+    if( Excess > 100.0f )
+    {
+        f32 const ExponentialTime = x_log( Excess / 100.0f ) / 3.0f;
+        f32 const Elapsed = MIN( DeltaTime, ExponentialTime );
+        Excess *= x_exp( -3.0f * Elapsed );
+        DeltaTime -= Elapsed;
+    }
+    return Normal + MAX( 0.0f, Excess - 300.0f * DeltaTime );
+}
+
 
 ///////////////////////////////////////////////////////////////////////////
 // Implementation
@@ -45,7 +64,9 @@ void post_effect_mgr::Init( void )
     m_FadeTime        = 0.0f;
     m_bFadeAudio      = FALSE;
     m_FilmGrainStrength = kDefaultFilmGrainStrength;
-    m_bBackgroundBlurEnabled = TRUE;
+    m_bBackgroundBlurEnabled = FALSE;
+    m_SceneBrightness     = kSceneBrightness;
+    m_SceneContrast       = kSceneContrast;
 
     s32 i;
     for( i = 0; i < MAX_LOCAL_PLAYERS; i++ )
@@ -53,6 +74,8 @@ void post_effect_mgr::Init( void )
         m_bDoPainBlur[i]    = FALSE;
         m_PainBlurOffset[i] = kNormalBlurOffset;
         m_PainBlurColor[i]  = kNormalBlurColor;
+        m_PainBlurRed[i]    = kNormalBlurColor.R;
+        m_PainBlurAlpha[i]  = kNormalBlurColor.A;
     }
 }
 
@@ -66,26 +89,16 @@ void post_effect_mgr::OnUpdate( f32 DeltaTime )
         ///////////////////////////////////////////////////////////////////
         // update the pain/filter blur
         ///////////////////////////////////////////////////////////////////
-        f32 fTimedBlur = 30.0f * DeltaTime;
-        s32 RedDelta   = (s32)MAX((((m_PainBlurColor[i].R - 128)/10) * fTimedBlur), 10.0f * fTimedBlur);
-        s32 AlphaDelta = (s32)MAX((((m_PainBlurColor[i].A -  15)/10) * fTimedBlur), 10.0f * fTimedBlur);
-        if( m_PainBlurOffset[i] > kNormalBlurOffset )
-            m_PainBlurOffset[i] -= fTimedBlur;
-        else
-            m_PainBlurOffset[i] = kNormalBlurOffset;
-       
-        if( m_PainBlurColor[i].R > kNormalBlurColor.R )
-            m_PainBlurColor[i].R -= RedDelta;
-        else
-            m_PainBlurColor[i].R  = kNormalBlurColor.R;
-        if( m_PainBlurColor[i].A > kNormalBlurColor.A )
-            m_PainBlurColor[i].A -= AlphaDelta;
-        else
-            m_PainBlurColor[i].A = kNormalBlurColor.A;
+        f32 const Elapsed = MAX( 0.0f, DeltaTime );
+        m_PainBlurOffset[i] = MAX( kNormalBlurOffset, m_PainBlurOffset[i] - 30.0f * Elapsed );
+        m_PainBlurRed[i] = FadePainChannel( m_PainBlurRed[i], kNormalBlurColor.R, Elapsed );
+        m_PainBlurAlpha[i] = FadePainChannel( m_PainBlurAlpha[i], kNormalBlurColor.A, Elapsed );
+        m_PainBlurColor[i].R = static_cast<u8>( m_PainBlurRed[i] + 0.5f );
+        m_PainBlurColor[i].A = static_cast<u8>( m_PainBlurAlpha[i] + 0.5f );
 
-        if( (m_PainBlurOffset[i]  == kNormalBlurOffset ) &&
-            (m_PainBlurColor[i].R == kNormalBlurColor.R) &&
-            (m_PainBlurColor[i].A == kNormalBlurColor.A) )
+        if( (m_PainBlurOffset[i] == kNormalBlurOffset) &&
+            (m_PainBlurRed[i] == kNormalBlurColor.R) &&
+            (m_PainBlurAlpha[i] == kNormalBlurColor.A) )
         {
             m_bDoPainBlur[i] = FALSE;
         }
@@ -138,13 +151,15 @@ void post_effect_mgr::Render( void )
 {
     X_PROFILE_SCOPE_CATEGORY( "Context", "post_effect_mgr::Render" );
 
-    // don't do post-effects when we're in the pip
-    if( g_RenderContext.m_bIsPipRender )
+    if( !render::GetActiveRenderScopeDesc().EnablePostProcessing )
         return;
 
-    // start doing post-effects
-    render::BeginPostEffects();
-    
+    // set base screen params
+    render::SceneColorGradeParams SceneColorGrade;
+    SceneColorGrade.Brightness     = m_SceneBrightness;
+    SceneColorGrade.Contrast       = m_SceneContrast;
+    render::SetSceneColorGrade( SceneColorGrade );
+
     // do the self-illum glows
     if ( g_RenderContext.m_bIsMutated )
     {
@@ -154,16 +169,6 @@ void post_effect_mgr::Render( void )
     {
         render::ApplySelfIllumGlows( 0.0f, 255 );
     }
-
-    // TODO: Rework this effect!
-    //slot_id SlotID = g_ObjMgr.GetFirst( object::TYPE_GRAV_CHARGE_PROJECTILE );
-    //while( SlotID != SLOT_NULL )
-    //{
-    //    object* pObj = g_ObjMgr.GetObjectBySlot( SlotID );
-    //    ASSERT( pObj );
-    //    render::AddScreenWarp( pObj->GetPosition(), 400.0f, 0.4f );
-    //    SlotID = g_ObjMgr.GetNext( SlotID );
-    //}
 
     // handle pain screen blurring
     s32 LocalPlayerIndex = g_RenderContext.LocalPlayerIndex;
@@ -196,8 +201,6 @@ void post_effect_mgr::Render( void )
         render::NoiseFilter( xcolor( 200, 185, 170, m_FilmGrainStrength ) );
     }
 
-    // done
-    render::EndPostEffects();
 }
 
 //=========================================================================
@@ -214,13 +217,19 @@ void post_effect_mgr::SetBackgroundBlurEnabled( xbool Enabled )
     m_bBackgroundBlurEnabled = Enabled;
 }
 
+//==========================================================================
+
+void post_effect_mgr::SetSceneColorGrade( render::SceneColorGradeParams const& Params )
+{
+    m_SceneBrightness     = x_clamp( Params.Brightness, -1.0f, 1.0f );
+    m_SceneContrast       = x_clamp( Params.Contrast, 0.0f, 4.0f );
+}
+
 //=========================================================================
 
 void post_effect_mgr::RenderFog( void )
 {
-    render::BeginMidPostEffects();
     render::ZFogFilter( render::FALLOFF_CUSTOM, g_RenderContext.LocalPlayerIndex );
-    render::EndMidPostEffects();
 }
 
 //=========================================================================
@@ -243,9 +252,7 @@ void post_effect_mgr::RenderScreenFade( void )
     }
     if( FadeColor.A != 0 )
     {
-        render::BeginPostEffects();
         render::ScreenFade( FadeColor );
-        render::EndPostEffects();
     }
 }
 
@@ -253,9 +260,18 @@ void post_effect_mgr::RenderScreenFade( void )
 
 void post_effect_mgr::StartPainBlur( s32 LocalPlayerIndex, f32 InitialOffset, xcolor InitialColor )
 {
+    if( m_bDoPainBlur[LocalPlayerIndex] )
+    {
+        InitialOffset  = MAX( InitialOffset, m_PainBlurOffset[LocalPlayerIndex] );
+        InitialColor.R = MAX( InitialColor.R, m_PainBlurColor[LocalPlayerIndex].R );
+        InitialColor.A = MAX( InitialColor.A, m_PainBlurColor[LocalPlayerIndex].A );
+    }
+
     m_bDoPainBlur[LocalPlayerIndex]    = TRUE;
     m_PainBlurOffset[LocalPlayerIndex] = InitialOffset;
     m_PainBlurColor[LocalPlayerIndex]  = InitialColor;
+    m_PainBlurRed[LocalPlayerIndex]    = InitialColor.R;
+    m_PainBlurAlpha[LocalPlayerIndex]  = InitialColor.A;
 }
 
 //=========================================================================

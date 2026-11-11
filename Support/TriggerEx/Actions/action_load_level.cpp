@@ -13,7 +13,7 @@
 #include "Dictionary/Global_Dictionary.hpp"
 #include "Obj_mgr/obj_mgr.hpp"
 #include "Entropy.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "StateMgr/StateMgr.hpp"
 
 #ifdef X_EDITOR
@@ -39,14 +39,6 @@ xbool action_load_level::Execute ( f32 DeltaTime )
 #ifdef X_EDITOR
     g_EditorBreakpoint = TRUE;
 #else 
-#ifdef LAN_PARTY_BUILD
-    if( GameMgr.GetGameType() == GAME_CAMPAIGN )
-    {
-        // force exit condition
-        g_ActiveConfig.SetExitReason( GAME_EXIT_PLAYER_QUIT );
-    }
-    else
-#endif
     {
         GameMgr.EndGame();
     }

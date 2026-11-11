@@ -3,8 +3,6 @@
 //  x_bitmap_io.cpp
 //  
 //==============================================================================
-
-//==============================================================================
 //  INCLUDES
 //==============================================================================
 
@@ -219,6 +217,15 @@ xbool xbitmap::Load( X_FILE* pFile )
     Buffer.Format   = (xbitmap::format)ENDIAN_SWAP_32( Buffer.Format   );
     #endif
 
+    // Validate header ranges before narrowing fields or allocating their payloads.
+    if( ( Buffer.Format <= FMT_NULL ) || ( Buffer.Format >= FMT_END_OF_LIST ) ||
+        ( Buffer.Width <= 0 ) || ( Buffer.Width > 32767 ) ||
+        ( Buffer.Height <= 0 ) || ( Buffer.Height > 32767 ) ||
+        ( Buffer.PW <= 0 ) || ( Buffer.PW > 32767 ) ||
+        ( Buffer.NMips < 0 ) || ( Buffer.NMips > 14 ) ||
+        ( Buffer.DataSize <= 0 ) || ( Buffer.ClutSize < 0 ) )
+        goto EXIT;
+
     // Stick the values we read in the correct places.
     m_DataSize      =      Buffer.DataSize;
     m_ClutSize      =      Buffer.ClutSize;
@@ -254,6 +261,44 @@ xbool xbitmap::Load( X_FILE* pFile )
     #ifdef X_BIG_ENDIAN
     ToggleEndian();
     #endif
+
+    if( IsASTC() )
+    {
+        // ASTC has no palette or padded physical width. Check the optional mip
+        // table is present before reading any of its records.
+        if( ( m_ClutSize != 0 ) || ( m_PW != m_Width ) ||
+            ( m_NMips && ( m_DataSize < (s32)( sizeof( mip ) * ( m_NMips + 1 ) ) ) ) )
+            goto EXIT_FREE;
+
+        s32 Width  = m_Width;
+        s32 Height = m_Height;
+        s32 End    = m_NMips ? sizeof( mip ) * ( m_NMips + 1 ) : 0;
+
+        // Validate block payloads in order, rejecting overlaps and out-of-range data.
+        for( s32 i = 0; i <= m_NMips; i++ )
+        {
+            const s32 Size =
+                ( ( Width + GetBlockWidth( GetFormat() ) - 1 ) / GetBlockWidth( GetFormat() ) ) *
+                ( ( Height + GetBlockHeight( GetFormat() ) - 1 ) / GetBlockHeight( GetFormat() ) ) * 16;
+            const s32 Offset = m_NMips ? m_Data.pMip[i].Offset : 0;
+
+            if( ( Offset < End ) || ( Offset > m_DataSize ) || ( Size > m_DataSize - Offset ) ||
+                ( m_NMips && ( ( m_Data.pMip[i].Width != Width ) || ( m_Data.pMip[i].Height != Height ) ) ) )
+                goto EXIT_FREE;
+
+            End = Offset + Size;
+
+            if( ( i < m_NMips ) && ( Width == 1 ) && ( Height == 1 ) )
+                goto EXIT_FREE;
+
+            Width  = MAX( 1, Width / 2 );
+            Height = MAX( 1, Height / 2 );
+        }
+
+        // The final level must consume the remainder of the stored bitmap data.
+        if( End != m_DataSize )
+            goto EXIT_FREE;
+    }
 
     // We made it!
     Success = TRUE;

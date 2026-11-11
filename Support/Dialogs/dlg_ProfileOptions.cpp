@@ -47,18 +47,15 @@ ui_manager::control_tem ProfileOptionsControls_PAL[] =
     { IDC_PROFILE_OPTIONS_CONTROLS,         "IDS_PROFILE_OPTIONS_CONTROLS",     "button",   s_PDX,   40,    s_PDW, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
     { IDC_PROFILE_OPTIONS_AVATAR,           "IDS_PROFILE_OPTIONS_AVATAR",       "button",   s_PDX,   80,    s_PDW, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
     { IDC_PROFILE_OPTIONS_DIFFICULTY,       "IDS_PROFILE_OPTIONS_DIFFICULTY",   "button",   s_PDX,  120,    s_PDW, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_PROFILE_ONLINE_STATUS,            "IDS_PROFILE_OPTIONS_ONLINE_STATUS","button",   s_PDX,  160,    s_PDW, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_PROFILE_OPTIONS_AUTOSAVE,         "IDS_PROFILE_OPTIONS_AUTOSAVE",     "button",   s_PDX,  200,    s_PDW, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_PROFILE_OPTIONS_ACCEPT,           "IDS_PROFILE_OPTIONS_ACCEPT",       "button",   s_PDX,  285,    s_PDW, 40, 0, 8, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_PROFILE_OPTIONS_AUTOSAVE,         "IDS_PROFILE_OPTIONS_AUTOSAVE",     "button",   s_PDX,  160,    s_PDW, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_PROFILE_OPTIONS_ACCEPT,           "IDS_PROFILE_OPTIONS_ACCEPT",       "button",   s_PDX,  285,    s_PDW, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE },
 
     { IDC_PROFILE_DIFFICULTY_BBOX,          "IDS_PROFILE_SELECT_DIFFICULTY",    "blankbox", 63,      120,     265, 70, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_STATIC },
     { IDC_PROFILE_DIFFICULTY_SELECT,        "IDS_NULL",                         "combo",    100,     140,   s_PDW, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
 
-    { IDC_PROFILE_STATUS_BBOX,              "IDS_PROFILE_SELECT_ONLINE_STATUS", "blankbox", 65,      160,     260, 70, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_STATIC },
-    { IDC_PROFILE_STATUS_SELECT,            "IDS_NULL",                         "combo",    85,      180,     220, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE },
 
-    { IDC_PROFILE_AUTOSAVE_BBOX,            "IDS_PROFILE_SELECT_AUTOSAVE",      "blankbox", 30,      200,     326, 70, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_STATIC },
-    { IDC_PROFILE_AUTOSAVE_SELECT,          "IDS_NULL",                         "combo",    45,      220,     295, 40, 0, 7, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_PROFILE_AUTOSAVE_BBOX,            "IDS_PROFILE_SELECT_AUTOSAVE",      "blankbox", 30,      160,     326, 70, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_STATIC },
+    { IDC_PROFILE_AUTOSAVE_SELECT,          "IDS_NULL",                         "combo",    45,      180,     295, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE },
 
 
 };
@@ -70,18 +67,15 @@ ui_manager::control_tem ProfileOptionsControls_ENG[] =
     { IDC_PROFILE_OPTIONS_CONTROLS,         "IDS_PROFILE_OPTIONS_CONTROLS",     "button",   s_EDX,   40,    s_EDW, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
     { IDC_PROFILE_OPTIONS_AVATAR,           "IDS_PROFILE_OPTIONS_AVATAR",       "button",   s_EDX,   80,    s_EDW, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
     { IDC_PROFILE_OPTIONS_DIFFICULTY,       "IDS_PROFILE_OPTIONS_DIFFICULTY",   "button",   s_EDX,  120,    s_EDW, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_PROFILE_ONLINE_STATUS,            "IDS_PROFILE_OPTIONS_ONLINE_STATUS","button",   s_EDX,  160,    s_EDW, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_PROFILE_OPTIONS_AUTOSAVE,         "IDS_PROFILE_OPTIONS_AUTOSAVE",     "button",   s_EDX,  200,    s_EDW, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_PROFILE_OPTIONS_ACCEPT,           "IDS_PROFILE_OPTIONS_ACCEPT",       "button",   s_EDX,  285,    s_EDW, 40, 0, 8, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_PROFILE_OPTIONS_AUTOSAVE,         "IDS_PROFILE_OPTIONS_AUTOSAVE",     "button",   s_EDX,  160,    s_EDW, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_PROFILE_OPTIONS_ACCEPT,           "IDS_PROFILE_OPTIONS_ACCEPT",       "button",   s_EDX,  285,    s_EDW, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE },
 
     { IDC_PROFILE_DIFFICULTY_BBOX,          "IDS_PROFILE_SELECT_DIFFICULTY",    "blankbox", 50,      120,     200,   70, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_STATIC },
     { IDC_PROFILE_DIFFICULTY_SELECT,        "IDS_NULL",                         "combo",    s_EDX,   140,   s_EDW, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
 
-    { IDC_PROFILE_STATUS_BBOX,              "IDS_PROFILE_SELECT_ONLINE_STATUS", "blankbox", 50,      160,     200, 70, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_STATIC },
-    { IDC_PROFILE_STATUS_SELECT,            "IDS_NULL",                         "combo",    70,      180,     160, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE },
 
-    { IDC_PROFILE_AUTOSAVE_BBOX,            "IDS_PROFILE_SELECT_AUTOSAVE",      "blankbox", 45,      200,     210, 70, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_STATIC },
-    { IDC_PROFILE_AUTOSAVE_SELECT,          "IDS_NULL",                         "combo",    55,      220,     190, 40, 0, 7, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_PROFILE_AUTOSAVE_BBOX,            "IDS_PROFILE_SELECT_AUTOSAVE",      "blankbox", 45,      160,     210, 70, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_STATIC },
+    { IDC_PROFILE_AUTOSAVE_SELECT,          "IDS_NULL",                         "combo",    55,      180,     190, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE },
 
 };
 
@@ -95,18 +89,6 @@ ui_manager::dialog_tem ProfileOptionsDialog =
         &ProfileOptionsControls_ENG[0],
         0
 };
-
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
 
 //=========================================================================
 //  Registration function
@@ -187,15 +169,12 @@ xbool dlg_profile_options::Create( s32                        UserID,
     m_pButtonControls       = (ui_button*)  FindChildByID( IDC_PROFILE_OPTIONS_CONTROLS     );
     m_pButtonAvatar         = (ui_button*)  FindChildByID( IDC_PROFILE_OPTIONS_AVATAR       );
     m_pButtonDifficulty     = (ui_button*)  FindChildByID( IDC_PROFILE_OPTIONS_DIFFICULTY   );
-    m_pButtonOnlineStatus   = (ui_button*)  FindChildByID( IDC_PROFILE_ONLINE_STATUS        );
     m_pButtonAutosave       = (ui_button*)  FindChildByID( IDC_PROFILE_OPTIONS_AUTOSAVE     );
     m_pButtonCreate         = (ui_button*)  FindChildByID( IDC_PROFILE_OPTIONS_ACCEPT       );
 
     m_pDifficultyBBox       = (ui_blankbox*)FindChildByID( IDC_PROFILE_DIFFICULTY_BBOX      );
     m_pDifficultySelect     = (ui_combo*)   FindChildByID( IDC_PROFILE_DIFFICULTY_SELECT    );
 
-    m_pOnlineStatusBBox     = (ui_blankbox*)FindChildByID( IDC_PROFILE_STATUS_BBOX          );
-    m_pOnlineStatusSelect   = (ui_combo*)   FindChildByID( IDC_PROFILE_STATUS_SELECT        );
 
     m_pAutosaveBBox         = (ui_blankbox*)FindChildByID( IDC_PROFILE_AUTOSAVE_BBOX        );
     m_pAutosaveSelect       = (ui_combo*)   FindChildByID( IDC_PROFILE_AUTOSAVE_SELECT      );
@@ -227,15 +206,11 @@ xbool dlg_profile_options::Create( s32                        UserID,
     m_pDifficultyBBox       ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pDifficultySelect     ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pButtonCreate         ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-    m_pButtonOnlineStatus   ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-    m_pOnlineStatusBBox     ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-    m_pOnlineStatusSelect   ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pAutosaveBBox         ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pAutosaveSelect       ->SetFlag(ui_win::WF_VISIBLE, FALSE);
 
     // disable pop up selections
     m_pDifficultySelect     ->SetFlag(ui_win::WF_DISABLED, TRUE);
-    m_pOnlineStatusSelect   ->SetFlag(ui_win::WF_DISABLED, TRUE);
     m_pAutosaveSelect       ->SetFlag(ui_win::WF_DISABLED, TRUE);
 
     // set up difficulty blankbox   
@@ -256,15 +231,8 @@ xbool dlg_profile_options::Create( s32                        UserID,
     }
 
     // set up status blankbox
-    m_pOnlineStatusBBox->SetBackgroundColor( xcolor (39,117,28,128) );
-    m_pOnlineStatusBBox->SetHasTitleBar( TRUE );
-    m_pOnlineStatusBBox->SetLabelColor( xcolor(255,252,204,255) );
-    m_pOnlineStatusBBox->SetTitleBarColor( xcolor(19,59,14,196) );
 
     // set up status combo
-    m_pOnlineStatusSelect->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV );
-    m_pOnlineStatusSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_ONLINE_STATUS_APPEAR_OFFLINE" ), 0 );
-    m_pOnlineStatusSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_ONLINE_STATUS_APPEAR_ONLINE"  ), 1 );    
 
     // set up autosave blankbox
     m_pAutosaveBBox->SetBackgroundColor( xcolor (39,117,28,128) );
@@ -460,13 +428,11 @@ void dlg_profile_options::OnAccept( ui_win* pWin )
             m_pButtonControls       ->SetFlag(ui_win::WF_DISABLED, TRUE);
             m_pButtonAvatar         ->SetFlag(ui_win::WF_DISABLED, TRUE);
             m_pButtonDifficulty     ->SetFlag(ui_win::WF_DISABLED, TRUE);
-            m_pButtonOnlineStatus   ->SetFlag(ui_win::WF_DISABLED, TRUE);
             m_pButtonAutosave       ->SetFlag(ui_win::WF_DISABLED, TRUE);
             m_pButtonCreate         ->SetFlag(ui_win::WF_DISABLED, TRUE);
 
             // hide some buttons
             m_pButtonDifficulty     ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-            m_pButtonOnlineStatus   ->SetFlag(ui_win::WF_VISIBLE, FALSE);
 
             // display combo box
             m_pDifficultyBBox       ->SetFlag(ui_win::WF_VISIBLE, TRUE);
@@ -512,12 +478,10 @@ void dlg_profile_options::OnAccept( ui_win* pWin )
 
             // show buttons
             m_pButtonDifficulty     ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pButtonOnlineStatus   ->SetFlag(ui_win::WF_VISIBLE, TRUE);
 
             // enable other options
             m_pButtonControls       ->SetFlag(ui_win::WF_DISABLED, FALSE);
             m_pButtonDifficulty     ->SetFlag(ui_win::WF_DISABLED, FALSE);
-            m_pButtonOnlineStatus   ->SetFlag(ui_win::WF_DISABLED, FALSE);
             m_pButtonAutosave       ->SetFlag(ui_win::WF_DISABLED, FALSE);
             m_pButtonCreate         ->SetFlag(ui_win::WF_DISABLED, FALSE);    
 
@@ -535,80 +499,12 @@ void dlg_profile_options::OnAccept( ui_win* pWin )
 
             GotoControl( (ui_control*)m_pButtonDifficulty );
         }
-        else if( pWin == (ui_win*)m_pButtonOnlineStatus )
-        {
-            // disable other options
-            m_pButtonControls       ->SetFlag(ui_win::WF_DISABLED, TRUE);
-            m_pButtonAvatar         ->SetFlag(ui_win::WF_DISABLED, TRUE);
-            m_pButtonDifficulty     ->SetFlag(ui_win::WF_DISABLED, TRUE);
-            m_pButtonOnlineStatus   ->SetFlag(ui_win::WF_DISABLED, TRUE);
-            m_pButtonAutosave       ->SetFlag(ui_win::WF_DISABLED, TRUE);
-            m_pButtonCreate         ->SetFlag(ui_win::WF_DISABLED, TRUE);
-
-            // hide status button
-            m_pButtonOnlineStatus   ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-            m_pButtonAutosave       ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-
-            // display combo box
-            m_pOnlineStatusBBox     ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pOnlineStatusSelect   ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pOnlineStatusSelect   ->SetFlag(ui_win::WF_DISABLED, FALSE);
-
-            // update nav text
-            xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_ACCEPT" ));
-            navText += g_StringTableMgr( "ui", "IDS_NAV_CANCEL" );
-            SetNavText( navText );
-
-            player_profile& Profile = g_StateMgr.GetPendingProfile();
-            m_pOnlineStatusSelect->SetSelection( Profile.GetVisibleOnline() );
-
-            // set highlight
-            g_UiMgr->SetScreenHighlight( m_pOnlineStatusBBox->GetPosition() );
-
-            GotoControl( (ui_control*)m_pOnlineStatusSelect );
-        }
-        else if( pWin == (ui_win*)m_pOnlineStatusSelect )
-        {
-            // set online status
-            player_profile& Profile = g_StateMgr.GetPendingProfile();
-            Profile.SetVisibleOnline( m_pOnlineStatusSelect->GetSelectedItemData() );
-
-            // hide combo box
-            m_pOnlineStatusBBox     ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-            m_pOnlineStatusSelect   ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-            m_pOnlineStatusSelect   ->SetFlag(ui_win::WF_DISABLED, TRUE);
-
-            // show difficulty button
-            m_pButtonOnlineStatus   ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pButtonAutosave       ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-
-            // enable other options
-            m_pButtonControls       ->SetFlag(ui_win::WF_DISABLED, FALSE);
-            m_pButtonDifficulty     ->SetFlag(ui_win::WF_DISABLED, FALSE);
-            m_pButtonOnlineStatus   ->SetFlag(ui_win::WF_DISABLED, FALSE);
-            m_pButtonAutosave       ->SetFlag(ui_win::WF_DISABLED, FALSE);
-            m_pButtonCreate         ->SetFlag(ui_win::WF_DISABLED, FALSE);    
-
-            // update nav text
-            xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_SELECT" ));
-            navText += g_StringTableMgr( "ui", "IDS_NAV_BACK" );
-            SetNavText( navText );
-
-            if( m_Type != PROFILE_OPTIONS_PAUSE )
-                m_pButtonAvatar     ->SetFlag(ui_win::WF_DISABLED, FALSE);
-
-            // set highlight
-            g_UiMgr->SetScreenHighlight( m_pButtonOnlineStatus->GetPosition() );
-
-            GotoControl( (ui_control*)m_pButtonOnlineStatus );
-        }
         else if( pWin == (ui_win*)m_pButtonAutosave )
         {
             // disable other options
             m_pButtonControls       ->SetFlag(ui_win::WF_DISABLED, TRUE);
             m_pButtonAvatar         ->SetFlag(ui_win::WF_DISABLED, TRUE);
             m_pButtonDifficulty     ->SetFlag(ui_win::WF_DISABLED, TRUE);
-            m_pButtonOnlineStatus   ->SetFlag(ui_win::WF_DISABLED, TRUE);
             m_pButtonAutosave       ->SetFlag(ui_win::WF_DISABLED, TRUE);
             m_pButtonCreate         ->SetFlag(ui_win::WF_DISABLED, TRUE);
 
@@ -652,7 +548,6 @@ void dlg_profile_options::OnAccept( ui_win* pWin )
             // enable other options
             m_pButtonControls       ->SetFlag(ui_win::WF_DISABLED, FALSE);
             m_pButtonDifficulty     ->SetFlag(ui_win::WF_DISABLED, FALSE);
-            m_pButtonOnlineStatus   ->SetFlag(ui_win::WF_DISABLED, FALSE);
             m_pButtonAutosave       ->SetFlag(ui_win::WF_DISABLED, FALSE);
             m_pButtonCreate         ->SetFlag(ui_win::WF_DISABLED, FALSE);    
 
@@ -781,12 +676,10 @@ void dlg_profile_options::OnCancel( ui_win* pWin )
 
             // show difficulty button
             m_pButtonDifficulty     ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pButtonOnlineStatus   ->SetFlag(ui_win::WF_VISIBLE, TRUE);
 
             // enable other options
             m_pButtonControls       ->SetFlag(ui_win::WF_DISABLED, FALSE);
             m_pButtonDifficulty     ->SetFlag(ui_win::WF_DISABLED, FALSE);
-            m_pButtonOnlineStatus   ->SetFlag(ui_win::WF_DISABLED, FALSE);
             m_pButtonAutosave       ->SetFlag(ui_win::WF_DISABLED, FALSE);
             m_pButtonCreate         ->SetFlag(ui_win::WF_DISABLED, FALSE);    
 
@@ -806,40 +699,6 @@ void dlg_profile_options::OnCancel( ui_win* pWin )
 
             return;
         }
-        else if( pWin == (ui_win*)m_pOnlineStatusSelect )
-        {
-            // hide combo box
-            m_pOnlineStatusBBox     ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-            m_pOnlineStatusSelect   ->SetFlag(ui_win::WF_VISIBLE, FALSE);
-            m_pOnlineStatusSelect   ->SetFlag(ui_win::WF_DISABLED, TRUE);
-
-            // show difficulty button
-            m_pButtonOnlineStatus   ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pButtonAutosave       ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-
-            // enable other options
-            m_pButtonControls       ->SetFlag(ui_win::WF_DISABLED, FALSE);
-            m_pButtonDifficulty     ->SetFlag(ui_win::WF_DISABLED, FALSE);
-            m_pButtonOnlineStatus   ->SetFlag(ui_win::WF_DISABLED, FALSE);
-            m_pButtonAutosave       ->SetFlag(ui_win::WF_DISABLED, FALSE);
-            m_pButtonCreate         ->SetFlag(ui_win::WF_DISABLED, FALSE);    
-
-            // update nav text
-            xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_SELECT" ));
-            navText += g_StringTableMgr( "ui", "IDS_NAV_BACK" );
-            SetNavText( navText );
-
-            if( m_Type != PROFILE_OPTIONS_PAUSE )
-                m_pButtonAvatar     ->SetFlag(ui_win::WF_DISABLED, FALSE);
-
-
-            // set highlight
-            g_UiMgr->SetScreenHighlight( m_pButtonOnlineStatus->GetPosition() );
-
-            GotoControl( (ui_control*)m_pButtonOnlineStatus );
-
-            return;
-        }
         else if( pWin == (ui_win*)m_pAutosaveSelect )
         {
             // hide combo box
@@ -854,7 +713,6 @@ void dlg_profile_options::OnCancel( ui_win* pWin )
             // enable other options
             m_pButtonControls       ->SetFlag(ui_win::WF_DISABLED, FALSE);
             m_pButtonDifficulty     ->SetFlag(ui_win::WF_DISABLED, FALSE);
-            m_pButtonOnlineStatus   ->SetFlag(ui_win::WF_DISABLED, FALSE);
             m_pButtonAutosave       ->SetFlag(ui_win::WF_DISABLED, FALSE);
             m_pButtonCreate         ->SetFlag(ui_win::WF_DISABLED, FALSE);    
 
@@ -930,7 +788,6 @@ void dlg_profile_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             m_pButtonControls       ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pButtonAvatar         ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pButtonDifficulty     ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            m_pButtonOnlineStatus   ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pButtonAutosave       ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pButtonCreate         ->SetFlag(ui_win::WF_VISIBLE, TRUE);
 
@@ -1075,11 +932,6 @@ void dlg_profile_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     {
         highLight = 2;
         g_UiMgr->SetScreenHighlight( m_pButtonDifficulty->GetPosition() );
-    }
-    else if( m_pButtonOnlineStatus->IsFocused() )
-    {
-        highLight = 3;
-        g_UiMgr->SetScreenHighlight( m_pButtonOnlineStatus->GetPosition() );
     }
     else if( m_pButtonAutosave->IsFocused() )
     {

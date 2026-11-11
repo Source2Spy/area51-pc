@@ -27,10 +27,10 @@
 
 #if defined(A51_SHADER_BINDING_SDL) && defined(A51_SHADER_STAGE_PIXEL)
     #ifndef A51_GEOM_SHADOW_MATRICES_BINDING
-        #define A51_GEOM_SHADOW_MATRICES_BINDING 10
+        #define A51_GEOM_SHADOW_MATRICES_BINDING 12
     #endif
     #ifndef A51_GEOM_SHADOW_DATA_BINDING
-        #define A51_GEOM_SHADOW_DATA_BINDING 11
+        #define A51_GEOM_SHADOW_DATA_BINDING 13
     #endif
 #else
     #ifndef A51_GEOM_SHADOW_MATRICES_BINDING
@@ -64,60 +64,59 @@ StructuredBuffer<float4> ShadowMapData
 #define SHADOW_COUNTS_OFFSET         ( SHADOW_POINT_PARAMS_OFFSET + MAX_SHADOW_LIGHTS )
 #define SHADOW_PARAMS_OFFSET         ( SHADOW_COUNTS_OFFSET + 1u )
 #define SHADOW_FILTER_PARAMS_OFFSET  ( SHADOW_PARAMS_OFFSET + 1u )
-#define SHADOW_CONTACT_PARAMS_OFFSET ( SHADOW_FILTER_PARAMS_OFFSET + 1u )
 
-float4 GetFaceShadowLightPosRadius( uint index )
+float4 GetFaceShadowLightPosRadius( uint Index )
 {
-    return ShadowMapData[SHADOW_FACE_POS_OFFSET + index];
+    return ShadowMapData[SHADOW_FACE_POS_OFFSET + Index];
 }
 
 //==============================================================================
 
-float4 GetFaceShadowLightDirFalloff( uint index )
+float4 GetFaceShadowLightDirRadial( uint Index )
 {
-    return ShadowMapData[SHADOW_FACE_DIR_OFFSET + index];
+    return ShadowMapData[SHADOW_FACE_DIR_OFFSET + Index];
 }
 
 //==============================================================================
 
-float4 GetFaceShadowLightData( uint index )
+float4 GetFaceShadowLightData( uint Index )
 {
-    return ShadowMapData[SHADOW_FACE_DATA_OFFSET + index];
+    return ShadowMapData[SHADOW_FACE_DATA_OFFSET + Index];
 }
 
 //==============================================================================
 
-float4 GetFaceShadowProjectionData( uint index )
+float4 GetFaceShadowProjectionData( uint Index )
 {
-    return ShadowMapData[SHADOW_FACE_PROJECTION_OFFSET + index];
+    return ShadowMapData[SHADOW_FACE_PROJECTION_OFFSET + Index];
 }
 
 //==============================================================================
 
-float4 GetFaceShadowAtlasRect( uint index )
+float4 GetFaceShadowAtlasRect( uint Index )
 {
-    return ShadowMapData[SHADOW_FACE_RECT_OFFSET + index];
+    return ShadowMapData[SHADOW_FACE_RECT_OFFSET + Index];
 }
 
 //==============================================================================
 
-float4 GetPointShadowLightPosRadius( uint index )
+float4 GetPointShadowLightPosRadius( uint Index )
 {
-    return ShadowMapData[SHADOW_POINT_POS_OFFSET + index];
+    return ShadowMapData[SHADOW_POINT_POS_OFFSET + Index];
 }
 
 //==============================================================================
 
-float4 GetPointShadowLightData( uint index )
+float4 GetPointShadowLightData( uint Index )
 {
-    return ShadowMapData[SHADOW_POINT_DATA_OFFSET + index];
+    return ShadowMapData[SHADOW_POINT_DATA_OFFSET + Index];
 }
 
 //==============================================================================
 
-float4 GetPointShadowLightParams( uint index )
+float4 GetPointShadowLightParams( uint Index )
 {
-    return ShadowMapData[SHADOW_POINT_PARAMS_OFFSET + index];
+    return ShadowMapData[SHADOW_POINT_PARAMS_OFFSET + Index];
 }
 
 //==============================================================================
@@ -150,11 +149,5 @@ float4 GetShadowFilterParams()
 
 //==============================================================================
 
-float4 GetShadowContactParams()
-{
-    return ShadowMapData[SHADOW_CONTACT_PARAMS_OFFSET];
-}
-
-//==============================================================================
 #endif // SHADOW_BUFFERS_HLSL
 //==============================================================================

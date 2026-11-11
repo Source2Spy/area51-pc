@@ -1,0 +1,395 @@
+// Fixed pass programs and allowed world-surface families share one generated ABI.
+settings:
+    source_root shaders
+    abi GameApp.shaderabi
+shaders:
+    shader composite_vs vertex a51_composite.hlsl VSMain vs_6_0
+    {
+    }
+
+    shader composite_ps pixel a51_composite.hlsl PSMain ps_6_0
+    {
+    }
+
+    shader composite_clamp_negative_ps pixel a51_composite.hlsl PSClampNegative ps_6_0
+    {
+    }
+
+    shader ui_vs vertex a51_ui.hlsl VSMain vs_6_0
+    {
+    }
+
+    shader ui_ps pixel a51_ui.hlsl PSMain ps_6_0
+    {
+    }
+
+    shader shadow_cast_dynamic_vs vertex a51_shadow_cast_dynamic.hlsl VSMain vs_6_0
+    {
+    }
+
+    shader shadow_cast_dynamic_ps pixel a51_shadow_cast_dynamic.hlsl PSMain ps_6_0
+    {
+    }
+
+    shader shadow_evsm_vs vertex a51_shadow_evsm.hlsl VSMain vs_6_0
+    {
+    }
+
+    shader shadow_evsm_convert_ps pixel a51_shadow_evsm.hlsl PSConvert ps_6_0
+    {
+    }
+
+    shader shadow_evsm_blur_horizontal_ps pixel a51_shadow_evsm_blur.hlsl PSBlurHorizontal ps_6_0
+    {
+    }
+
+    shader shadow_evsm_blur_vertical_ps pixel a51_shadow_evsm_blur.hlsl PSBlurVertical ps_6_0
+    {
+    }
+
+    shader post_fog_ps pixel a51_post_fog.hlsl PSMain ps_6_0
+    {
+    }
+
+    shader post_glow_blur_horizontal_ps pixel a51_post_glow.hlsl PS_BlurHorizontal ps_6_0
+    {
+        color_arithmetic float16
+    }
+
+    shader post_glow_blur_vertical_ps pixel a51_post_glow.hlsl PS_BlurVertical ps_6_0
+    {
+        color_arithmetic float16
+    }
+
+    shader post_glow_combine_ps pixel a51_post_glow.hlsl PS_Combine ps_6_0
+    {
+        color_arithmetic float16
+    }
+
+    shader post_glow_composite_ps pixel a51_post_glow.hlsl PS_Composite ps_6_0
+    {
+        color_arithmetic float16
+    }
+
+    shader post_glow_prefilter_ps pixel a51_post_glow.hlsl PS_Prefilter ps_6_0
+    {
+        color_arithmetic float16
+    }
+
+    shader present_ps pixel a51_composite.hlsl PSPresent ps_6_0
+    {
+    }
+
+    shader post_glow_downsample_ps pixel a51_post_glow.hlsl PS_Downsample ps_6_0
+    {
+        color_arithmetic float16
+    }
+
+    shader post_filters_mip_composite_ps pixel a51_post_filters.hlsl PS_MipComposite ps_6_0
+    {
+    }
+
+    shader post_filters_mip_composite_custom_ps pixel a51_post_filters.hlsl PS_MipCompositeCustom ps_6_0
+    {
+    }
+
+    shader post_filters_mip_reduce_ps pixel a51_post_filters.hlsl PS_MipReduce ps_6_0
+    {
+    }
+
+    shader post_filters_mip_downsample_ps pixel a51_post_filters.hlsl PS_MipDownsample ps_6_0
+    {
+    }
+
+    shader post_filters_pain_blur_ps pixel a51_post_filters.hlsl PS_PainBlur ps_6_0
+    {
+    }
+
+    shader post_filters_motion_blur_ps pixel a51_post_filters.hlsl PS_MotionBlur ps_6_0
+    {
+    }
+
+    shader post_filters_noise_ps pixel a51_post_filters.hlsl PS_Noise ps_6_0
+    {
+    }
+
+    shader post_filters_screen_fade_ps pixel a51_post_filters.hlsl PS_ScreenFade ps_6_0
+    {
+    }
+
+    shader post_filters_radial_blur_ps pixel a51_post_filters.hlsl PS_RadialBlur ps_6_0
+    {
+    }
+
+    shader post_filters_warp_mask_ps pixel a51_post_filters.hlsl PS_WarpMask ps_6_0
+    {
+    }
+
+    shader post_filters_warp_mask_blur_ps pixel a51_post_filters.hlsl PS_WarpMaskBlur ps_6_0
+    {
+    }
+
+    shader post_filters_screen_warp_ps pixel a51_post_filters.hlsl PS_ScreenWarp ps_6_0
+    {
+    }
+
+    shader scene_tonemap_ps pixel a51_scene_tonemap.hlsl PSMain ps_6_0
+    {
+    }
+
+    shader scene_region_copy_ps pixel a51_scene_region_copy.hlsl PSMain ps_6_0
+    {
+    }
+
+programs:
+    program composite composite_vs composite_ps
+    program composite_clamp_negative composite_vs composite_clamp_negative_ps
+    program ui ui_vs ui_ps
+    program shadow_cast_dynamic shadow_cast_dynamic_vs shadow_cast_dynamic_ps
+    program shadow_evsm_convert shadow_evsm_vs shadow_evsm_convert_ps
+    program shadow_evsm_blur_horizontal shadow_evsm_vs shadow_evsm_blur_horizontal_ps
+    program shadow_evsm_blur_vertical shadow_evsm_vs shadow_evsm_blur_vertical_ps
+    program post_fog composite_vs post_fog_ps
+    program post_glow_blur_horizontal composite_vs post_glow_blur_horizontal_ps
+    program post_glow_blur_vertical composite_vs post_glow_blur_vertical_ps
+    program post_glow_combine composite_vs post_glow_combine_ps
+    program post_glow_composite composite_vs post_glow_composite_ps
+    program post_glow_prefilter composite_vs post_glow_prefilter_ps
+    program present composite_vs present_ps
+    program post_glow_downsample composite_vs post_glow_downsample_ps
+    program post_filters_mip_composite composite_vs post_filters_mip_composite_ps
+    program post_filters_mip_composite_custom composite_vs post_filters_mip_composite_custom_ps
+    program post_filters_mip_reduce composite_vs post_filters_mip_reduce_ps
+    program post_filters_mip_downsample composite_vs post_filters_mip_downsample_ps
+    program post_filters_pain_blur composite_vs post_filters_pain_blur_ps
+    program post_filters_motion_blur composite_vs post_filters_motion_blur_ps
+    program post_filters_noise composite_vs post_filters_noise_ps
+    program post_filters_screen_fade composite_vs post_filters_screen_fade_ps
+    program post_filters_radial_blur composite_vs post_filters_radial_blur_ps
+    program post_filters_warp_mask composite_vs post_filters_warp_mask_ps
+    program post_filters_warp_mask_blur composite_vs post_filters_warp_mask_blur_ps
+    program post_filters_screen_warp composite_vs post_filters_screen_warp_ps
+    program scene_tonemap composite_vs scene_tonemap_ps
+    program scene_region_copy composite_vs scene_region_copy_ps
+
+packages:
+    package surface
+    {
+        family Rigid
+        family Skin
+        family Dynamic
+    }
+    package decal
+    {
+        family Decal
+    }
+    package primitive
+    {
+        family Primitive
+    }
+    package shadow
+    {
+        family ShadowRigid
+        family ShadowSkin
+        program shadow_cast_dynamic
+        program shadow_evsm_convert
+        program shadow_evsm_blur_horizontal
+        program shadow_evsm_blur_vertical
+    }
+    package ui
+    {
+        program ui
+    }
+    package composite
+    {
+        program composite
+        program composite_clamp_negative
+        program present
+    }
+    package post
+    {
+        program post_fog
+        program post_glow_blur_horizontal
+        program post_glow_blur_vertical
+        program post_glow_combine
+        program post_glow_composite
+        program post_glow_downsample
+        program post_glow_prefilter
+        program post_filters_mip_composite
+        program post_filters_mip_composite_custom
+        program post_filters_mip_reduce
+        program post_filters_mip_downsample
+        program post_filters_pain_blur
+        program post_filters_motion_blur
+        program post_filters_noise
+        program post_filters_screen_fade
+        program post_filters_radial_blur
+        program post_filters_warp_mask
+        program post_filters_warp_mask_blur
+        program post_filters_screen_warp
+        program scene_tonemap
+        program scene_region_copy
+    }
+
+surface_families:
+    surface Rigid a51_rigid_simple.hlsl a51_surface.hlsl Surface
+    surface Skin a51_skin_simple.hlsl a51_surface.hlsl Surface
+    surface Dynamic a51_dynamic_geometry.hlsl a51_surface.hlsl Surface
+    surface Primitive a51_primitive.hlsl a51_primitive.hlsl Primitive
+    surface Decal a51_decal.hlsl a51_decal.hlsl Decal
+    surface ShadowRigid a51_shadow_cast_rigid.hlsl a51_shadow_depth.hlsl ShadowRigid
+    surface ShadowSkin a51_shadow_cast_skin.hlsl a51_shadow_depth.hlsl ShadowSkin
+
+// Domains use the ShaderProgramKey enum values. Rules see normalized values.
+combos:
+    combo Primitive
+    {
+        base 42
+        axis Sprite draw InstancedSprite 35 1 "0 1"
+        axis Surface material Surface 6 1 "0 1"
+        axis Blend draw Blend 32 3 "0 1 2 3 4"
+        axis Outputs pass Outputs 15 3 "0 1"
+        axis Glow draw ForcedGlow 28 1 "0 1"
+        axis Fog pass Fog 27 1 "0 1"
+        normalize "Surface == 1" Glow "0"
+        normalize "Surface == 1" Fog "0"
+        rule "Surface == 1 => Blend == 1"
+        rule "Outputs == 1 => Blend == 0"
+        vertex A51_PRIMITIVE_SPRITE "Sprite" "true"
+        vertex A51_PRIMITIVE_OUTPUT "0" "true"
+        vertex A51_PRIMITIVE_BLEND "0" "true"
+        vertex A51_PRIMITIVE_FOG "0" "true"
+        vertex A51_PRIMITIVE_VIEW_DEPTH "Outputs == 1 || Fog" "true"
+        pixel A51_PRIMITIVE_OUTPUT "Surface == 1 ? 2 : Glow" "true"
+        pixel A51_PRIMITIVE_BLEND "Blend" "true"
+        pixel A51_PRIMITIVE_FOG "Fog" "true"
+        pixel A51_SCENE_DEPTH_TARGET "1" "Outputs == 1"
+    }
+    combo Decal
+    {
+        base 33
+        axis Blend material Blend 32 3 "1 2 3 4"
+        axis Environment material Environment 7 2 "0 2"
+        axis Glow draw ForcedGlow 28 1 "0 1"
+        axis Fog pass Fog 27 1 "0 1"
+        axis Shadows draw Shadows 26 1 "0 1"
+        axis Lighting draw Lighting 19 1 "0 1"
+        axis Cookies draw Cookies 22 1 "0 1"
+        normalize "Blend == 2 || Blend == 4" Lighting "0"
+        normalize "Lighting == 0" Cookies "0"
+        normalize "Lighting == 0" Shadows "0"
+        vertex A51_DECAL_BLEND "Blend == 1 || Blend == 3 ? 0 : 1" "true"
+        vertex A51_DECAL_ENV "Environment != 0" "true"
+        vertex A51_DECAL_GLOW "0" "true"
+        vertex A51_DECAL_FOG "Fog" "true"
+        vertex A51_RECIPE_SHADOWS "0" "true"
+        pixel A51_DECAL_BLEND "Blend == 1 ? 0 : Blend == 2 ? 1 : Blend == 3 ? 2 : 3" "true"
+        pixel A51_DECAL_ENV "Environment != 0" "true"
+        pixel A51_DECAL_GLOW "Glow" "true"
+        pixel A51_DECAL_FOG "Fog" "true"
+        pixel A51_RECIPE_LIGHTING "Lighting" "true"
+        pixel A51_RECIPE_COOKIES "Cookies" "true"
+        pixel A51_RECIPE_SHADOWS "Shadows" "true"
+    }
+    combo ShadowRigid
+    {
+        base 131075
+        axis Masked material AlphaTest 21 1 "0 1"
+        vertex A51_SHADOW_MASKED "Masked" "true"
+        pixel A51_SHADOW_MASKED "Masked" "true"
+    }
+    combo ShadowSkin
+    {
+        base 131083
+        axis Masked material AlphaTest 21 1 "0 1"
+        vertex A51_SHADOW_MASKED "Masked" "true"
+        pixel A51_SHADOW_MASKED "Masked" "true"
+    }
+
+combos:
+    combo Surface
+    {
+        base 0
+        material_profiles assets
+        axis Vertex draw Vertex 3 3 "0 1 2"
+        axis Surface material Surface 6 1 "0 1"
+        axis Environment material Environment 7 2 "0 1 2"
+        axis EnvironmentUV material EnvironmentUV 9 2 "0 1 2"
+        axis EnvironmentMix material EnvironmentMix 11 2 "0 1 2"
+        axis Illumination material Illumination 13 2 "0 1 2 3"
+        axis Outputs pass Outputs 15 3 "0 1 2 3 4 5 6 7"
+        axis Lighting draw Lighting 19 1 "0 1"
+        axis Cookies draw Cookies 22 1 "0 1"
+        axis Detail material Detail 20 1 "0 1"
+        axis AlphaTest material AlphaTest 21 1 "0 1"
+        axis Projection draw Projection 25 1 "0 1"
+        axis Shadows draw Shadows 26 1 "0 1"
+        axis Fog draw Fog 27 1 "0 1"
+        axis ForcedGlow draw ForcedGlow 28 1 "0 1"
+        axis Damage draw DamageCoverage 29 1 "0 1"
+        axis AdditiveEnvironment material AdditiveEnvironment 30 1 "0 1"
+        axis CoverageAlpha draw CoverageAlpha 31 1 "0 1"
+        normalize "Environment == 2 || Environment == 0" EnvironmentUV "0"
+        normalize "Environment == 0" EnvironmentMix "0"
+        normalize "Environment == 0" AdditiveEnvironment "0"
+        normalize "Outputs == 3 || Outputs >= 6 || Outputs == 4 || Outputs == 5" Surface "0"
+        normalize "Outputs == 3 || Outputs >= 6 || Outputs == 4 || Outputs == 5" Environment "0"
+        normalize "Outputs == 3 || Outputs >= 6 || Outputs == 4 || Outputs == 5" EnvironmentUV "0"
+        normalize "Outputs == 3 || Outputs >= 6 || Outputs == 4 || Outputs == 5" EnvironmentMix "0"
+        normalize "Outputs == 3 || Outputs >= 6 || Outputs == 4 || Outputs == 5" Illumination "0"
+        normalize "Outputs == 3 || Outputs >= 6 || Outputs == 4 || Outputs == 5" Detail "0"
+        normalize "Outputs == 3 || Outputs >= 6 || Outputs == 4 || Outputs == 5" Lighting "0"
+        normalize "Outputs == 3 || Outputs >= 6 || Outputs == 4 || Outputs == 5" Projection "0"
+        normalize "Outputs == 3 || Outputs >= 6 || Outputs == 4 || Outputs == 5" Shadows "0"
+        normalize "Outputs == 3 || Outputs >= 6 || Outputs == 4 || Outputs == 5" Fog "0"
+        normalize "Outputs == 3 || Outputs >= 6 || Outputs == 4 || Outputs == 5" ForcedGlow "0"
+        normalize "Outputs == 3 || Outputs >= 6 || Outputs == 4 || Outputs == 5" AdditiveEnvironment "0"
+        normalize "Outputs == 3 || Outputs >= 6 || Outputs == 4 || Outputs == 5" CoverageAlpha "0"
+        normalize "Surface == 1 && Outputs != 2 && Environment == 1" EnvironmentUV "1"
+        normalize "Surface == 1 && Outputs != 2" Detail "0"
+        normalize "Surface == 1 && Outputs != 2" Illumination "0"
+        normalize "Surface == 1 && Outputs != 2" Lighting "0"
+        normalize "Surface == 1 && Outputs != 2" Projection "0"
+        normalize "Surface == 1 && Outputs != 2" Shadows "0"
+        normalize "Surface == 1 && Outputs != 2" ForcedGlow "0"
+        normalize "Surface == 1 && Outputs != 2" AdditiveEnvironment "0"
+        normalize "Surface == 1 && Outputs != 2" CoverageAlpha "0"
+        normalize "Outputs == 2 || (Surface != 1 && ForcedGlow && !Damage)" Environment "0"
+        normalize "Outputs == 2 || (Surface != 1 && ForcedGlow && !Damage)" EnvironmentUV "0"
+        normalize "Outputs == 2 || (Surface != 1 && ForcedGlow && !Damage)" EnvironmentMix "0"
+        normalize "Outputs == 2 || (Surface != 1 && ForcedGlow && !Damage)" AdditiveEnvironment "0"
+        normalize "Outputs == 2 || (Surface != 1 && ForcedGlow && !Damage)" Detail "0"
+        normalize "Outputs == 2 || (Surface != 1 && ForcedGlow && !Damage)" Illumination "0"
+        normalize "Outputs == 2 || (Surface != 1 && ForcedGlow && !Damage)" Lighting "0"
+        normalize "Outputs == 2 || (Surface != 1 && ForcedGlow && !Damage)" Projection "0"
+        normalize "Outputs == 2 || (Surface != 1 && ForcedGlow && !Damage)" Shadows "0"
+        normalize "Outputs == 2 || (Surface != 1 && ForcedGlow && !Damage)" Surface "0"
+        normalize "Outputs == 2" Fog "0"
+        normalize "Outputs == 2" CoverageAlpha "0"
+        normalize "Outputs == 2" ForcedGlow "0"
+        rule "Outputs == 1 => (!CoverageAlpha && Surface == 0)"
+        normalize "Lighting == 0" Cookies "0"
+        normalize "Lighting == 0" Shadows "0"
+        vertex A51_SURFACE_INTERFACE "(Outputs == 3 || Outputs >= 6 ? ((AlphaTest ? 1 : 0) | (Outputs >= 6 ? 32 : 0) | (Outputs == 7 ? 8 : 0)) : Outputs == 2 ? (AlphaTest ? 1 : 0) : Surface == 1 ? (264 | ((Fog || Outputs == 1) ? 32 : 0) | (AlphaTest ? 1 : 0) | ((Environment == 2 || (Lighting && Environment != 0)) ? 16 : 0)) : ForcedGlow && !Damage ? (385 | (Vertex == 1 ? 0 : 2) | ((Fog || Outputs == 1) ? 32 : 0)) : (449 | ((Lighting || Projection) ? 4 : 0) | ((Lighting || Environment == 1) ? 8 : 0) | (Vertex == 1 ? 0 : 2) | ((Fog || Outputs == 1) ? 32 : 0) | ((Environment == 2 || (Lighting && Environment != 0)) ? 16 : 0)))" "true"
+        pixel A51_RECIPE_FLAGS "(((!(Vertex == 1 && Surface != 1 && Outputs != 3 && Outputs < 6 && Outputs != 2)) ? 8 : 0) | (AlphaTest ? 1 : 0) | (AdditiveEnvironment ? 2 : 0) | (Environment != 0 ? 32 : 0) | (Surface == 1 ? (Environment == 0 ? 64 : 128) : 0) | (Illumination == 1 ? 256 : 0) | (Illumination == 2 ? 512 : 0) | (Illumination == 3 ? 1024 : 0) | (Environment != 0 && Surface != 1 ? (EnvironmentMix == 0 ? 2048 : 4096) : 0) | (Detail ? 8192 : 0) | (Environment == 2 ? 16384 : 0) | (EnvironmentUV == 1 ? 32768 : 0) | (ForcedGlow ? 1048576 : 0) | (Shadows ? 2097152 : 0))" "true"
+        pixel A51_RECIPE_ENV "Environment" "true"
+        pixel A51_RECIPE_DETAIL "Detail" "true"
+        pixel A51_RECIPE_DISTORTION "Surface == 1" "true"
+        pixel A51_RECIPE_LIGHTING "Lighting" "true"
+        pixel A51_RECIPE_COOKIES "Cookies" "true"
+        pixel A51_RECIPE_PROJECTION "Projection" "true"
+        pixel A51_RECIPE_SHADOWS "Shadows" "true"
+        pixel A51_RECIPE_FOG "Fog" "true"
+        pixel A51_RECIPE_FORCED_GLOW "ForcedGlow" "true"
+        pixel A51_RECIPE_GLOW_MASK "Outputs == 2" "true"
+        pixel A51_GEOM_ALPHA_TEST "AlphaTest" "true"
+        pixel A51_GEOM_DEPTH_ONLY "Outputs == 3 || Outputs >= 6" "true"
+        pixel A51_GEOM_SURFACE_ONLY "Environment == 0" "true"
+        pixel A51_RECIPE_DAMAGE "Damage" "true"
+        pixel A51_SCENE_DEPTH_TARGET "1" "Outputs == 1"
+        pixel A51_GEOM_LINEAR_DEPTH "Outputs >= 6" "true"
+        pixel A51_GEOM_NORMAL_TARGET "Outputs == 7" "true"
+        pixel A51_SURFACE_INTERFACE "(Outputs == 3 || Outputs >= 6 ? ((AlphaTest ? 1 : 0) | (Outputs >= 6 ? 32 : 0) | (Outputs == 7 ? 8 : 0)) : Outputs == 2 ? (AlphaTest ? 1 : 0) : Surface == 1 ? (264 | ((Fog || Outputs == 1) ? 32 : 0) | (AlphaTest ? 1 : 0) | ((Environment == 2 || (Lighting && Environment != 0)) ? 16 : 0)) : ForcedGlow && !Damage ? (385 | ((!(Vertex == 1 && Surface != 1 && Outputs != 3 && Outputs < 6 && Outputs != 2)) ? 2 : 0) | ((Fog || Outputs == 1) ? 32 : 0)) : (449 | ((Lighting || Projection) ? 4 : 0) | ((Lighting || Environment == 1) ? 8 : 0) | ((!(Vertex == 1 && Surface != 1 && Outputs != 3 && Outputs < 6 && Outputs != 2)) ? 2 : 0) | ((Fog || Outputs == 1) ? 32 : 0) | ((Environment == 2 || (Lighting && Environment != 0)) ? 16 : 0)))" "true"
+        pixel GEOM_HAS_VERTEX_COLOR "(!(Vertex == 1 && Surface != 1 && Outputs != 3 && Outputs < 6 && Outputs != 2))" "true"
+        pixel A51_RECIPE_COVERAGE_ALPHA "CoverageAlpha" "true"
+    }

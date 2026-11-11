@@ -18,10 +18,6 @@
 
 #include "dlg_PopUp.hpp"
 
-#ifdef TARGET_XBOX
-#include "UI/ui_bitmap.hpp"
-#endif
-
 //==============================================================================
 //  DEFINES
 //==============================================================================
@@ -32,15 +28,6 @@ enum pause_mp_controls
     IDC_PAUSE_MP_SCORE,
     IDC_PAUSE_MP_OPTIONS,
     IDC_PAUSE_MP_SETTINGS,
-#ifdef TARGET_XBOX
-    IDC_PAUSE_MP_FRIENDS,
-#endif
-
-#ifdef TARGET_XBOX
-    IDC_PAUSE_MP_FRIEND_INV, // friend invitation
-    IDC_PAUSE_MP_GAME_INV,   // game invitation
-#endif
-
 };
 
 
@@ -76,22 +63,15 @@ public:
 
 protected:
     ui_frame*           m_pFrame1;
-    ui_button*            m_pButtonQuit;
-    ui_button*            m_pButtonScore;     
+    ui_button*          m_pButtonQuit;
+    ui_button*          m_pButtonScore;
     ui_button*          m_pButtonOptions;
     ui_button*          m_pButtonSettings;
-#ifdef TARGET_XBOX
-    ui_button*          m_pButtonFriends;
-#endif
+
     s32                 m_CurrHL;
 
     dlg_popup*          m_PopUp;
     s32                 m_PopUpResult;
-
-#ifdef TARGET_XBOX
-    ui_bitmap*          m_pFriendInvite;
-    ui_bitmap*          m_pGameInvite;
-#endif
 };
 
 //==============================================================================

@@ -3,8 +3,6 @@
 //  GlobalSettings.cpp
 //  
 //==============================================================================
-
-//==============================================================================
 // INCLUDES 
 //==============================================================================
 
@@ -13,6 +11,7 @@
 #include "AudioMgr/AudioMgr.hpp"
 #include "StateMgr.hpp"
 #include "NetworkMgr/Voice/VoiceMgr.hpp"
+#include "NetworkMgr/Messages/Messages.hpp"
 #include "StringMgr/StringMgr.hpp"
 #include "MoviePlayer/MoviePlayer.hpp"
 #include "ResourceMgr/ResourceMgr.hpp"
@@ -21,13 +20,15 @@
 #include "Obj_mgr/obj_mgr.hpp"
 #include "Objects/Player/Player.hpp"
 #include "Objects/Render/PostEffectMgr.hpp"
-#include "Render/ShadowMapMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 
 //==============================================================================
 // CONST 
 //==============================================================================
 
-static x_language s_DefaultLocalizationLanguage = XL_LANG_ENGLISH;
+static x_language s_DefaultTextLanguage  = XL_LANG_ENGLISH;
+static x_language s_DefaultAudioLanguage = XL_LANG_ENGLISH;
+static x_language s_DefaultVideoLanguage = XL_LANG_ENGLISH;
 
 //==============================================================================
 // IMPLEMENTATION 
@@ -48,7 +49,6 @@ void global_settings::Reset( s32 ResetFlags )
 
         ResetMultiplayerDefaults();
         ResetHostDefaults();
-        ResetJoinDefaults();
     }
 
     if( ResetFlags & RESET_HEADSET )
@@ -76,6 +76,11 @@ void global_settings::Reset( s32 ResetFlags )
         ResetDisplayDefaults();
     }
 
+    if( ResetFlags & RESET_INTERFACE )
+    {
+        ResetInterfaceDefaults();
+    }
+
     if( ResetFlags == RESET_ALL )
     {
         m_Checksum = 0;
@@ -85,15 +90,15 @@ void global_settings::Reset( s32 ResetFlags )
 
 //==============================================================================
 
-void global_settings::ResetMapSettings( map_settings& Settings )
+void map_settings::Reset( void )
 {
-    Settings.m_bUseDefault   = TRUE;
-    Settings.m_MapCycleCount = 0;
-    Settings.m_MapCycleIdx   = 0;
+    m_bUseDefault   = TRUE;
+    m_MapCycleCount = 0;
+    m_MapCycleIdx   = 0;
 
     for( s32 i = 0; i < MAP_CYCLE_SIZE; i++ )
     {
-        Settings.m_MapCycle[i] = -1;
+        m_MapCycle[i] = -1;
     }
 }
 
@@ -105,41 +110,30 @@ void global_settings::ResetMultiplayerDefaults( void )
     m_MultiplayerSettings.m_ScoreLimit   = -1;
     m_MultiplayerSettings.m_TimeLimit    = -1;
     m_MultiplayerSettings.m_MutationMode = MUTATE_CHANGE_AT_WILL;
-    ResetMapSettings( m_MultiplayerSettings.m_MapSettings );
+    m_MultiplayerSettings.m_MapSettings.Reset();
 }
 
 //==============================================================================
 
 void global_settings::ResetHostDefaults( void )
 {
-    x_wstrcpy( m_HostSettings.m_ServerName, g_StringTableMgr( "ui", "IDS_HOST_SERVER_NAME" ) );
-    x_strcpy( m_HostSettings.m_Password, "" );
-
-    m_HostSettings.m_GameTypeID   = GAME_DM;
-    m_HostSettings.m_ScoreLimit   = -1;
-#ifdef LAN_PARTY_BUILD
-    m_HostSettings.m_TimeLimit    = 600;
-    m_HostSettings.m_MaxPlayers   = 8;
-#else
-    m_HostSettings.m_TimeLimit    = -1;
-    m_HostSettings.m_MaxPlayers   = 16;
-#endif
-    m_HostSettings.m_VotePassPct  = 50;
-    m_HostSettings.m_Flags        = SERVER_ENABLE_MAP_SCALING | SERVER_VOICE_ENABLED;
-    m_HostSettings.m_MutationMode = MUTATE_CHANGE_AT_WILL;
-    ResetMapSettings( m_HostSettings.m_MapSettings );
+    m_HostSettings.Reset();
 }
 
 //==============================================================================
 
-void global_settings::ResetJoinDefaults( void )
+void host_settings::Reset( void )
 {
-    // GAME_MP as a game type ID means any multiplayer game.
-    m_JoinSettings.m_GameTypeID      = GAME_MP;
-    m_JoinSettings.m_MinPlayers      = -1;
-    m_JoinSettings.m_MutationMode    = -1;
-    m_JoinSettings.m_PasswordEnabled = -1;
-    m_JoinSettings.m_VoiceEnabled    = -1;
+    x_memset( this, 0, sizeof(*this) );
+
+    m_GameTypeID   = GAME_DM;
+    m_ScoreLimit   = -1;
+    m_TimeLimit    = -1;
+    m_MaxPlayers   = 16;
+    m_VotePassPct  = 50;
+    m_Flags        = SERVER_ENABLE_MAP_SCALING | SERVER_VOICE_ENABLED;
+    m_MutationMode = MUTATE_CHANGE_AT_WILL;
+    m_MapSettings.Reset();
 }
 
 //==============================================================================
@@ -166,24 +160,30 @@ void global_settings::ResetHeadsetDefaults( void )
 
 void global_settings::ResetLocalizationDefaults( void )
 {
-    SetTextLanguage ( s_DefaultLocalizationLanguage );
-    SetAudioLanguage( s_DefaultLocalizationLanguage );
-    SetVideoLanguage( s_DefaultLocalizationLanguage );
+    SetTextLanguage ( s_DefaultTextLanguage );
+    SetAudioLanguage( s_DefaultAudioLanguage );
+    SetVideoLanguage( s_DefaultVideoLanguage );
 }
 
 //==============================================================================
 
-void global_settings::SetDefaultLocalizationLanguage( x_language Language )
+void global_settings::SetDefaultLocalizationLanguages( x_language TextLanguage,
+                                                       x_language AudioLanguage,
+                                                       x_language VideoLanguage )
 {
-    ASSERT( (Language >= XL_LANG_ENGLISH) && (Language < XL_NUM_LANGUAGES) );
-    s_DefaultLocalizationLanguage = Language;
+    ASSERT( (TextLanguage >= XL_LANG_ENGLISH) && (TextLanguage < XL_NUM_LANGUAGES) );
+    ASSERT( (AudioLanguage >= XL_LANG_ENGLISH) && (AudioLanguage < XL_NUM_LANGUAGES) );
+    ASSERT( (VideoLanguage >= XL_LANG_ENGLISH) && (VideoLanguage < XL_NUM_LANGUAGES) );
+    s_DefaultTextLanguage  = TextLanguage;
+    s_DefaultAudioLanguage = AudioLanguage;
+    s_DefaultVideoLanguage = VideoLanguage;
 }
 
 //==============================================================================
 
 x_language global_settings::GetDefaultLocalizationLanguage( void )
 {
-    return s_DefaultLocalizationLanguage;
+    return s_DefaultTextLanguage;
 }
 
 //==============================================================================
@@ -194,7 +194,13 @@ void global_settings::ResetGraphicsDefaults( void )
     SetFilmGrainStrength( FILM_GRAIN_DEFAULT_STRENGTH );
     SetBackgroundBlurEnabled( POST_EFFECT_BACKGROUND_BLUR_DEFAULT );
     SetAntiAliasingType( ANTI_ALIASING_TYPE_DEFAULT );
-    SetDynamicShadowsEnabled( DYNAMIC_SHADOWS_DEFAULT );
+    SetAmbientOcclusionQuality( render::AMBIENT_OCCLUSION_DEFAULT );
+    SetTextureFiltering( TEXTURE_FILTERING_DEFAULT );
+    SetRenderScale( RENDER_SCALE_DEFAULT_PERCENT );
+    SetPhongShadingEnabled( PHONG_SHADING_DEFAULT );
+    SetTessellationEnabled( TESSELLATION_DEFAULT );
+    SetXboxFogEnabled( XBOX_FOG_DEFAULT );
+    SetShadowMode( SHADOW_MODE_DEFAULT );
     SetShadowFilterType( SHADOW_FILTER_TYPE_DEFAULT );
 }
 
@@ -202,8 +208,8 @@ void global_settings::ResetGraphicsDefaults( void )
 
 void global_settings::ResetDisplayDefaults( void )
 {
-    SetUIScale( UI_SCALE_DEFAULT_PERCENT );
-    SetHUDScale( HUD_SCALE_DEFAULT_PERCENT );
+    SetBrightness( BRIGHTNESS_DEFAULT_PERCENT );
+    SetContrast( CONTRAST_DEFAULT_PERCENT );
     SetDisplayResolution( 0, 0 );
     SetDisplayMode( ENG_DISPLAY_BORDERLESS );
     SetPresentMode( ENG_PRESENT_VSYNC );
@@ -212,8 +218,23 @@ void global_settings::ResetDisplayDefaults( void )
 
 //==============================================================================
 
+void global_settings::ResetInterfaceDefaults( void )
+{
+    SetUIScale( UI_SCALE_DEFAULT_PERCENT );
+    SetHUDScale( HUD_SCALE_DEFAULT_PERCENT );
+}
+
+//==============================================================================
+
 void global_settings::Commit( void )
 {
+    if( !m_HostSettings.m_ServerName[0] )
+    {
+        x_wstrncpy( m_HostSettings.m_ServerName,
+                    g_StringTableMgr( "ui", "IDS_HOST_SERVER_NAME" ), NET_SERVER_NAME_LENGTH - 1 );
+        m_HostSettings.m_ServerName[NET_SERVER_NAME_LENGTH-1] = 0;
+    }
+
     // Commit any settings required while hosting a game.
     g_PendingConfig.SetServerName( m_HostSettings.m_ServerName );
 
@@ -228,7 +249,6 @@ void global_settings::Commit( void )
 
     UpdateHeadsetMode( GetHeadsetMode() );
 
-    g_MatchMgr.SetLocalManifestVersion( m_ContentVersion );
     Checksum();
 }
 
@@ -237,6 +257,16 @@ void global_settings::Commit( void )
 void global_settings::CommitStartup( void )
 {
     NormalizeGraphicsSettings();
+    rstate_SetTextureFiltering( GetTextureFiltering() );
+    render::GetRenderPipeline().SetRenderScale( static_cast<f32>( GetRenderScale() ) / 100.0f );
+    render::GetRenderPipeline().SetSampleCount(
+        (GetAntiAliasingType() == AntiAliasingType::Msaa) ? 4 : 1 );
+    render::GetRenderPipeline().SetCmaa2Enabled(
+        GetAntiAliasingType() == AntiAliasingType::Cmaa2 );
+    render::GetRenderPipeline().GetXeGtaoFeature().SetQuality( GetAmbientOcclusionQuality() );
+    render::GetRenderPipeline().SetPhongShadingEnabled( GetPhongShadingEnabled() );
+    render::GetRenderPipeline().SetTessellationEnabled( GetTessellationEnabled() );
+    render::GetRenderPipeline().GetPostProcessFeatureRef().SetXboxFogEnabled( GetXboxFogEnabled() );
 
     x_SetLocale( GetTextLanguage() );
     Movie.SetLanguage( GetVideoLanguage() );
@@ -276,8 +306,23 @@ void global_settings::CommitLocalization( void )
     {
         if( !g_StringTableMgr.ReloadLocalizedTables() )
         {
+            x_SetLocale( PreviousTextLanguage );
+            SetTextLanguage( PreviousTextLanguage );
             LOG_ERROR( "global_settings::CommitLocalization",
                        "Unable to reload localized string tables." );
+        }
+        else
+        {
+            if( g_UiMgr && !g_UiMgr->ReloadFonts() )
+            {
+                LOG_ERROR( "global_settings::CommitLocalization",
+                           "Unable to reload localized fonts." );
+            }
+
+            if( g_StringTableMgr.GetStringCount( "Msg" ) > 0 )
+            {
+                InitMessages();
+            }
         }
     }
 
@@ -323,12 +368,24 @@ void global_settings::NormalizeGraphicsSettings( void )
 {
     SetUIScale( m_UIScale );
     SetHUDScale( m_HUDScale );
+    SetBrightness( m_Brightness );
+    SetContrast( m_Contrast );
+    SetRenderScale( m_RenderScale );
     SetFieldOfView( m_FieldOfView );
     SetFilmGrainStrength( m_FilmGrainStrength );
     SetBackgroundBlurEnabled( m_BackgroundBlurEnabled );
+    SetTessellationEnabled( m_TessellationEnabled );
+    SetTextureFiltering( m_TextureFiltering );
+
+    if( m_AmbientOcclusionQuality < render::AmbientOcclusionQuality::Disabled ||
+        m_AmbientOcclusionQuality > render::AmbientOcclusionQuality::Ultra )
+    {
+        m_AmbientOcclusionQuality = render::AMBIENT_OCCLUSION_DEFAULT;
+    }
 
     if( (m_AntiAliasingType != AntiAliasingType::None) &&
-        (m_AntiAliasingType != AntiAliasingType::Cmaa2) )
+        (m_AntiAliasingType != AntiAliasingType::Cmaa2) &&
+        (m_AntiAliasingType != AntiAliasingType::Msaa) )
     {
         m_AntiAliasingType = ANTI_ALIASING_TYPE_DEFAULT;
     }
@@ -359,11 +416,19 @@ void global_settings::NormalizeGraphicsSettings( void )
         m_FrameRateLimit = FrameRateLimit::Auto;
     }
 
+    if( (m_ShadowMode != ShadowMode::Disabled) &&
+        (m_ShadowMode != ShadowMode::Enabled) &&
+        (m_ShadowMode != ShadowMode::FlashlightOnly) )
+    {
+        m_ShadowMode = SHADOW_MODE_DEFAULT;
+    }
+
     if( (m_ShadowFilterType != ShadowFilterType::Hard) &&
         (m_ShadowFilterType != ShadowFilterType::Evsm) )
     {
         m_ShadowFilterType = SHADOW_FILTER_TYPE_DEFAULT;
     }
+
 }
 
 //==============================================================================
@@ -400,8 +465,29 @@ void global_settings::CommitRenderSettings( void )
 {
     g_PostEffectMgr.SetFilmGrainStrength( GetFilmGrainStrength() );
     g_PostEffectMgr.SetBackgroundBlurEnabled( GetBackgroundBlurEnabled() );
-    g_ShadowMapMgr.SetShadowFilterType( GetShadowFilterType() );
-    g_ShadowMapMgr.SetEnabled( GetDynamicShadowsEnabled() );
+    if( !rstate_SetTextureFiltering( GetTextureFiltering() ) )
+    {
+        LOG_ERROR( "global_settings::CommitRenderSettings", "Failed to apply texture filtering" );
+        m_TextureFiltering = rstate_GetTextureFiltering();
+    }
+
+    render::GetRenderPipeline().SetRenderScale( static_cast<f32>( GetRenderScale() ) / 100.0f );
+    render::GetRenderPipeline().SetSampleCount(
+        (GetAntiAliasingType() == AntiAliasingType::Msaa) ? 4 : 1 );
+    render::GetRenderPipeline().SetCmaa2Enabled(
+        GetAntiAliasingType() == AntiAliasingType::Cmaa2 );
+    render::GetRenderPipeline().GetXeGtaoFeature().SetQuality( GetAmbientOcclusionQuality() );
+    render::GetRenderPipeline().SetPhongShadingEnabled( GetPhongShadingEnabled() );
+    render::GetRenderPipeline().SetTessellationEnabled( GetTessellationEnabled() );
+    render::GetRenderPipeline().GetPostProcessFeatureRef().SetXboxFogEnabled( GetXboxFogEnabled() );
+
+    render::SceneColorGradeParams SceneColorGrade;
+    SceneColorGrade.Brightness = static_cast<f32>( GetBrightness() ) / 100.0f;
+    SceneColorGrade.Contrast   = static_cast<f32>( GetContrast() ) / 100.0f;
+    g_PostEffectMgr.SetSceneColorGrade( SceneColorGrade );
+
+    render::GetRenderPipeline().GetShadowMapAtlas().SetShadowMode( GetShadowMode() );
+    render::GetRenderPipeline().GetShadowMapAtlas().SetShadowFilterType( GetShadowFilterType() );
 
     radian const FieldOfView = DEG_TO_RAD( static_cast<f32>( GetFieldOfView() ) );
     for( slot_id PlayerSlot = g_ObjMgr.GetFirst( object::TYPE_PLAYER );
@@ -478,6 +564,48 @@ void global_settings::SetHUDScale( s32 Percent )
 
 //==============================================================================
 
+void global_settings::SetBrightness( s32 Percent )
+{
+    m_Brightness = x_clamp( Percent, BRIGHTNESS_MIN_PERCENT, BRIGHTNESS_MAX_PERCENT );
+}
+
+//==============================================================================
+
+s32 global_settings::GetBrightness( void ) const
+{
+    return m_Brightness;
+}
+
+//==============================================================================
+
+void global_settings::SetContrast( s32 Percent )
+{
+    m_Contrast = x_clamp( Percent, CONTRAST_MIN_PERCENT, CONTRAST_MAX_PERCENT );
+}
+
+//==============================================================================
+
+s32 global_settings::GetContrast( void ) const
+{
+    return m_Contrast;
+}
+
+//==============================================================================
+
+void global_settings::SetRenderScale( s32 Percent )
+{
+    m_RenderScale = x_clamp( Percent, RENDER_SCALE_MIN_PERCENT, RENDER_SCALE_MAX_PERCENT );
+}
+
+//==============================================================================
+
+s32 global_settings::GetRenderScale( void ) const
+{
+    return m_RenderScale;
+}
+
+//==============================================================================
+
 void global_settings::SetDisplayResolution( s32 Width, s32 Height )
 {
     m_ResolutionWidth  = Width;
@@ -514,10 +642,25 @@ xbool global_settings::GetBackgroundBlurEnabled( void ) const
 
 //==============================================================================
 
+void global_settings::SetTessellationEnabled( xbool Enabled )
+{
+    m_TessellationEnabled = Enabled;
+}
+
+//==============================================================================
+
+xbool global_settings::GetTessellationEnabled( void ) const
+{
+    return m_TessellationEnabled;
+}
+
+//==============================================================================
+
 void global_settings::SetAntiAliasingType( AntiAliasingType Type )
 {
     ASSERT( (Type == AntiAliasingType::None) ||
-            (Type == AntiAliasingType::Cmaa2) );
+            (Type == AntiAliasingType::Cmaa2) ||
+            (Type == AntiAliasingType::Msaa) );
 
     m_AntiAliasingType = Type;
 }
@@ -531,16 +674,79 @@ AntiAliasingType global_settings::GetAntiAliasingType( void ) const
 
 //==============================================================================
 
-void global_settings::SetDynamicShadowsEnabled( xbool Enabled )
+void global_settings::SetAmbientOcclusionQuality( render::AmbientOcclusionQuality Quality )
 {
-    m_DynamicShadowsEnabled = Enabled;
+    ASSERT( Quality >= render::AmbientOcclusionQuality::Disabled && Quality <= render::AmbientOcclusionQuality::Ultra );
+    m_AmbientOcclusionQuality = Quality;
 }
 
 //==============================================================================
 
-xbool global_settings::GetDynamicShadowsEnabled( void ) const
+render::AmbientOcclusionQuality global_settings::GetAmbientOcclusionQuality( void ) const
 {
-    return m_DynamicShadowsEnabled;
+    return m_AmbientOcclusionQuality;
+}
+
+//==============================================================================
+
+void global_settings::SetTextureFiltering( rstate_texture_filtering Filtering )
+{
+    m_TextureFiltering = (Filtering >= RSTATE_TEXTURE_FILTER_BILINEAR &&
+                          Filtering <= RSTATE_TEXTURE_FILTER_ANISOTROPIC_16)
+                             ? Filtering : TEXTURE_FILTERING_DEFAULT;
+}
+
+//==============================================================================
+
+rstate_texture_filtering global_settings::GetTextureFiltering( void ) const
+{
+    return m_TextureFiltering;
+}
+
+//==============================================================================
+
+void global_settings::SetPhongShadingEnabled( xbool Enabled )
+{
+    m_PhongShadingEnabled = Enabled;
+}
+
+//==============================================================================
+
+xbool global_settings::GetPhongShadingEnabled( void ) const
+{
+    return m_PhongShadingEnabled;
+}
+
+//==============================================================================
+
+void global_settings::SetShadowMode( ShadowMode Mode )
+{
+    ASSERT( (Mode == ShadowMode::Disabled) ||
+            (Mode == ShadowMode::Enabled) ||
+            (Mode == ShadowMode::FlashlightOnly) );
+
+    m_ShadowMode = Mode;
+}
+
+//==============================================================================
+
+ShadowMode global_settings::GetShadowMode( void ) const
+{
+    return m_ShadowMode;
+}
+
+//==============================================================================
+
+void global_settings::SetXboxFogEnabled( xbool Enabled )
+{
+    m_XboxFogEnabled = Enabled;
+}
+
+//==============================================================================
+
+xbool global_settings::GetXboxFogEnabled( void ) const
+{
+    return m_XboxFogEnabled;
 }
 
 //==============================================================================

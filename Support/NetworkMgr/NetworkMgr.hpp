@@ -18,6 +18,7 @@
 
 #include "x_files.hpp"
 #include "e_Network.hpp"
+#include "Connection/ConnectionProtocol.hpp"
 
 //==============================================================================
 //  ANNOUNCEMENTS
@@ -79,6 +80,7 @@ public:
     // Silence / kick
     void                Silence                 ( void )                    { SilenceInternal( FALSE ); }
     void                KickPlayer              ( s32 Index );
+    void                BanPlayer               ( s32 Index );
 
     // Local player info
     s32                 GetLocalPlayerCount     ( void ) const              { return m_LocalPlayerCount; }
@@ -100,9 +102,6 @@ public:
     net_socket&         GetSocket               ( void )                    { return m_LocalSocket; }
     voice_proxy&        GetVoiceProxy           ( s32 ClientIndex );
 
-    // Buddy checks
-    xbool               IsServerABuddy          ( const char* pSearch );
-    xbool               HasPlayerBuddy          ( const char* pSearch );
 
     // Debug
     const char*         GetStateName            ( void );
@@ -122,6 +121,7 @@ private:
     xbool               m_RequestedOnlineState;
     xhandle             m_OnlineStateChangeJob;
     net_socket          m_LocalSocket;
+    connection_cancel_queue m_CancelledConnections;
     game_client*        m_pClient;
     game_server*        m_pServer;
     s32                 m_LocalPlayerCount;

@@ -128,7 +128,7 @@ void event_sound_emitter::OnAdvanceSimulation ( f32 DeltaTime )
         //if( (g_AudioManager.IsPlaying( m_VoiceID ) == FALSE) && (g_AudioManager.IsStarting( m_VoiceID ) ==  FALSE) )
         //    g_ObjMgr.DestroyObject( GetGuid() );
 
-        if( !g_AudioMgr.IsValidVoiceId( m_VoiceID ) )
+        if( !g_AudioMgr.IsValidVoiceIdCached( m_VoiceID ) )
             g_ObjMgr.DestroyObject( GetGuid() );
     }
     else if( m_SoundType == LOOPED )

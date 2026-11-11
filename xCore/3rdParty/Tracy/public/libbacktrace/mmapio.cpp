@@ -58,9 +58,9 @@ namespace tracy
 
 int
 backtrace_get_view (struct backtrace_state *state ATTRIBUTE_UNUSED,
-            int descriptor, off_t offset, uint64_t size,
-            backtrace_error_callback error_callback,
-            void *data, struct backtrace_view *view)
+		    int descriptor, off_t offset, uint64_t size,
+		    backtrace_error_callback error_callback,
+		    void *data, struct backtrace_view *view)
 {
   size_t pagesize;
   unsigned int inpage;
@@ -98,9 +98,9 @@ backtrace_get_view (struct backtrace_state *state ATTRIBUTE_UNUSED,
 
 void
 backtrace_release_view (struct backtrace_state *state ATTRIBUTE_UNUSED,
-            struct backtrace_view *view,
-            backtrace_error_callback error_callback,
-            void *data)
+			struct backtrace_view *view,
+			backtrace_error_callback error_callback,
+			void *data)
 {
   union {
     const void *cv;

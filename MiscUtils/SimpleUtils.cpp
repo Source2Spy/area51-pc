@@ -738,22 +738,22 @@ void SMP_UTIL_EnumHiddenManualResource( prop_enum&           PropEnum,
     switch(Type)
     {
     case SMP_FXO:
-        pTypeString = "Resource\0fxo";
+        pTypeString = "Resource\0fxo\0";
         break;
     case SMP_AUDIOPKG:
-        pTypeString = "Resource\0audiopkg";
+        pTypeString = "Resource\0audiopkg\0";
         break;
     case SMP_XBMP:
-        pTypeString = "Resource\0xbmp";
+        pTypeString = "Resource\0xbmp\0";
         break;
     case SMP_ANIM:
-        pTypeString = "Resource\0anim";
+        pTypeString = "Resource\0anim\0";
         break;
     case SMP_SKINGEOM:
-        pTypeString = "Resource\0skingeom";
+        pTypeString = "Resource\0skingeom\0";
         break;
     case SMP_RIGIDGEOM:
-        pTypeString = "Resource\0rigidgeom";
+        pTypeString = "Resource\0rigidgeom\0";
         break;
     }
 

@@ -8,7 +8,7 @@
 #include "Render/PrimitiveDebug.hpp"
 #include "ProjectileMutantContagion.hpp"
 #include "AudioMgr/AudioMgr.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "Tracers/TracerMgr.hpp"
 #include "Objects/Actor/Actor.hpp"
 #include "Decals/DecalMgr.hpp"

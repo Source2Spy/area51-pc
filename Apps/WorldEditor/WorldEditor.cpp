@@ -4,7 +4,7 @@
 #include "WorldEditor.hpp"
 #include "Obj_Mgr/Obj_Mgr.hpp"
 #include "CollisionMgr/PolyCache.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "Parsing/TextIn.hpp"
 #include "Parsing/TextOut.hpp"
 #include "CollisionMgr/CollisionMgr.hpp"
@@ -45,7 +45,6 @@
 #include "../Support/Objects/ParticleEmiter.hpp"
 #include "../Support/Tracers/TracerMgr.hpp"
 #include "PhysicsMgr/PhysicsMgr.hpp"
-#include "Font/font.hpp"
 #include "Music_Mgr/Music_Mgr.hpp"
 #include "MusicStateMgr/MusicStateMgr.hpp"
 #include "ConversationMgr/ConversationMgr.hpp"
@@ -321,8 +320,8 @@ void editor_zone_ref::OnEnumProp  ( prop_enum&    List )
     List.PropEnumFloat   ( "Zone\\SndAbsorption",   "Sound absorption coefficient for the zone, how much sound is allowed through 0 -> 1", 0 );
     List.PropEnumInt     ( "Zone\\MinPlayers",      "Minimum number of players needed in game for zone to stay active.", 0 );
     List.PropEnumInt     ( "Zone\\MaxPlayers",      "Maximum number of players allowed in game for zone to stay active.", 0 );
-    List.PropEnumExternal( "Zone\\EnvironmentMap",  "Resource\0envmap", "Cube environment map resource that is used for this zone.", 0 );
-    List.PropEnumExternal( "Zone\\FogMap",          "Resource\0xbmp",   "Fog map resource that specifies the fog falloff for this zone.", 0 );
+    List.PropEnumExternal( "Zone\\EnvironmentMap",  "Resource\0envmap\0", "Cube environment map resource that is used for this zone.", 0 );
+    List.PropEnumExternal( "Zone\\FogMap",          "Resource\0xbmp\0",   "Fog map resource that specifies the fog falloff for this zone.", 0 );
     List.PropEnumBool    ( "Zone\\QuickFog",        "Fog transitions into this zone will be immediate instead of gradual.", 0 );
 }
 
@@ -1848,7 +1847,7 @@ void world_editor::AdvanceLogic( f32 DeltaTime )
     g_TriggerExMgr.OnUpdate( DeltaTime );
 
     render::Update( DeltaTime );
-    g_LightMgr.OnUpdate( DeltaTime );
+    render::GetRenderPipeline().GetLightSystem().OnUpdate( DeltaTime );
     g_DecalMgr.OnUpdate( DeltaTime );
     g_TracerMgr.OnUpdate( DeltaTime );
 
@@ -1990,7 +1989,6 @@ xbool world_editor::PreInitialize()
     m_xstrActiveLayerPath = "\\";
     m_CapturedGuid.Guid = 0;
     g_TracerMgr.Kill();
-    g_Font.Kill();
     g_RscMgr.UnloadAll();
     g_DecalMgr.Kill();
     g_PhysicsMgr.Kill();
@@ -2005,7 +2003,6 @@ xbool world_editor::PreInitialize()
 
     // re-initialize systems that have hard-coded data associated with them
     g_TracerMgr.Init();
-    g_Font.Load( xfs( "%s\\%s", g_RscMgr.GetRootDirectory(), "Font_small.xbmp" ) );
     
     g_level_loading = TRUE;
     
@@ -3260,7 +3257,7 @@ void ExtractionSort( xarray<xstring>& Destination, xarray<xstring>& Source )
     ExtractFilesWithExtFromList( Destination, Source,    ".decalpkg" );
     ExtractFilesWithExtFromList( Destination, Source,      ".envmap" );
     ExtractFilesWithExtFromList( Destination, Source,  ".rigidcolor" );
-    ExtractFilesWithExtFromList( Destination, Source,   ".stringbin" );
+    ExtractFilesWithExtFromList( Destination, Source,      ".string" );
     ExtractFilesWithExtFromList( Destination, Source,         ".fxo" );
     ExtractFilesWithExtFromList( Destination, Source,    ".audiopkg" );
     ExtractFilesWithExtFromList( Destination, Source,        ".font" );
@@ -3561,12 +3558,12 @@ xbool world_editor::BuildDFSFile( const char* pExportName,
     xarray<xstring> CommonData;
     xarray<xstring> LevelResources;
     xarray<xstring> LevelAudioPackages;
-    xarray<xstring> LevelStringbins;
+    xarray<xstring> LevelStrings;
     xarray<xstring> GlobalMusicPackages;
     xarray<xstring> GlobalVoicePackages;
     xarray<xstring> GlobalAmbientPackages;
     xarray<xstring> GlobalHotPackages;
-    xarray<xstring> GlobalStringbins;
+    xarray<xstring> GlobalStrings;
     xarray<xstring> SlideShowData;
 
     // Paths on the exporting PC.
@@ -3681,8 +3678,8 @@ xbool world_editor::BuildDFSFile( const char* pExportName,
         // Extract the audio packages from the resource list.
         ExtractFilesWithExtFromList( LevelAudioPackages, TempList, ".audiopkg" );
 
-        // Extract the stringbin files from the resource list.
-        ExtractFilesWithExtFromList( LevelStringbins, TempList, ".stringbin" );
+        // Extract string tables.
+        ExtractFilesWithExtFromList( LevelStrings, TempList, ".string" );
 
         // Now extract the other resources from the resource list.
         ExtractionSort( LevelResources, TempList );
@@ -3754,15 +3751,15 @@ xbool world_editor::BuildDFSFile( const char* pExportName,
         ExtractFilesWithSubStringFromList( GlobalVoicePackages,   GlobalHotPackages, "dx_"    );
         ExtractFilesWithSubStringFromList( GlobalAmbientPackages, GlobalHotPackages, "amb_"   );
 
-        // Snag all the stringbin files.
-        CreateFileList( GlobalStringbins, ExportPath, "*.stringbin" );
+        // Collect string tables.
+        CreateFileList( GlobalStrings, ExportPath, "*.string" );
     }
 
     //========================================================
     // Build the default load script.
     {
         TextOut.OpenFile( (const char*)LoadScript );
-        TextOut.AddHeader( "loadscript", LevelAudioPackages.GetCount() + LevelStringbins.GetCount() + 2 );
+        TextOut.AddHeader( "loadscript", LevelAudioPackages.GetCount() + LevelStrings.GetCount() + 2 );
 
         // load the audio dfs
         TextOut.AddString( "command",   "load_dfs" );
@@ -3790,16 +3787,16 @@ xbool world_editor::BuildDFSFile( const char* pExportName,
         TextOut.AddString( "arguments", (const char*)"STRINGS\\STRINGS" );
         TextOut.AddEndLine();
 
-        // List the stringbins to load.
-        if( LevelStringbins.GetCount() )
+        // List string tables to load.
+        if( LevelStrings.GetCount() )
         {
-            for( s32 i=0 ; i<LevelStringbins.GetCount() ; i++ )
+            for( s32 i=0 ; i<LevelStrings.GetCount() ; i++ )
             {
                 char StringName[ MAX_PATH ];
-                x_splitpath( (const char*)LevelStringbins[i], NULL, NULL, StringName, NULL );
+                x_splitpath( (const char*)LevelStrings[i], NULL, NULL, StringName, NULL );
 
                 TextOut.AddString( "command",   "load_resource"                   );
-                TextOut.AddString( "arguments", xfs( "%s.stringbin", StringName ) );
+                TextOut.AddString( "arguments", xfs( "%s.string", StringName ) );
                 TextOut.AddEndLine();
             }
         }
@@ -3831,13 +3828,13 @@ xbool world_editor::BuildDFSFile( const char* pExportName,
     LevelData.Insert( 0, (xstring)SlideShowScript );
 
     // Add the tweaks to the level data list.
-    LevelData.Append( (xstring)xfs( "%s\\Tweak_DamageTable.txt",     (const char*)ExportPath ) );
-    LevelData.Append( (xstring)xfs( "%s\\Tweak_MP_DamageTable.txt",  (const char*)ExportPath ) );
-    LevelData.Append( (xstring)xfs( "%s\\Tweak_ForceTable.txt",      (const char*)ExportPath ) );
-    LevelData.Append( (xstring)xfs( "%s\\Tweak_General.txt",         (const char*)ExportPath ) );
-    LevelData.Append( (xstring)xfs( "%s\\Tweak_MP_General.txt",      (const char*)ExportPath ) );
-    LevelData.Append( (xstring)xfs( "%s\\Tweak_HitTypeTable.txt",    (const char*)ExportPath ) );
-    LevelData.Append( (xstring)xfs( "%s\\Tweak_PainProfile.txt",     (const char*)ExportPath ) );        
+    LevelData.Append( (xstring)xfs( "%s\\Tweak_DamageTable.tweak",     (const char*)ExportPath ) );
+    LevelData.Append( (xstring)xfs( "%s\\Tweak_MP_DamageTable.tweak",  (const char*)ExportPath ) );
+    LevelData.Append( (xstring)xfs( "%s\\Tweak_ForceTable.tweak",      (const char*)ExportPath ) );
+    LevelData.Append( (xstring)xfs( "%s\\Tweak_General.tweak",         (const char*)ExportPath ) );
+    LevelData.Append( (xstring)xfs( "%s\\Tweak_MP_General.tweak",      (const char*)ExportPath ) );
+    LevelData.Append( (xstring)xfs( "%s\\Tweak_HitTypeTable.tweak",    (const char*)ExportPath ) );
+    LevelData.Append( (xstring)xfs( "%s\\Tweak_PainProfile.tweak",     (const char*)ExportPath ) );
     
     //========================================================
     // Write the data out!
@@ -3851,7 +3848,7 @@ xbool world_editor::BuildDFSFile( const char* pExportName,
         DumpListToFile( VoiceFilename,        GlobalVoicePackages   );
         DumpListToFile( AmbientFilename,      GlobalAmbientPackages );
         DumpListToFile( HotFilename,          GlobalHotPackages     );
-        DumpListToFile( StringFilename,       GlobalStringbins      );
+        DumpListToFile( StringFilename,       GlobalStrings         );
         DumpListToFile( CommonDataListing,    CommonData            );
 
         // Now build the dfs files.
@@ -8962,7 +8959,10 @@ xbool world_editor::SelectObject( guid ObjectGuid, xbool bClearSelectionList, xb
 
 void world_editor::RenderObjects( xbool bDoPortalWalk, const view& PortalView, u8 StartZone )
 {
-    g_ObjMgr.Render( bDoPortalWalk, PortalView, StartZone );
+    zone_mgr::tracker ViewZones;
+    g_ZoneMgr.RebaseZoneTracking( ViewZones, PortalView.GetPosition(),
+                                StartZone, 0 );
+    g_ObjMgr.Render( bDoPortalWalk, PortalView, ViewZones );
 #if defined(dstewart)
     g_ZoneMgr.Render();
 #endif

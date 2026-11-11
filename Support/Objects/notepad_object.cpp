@@ -16,7 +16,8 @@
 #include "Entropy.hpp"
 #include "Parsing/TextIn.hpp"
 #include "Render/Editor/EditorIcons.hpp"
-#include "Font/font.hpp"
+#include "UI/ui_font.hpp"
+#include "ResourceMgr/ResourceMgr.hpp"
 #include "UI/ui_renderer.hpp"
 
 #ifdef X_EDITOR
@@ -183,6 +184,12 @@ void notepad_object::OnRender ( void )
     // We should render it !!!
     //
 
+    ui_font Font;
+    if( !Font.Load( NULL, "config.font", "small" ) )
+    {
+        return;
+    }
+
     //
     // Build substrings
     //
@@ -207,8 +214,8 @@ void notepad_object::OnRender ( void )
                 {
                     ASSERT( nSubMsgs < 32 );
                     Msg[i] = 0;
-                    SubMsgW[nSubMsgs] = g_Font.TextWidth( xwstring(pSubMsg[nSubMsgs]) );
-                    SubMsgH[nSubMsgs] = g_Font.TextHeight( xwstring(pSubMsg[nSubMsgs]) );
+                    SubMsgW[nSubMsgs] = Font.TextWidth( xwstring(pSubMsg[nSubMsgs]) );
+                    SubMsgH[nSubMsgs] = Font.TextHeight( xwstring(pSubMsg[nSubMsgs]) );
                     nSubMsgs++;
                     pSubMsg[nSubMsgs] = Msg + i + 1;
                 }
@@ -217,8 +224,8 @@ void notepad_object::OnRender ( void )
         }
         if( (&Msg[i] - pSubMsg[nSubMsgs]) > 0 )
         {
-            SubMsgW[nSubMsgs] = g_Font.TextWidth( xwstring(pSubMsg[nSubMsgs]) );
-            SubMsgH[nSubMsgs] = g_Font.TextHeight( xwstring(pSubMsg[nSubMsgs]) );
+            SubMsgW[nSubMsgs] = Font.TextWidth( xwstring(pSubMsg[nSubMsgs]) );
+            SubMsgH[nSubMsgs] = Font.TextHeight( xwstring(pSubMsg[nSubMsgs]) );
             nSubMsgs++;
         }
     }
@@ -260,8 +267,8 @@ void notepad_object::OnRender ( void )
         Rect.b = 512;
         YOffset += SubMsgH[i];
 
-        g_Font.RenderText(  Rect,
-                            font::clip_l_justify | font::v_top,
+        Font.RenderText(  Rect,
+                            ui_font::clip_l_justify | ui_font::v_top,
                             m_crText,
                             xwstring(pSubMsg[i]));
     }

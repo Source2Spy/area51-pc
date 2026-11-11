@@ -25,7 +25,7 @@
 
 #include "AudioMgr/AudioMgr.hpp"
 #include "Debris/debris_mgr.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "Objects/ProjectileBullett.hpp"
 #include "TemplateMgr/TemplateMgr.hpp"
 #include "Objects/ProjectileAlienTurret.hpp"
@@ -3002,7 +3002,7 @@ void turret::OnEvent( const event& Event )
                                  
 */
             //add a muzzle light where the bullet was fired from (will fade out really quickly)
-            g_LightMgr.AddFadingLight( WeaponEvent.Pos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+            render::GetRenderPipeline().GetLightSystem().AddFadingLight( WeaponEvent.Pos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
         /*
             InitRot.Set(0,0,0);
             radian Temp = R_0;

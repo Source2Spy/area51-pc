@@ -8,11 +8,11 @@
 #include "Render/PrimitiveDebug.hpp"
 #include "GravChargeProjectile.hpp"
 #include "AudioMgr/AudioMgr.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "../Support/Tracers/TracerMgr.hpp"
 #include "Decals/DecalMgr.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "../Debris/debris_mgr.hpp"
 
 
@@ -67,6 +67,8 @@ const object_desc&  grav_charge_projectile::GetObjectType   ( void )
 
 grav_charge_projectile::grav_charge_projectile()
 {
+    m_FloorProperties.Init( 1.0f, 0.128f );
+
     m_AliveTime             = 0.0f;
     m_CollisionPoint        = vector3( 0.f , 0.f , 0.f );  
     m_NormalCollision       = vector3( 0.f , 0.f , 0.f );  
@@ -202,6 +204,9 @@ void grav_charge_projectile::SetStart( const vector3& Position,
 {
     net_proj::SetStart( Position, Orientation, Velocity, Zone1, Zone2, Gravity );
 
+    m_FloorProperties.Init( 1.0f, 0.128f, GetGuid() );
+    m_FloorProperties.ForceUpdate( Position );
+
     m_FlyVoiceID = g_AudioMgr.PlayVolumeClipped( "MSN_IdleSpecial_Loop", Position, Zone1, TRUE );
     if (m_FlyVoiceID != -1)
     {
@@ -226,7 +231,7 @@ bbox grav_charge_projectile::GetLocalBBox( void ) const
 
     if( pRigidGeom )
     {
-        return( pRigidGeom->m_collision.BBox );
+        return( pRigidGeom->m_Collision.BBox );
     }
     
     return( bbox( vector3( 10.0f, 10.0f, 10.0f),
@@ -256,6 +261,8 @@ void grav_charge_projectile::OnAdvanceSimulation( f32 DeltaTime )
         }
         return;
     }
+
+    m_FloorProperties.Update( GetPosition(), DeltaTime );
 
     // This is at the bottom because the projectile can be destroyed in the call
     net_proj::OnAdvanceSimulation( DeltaTime );
@@ -289,7 +296,7 @@ void grav_charge_projectile::OnExplode( void )
     net_proj::OnExplode();
 
     //add a light where the explosion occurred
-    g_LightMgr.AddFadingLight( GetPosition(), xcolor(55, 55, 135, 255), 300.0f, 1.0f, 1.8f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( GetPosition(), xcolor(55, 55, 135, 255), 300.0f, 1.0f, 1.8f );
 
     // Destroy the projectiles effect particles
     DestroyParticles();
@@ -383,13 +390,17 @@ void grav_charge_projectile::OnMove( const vector3& NewPosition )
 
 void grav_charge_projectile::OnRender( void )
 {
+    f32 WarpFade = GetExplosionFade();
+    if( ( WarpFade > 0.0f ) && render::GetActiveRenderScopeDesc().EnablePostProcessing )
+        render::AddScreenWarp( GetPosition(), 400.0f, 1.0f - 0.6f * WarpFade );
+
     rigid_geom* pRigidGeom = m_RigidInst.GetRigidGeom();
     
     if( pRigidGeom )
     {
         u32 Flags = (GetFlagBits() & object::FLAG_CHECK_PLANES) ? render::CLIPPED : 0;
         
-        m_RigidInst.Render( &GetL2W(), Flags );
+        m_RigidInst.Render( &GetL2W(), Flags, m_FloorProperties.GetColor() );
     }
     else
     {

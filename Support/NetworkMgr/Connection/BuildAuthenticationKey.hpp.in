@@ -1,0 +1,10 @@
+#ifndef BUILD_AUTHENTICATION_KEY_HPP
+#define BUILD_AUTHENTICATION_KEY_HPP
+
+#define A51_HAS_BUILD_KEY @A51_HAS_BUILD_KEY@
+
+#if A51_HAS_BUILD_KEY
+static const unsigned char s_BuildKey[32] = { @A51_BUILD_KEY_BYTES@ };
+#endif
+
+#endif

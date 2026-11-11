@@ -39,9 +39,11 @@ public:
     virtual void    Render              ( s32 ox=0, s32 oy=0 );
 
     void            UseSmallText        ( xbool UseSmall ) { m_UseSmallText = UseSmall; }
+    void            UseShadow           ( xbool UseShadow ) { m_UseShadow = UseShadow; }
 
 protected:
     xbool           m_UseSmallText;
+    xbool           m_UseShadow;
 };
 
 //==============================================================================

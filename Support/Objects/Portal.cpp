@@ -183,8 +183,8 @@ void zone_portal::OnEnumProp( prop_enum& List )
     List.PropEnumHeader  ( "Portal",           "Portal Properties", 0 );
     List.PropEnumInt     ( "Portal\\Zone1",    "Connection to 1st Zone", PROP_TYPE_DONT_SHOW );
     List.PropEnumInt     ( "Portal\\Zone2",    "Connection to 2nd Zone", PROP_TYPE_DONT_SHOW );
-    List.PropEnumExternal( "Portal\\1st Zone", "Zoning\0Zoning", "Which Zone to connect to...", PROP_TYPE_MUST_ENUM );
-    List.PropEnumExternal( "Portal\\2nd Zone", "Zoning\0Zoning", "Which Zone to connect to...", PROP_TYPE_MUST_ENUM );
+    List.PropEnumExternal( "Portal\\1st Zone", "Zoning\0Zoning\0", "Which Zone to connect to...", PROP_TYPE_MUST_ENUM );
+    List.PropEnumExternal( "Portal\\2nd Zone", "Zoning\0Zoning\0", "Which Zone to connect to...", PROP_TYPE_MUST_ENUM );
     List.PropEnumFloat   ( "Portal\\Width",    "Portal Width.", 0 );
     List.PropEnumFloat   ( "Portal\\Height",   "Portal Height.", 0 );
 }

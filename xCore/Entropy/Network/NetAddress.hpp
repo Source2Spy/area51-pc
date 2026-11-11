@@ -46,6 +46,7 @@ public:
         void            SetPortNumber       ( s32 Port );
         void            SetStrIP            ( const char* pIPStr   );
         void            SetStrAddress       ( const char* pAddrStr );
+        xbool           Parse               ( const char* pAddrStr, s32 DefaultPort );
 
         s32             GetIP               ( void ) const;
         s32             GetPort             ( void ) const;

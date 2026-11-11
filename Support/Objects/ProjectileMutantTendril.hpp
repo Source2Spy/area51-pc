@@ -64,6 +64,7 @@ virtual         void            OnAdvanceSimulation      ( f32 DeltaTime );
 virtual         void            OnImpact            ( collision_mgr::collision& Coll, object* pTarget );
 
 virtual         void            OnRender            ( void );
+                const matrix4*  GetSkinMatrices     ( void );
 virtual         void            OnMove              ( const vector3& NewPos );
 
 virtual         void            OnExplode           ( void );

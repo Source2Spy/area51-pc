@@ -59,6 +59,12 @@ s32 SPEmitterMemoryFn( const fx_element_def& ElementDef )
     Size = ALIGN_16( Size );
     Size += (EmitterDef.Flags & SPE_VELOCITY_ORIENTED) ? 0 : sizeof(vector2) * nParticles;
 
+    Size = ALIGN_16( Size );
+    Size += sizeof(s32) * nParticles;
+
+    Size = ALIGN_16( Size );
+    Size += sizeof(s32) * nParticles;
+
     // The extra 15 here is because the allocator on the PC is not 16 byte aligned but the preceeding
     // code assumes 16 byte alignment, the 15 gives room for any error.
     return ALIGN_16( Size + 15 );
@@ -118,6 +124,14 @@ void fx_spemitter::Initialize( const fx_element_def* pElementDef,
     m_pRotAndScales = (EmitterDef.Flags & SPE_VELOCITY_ORIENTED) ? (vector2*)0 : (vector2*)pData;
     pData += (EmitterDef.Flags & SPE_VELOCITY_ORIENTED) ? 0 : sizeof(vector2) * nParticles;
 
+    pData = Align16Ptr( pData );
+    m_pActiveIndices = (s32*)pData;
+    pData += sizeof(s32) * nParticles;
+
+    pData = Align16Ptr( pData );
+    m_pActivePositions = (s32*)pData;
+    pData += sizeof(s32) * nParticles;
+
     vector4     InactivePos( 0.0f, 0.0f, 0.0f, 0.0f );
     InactivePos.GetIW() = 0x8000;
 
@@ -125,6 +139,7 @@ void fx_spemitter::Initialize( const fx_element_def* pElementDef,
     {
         fx_sparticle& P = m_pParticles[i];
         m_pPositions[i] = InactivePos;
+        m_pActivePositions[i] = -1;
         P.EmitTime      = i * m_EmitGap;
 //      P.AgeRate       = 1.0f / EmitterDef.LifeSpan;
         P.StartSpin     = (EmitterDef.MinSpinRate == EmitterDef.MaxSpinRate) 
@@ -192,8 +207,15 @@ void fx_spemitter::EmissionLogic( const fx_effect_base* pEffect, f32 DeltaTime )
             // Due to floating point error, the particles will sometimes have
             // a sliver of life left in them and thus still active.  Time for
             // an early retirement!
-            if( m_pPositions[iCursor].GetIW() != 0x8000 )
+            xbool const bWasActive = ( m_pPositions[iCursor].GetIW() != 0x8000 );
+            if( bWasActive )
             {
+                s32 const activePosition = m_pActivePositions[iCursor];
+                ASSERT( ( activePosition >= 0 ) && ( activePosition < nActive ) );
+                s32 const replacementIndex = m_pActiveIndices[nActive - 1];
+                m_pActiveIndices[activePosition] = replacementIndex;
+                m_pActivePositions[replacementIndex] = activePosition;
+                m_pActivePositions[iCursor] = -1;
                 nActive -= 1;
             }
 
@@ -251,6 +273,9 @@ void fx_spemitter::EmissionLogic( const fx_effect_base* pEffect, f32 DeltaTime )
             m_pPositions [iCursor] = p;
             m_pVelocities[iCursor] = v;
 
+            ASSERT( nActive < EmitterDef.NParticles );
+            m_pActiveIndices[nActive] = iCursor;
+            m_pActivePositions[iCursor] = nActive;
             nActive += 1;
             iCursor += 1;
 
@@ -315,36 +340,29 @@ void fx_spemitter::ParticleLogic( const fx_effect_base* pEffect, f32 DeltaTime )
     if( Max < 0.0f )
         Max = 0.0f;
 
-    // Get render buffer pointers
-    vector4*    pPosition       = m_pPositions;
-    u32*        pColor          = m_pColors;
-    vector4*    pVelocity       = m_pVelocities;
-    vector2*    pRotAndScale    = m_pRotAndScales;
-
 //    vector4     Gravity4( 0.0f, EmitterDef.Gravity, 0.0f, 0.0f );
     vector4     InactivePos( 0.0f, 0.0f, 0.0f, 0.0f );
     InactivePos.GetIW() = 0x8000;
 
-    // Advance the logic on all of the particles.
-    for( i = 0; i < EmitterDef.NParticles; i++ )
+    // Update only active particles.
+    for( i = 0; i < m_NActive; )
     {
-        fx_sparticle& P = m_pParticles[i];
+        s32 const particleIndex = m_pActiveIndices[i];
+        fx_sparticle& P = m_pParticles[particleIndex];
         P.Age += DeltaTime;     // P.Age += P.AgeRate * DeltaTime;
 
-        if( m_pPositions[i].GetIW() != 0x8000 )
+        if( P.Age >= EmitterDef.LifeSpan )
         {
-            if( P.Age >= EmitterDef.LifeSpan )
-            {
-                m_NActive -= 1;
-
-                *pPosition++ = InactivePos;
-                pColor++;
-                pVelocity++;
-                if( pRotAndScale )
-                    pRotAndScale++;
-            }
-            else
-            {
+            m_pPositions[particleIndex] = InactivePos;
+            s32 const replacementIndex = m_pActiveIndices[m_NActive - 1];
+            m_pActiveIndices[i] = replacementIndex;
+            m_pActivePositions[replacementIndex] = i;
+            m_pActivePositions[particleIndex] = -1;
+            --m_NActive;
+            continue;
+        }
+        else
+        {
 //                f32 Age       = (EmitterDef.Flags & SPE_REVERSE_MODE) ? 
 //                                (EmitterDef.LifeSpan - P.Age) :
 //                                (P.Age);
@@ -383,7 +401,7 @@ void fx_spemitter::ParticleLogic( const fx_effect_base* pEffect, f32 DeltaTime )
                                 (EmitterDef.Key[Hi].Color.A * HiMix)) *
                                 (ElementColor.GetW()));
 
-                *pColor++ = (Color.A << 24) | (Color.B << 16) | (Color.G << 8) | Color.R;
+                m_pColors[particleIndex] = (Color.A << 24) | (Color.B << 16) | (Color.G << 8) | Color.R;
 
                 // Calculate Scale
                 f32 Scale = ((EmitterDef.Key[Lo].Scale * LoMix) + (EmitterDef.Key[Hi].Scale * HiMix));
@@ -397,8 +415,8 @@ void fx_spemitter::ParticleLogic( const fx_effect_base* pEffect, f32 DeltaTime )
                     f32 Age    = (EmitterDef.LifeSpan - P.Age);
                     f32 Factor = Age * Age * 0.5f;
 
-                    vector3 sp = m_pStartPos[i];
-                    vector3 sv = m_pStartVel[i];
+                    vector3 sp = m_pStartPos[particleIndex];
+                    vector3 sv = m_pStartVel[particleIndex];
 
                     // Calc position
                     p = sp + sv * ((EmitterDef.Acceleration * Factor) + Age) - Gravity3 * Factor;
@@ -407,35 +425,33 @@ void fx_spemitter::ParticleLogic( const fx_effect_base* pEffect, f32 DeltaTime )
                     v = sv + sv * (EmitterDef.Acceleration * P.Age) - Gravity3 * P.Age;
                     v.GetW() = Scale;
 
-                    *pPosition = p;
-                    *pVelocity = v;
+                    m_pPositions[particleIndex] = p;
+                    m_pVelocities[particleIndex] = v;
                 }
                 else
                 {
                     // Update position
-                    p = *(vector3*)pPosition;
-                    p += *(vector3*)pVelocity * DeltaTime;
-                    *(vector3*)pPosition = p;
-                    ((s32*)pPosition)[3] = 0x0000;
+                    vector4& Position = m_pPositions[particleIndex];
+                    vector4& Velocity = m_pVelocities[particleIndex];
+                    p = *(vector3*)&Position;
+                    p += *(vector3*)&Velocity * DeltaTime;
+                    *(vector3*)&Position = p;
+                    Position.GetIW() = 0x0000;
 
                     // Update velocity
-                    v = *pVelocity;
-                    v += m_pStartVel[i] * (EmitterDef.Acceleration * DeltaTime);
+                    v = Velocity;
+                    v += m_pStartVel[particleIndex] * (EmitterDef.Acceleration * DeltaTime);
                     v.GetY() -= EmitterDef.Gravity * DeltaTime;
                     v.GetW() = Scale;
-                    *pVelocity = v;
+                    Velocity = v;
                 }
-
-                pPosition++;
-                pVelocity++;
 
                 // Velocity & Scale or Rotation & Scale
                 if( !(EmitterDef.Flags & SPE_VELOCITY_ORIENTED) )
                 {
                     radian Rotation = P.StartSpin + P.SpinRate * P.Age;
                     Rotation = x_ModAngle2( Rotation ); // TODO: Optimize this?
-                    pRotAndScale->Set( Rotation, Scale );
-                    pRotAndScale++;
+                    m_pRotAndScales[particleIndex].Set( Rotation, Scale );
                 }
 
                 if( BoxSkip-- <= 0 )
@@ -445,15 +461,7 @@ void fx_spemitter::ParticleLogic( const fx_effect_base* pEffect, f32 DeltaTime )
                     BoxSkip    = m_NActive >> 2;
                 }
             }
-        }
-        else
-        {
-            pPosition++;
-            pColor++;
-            pVelocity++;
-            if( pRotAndScale )
-                pRotAndScale++;
-        }
+        ++i;
     }
 
     if( m_NActive == 0 )
@@ -519,13 +527,14 @@ void fx_spemitter::SubmitRender( const fx_effect_base* pEffect ) const
         }
 
         VERIFY( render::SubmitPrimitiveVelocityBillboards( Material,
-                                                           EmitterDef.NParticles,
+                                                           m_NActive,
                                                            UniScale * 0.5f,
                                                            pLocalToWorld,
                                                            &VelocityMatrix,
                                                            m_pPositions,
                                                            m_pVelocities,
-                                                           m_pColors ) );
+                                                           m_pColors,
+                                                           m_pActiveIndices ) );
     }
     else
     {
@@ -538,12 +547,13 @@ void fx_spemitter::SubmitRender( const fx_effect_base* pEffect ) const
         }
 
         VERIFY( render::SubmitPrimitiveBillboards( Material,
-                                                   EmitterDef.NParticles,
+                                                   m_NActive,
                                                    UniScale * 0.5f,
                                                    pLocalToWorld,
                                                    m_pPositions,
                                                    m_pRotAndScales,
-                                                   m_pColors ) );
+                                                   m_pColors,
+                                                   m_pActiveIndices ) );
     }
 
     // *************** //
@@ -599,8 +609,7 @@ void fx_spemitter::SubmitRender( const fx_effect_base* pEffect ) const
                                                             render::PRIMITIVE_BLEND_OPAQUE,
                                                             render::PRIMITIVE_DEPTH_READ_ONLY,
                                                             render::PRIMITIVE_RASTER_WIREFRAME_NO_CULL,
-                                                            render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                            render::PRIMITIVE_LAYER_SURFACE );
+                                                            render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
             render::PrimitiveBatch wireBatch( wireMaterial );
 
             vector3 LineOfSight = eng_GetView()->GetViewZ();
@@ -670,8 +679,7 @@ void fx_spemitter::SubmitRender( const fx_effect_base* pEffect ) const
                                                             render::PRIMITIVE_BLEND_OPAQUE,
                                                             render::PRIMITIVE_DEPTH_READ_WRITE,
                                                             render::PRIMITIVE_RASTER_WIREFRAME_NO_CULL,
-                                                            render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                            render::PRIMITIVE_LAYER_SURFACE );
+                                                            render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
 
             if( EmitterDef.Flags & SPE_WORLD_SPACE )
             {
@@ -753,6 +761,7 @@ void fx_spemitter::Reset( void )
     {
 //        fx_sparticle& P = pParticle[i];
         m_pPositions[i].GetIW() = 0x8000;
+        m_pActivePositions[i] = -1;
     }
 }
 

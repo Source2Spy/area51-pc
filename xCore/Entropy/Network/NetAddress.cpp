@@ -56,9 +56,18 @@ xbool net_address::IsEmpty( void ) const
 
 xbool net_address::IsValid( void ) const
 {
-    if( m_IP ==      0x00000000 )    return( FALSE );
-    if( m_IP ==      0x7F000001 )    return( FALSE );
-    if( m_IP == (s32)0xFFFFFFFF )    return( FALSE );
+    if( m_IP ==      0x00000000 )
+    {
+        return( FALSE );
+    }
+    if( m_IP ==      0x7F000001 )
+    {
+        return( FALSE );
+    }
+    if( m_IP == (s32)0xFFFFFFFF )
+    {
+        return( FALSE );
+    }
 
     return( TRUE );
 }
@@ -115,6 +124,73 @@ void net_address::SetStrIP( const char* pIPStr )
     }
 
     UpdateStrings();
+}
+
+//=============================================================================
+
+xbool net_address::Parse( const char* pAddrStr, s32 DefaultPort )
+{
+    if( !pAddrStr || (DefaultPort < 1) || (DefaultPort > 65535) )
+    {
+        return FALSE;
+    }
+
+    u32 Address = 0;
+    for( s32 i = 0; i < 4; i++ )
+    {
+        if( (*pAddrStr < '0') || (*pAddrStr > '9') )
+        {
+            return FALSE;
+        }
+
+        u32 Octet = 0;
+        s32 Digits = 0;
+        while( (*pAddrStr >= '0') && (*pAddrStr <= '9') )
+        {
+            Octet = Octet * 10 + (*pAddrStr++ - '0');
+            if( (++Digits > 3) || (Octet > 255) )
+            {
+                return FALSE;
+            }
+        }
+        Address = (Address << 8) | Octet;
+        if( i < 3 )
+        {
+            if( *pAddrStr != '.' )
+            {
+                return FALSE;
+            }
+            pAddrStr++;
+        }
+    }
+
+    s32 Port = DefaultPort;
+    if( *pAddrStr == ':' )
+    {
+        pAddrStr++;
+        Port = 0;
+        if( (*pAddrStr < '0') || (*pAddrStr > '9') )
+        {
+            return FALSE;
+        }
+        s32 Digits = 0;
+        while( (*pAddrStr >= '0') && (*pAddrStr <= '9') )
+        {
+            Port = Port * 10 + (*pAddrStr++ - '0');
+            if( (++Digits > 5) || (Port > 65535) )
+            {
+                return FALSE;
+            }
+        }
+    }
+
+    if( *pAddrStr || !Port || !Address || ((Address >> 24) >= 224) )
+    {
+        return FALSE;
+    }
+
+    Setup( (s32)Address, Port );
+    return TRUE;
 }
 
 //=============================================================================

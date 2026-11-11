@@ -19,18 +19,18 @@
 #include "Objects/WeaponSniper.hpp"
 #include "Objects/WeaponSMP.hpp"
 #include "Objects/Corpse.hpp"
-#include "NetworkMgr/NetObjMgr.hpp"
+#include "NetworkMgr/Replication/NetObjMgr.hpp"
 #include "NetworkMgr/Voice/VoiceMgr.hpp"
 #include "Objects/Ladders/Ladder_Field.hpp"
 #include "Objects/GrenadeProjectile.hpp"
 #include "Objects/GravChargeProjectile.hpp"
 #include "Objects/JumpingBeanProjectile.hpp"
-#include "Render/LightMgr.hpp"
+#include "Render/Pipeline/RenderPipeline.hpp"
 #include "Objects/Door.hpp"
 #include "Objects/Projector.hpp"
 #include "Objects/WeaponMutation.hpp"
 #include "StateMgr/StateMgr.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 #include "Objects/HudObject.hpp"
 #include "Characters/ActorEffects.hpp"
 #include "Configuration/GameConfig.hpp"
@@ -45,7 +45,7 @@
 #ifdef X_EDITOR
 #include "../../../Apps/Editor/Project.hpp"
 #else
-#include "NetworkMgr/MsgMgr.hpp"
+#include "NetworkMgr/Messages/MsgMgr.hpp"
 #include "Menu/DebugMenu2.hpp"
 #endif
 

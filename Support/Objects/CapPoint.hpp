@@ -12,7 +12,7 @@
 //==============================================================================
 
 #include "Obj_mgr/obj_mgr.hpp"
-#include "NetworkMgr/NetObj.hpp"
+#include "NetworkMgr/Replication/NetObj.hpp"
 #include "Objects/Circuit.hpp"
 #include "Objects/TeamProp.hpp"
 #include "Objects/AnimSurface.hpp"
@@ -21,6 +21,8 @@
 //==============================================================================
 //  TYPES
 //==============================================================================
+
+struct net_cap_point_update;
 
 class cap_point : public netobj
 {
@@ -62,7 +64,7 @@ virtual         void            OnAdvanceSimulation      ( f32 DeltaTime );
 //rtual         void            net_Activate        ( void );
 //rtual         void            net_Deactivate      ( void );
                 
-virtual         void            net_AcceptUpdate    ( const bitstream& BitStream );
+virtual         void            net_AcceptUpdate    ( const net_cap_point_update& Update );
 virtual         void            net_ProvideUpdate   (       bitstream& BitStream, 
                                                             u32&       DirtyBits );
 

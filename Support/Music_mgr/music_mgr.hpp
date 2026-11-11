@@ -1,10 +1,24 @@
+//==============================================================================
+//
+//  music_mgr.hpp
+//
+//==============================================================================
+
 #ifndef MUSIC_MGR_HPP
 #define MUSIC_MGR_HPP
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "e_Audio.hpp"
 #include "Parsing/TextIn.hpp"
 
-class music_mgr 
+//==============================================================================
+//  CLASSES
+//==============================================================================
+
+class music_mgr
 {
 public:
 
@@ -37,7 +51,7 @@ public:
     void        Update          ( f32   DeltaTime );
     void        StartTransition ( void );
     void        UpdateTransition( f32   DeltaTime );
-    void        UpdateNormal    ( void );
+    void        UpdateNormal    ( const audio_voice_state& CurrentState );
     void        UpdateVolume    ( f32   DeltaTime );
     xbool       CanTransition   ( s32   TransitionMode,
                                   f32&  FadeOutTime );
@@ -48,30 +62,48 @@ public:
                                   f32   FadeInTime,
                                   xbool bLoop );
 
-    xbool       m_bIsWarming;
-    xbool       m_bIsSilent;
-    xbool       m_bInTransition;
-    xbool       m_bIsLooping;
-    xbool       m_bWarmFadeIn;
-    xbool       m_bStartFadeIn;
-    xbool       m_bImmediateSwitch;
-    char        m_CurrentTrack[64];
-    s32         m_CurrentTransition;
-    voice_id    m_CurrentVoiceID;
-    char        m_TransTrack[64];
-    xbool       m_bStartTransition;
-    s32         m_TransMode;
-    f32         m_TransFadeOutTime;
-    f32         m_TransDelayTime;
-    f32         m_TransFadeInTime;
-    f32         m_TransBreakPoint;
-    xbool       m_TransIsLooped;
-    voice_id    m_TransVoiceID;
-    s32         m_EnvelopeState;
-    f32         m_Volume;
-    f32         m_EnvelopeTime;
+    //-------------------------------------------------------------------------
+    //  BREAKPOINT REQUEST
+    //-------------------------------------------------------------------------
+
+    audio_request* m_pBreakPointRequest = NULL;
+    voice_id       m_BreakPointVoiceID  = 0;
+    xarray<f32>    m_BreakPoints;
+    xbool          m_BreakPointsReady   = FALSE;
+
+    //-------------------------------------------------------------------------
+    //  PLAYBACK AND TRANSITION STATE
+    //-------------------------------------------------------------------------
+
+    xbool          m_bIsWarming;
+    xbool          m_bIsSilent;
+    xbool          m_bInTransition;
+    xbool          m_bIsLooping;
+    xbool          m_bWarmFadeIn;
+    xbool          m_bStartFadeIn;
+    xbool          m_bImmediateSwitch;
+    char           m_CurrentTrack[64];
+    s32            m_CurrentTransition;
+    voice_id       m_CurrentVoiceID;
+    char           m_TransTrack[64];
+    xbool          m_bStartTransition;
+    s32            m_TransMode;
+    f32            m_TransFadeOutTime;
+    f32            m_TransDelayTime;
+    f32            m_TransFadeInTime;
+    f32            m_TransBreakPoint;
+    xbool          m_TransIsLooped;
+    voice_id       m_TransVoiceID;
+    s32            m_EnvelopeState;
+    f32            m_Volume;
+    f32            m_EnvelopeTime;
 };
+
+//==============================================================================
+//  STORAGE
+//==============================================================================
 
 extern music_mgr g_MusicMgr;
 
 #endif // MUSIC_MGR_HPP
+//==============================================================================

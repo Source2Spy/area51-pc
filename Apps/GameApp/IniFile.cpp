@@ -10,6 +10,7 @@
 
 #include "IniFile.hpp"
 #include "x_plus.hpp"
+#include <cstdio>
 
 #ifndef CONFIG_RETAIL
 
@@ -39,10 +40,39 @@ ini_file::~ini_file( void )
 xbool ini_file::Load( const char* pFileName )
 {    
     m_Data.Clear();
+#if defined( TARGET_DESKTOP ) || defined( TARGET_MOBILE )
+    FILE* pFile = std::fopen( pFileName, "rb" );
+    if( !pFile )
+        return FALSE;
+
+    if( std::fseek( pFile, 0, SEEK_END ) != 0 )
+    {
+        std::fclose( pFile );
+        return FALSE;
+    }
+
+    long Length = std::ftell( pFile );
+    if( (Length < 0) || (Length >= S32_MAX) ||
+        (std::fseek( pFile, 0, SEEK_SET ) != 0) )
+    {
+        std::fclose( pFile );
+        return FALSE;
+    }
+
+    m_Data.SetLength( (s32)Length );
+    xbool Read = !Length || (std::fread( &m_Data[0], 1, Length, pFile ) == (size_t)Length);
+    std::fclose( pFile );
+    if( !Read )
+    {
+        m_Data.Clear();
+        return FALSE;
+    }
+#else
     if( !m_Data.LoadFile( pFileName ) )
     {
         return( FALSE );
     }
+#endif
 
     //
     // Clobber all comments.

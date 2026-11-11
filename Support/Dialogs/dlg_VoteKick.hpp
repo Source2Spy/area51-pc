@@ -18,7 +18,7 @@
 #include "UI/ui_playerlist.hpp"
 
 #include "dlg_PopUp.hpp"
-#include "NetworkMgr/GameMgr.hpp"
+#include "NetworkMgr/Game/GameMgr.hpp"
 
 //==============================================================================
 //  dlg_vote_kick

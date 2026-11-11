@@ -61,7 +61,10 @@ class  render_inst;
 class  pain;
 struct event;
 class  object;
-class  ShadowMapMgr;
+namespace render
+{
+class ShadowMapAtlas;
+}
 class object_affecter;
 class simple_anim_player;
 
@@ -464,11 +467,6 @@ public:
 //
 // GetVelocity     - Gets the movement velocity of the object
 //
-// ScaleVelocity   - Scales velocity along a plane
-//                         PlaneNormal = Collision plane
-//                         PerpScale   = Scales velocity along plane normal
-//                         ParaScale   = Scales velocity parallel to plane
-//
 // GetLookAtExtent - Gets the fraction of the height where the object should be looked at
 //
 // GetL2W          - Get the Local to World Matrix   
@@ -513,7 +511,6 @@ public:
     virtual       bbox          GetScreenBBox   ( const view& rView );
                   vector3       GetPosition     ( void ) const;          
     virtual       vector3       GetVelocity     ( void ) const;          
-    virtual       void          ScaleVelocity   ( const vector3& PlaneNormal, f32 PerpScale, f32 ParaScale );
     
             const matrix4&      GetL2W          ( void ) const;          
             u32                 GetRenderMode   ( void ) const;
@@ -633,8 +630,6 @@ protected:
 //
 // OnRender             - Official function to render the object in the game.
 //
-// OnRenderCloth        - Special function for rendering cloth on the xbox
-//
 // OnColRender          - Render the collision structure that this object uses to collide with.
 //
 // OnRenderTransparent  - Get called after all normal objects are done rendering, requires ATTR_TRANSPARENT
@@ -649,9 +644,6 @@ protected:
     virtual void                OnColCheck          ( void );    
 
     virtual void                OnRender                ( void );
-#ifdef TARGET_XBOX
-    virtual void                OnRenderCloth           ( void );
-#endif    
     virtual void                OnCollectLight          ( void );
     virtual void                OnRenderShadowCast      ( u64 ProjMask );
 #ifndef X_RETAIL
@@ -747,7 +739,7 @@ public:
 //------------------------------------------------------------------------------
 
     friend class obj_mgr;
-    friend class ShadowMapMgr;
+    friend class render::ShadowMapAtlas;
     friend class collision_mgr;
 };
 
@@ -806,16 +798,6 @@ vector3 object::GetVelocity( void ) const
 //==============================================================================
 
 inline
-void object::ScaleVelocity( const vector3& PlaneNormal, f32 PerpScale, f32 ParaScale )
-{
-    (void)PlaneNormal;
-    (void)PerpScale;
-    (void)ParaScale;
-}
-
-//==============================================================================
-
-inline
 vector3 object::GetSubPosition( s32 ID )
 {
     (void)ID;
@@ -849,12 +831,12 @@ u32 object::GetRenderMode( void ) const
 #ifdef X_EDITOR
     if( GetAttrBits() & ATTR_EDITOR_PLACEMENT_OBJECT )
     {
-        return render::PULSED;
+        return render::DEBUG_RENDER_PULSED;
     }
     else if( GetAttrBits() & ATTR_EDITOR_SELECTED )
     {
         if( GetAttrBits() & ATTR_EDITOR_BLUE_PRINT )
-            return render::WIREFRAME2;
+            return render::WIREFRAME_NO_CULL;
         else
             return render::WIREFRAME;
     }
@@ -963,17 +945,6 @@ void object::OnCollectLight( void )
 
 //==============================================================================
 
-#ifdef TARGET_XBOX
-
-inline
-void object::OnRenderCloth( void )
-{
-    X_PROFILE_SCOPE_CATEGORY( "Context", "object::OnRenderCloth" );
-
-    ASSERT( 0 );
-}
-
-#endif
 
 //==============================================================================
 

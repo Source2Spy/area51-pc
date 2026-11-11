@@ -24,11 +24,7 @@
 //=========================================================================
 enum popup_controls
 {
-    IDC_QUICK_MATCH_NAV_TEXT,
-    IDC_NAV_TEXT_BUTTON_0,
-    IDC_NAV_TEXT_BUTTON_1,
-    IDC_NAV_TEXT_BUTTON_2,
-    IDC_NAV_TEXT_BUTTON_3,
+    IDC_POPUP_NAV_TEXT,
     IDC_POPUP_ACTION_0,
     IDC_POPUP_ACTION_1,
     IDC_POPUP_ACTION_2,
@@ -38,11 +34,7 @@ enum popup_controls
 
 ui_manager::control_tem PopUpControls[] = 
 {
-    { IDC_NAV_TEXT_BUTTON_0,     "IDS_NULL", "text", -28, 175, 240, 25, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_STATIC },
-    { IDC_NAV_TEXT_BUTTON_1,     "IDS_NULL", "text",  46, 175, 240, 25, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_STATIC },
-    { IDC_NAV_TEXT_BUTTON_2,     "IDS_NULL", "text",   0, 175, 240, 25, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_STATIC },
-    { IDC_NAV_TEXT_BUTTON_3,     "IDS_NULL", "text",   0, 175, 240, 25, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_STATIC },
-    { IDC_QUICK_MATCH_NAV_TEXT,  "IDS_NULL", "text",   0, 175, 240, 25, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_STATIC },
+    { IDC_POPUP_NAV_TEXT,  "IDS_NULL", "text",   0, 175, 240, 25, 0, 0, 0, 0, ui_win::WF_VISIBLE | ui_win::WF_STATIC },
     { IDC_POPUP_ACTION_0,        "IDS_NULL", "button", 0,   0,  80, 24, 0, 0, 1, 1, ui_win::WF_BORDER },
     { IDC_POPUP_ACTION_1,        "IDS_NULL", "button", 0,   0,  80, 24, 1, 0, 1, 1, ui_win::WF_BORDER },
     { IDC_POPUP_ACTION_2,        "IDS_NULL", "button", 0,   0,  80, 24, 2, 0, 1, 1, ui_win::WF_BORDER },
@@ -50,19 +42,6 @@ ui_manager::control_tem PopUpControls[] =
     { IDC_POPUP_ACTION_4,        "IDS_NULL", "button", 0,   0,  80, 24, 4, 0, 1, 1, ui_win::WF_BORDER },
 };
 
-static char* s_pRecordButtonText[4] =
-{
-    "IDS_NAV_RECORD",
-    "IDS_NAV_PLAY",
-    "IDS_NAV_BACK",
-    "IDS_NAV_SEND",
-};
-
-static char* s_pPlayButtonText[2] =
-{
-    "IDS_NAV_PLAY_PLAY",
-    "IDS_NAV_BACK",
-};
 
 ui_manager::dialog_tem PopUpDialog =
 {
@@ -118,7 +97,7 @@ static xwstring GetPromptLabel( const xwchar* pPrompt )
         Label = pPrompt;
     }
 
-    const s32 GlyphEnd = Label.Find( (xwchar)0x00BB );
+    const s32 GlyphEnd = Label.Find( (xwchar)'}' );
 
     if( GlyphEnd != -1 )
     {
@@ -140,7 +119,7 @@ static s32 SplitActionPrompts( const xwchar* pNavText, xwstring* pPrompts, s32 M
 
     xwstring Text( pNavText );
     s32      Count = 0;
-    s32      Start = Text.Find( (xwchar)0x00AB );
+    s32      Start = Text.Find( xwstring( "{Input:" ) );
 
     if( Start == -1 )
     {
@@ -154,7 +133,7 @@ static s32 SplitActionPrompts( const xwchar* pNavText, xwstring* pPrompts, s32 M
 
     while( (Start != -1) && (Count < MaxPrompts) )
     {
-        const s32 Next = Text.Find( (xwchar)0x00AB, Start + 1 );
+        const s32 Next = Text.Find( xwstring( "{Input:" ), Start + 1 );
         const s32 End  = (Next == -1) ? Text.GetLength() : Next;
 
         pPrompts[Count] = Text.Mid( Start, End - Start );
@@ -169,11 +148,7 @@ static s32 SplitActionPrompts( const xwchar* pNavText, xwstring* pPrompts, s32 M
 //=========================================================================
 //  Structs
 //=========================================================================
-
-//=========================================================================
 //  Data
-//=========================================================================
-
 //=========================================================================
 //  Registration function
 //=========================================================================
@@ -201,50 +176,18 @@ ui_win* dlg_popup_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_
 
 dlg_popup::dlg_popup( void )
 {
-    m_AskMode = BUDDY_MODE_ADD;
-    m_PlayDialogState = PLAY_STATE_NONE;
-    m_RecordDialogState = RECORD_STATE_NONE;
-    m_PasswordDialogActive = FALSE;
-    m_PasswordIndex = 0;
-    m_IsVoiceMailPopUp = FALSE;
     m_ActionCount = 0;
     m_ActionRowCount = 0;
     m_LastInputDevice = ui_input_device::None;
     m_HasNavText = FALSE;
     m_NavTextIsActionPrompt = FALSE;
     x_memset( m_pActionButtons, 0, sizeof( m_pActionButtons ) );
-    x_memset( m_pButtonText, 0, sizeof( m_pButtonText ) );
-#ifdef TARGET_XBOX
-    m_bIsPopup = 1;
-    m_XBOXNotificationOffsetX = 0;
-#endif // TARGET_XBOX
 }
 
 //=========================================================================
 
 dlg_popup::~dlg_popup( void )
 {
-    #ifdef TARGET_XBOX
-    if( m_IsVoiceMailPopUp == TRUE )
-    {
-        // Kill Voice Buffer Recording.
-        headset& Headset = g_VoiceMgr.GetHeadset();
-
-        // We MUST forcefully stop any recording!
-        if( Headset.GetVoiceIsRecording() == TRUE )
-            Headset.StopVoiceRecording( TRUE );
-
-        // We MUST forcefully stop any playing!
-        if( Headset.GetVoiceIsPlaying() == TRUE )
-            Headset.StopVoicePlaying( TRUE );
-
-        if( Headset.GetVoiceMessageRec() != NULL )
-            Headset.KillVoiceRecording();
-
-        // Free internal memory used by the voice message
-        g_MatchMgr.FreeMessageDownload();
-    }
-    #endif
 }
 
 //=========================================================================
@@ -376,6 +319,7 @@ void dlg_popup::Configure( const xwchar* Title, const xbool Yes, const xbool No,
 
     m_pResult       = pResult;
     m_bDoTimeout    = FALSE;
+    m_DismissOnCancel = FALSE;
     m_bDoBlackout   = TRUE;
 
     // initialize result
@@ -406,6 +350,7 @@ void dlg_popup::Configure( irect& Position, const xwchar* Title, const xbool Yes
 
     m_pResult       = pResult;
     m_bDoTimeout    = FALSE;
+    m_DismissOnCancel = FALSE;
     m_bDoBlackout   = TRUE;
 
     // Set Size of window
@@ -455,6 +400,7 @@ void dlg_popup::ConfigureAutosaveDialog( irect& Position, const xwchar* Title, c
 
     m_pResult       = pResult;
     m_bDoTimeout    = FALSE;
+    m_DismissOnCancel = FALSE;
     m_bDoBlackout   = TRUE;
 
     // Set Size of window
@@ -490,182 +436,21 @@ void dlg_popup::ConfigureAutosaveDialog( irect& Position, const xwchar* Title, c
 
 //=========================================================================
 
-void dlg_popup::ConfigureRecordDialog( irect& Position, const xwchar* Title, const xwchar* Message, s32* pResult /* = NULL  */)
+void dlg_popup::ConfigureMessage( const xwchar* Title, const xwchar* Message, s32* pResult )
 {
-    SetLabel( Title );
-
-    m_IsVoiceMailPopUp = TRUE;
-
-    ClearActions();
-    m_RecordDialogState = RECORD_STATE_INIT;
-    m_AskMode = BUDDY_MODE_ADD;
-
-    m_ProgressValue = 0.0f;
-
-    m_Message       = Message;
-    m_Message2      = xwstring( "" );
-    m_Message3      = xwstring( "" );
-
-    m_pResult       = pResult;
-    m_bDoTimeout    = FALSE;
-    m_bDoBlackout   = TRUE;
-    m_EnableRecord  = FALSE;
-    m_EnablePlay    = FALSE;
-    m_EnableSend    = FALSE;
-    m_ShowStop      = FALSE;
-
-    AddAction( POPUP_ACTION_ACCEPT,    g_StringTableMgr( "ui", s_pRecordButtonText[0] ), NULL, FALSE );
-    AddAction( POPUP_ACTION_DELETE,    g_StringTableMgr( "ui", s_pRecordButtonText[1] ), NULL, FALSE );
-    AddAction( POPUP_ACTION_CANCEL,    g_StringTableMgr( "ui", s_pRecordButtonText[2] ), NULL, TRUE  );
-    AddAction( POPUP_ACTION_ALTERNATE, g_StringTableMgr( "ui", s_pRecordButtonText[3] ), NULL, FALSE );
-
-    irect Bounds = g_UiMgr->GetUserBounds( g_UiUserID );
-
-    // center in screen
-    Position.Translate( Bounds.l + (Bounds.GetWidth()-Position.GetWidth())/2 - Position.l,
-                        Bounds.t + (Bounds.GetHeight()-Position.GetHeight())/2 - Position.t );
-    SetPosition( Position );
-
-    s32 iFont            = g_UiMgr->FindFont( "small" );
-    s32 TotalStringWidth = 0;
-    s32 Widths [4];
-    s32 Offsets[4];
-
-    // English gets wider spacing between strings
-    s32 Spacing = (x_GetLocale() == XL_LANG_ENGLISH) ? 25 : 15;
-
-    // Determine the maximum number of pixels needed horizontally for the 4 strings
-    for( s32 j=0; j<4; j++ )
-    {
-        xwstring NavText( g_StringTableMgr( "ui", s_pRecordButtonText[j] ) );
-
-        s32 StringWidth = g_UiMgr->TextWidth( iFont, NavText );
-        Widths [j] = StringWidth;
-        Offsets[j] = TotalStringWidth;
-
-        StringWidth += Spacing;
-
-        TotalStringWidth += StringWidth;
-    }
-
-    s32 Left = -(TotalStringWidth / 2);
-
-    for( s32 i=0; i < 4; i++ )
-    {
-        xwstring NavText( g_StringTableMgr( "ui", s_pRecordButtonText[i] ) );
-
-        irect NavPos = m_pButtonText[i]->GetPosition();
-
-        NavPos.l = Left + Offsets[i] + (Widths[i] / 2);
-        NavPos.b = Position.b - Position.t;
-        NavPos.t = NavPos.b - 25;
-        NavPos.r = NavPos.l + (Position.r - Position.l);
-
-        m_pButtonText[i]->SetPosition( NavPos  );
-        m_pButtonText[i]->SetLabel   ( NavText );
-        m_pButtonText[i]->SetFlag    ( ui_win::WF_VISIBLE, TRUE );
-    }
-
-    ApplyInputLayout( m_pManager->GetInputDevice( m_UserID ) );
-
-    // initialize result
-    if( m_pResult )
-    {
-        *m_pResult = DLG_POPUP_IDLE;
-    }
+    Configure( Title, TRUE, FALSE, FALSE, Message,
+               g_StringTableMgr( "ui", "IDS_NAV_OK" ), pResult );
+    m_DismissOnCancel = TRUE;
 }
 
 //=========================================================================
 
-void dlg_popup::ConfigurePlayDialog( irect& Position, const xwchar* Title, const xwchar* Message, const xwchar* pNavText, s32* pResult /* = NULL  */)
+void dlg_popup::ConfigureMessage( irect& Position, const xwchar* Title,
+                                  const xwchar* Message, s32* pResult )
 {
-    SetLabel( Title );
-
-    m_IsVoiceMailPopUp = TRUE;
-
-    ClearActions();
-    m_PlayDialogState = PLAY_STATE_START_DOWNLOAD;
-
-    m_ProgressValue = 0.0f;
-
-    m_Message       = Message;
-    m_Message2      = xwstring( "" );
-    m_Message3      = xwstring( "" );
-
-    m_pResult       = pResult;
-    m_bDoTimeout    = FALSE;
-    m_bDoBlackout   = TRUE;
-    m_EnablePlay    = FALSE;
-    m_ShowStop      = FALSE;
-
-    AddAction( POPUP_ACTION_ACCEPT, g_StringTableMgr( "ui", s_pPlayButtonText[0] ), NULL, FALSE );
-    AddAction( POPUP_ACTION_CANCEL, g_StringTableMgr( "ui", s_pPlayButtonText[1] ), NULL, TRUE  );
-
-    irect Bounds = g_UiMgr->GetUserBounds( g_UiUserID );
-
-    // center in screen
-    Position.Translate( Bounds.l + (Bounds.GetWidth()-Position.GetWidth())/2 - Position.l,
-                        Bounds.t + (Bounds.GetHeight()-Position.GetHeight())/2 - Position.t );
-    SetPosition( Position );
-
-    if( pNavText )
-    {
-        m_HasNavText = pNavText[0] != 0;
-        m_NavTextIsActionPrompt = FALSE;
-        m_pNavText->SetLabelFlags( ui_font::h_center|ui_font::v_top );
-        m_pNavText->SetLabel( pNavText );
-        m_pNavText->SetFlag (ui_win::WF_VISIBLE, TRUE);
-    }
-
-    // reposition "From: Player" text
-    irect FromPos = m_pNavText->GetPosition();
-    FromPos.b = (Position.b - Position.t) / 2;
-    FromPos.t = FromPos.b - 25;
-    FromPos.r = (Position.r - Position.l);
-    m_pNavText->SetPosition( FromPos );
-
-    for( s32 i=0; i < 2; i++ )
-    {
-        xwstring NavText( g_StringTableMgr( "ui", s_pPlayButtonText[i] ) );
-
-        irect NavPos = m_pButtonText[i]->GetPosition();
-        NavPos.b = Position.b - Position.t;
-        NavPos.t = NavPos.b - 25;
-        NavPos.r = NavPos.l + (Position.r - Position.l);
-
-        m_pButtonText[i]->SetPosition( NavPos  );
-        m_pButtonText[i]->SetLabel   ( NavText );
-        m_pButtonText[i]->SetFlag    ( ui_win::WF_VISIBLE, TRUE );
-    }
-
-    ApplyInputLayout( m_pManager->GetInputDevice( m_UserID ) );
-
-    // initialize result
-    if( m_pResult )
-    {
-        *m_pResult = DLG_POPUP_IDLE;
-    }
-}
-
-//=========================================================================
-
-void dlg_popup::SetBuddy( const buddy_info& Buddy )
-{
-    m_Buddy = Buddy;
-}
-
-//=========================================================================
-
-buddy_info& dlg_popup::GetBuddy( void )
-{
-    return( m_Buddy );
-}
-
-//=========================================================================
-
-void dlg_popup::SetBuddyMode( s32 mode )
-{
-    m_AskMode = mode;
+    Configure( Position, Title, TRUE, FALSE, FALSE, Message,
+               g_StringTableMgr( "ui", "IDS_NAV_OK" ), pResult );
+    m_DismissOnCancel = TRUE;
 }
 
 //=========================================================================
@@ -712,20 +497,12 @@ xbool dlg_popup::Create( s32                        UserID,
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, r, pParent, Flags );
    
     // Initialize nav text
-    m_pNavText = (ui_text*)FindChildByID( IDC_QUICK_MATCH_NAV_TEXT );
+    m_pNavText = (ui_text*)FindChildByID( IDC_POPUP_NAV_TEXT );
     m_pNavText->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pNavText->SetLabelFlags( ui_font::h_center|ui_font::v_top|ui_font::input_glyphs );
     m_pNavText->UseSmallText(TRUE);
     m_pNavText->SetLabelColor( xcolor(255,252,204,255) );
 
-    for( s32 i=0; i < 4; i++ )
-    {
-        m_pButtonText[i] = (ui_text*)FindChildByID( IDC_NAV_TEXT_BUTTON_0 + i );
-
-        m_pButtonText[i]->SetFlag      ( ui_win::WF_VISIBLE, FALSE );
-        m_pButtonText[i]->SetLabelFlags( ui_font::h_center|ui_font::v_top|ui_font::input_glyphs );
-        m_pButtonText[i]->UseSmallText ( TRUE );
-    }
 
     for( s32 i=0; i<MAX_POPUP_ACTIONS; i++ )
     {
@@ -742,6 +519,7 @@ xbool dlg_popup::Create( s32                        UserID,
     m_BackgroundColor   = xcolor (19,59,14,255); 
     m_Timeout           = -1.0f;     
     m_bDoTimeout        = FALSE;
+    m_DismissOnCancel   = FALSE;
     m_bDoBlackout       = TRUE;
 
     // Clear pointer to result code
@@ -762,7 +540,6 @@ xbool dlg_popup::Create( s32                        UserID,
 void dlg_popup::ApplyInputLayout( ui_input_device Device )
 {
     const xbool UseDesktopButtons = (m_ActionCount > 0) &&
-                                    !m_PasswordDialogActive &&
                                    ((Device == ui_input_device::Mouse) ||
                                     (Device == ui_input_device::Keyboard));
 
@@ -791,16 +568,6 @@ void dlg_popup::ApplyInputLayout( ui_input_device Device )
         m_pNavText->SetFlag( ui_win::WF_VISIBLE, m_HasNavText );
     }
 
-    const xbool IsSpecialDialog = (m_RecordDialogState != RECORD_STATE_NONE) ||
-                                  (m_PlayDialogState   != PLAY_STATE_NONE);
-    for( s32 i=0; i<4; i++ )
-    {
-        const xbool IsAction = i < m_ActionCount;
-        m_pButtonText[i]->SetFlag( ui_win::WF_VISIBLE,
-                                  IsSpecialDialog && IsAction && !UseDesktopButtons );
-        m_pButtonText[i]->SetFlag( ui_win::WF_DISABLED,
-                                  IsAction && !m_Actions[i].Enabled );
-    }
 
     ui_win* pFocus = m_pManager->GetFocusedWindow( m_UserID );
     const s32 FocusedAction = FindAction( pFocus );
@@ -857,10 +624,7 @@ void dlg_popup::ClearActions( void )
 
     for( s32 i=0; i<4; i++ )
     {
-        if( m_pButtonText[i] )
         {
-            m_pButtonText[i]->SetFlag( ui_win::WF_VISIBLE,  FALSE );
-            m_pButtonText[i]->SetFlag( ui_win::WF_DISABLED, FALSE );
         }
     }
 }
@@ -1107,50 +871,6 @@ void dlg_popup::LayoutActionButtons( void )
 
 //=========================================================================
 
-void dlg_popup::UpdateSpecialActions( void )
-{
-    if( m_RecordDialogState != RECORD_STATE_NONE )
-    {
-        SetAction( POPUP_ACTION_ACCEPT,
-                   g_StringTableMgr( "ui", "IDS_NAV_RECORD" ),
-                   m_EnableRecord );
-        SetAction( POPUP_ACTION_DELETE,
-                   g_StringTableMgr( "ui", "IDS_NAV_PLAY" ),
-                   m_EnablePlay );
-        SetAction( POPUP_ACTION_CANCEL,
-                   g_StringTableMgr( "ui", m_ShowStop ? "IDS_NAV_STOP" : "IDS_NAV_BACK" ),
-                   TRUE );
-        SetAction( POPUP_ACTION_ALTERNATE,
-                   g_StringTableMgr( "ui", "IDS_NAV_SEND" ),
-                   m_EnableSend );
-    }
-    else if( m_PlayDialogState != PLAY_STATE_NONE )
-    {
-        if( m_PlayDialogState == PLAY_STATE_INVALID_MESSAGE )
-        {
-            SetAction( POPUP_ACTION_ACCEPT,
-                       g_StringTableMgr( "ui", "IDS_NAV_OK" ),
-                       TRUE );
-        }
-        else
-        {
-            SetAction( POPUP_ACTION_ACCEPT,
-                       g_StringTableMgr( "ui", "IDS_NAV_PLAY_PLAY" ),
-                       m_EnablePlay );
-            SetAction( POPUP_ACTION_CANCEL,
-                       g_StringTableMgr( "ui", m_ShowStop ? "IDS_NAV_STOP" : "IDS_NAV_BACK" ),
-                       TRUE );
-        }
-    }
-
-    for( s32 i=0; i<m_ActionCount && i<4; i++ )
-    {
-        m_pButtonText[i]->SetLabel( m_Actions[i].Prompt );
-    }
-}
-
-//=========================================================================
-
 void dlg_popup::CompleteAction( s32 Result, xbool TrackController )
 {
     if( m_pResult )
@@ -1256,60 +976,8 @@ void dlg_popup::Render( s32 ox, s32 oy )
         g_UiMgr->RenderText_Wrap( 1, rect, ui_font::h_center|ui_font::v_top, xcolor(255,252,204,255), m_Message3 );
     }
 
-    if( m_RecordDialogState != RECORD_STATE_NONE || m_PlayDialogState != PLAY_STATE_NONE )
-    {
-        if( m_PlayDialogState != PLAY_STATE_INVALID_MESSAGE )
-        {        
-            // render a rect inside a rect ...
-            irect rBar;
-            rBar = r;
-            rBar.Deflate( 20, 1 );
-            rBar.SetHeight( 22 );
-            rBar.Translate(0,140);
-            g_UiMgr->RenderRect(rBar,xcolor (25,77,18,255),FALSE);
-
-            // ? Render Progress Bar
-            if( m_RecordDialogState == RECORD_STATE_RECORD || 
-                m_RecordDialogState == RECORD_STATE_SENDING ||
-                m_RecordDialogState == RECORD_STATE_PLAY ||
-                m_PlayDialogState == PLAY_STATE_DOWNLOADING ||
-                m_PlayDialogState == PLAY_STATE_PLAY
-                )
-            {
-                rBar.Deflate( 5, 5 );
-                s32 progress = (s32)(rBar.GetWidth() * m_ProgressValue);
-                rBar.r = rBar.l + progress;
-                g_UiMgr->RenderRect(rBar,xcolor (25,180,18,255),FALSE);
-            }
-        }
-    }
 
     // If in Password mode then lets render out the passcodes
-    if( m_PasswordDialogActive )
-    {
-        //
-        irect rBar;
-        rBar = r;
-        rBar.Deflate( 20, 1 );
-        rBar.SetHeight( 22 );
-        rBar.Translate(0,140);
-        g_UiMgr->RenderRect(rBar,xcolor (25,77,18,255),FALSE);
-        rBar.Deflate( 5, 5 );
-
-        xwstring navText;
-        if( m_Password[0] != 0 )
-            navText =  g_StringTableMgr( "ui", "IDS_PASSWORD_HIDDEN_KEY" );
-        if( m_Password[1] != 0 )
-            navText += g_StringTableMgr( "ui", "IDS_PASSWORD_HIDDEN_KEY" );
-        if( m_Password[2] != 0 )
-            navText += g_StringTableMgr( "ui", "IDS_PASSWORD_HIDDEN_KEY" );
-        if( m_Password[3] != 0 )
-            navText += g_StringTableMgr( "ui", "IDS_PASSWORD_HIDDEN_KEY" );
-
-        g_UiMgr->RenderText_Wrap( 1, rBar, ui_font::h_center|ui_font::v_top, xcolor(XCOLOR_BLACK), navText );
-        rBar.Translate( -1, -1 );
-        g_UiMgr->RenderText_Wrap( 1, rBar, ui_font::h_center|ui_font::v_top, xcolor(255,252,204,255), navText );
-    }
 
     // Render children
     for( s32 i=0 ; i<m_Children.GetCount() ; i++ )
@@ -1325,15 +993,7 @@ void dlg_popup::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     (void)pWin;
     (void)DeltaTime;
 
-    if( m_RecordDialogState != RECORD_STATE_NONE )
-        OnUpdateRecordDialog( DeltaTime );
-    else if( m_PlayDialogState != PLAY_STATE_NONE )
-        OnUpdatePlayDialog( DeltaTime );
 
-    if(m_PasswordDialogActive)
-        OnUpdatePasswordDialog( DeltaTime );
-
-    UpdateSpecialActions();
     ApplyInputLayout( m_pManager->GetInputDevice( m_UserID ) );
 
     // check if the popup has a timeout
@@ -1394,51 +1054,6 @@ void dlg_popup::OnAccept( ui_win* pWin )
         }
     }
 
-    // record dialog override
-    if( m_RecordDialogState != RECORD_STATE_NONE )
-    {
-        if( IsActionEnabled( POPUP_ACTION_ACCEPT ) )
-        {
-            OnPadRecord();
-        }
-        return;
-    }
-    else if ( m_PlayDialogState != PLAY_STATE_NONE )
-    {
-        if( IsActionEnabled( POPUP_ACTION_ACCEPT ) )
-        {
-            OnPadRecord();
-        }
-        return;
-    }
-
-    if( m_PasswordDialogActive )
-    {
-        if( 
-            m_Password[0] == m_CheckPassword[0] &&  
-            m_Password[1] == m_CheckPassword[1] &&  
-            m_Password[2] == m_CheckPassword[2] &&  
-            m_Password[3] == m_CheckPassword[3] 
-            )
-        {
-            // check input flag
-
-            // Set result and close dialog
-            if( m_pResult )
-                *m_pResult = DLG_POPUP_YES;
-
-            g_AudioMgr.Play( "Select_Norm" );
-            g_UiMgr->EndDialog( m_UserID, TRUE );
-            return;
-        }
-        else
-        {
-            // Play ERROR SOUND
-            g_AudioMgr.Play( "Select_Norm" );
-            g_UiMgr->EndDialog( m_UserID, TRUE );
-            return;
-        }
-    }
 
     if( IsActionEnabled( POPUP_ACTION_ACCEPT ) )
     {
@@ -1461,30 +1076,12 @@ void dlg_popup::OnCancel( ui_win* pWin )
     {
         return;
     }
-    // record dialog override
-    if( m_RecordDialogState != RECORD_STATE_NONE || m_PlayDialogState != PLAY_STATE_NONE )
-    {
-        if( IsActionEnabled( POPUP_ACTION_CANCEL ) )
-        {
-            OnPadStop();
-        }
-        return;
-    }
 
-    if( m_PasswordDialogActive )
+    if( m_DismissOnCancel )
     {
-        // Remove pass key and if its the last then back out of the popup.
-        if( RemovePassKey() )
-        {
-            CompleteAction( DLG_POPUP_NO );
-            return;
-        }
-        else
-        {
-            return;
-        }
+        CompleteAction( DLG_POPUP_YES );
     }
-    if( IsActionEnabled( POPUP_ACTION_CANCEL ) )
+    else if( IsActionEnabled( POPUP_ACTION_CANCEL ) )
     {
         CompleteAction( DLG_POPUP_NO );
     }
@@ -1505,32 +1102,7 @@ void dlg_popup::OnDelete( ui_win* pWin )
     {
         return;
     }
-    // record dialog override
-    if( m_RecordDialogState != RECORD_STATE_NONE )
-    {
-        if( IsActionEnabled( POPUP_ACTION_DELETE ) )
-        {
-            OnPadPlay();
-        }
-        return;
-    }
-    else if ( m_PlayDialogState != PLAY_STATE_NONE )
-    {
-        if( IsActionEnabled( POPUP_ACTION_DELETE ) )
-        {
-            OnPadPlay();
-        }
-        return;
-    }
 
-    if( m_PasswordDialogActive )
-    {
-        // Add X to Password List.
-#ifdef TARGET_XBOX
-        AddPassKey(XONLINE_PASSCODE_GAMEPAD_X);
-#endif
-        return;
-    }
 
     if( IsActionEnabled( POPUP_ACTION_DELETE ) )
     {
@@ -1574,32 +1146,7 @@ void dlg_popup::OnAlternate( ui_win* pWin )
     {
         return;
     }
-    // record dialog override
-    if( m_RecordDialogState != RECORD_STATE_NONE )
-    {
-        if( IsActionEnabled( POPUP_ACTION_ALTERNATE ) )
-        {
-            OnPadSend();
-        }
-        return;
-    }
-    else if( m_PlayDialogState != PLAY_STATE_NONE )
-    {
-        if( IsActionEnabled( POPUP_ACTION_ALTERNATE ) )
-        {
-            OnPadSend();
-        }
-        return;
-    }
     
-    if( m_PasswordDialogActive )
-    {
-        // Add X to Password List.
-#ifdef TARGET_XBOX
-        AddPassKey(XONLINE_PASSCODE_GAMEPAD_Y);
-#endif
-        return;
-    }
 
     if( IsActionEnabled( POPUP_ACTION_ALTERNATE ) )
     {
@@ -1607,13 +1154,12 @@ void dlg_popup::OnAlternate( ui_win* pWin )
     }
 }
 
-//========================================================================
+//=========================================================================
 
 void dlg_popup::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX /* = FALSE  */, xbool WrapY /* = FALSE */)
 {
     const ui_input_device Device = m_pManager->GetInputDevice( m_UserID );
     const xbool UseDesktopButtons = (m_ActionCount > 0) &&
-                                    !m_PasswordDialogActive &&
                                    ((Device == ui_input_device::Mouse) ||
                                     (Device == ui_input_device::Keyboard));
     if( UseDesktopButtons && (Device == ui_input_device::Keyboard) )
@@ -1710,595 +1256,14 @@ void dlg_popup::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 R
         return;
     }
 
-#ifdef TARGET_XBOX
-    if( !m_PasswordDialogActive )
-    {
-        return;
-    }
-
-    switch( Code )
-    {
-        case ui_navigation::Left:  AddPassKey(XONLINE_PASSCODE_DPAD_LEFT);  break;
-        case ui_navigation::Right: AddPassKey(XONLINE_PASSCODE_DPAD_RIGHT); break;
-        case ui_navigation::Up:    AddPassKey(XONLINE_PASSCODE_DPAD_UP);    break;
-        case ui_navigation::Down:  AddPassKey(XONLINE_PASSCODE_DPAD_DOWN);  break;
-    }
-#endif
 }
 
-//========================================================================
+//=========================================================================
 
 void dlg_popup::OnPage( ui_win* pWin, s32 Direction )
 {
     (void)pWin;
     (void)Direction;
-#ifdef TARGET_XBOX
-    if( !m_PasswordDialogActive )
-    {
-        return;
-    }
-
-    switch( Direction )
-    {
-        case -1: // LEFT?
-            AddPassKey(XONLINE_PASSCODE_GAMEPAD_LEFT_TRIGGER);
-        break;
-        case 1: // RIGHT?
-            AddPassKey(XONLINE_PASSCODE_GAMEPAD_RIGHT_TRIGGER);
-        break;
-    }
-#endif
 }
 
 //=========================================================================
-
-void dlg_popup::OnUpdateRecordDialog( f32 DeltaTime )
-{
-    (void)DeltaTime;
-
-#ifdef TARGET_XBOX
-
-    headset& Headset = g_VoiceMgr.GetHeadset();
-
-    // Dynamically enable and disable dialog control buttons
-    {
-        xbool OperationInProgress = Headset.GetVoiceIsPlaying() ||
-                                    Headset.GetVoiceIsRecording();
-
-        m_ShowStop     =  OperationInProgress;
-        m_EnableSend   = !OperationInProgress;
-        m_EnableRecord = !OperationInProgress && (Headset.IsHardwarePresent() == TRUE);
-        m_EnablePlay   = !OperationInProgress && (Headset.GetVoiceNumBytesRec() > 0);
-    }
-
-    switch( m_RecordDialogState )
-    {
-        case RECORD_STATE_NONE:
-
-        break;
-
-        case RECORD_STATE_INIT:
-
-            Headset.InitVoiceRecording();
-            m_RecordDialogState = RECORD_STATE_IDLE;
-
-        break;
-
-        case RECORD_STATE_RECORD_INIT:
-        {
-            m_ProgressValue = 0.0f;
-
-            if( Headset.IsHardwarePresent() == TRUE )
-            {
-                Headset.StartVoiceRecording();
-                m_RecordDialogState = RECORD_STATE_RECORD;
-            }
-            else
-            {
-                m_RecordDialogState = RECORD_STATE_IDLE;
-            }
-        }
-        break;
-
-        case RECORD_STATE_RECORD:
-
-            if( Headset.GetVoiceIsRecording() == FALSE )
-            {
-                // Done Recording
-                m_RecordDialogState = RECORD_STATE_STOP;
-                m_ProgressValue     = 0.0f;
-            }
-            else
-            {        
-                // Show Progress bar.
-                m_ProgressValue = Headset.GetVoiceRecordingProgress();
-            }
-
-        break;
-
-        case RECORD_STATE_PLAY_INIT:  
-        {
-            s32 NumBytes   = Headset.GetVoiceNumBytesRec();
-            s32 DurationMS = Headset.GetVoiceDurationMS();
-
-            m_ProgressValue = 0.0f;
-
-            if( NumBytes > 0 )
-            {
-                byte*   pVoiceMessage = Headset.GetVoiceMessageRec();
-                ASSERT( pVoiceMessage != NULL );
-                Headset.StartVoicePlaying( pVoiceMessage, DurationMS, NumBytes );
-                m_RecordDialogState = RECORD_STATE_PLAY;
-            }
-            else
-            {
-                m_RecordDialogState = RECORD_STATE_IDLE;
-            }
-        }
-        break;
-
-        case RECORD_STATE_PLAY:
-
-            if( Headset.GetVoiceIsPlaying() == FALSE )
-            {
-                // Finished with the voice message so destroy it
-                m_RecordDialogState = RECORD_STATE_STOP_PLAYBACK;
-                m_ProgressValue     = 0.0f;
-            }
-            else
-            {
-                // Print Play Progress
-                m_ProgressValue = Headset.GetVoicePlayingProgress();
-            }   
-
-        break;
-
-        case RECORD_STATE_STOP:
-        {                        
-            Headset.StopVoiceRecording();
-            m_RecordDialogState = RECORD_STATE_IDLE;
-        }
-        break;
-
-        case RECORD_STATE_STOP_PLAYBACK:
-        {
-            g_VoiceMgr.GetHeadset().StopVoicePlaying();
-            m_RecordDialogState = RECORD_STATE_IDLE;
-        }
-        break;
-        
-        case RECORD_STATE_SEND:
-        {            
-            // Only allow voice mail to be sent if there is any data
-            if( Headset.GetVoiceNumBytesRec() > 0 )
-            {
-                // Set voice attachment to be sent
-                f32 Duration = Headset.GetVoiceDurationMS() / 1000.0f;
-                g_MatchMgr.SetVoiceMessage( Headset.GetVoiceMessageRec(), Headset.GetVoiceNumBytesRec(), Duration );
-            }
-
-            if( m_AskMode == BUDDY_MODE_ADD )
-            {
-                g_MatchMgr.AddBuddy( m_Buddy );
-                m_RecordDialogState = RECORD_STATE_SENDING;
-            }
-            else
-            {
-                g_MatchMgr.InviteBuddy( m_Buddy );
-                m_RecordDialogState = RECORD_STATE_SENDING;
-            }
-
-            m_ProgressValue = 0.0f;
-        }
-        break;
-        
-        case RECORD_STATE_SENDING:
-
-            if( g_MatchMgr.IsSendingMessage() == TRUE )
-            {
-                m_ProgressValue = g_MatchMgr.GetMessageSendProgress();
-            }
-            else
-            {
-                m_ProgressValue = 0.0f;
-                g_MatchMgr.ClearVoiceMessage();
-
-                // Done..
-                if( m_pResult )
-                    *m_pResult = DLG_POPUP_OTHER;
-            }
-
-        break;
-
-        case RECORD_STATE_EXIT:
-            
-            if( m_pResult )
-                *m_pResult = DLG_POPUP_NO;
-
-        break;
-
-        case RECORD_STATE_IDLE:
-            m_ProgressValue = 0.0f;
-        break;
-
-        default:
-        break;
-    }
-
-    if( m_pResult )
-    {
-        if( *m_pResult != DLG_POPUP_IDLE )
-        {
-            if( g_UiMgr->GetTopmostDialog( m_UserID ) == this )
-                g_UiMgr->EndDialog( m_UserID, TRUE );
-        }
-    }
-
-#endif
-}
-
-//=========================================================================
-
-void dlg_popup::OnUpdatePlayDialog( f32 DeltaTime )
-{
-    (void)DeltaTime;
-#ifdef TARGET_XBOX
-
-    headset& Headset = g_VoiceMgr.GetHeadset();
-
-    // Disable Play button if we are downloading or playing message
-    m_EnablePlay = (m_PlayDialogState != PLAY_STATE_DOWNLOADING) &&
-                   (Headset.GetVoiceIsPlaying() == FALSE);
-    m_ShowStop   =  Headset.GetVoiceIsPlaying();
-
-    switch( m_PlayDialogState )
-    {
-        case PLAY_STATE_NONE:
-
-        break;
-
-        case PLAY_STATE_IDLE:
-            m_ProgressValue = 0.0f;
-        break;
-
-        case PLAY_STATE_START_DOWNLOAD:
-
-            // Attempt to start the voice attachment download.
-            if( g_MatchMgr.StartMessageDownload( m_Buddy ) == TRUE )
-            {
-                m_PlayDialogState = PLAY_STATE_DOWNLOADING;
-            }
-            else
-            {
-                // TODO: We need a dialog that says "This message is no longer available".
-                m_PlayDialogState = PLAY_STATE_INVALID_MESSAGE;
-
-                // Change the popup message.
-                m_Message = g_StringTableMgr( "ui", "IDS_INVALID_MESSAGE" );
-
-                ClearActions();
-                AddAction( POPUP_ACTION_ACCEPT,
-                           g_StringTableMgr( "ui", "IDS_NAV_OK" ),
-                           NULL,
-                           TRUE );
-
-                irect NavTextPos = m_pButtonText[0]->GetPosition();
-                NavTextPos.l = m_pNavText->GetPosition().l;
-                NavTextPos.r = m_pNavText->GetPosition().r;
-                m_pButtonText[0]->SetPosition(NavTextPos);
-            }
-
-        break;
-
-        case PLAY_STATE_INVALID_MESSAGE:
-        {
-            // wait for OK input.
-        }
-        break;
-
-        case PLAY_STATE_DOWNLOADING:
-
-            if( g_MatchMgr.IsDownloadingMessage() == TRUE )
-            {
-                m_ProgressValue = g_MatchMgr.GetMessageRecProgress();
-            }
-            else
-            {
-                m_ProgressValue   = 0.0f;
-                m_PlayDialogState = PLAY_STATE_IDLE;
-            }
-
-        break;
-
-        case PLAY_STATE_START_PLAY:
-        {
-            byte* pVoiceMessage = NULL;
-            s32   NumBytes;
-            f32   Duration;
-
-            g_MatchMgr.GetVoiceMessage( &pVoiceMessage, &NumBytes, &Duration );
-            ASSERT( pVoiceMessage != NULL );
-
-            if( NumBytes > 0 )
-            {
-                Headset.StartVoicePlaying( pVoiceMessage, s32(Duration * 1000.0f), NumBytes );
-                m_PlayDialogState = PLAY_STATE_PLAY;
-            }
-        }
-        break;
-
-        case PLAY_STATE_PLAY:
-
-            if( Headset.GetVoiceIsPlaying() == FALSE )
-            {
-                // Finished with the voice message so destroy it
-                m_PlayDialogState = PLAY_STATE_STOP;
-                m_ProgressValue   = 0.0f;
-            }
-            else
-            {
-                // Print Play Progress
-                m_ProgressValue = Headset.GetVoicePlayingProgress();
-            }
-
-        break;
-
-        case PLAY_STATE_STOP:
-        {
-            Headset.StopVoicePlaying();
-            m_PlayDialogState = PLAY_STATE_IDLE;
-        }
-        break;
-
-        case PLAY_STATE_EXIT:
-        {
-            if( m_pResult )
-                *m_pResult = DLG_POPUP_OTHER;
-        }
-        break;
-
-        case PLAY_STATE_INVALID_MESSAGE_EXIT:
-        {
-            if( m_pResult )
-                *m_pResult = DLG_POPUP_NO;
-        }
-        break;
-    }
-
-    if( m_pResult )
-    {
-        if( *m_pResult != DLG_POPUP_IDLE )
-        {
-            if( g_UiMgr->GetTopmostDialog( m_UserID ) == this )
-                g_UiMgr->EndDialog( m_UserID, TRUE );
-        }
-    }
-
-#endif
-}
-
-
-//=========================================================================
-
-void dlg_popup::OnPadRecord( void )
-{
-    // OnAccept
-
-    if( m_RecordDialogState != RECORD_STATE_NONE )
-    {
-        
-        if( m_RecordDialogState == RECORD_STATE_INIT )
-            return;
-
-        if( 
-            m_RecordDialogState != RECORD_STATE_RECORD_INIT && 
-            m_RecordDialogState != RECORD_STATE_RECORD &&
-            m_RecordDialogState != RECORD_STATE_PLAY &&
-            m_RecordDialogState != RECORD_STATE_PLAY_INIT
-        )
-            m_RecordDialogState = RECORD_STATE_RECORD_INIT;
-    }
-    else
-    {
-        // ? Invalid Message
-        if( m_PlayDialogState == PLAY_STATE_INVALID_MESSAGE )
-        {
-            // then we need to exit now.
-            m_PlayDialogState = PLAY_STATE_INVALID_MESSAGE_EXIT;
-            return;
-        }
-
-        // Play attachment
-        if( 
-            m_PlayDialogState != PLAY_STATE_PLAY &&
-            m_PlayDialogState != PLAY_STATE_START_DOWNLOAD &&
-            m_PlayDialogState != PLAY_STATE_DOWNLOADING
-            )
-        {
-            m_PlayDialogState = PLAY_STATE_START_PLAY;
-        }
-    }
-    return;
-}
-
-//=========================================================================
-
-void dlg_popup::OnPadStop( void )
-{
-    // OnCancel
-
-    if( m_RecordDialogState != RECORD_STATE_NONE )
-    {
-        if( m_RecordDialogState == RECORD_STATE_RECORD )
-        {
-            // Stop Record
-            m_RecordDialogState = RECORD_STATE_STOP;
-        }
-        else if( m_RecordDialogState == RECORD_STATE_PLAY )
-        {
-            // Stop Playback.
-            m_RecordDialogState = RECORD_STATE_STOP_PLAYBACK;
-        }
-        else
-        {
-            // Back out.
-            m_RecordDialogState = RECORD_STATE_EXIT;
-        }
-    }
-    else
-    {
-        // Stop playback
-        if( m_PlayDialogState == PLAY_STATE_PLAY )
-            m_PlayDialogState = PLAY_STATE_STOP;
-
-        if( m_PlayDialogState == PLAY_STATE_IDLE )
-            m_PlayDialogState = PLAY_STATE_EXIT;
-    }
-}
-
-//=========================================================================
-
-void dlg_popup::OnPadPlay( void )
-{
-    // OnDelete
-    if( m_RecordDialogState != RECORD_STATE_NONE )
-    {
-        if( 
-            m_RecordDialogState != RECORD_STATE_RECORD_INIT &&
-            m_RecordDialogState != RECORD_STATE_RECORD && 
-            m_RecordDialogState != RECORD_STATE_PLAY 
-            )
-        {
-            m_RecordDialogState = RECORD_STATE_PLAY_INIT;
-        }
-    }
-}
-
-//=========================================================================
-
-void dlg_popup::OnPadSend( void )
-{
-    // OnAlternate
-    if( m_RecordDialogState != RECORD_STATE_NONE )
-    {
-   
-        if( m_RecordDialogState != RECORD_STATE_PLAY &&
-            m_RecordDialogState != RECORD_STATE_RECORD &&
-            m_RecordDialogState != RECORD_STATE_RECORD_INIT &&
-            m_RecordDialogState != RECORD_STATE_STOP &&
-            m_RecordDialogState != RECORD_STATE_SEND &&
-            m_RecordDialogState != RECORD_STATE_SENDING
-
-            )
-        {
-            // SEND
-            m_RecordDialogState = RECORD_STATE_SEND;
-        }
-    }
-}
-
-//========================================================================
-
-void dlg_popup::ConfigurePassword( irect& Position, const xwchar* Title, const xwchar* Message, const xwchar* pNavText, s32* pResult /* = NULL  */)
-{
-    SetLabel( Title );
-
-    ClearActions();
-    m_PasswordDialogActive = TRUE;
-
-    m_PasswordIndex = -1;
-    m_Password[0] = 0;
-    m_Password[1] = 0;
-    m_Password[2] = 0;
-    m_Password[3] = 0;
-
-    m_ProgressValue = 0.0f;
-
-    m_Message       = Message;
-    m_Message2      = xwstring( "" );
-    m_Message3      = xwstring( "" );
-
-    // set up nav text
-    if( pNavText )
-    {
-        m_HasNavText = pNavText[0] != 0;
-        m_NavTextIsActionPrompt = TRUE;
-        m_pNavText->SetLabelFlags( ui_font::h_center|ui_font::v_top|ui_font::input_glyphs );
-        m_pNavText->SetLabel( pNavText );
-        m_pNavText->SetFlag(ui_win::WF_VISIBLE, TRUE);
-    }
-
-    m_pResult       = pResult;
-    m_bDoTimeout    = FALSE;
-    m_bDoBlackout   = TRUE;
-
-    irect Bounds = g_UiMgr->GetUserBounds( g_UiUserID );
-
-    // center in screen
-    Position.Translate( Bounds.l + (Bounds.GetWidth()-Position.GetWidth())/2 - Position.l,
-                        Bounds.t + (Bounds.GetHeight()-Position.GetHeight())/2 - Position.t );
-    SetPosition( Position );
-
-    // reposition nav text
-    irect NavPos = m_pNavText->GetPosition();
-    NavPos.b = Position.b - Position.t;
-    NavPos.t = NavPos.b - 25;
-    NavPos.l = 0;
-    NavPos.r = Position.r - Position.l;
-    m_pNavText->SetPosition( NavPos );
-
-    // initialize result
-    if( m_pResult )
-    {
-        *m_pResult = DLG_POPUP_IDLE;
-    }
-}
-
-//========================================================================
-
-void dlg_popup::OnUpdatePasswordDialog( f32 DelatTime )
-{
-    (void)DelatTime;   
-}
-
-//========================================================================
-
-void dlg_popup::AddPassKey( s32 key )
-{
-    if( m_PasswordIndex == 3 )
-        return;
-
-    m_PasswordIndex++;
-    m_Password[m_PasswordIndex] = key;
-}
-
-//========================================================================
-
-xbool dlg_popup::RemovePassKey( void )
-{
-    if( m_PasswordIndex > -1 )
-    {
-        m_Password[0] = 0;
-        m_Password[1] = 0;
-        m_Password[2] = 0;
-        m_Password[3] = 0;
-        m_PasswordIndex = -1;
-    }
-    else
-    {
-        return TRUE;
-    }
-    return FALSE;
-}
-
-//========================================================================
-
-void dlg_popup::SetPassword( u8* password )
-{
-    m_CheckPassword[0] = password[0];
-    m_CheckPassword[1] = password[1];
-    m_CheckPassword[2] = password[2];
-    m_CheckPassword[3] = password[3];
-}
-
-//========================================================================

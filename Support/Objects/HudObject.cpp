@@ -42,11 +42,7 @@
 f32     hud_object::m_PulseAlpha;
 f32     hud_object::m_PulseRate;
 
-#if defined(X_DEBUG)
-xbool g_RenderFrameRateInfo = TRUE;
-#else
 xbool g_RenderFrameRateInfo = FALSE;
-#endif
 
 xcolor g_HudColor( 80, 150, 150, 255);
 
@@ -55,9 +51,45 @@ extern xbool g_game_running;
 
 
 //==============================================================================
-// OBJECT DESCRIPTION
+// FUNCTIONS
 //==============================================================================
 
+void RenderLine( const ui_text_data& Text,
+                 irect& Rect,
+                 u8 Alpha,
+                 xcolor& Color,
+                 s32 FontNum,
+                 s32 Flags,
+                 xbool Shadow,
+                 f32 FlareAmount )
+{
+#ifndef X_EDITOR
+    ui_font* pFont = g_UiMgr->GetFont( FontNum );
+    xcolor   Tint  = Color;
+
+    Tint.A = (u8)(Alpha * 0.8f);
+
+    if( Shadow )
+    {
+        ui_text_data ShadowText = Text;
+
+        for( s32 i = 0; i < ShadowText.Runs.GetCount(); i++ )
+        {
+            ShadowText.Runs[i].Color = XCOLOR_WHITE;
+        }
+
+        irect Bounds = Rect;
+        Bounds.Translate( 0, 2 );
+
+        pFont->RenderText( Bounds, Flags, xcolor( 0, 0, 0, Tint.A ), ShadowText, FALSE );
+    }
+
+    pFont->RenderText( Rect, Flags, Tint, Text, TRUE, FlareAmount );
+#endif
+}
+
+//==============================================================================
+// OBJECT DESCRIPTION
 //==============================================================================
 static struct hud_object_desc : public object_desc
 {
@@ -113,10 +145,6 @@ hud_object::hud_object( void )
     m_PulseRate     = 512.0f;
     m_NumHuds       = 0;
 
-    m_FPSCount15        = 0;
-    m_FPSCount20        = 0;
-    m_FPSCount30        = 0;
-    m_ShowBelow30Image = FALSE;
 
     m_bLetterBoxOn       = FALSE;
     m_LetterBoxCurrTime  = 1.0f;
@@ -275,7 +303,6 @@ void hud_object::InitHud( void )
     m_NumHuds = g_NetworkMgr.GetLocalPlayerCount();
 #endif
 
-    ResetFrameRateInfo();
 
     s32 i = 0;
     slot_id PlayerSlot = g_ObjMgr.GetFirst( object::TYPE_PLAYER );
@@ -584,7 +611,6 @@ void hud_object::OnRender( void )
     }
 
     g_UIRenderer.PushScreenSpace( ScreenViewport );
-    RenderFrameRateInfo();
     g_UIRenderer.PopScreenSpace();
 
 }
@@ -648,15 +674,14 @@ void hud_object::OnEnumProp( prop_enum&  List )
 
 
     //----------------------------------------------------------------------
-    // Binary text resource.
+    // Localized text resources.
     //----------------------------------------------------------------------
-    List.PropEnumHeader( "Hud\\Binary Text Resource", "The binary text resource loader.", 0 );
+    List.PropEnumHeader( "Hud\\Binary Text Resource", "Localized string tables.", 0 );
     s32 i;
     for( i = 0; i < MAX_BIN_TXT_RSC; i++ )
         List.PropEnumExternal( xfs("Hud\\Binary Text Resource\\Binary Text Rsc [%d]", i ), 
-        "Resource\0stringbin\0",
-        "Loads the binary text resource which is used "
-        "for localizing all of our text resources", 0 );
+        "Resource\0string\0",
+        "Loads a localized string table.", 0 );
 
 
     //----------------------------------------------------------------------
@@ -714,7 +739,7 @@ xbool hud_object::OnProperty( prop_query& rPropQuery )
                 xstring FileName( pStr );
 
                 if( FileName.Find( '.' ) == -1 )
-                    FileName += ".bin";
+                    FileName += ".string";
 
                 m_hBinaryTextRsc[ rPropQuery.GetIndex(0) ].SetName( (const char*)FileName );
 
@@ -796,94 +821,6 @@ void hud_object::SetElementPulseState( s32 ElementID, xbool DoPulse )
 bbox hud_object::GetLocalBBox( void ) const
 {
     return bbox( GetPosition(), 50.0f );
-}
-
-//==============================================================================
-
-void hud_object::ResetFrameRateInfo( void )
-{
-    m_FPSCount15        = 0;
-    m_FPSCount20        = 0;
-    m_FPSCount30        = 0;
-    m_ShowBelow30Image = FALSE;
-}
-
-//==============================================================================
-
-void hud_object::RenderFrameRateInfo( void )
-{
-#ifdef jhowa
-    g_RenderFrameRateInfo = FALSE;
-#endif
-
-    if ( g_RenderFrameRateInfo )
-    {
-#if (defined(TARGET_DEV) || defined(X_QA)) && defined(X_OPTIMIZED)
-        {
-            const s32 TotalCount = m_FPSCount15 + m_FPSCount20 + m_FPSCount30;
-            if( TotalCount <= 0 )
-                return;
-#if defined(X_EDITOR)
-            {
-                x_printfxy( 0, 2, ">=30:%03d%%(%d)", (s32)(100.0f*(f32)m_FPSCount30/(f32)TotalCount), m_FPSCount30 );
-                x_printfxy( 0, 3, "  20:%03d%%(%d)", (s32)(100.0f*(f32)m_FPSCount20/(f32)TotalCount), m_FPSCount20 );
-                x_printfxy( 0, 4, "<=15:%03d%%(%d)", (s32)(100.0f*(f32)m_FPSCount15/(f32)TotalCount), m_FPSCount15 );
-            }
-#else
-            {
-                irect Rect;
-                s32 XRes,YRes;
-                eng_GetRes(XRes,YRes);
-
-                s32 x = 150;
-                s32 y = YRes - 60;
-                s32 font = g_UiMgr->FindFont("small");
-
-                Rect.Set( x, y, x + 160, y + (g_UiMgr->GetLineHeight(font) * 3) );
-                g_UIRenderer.DrawRect( Rect, xcolor(0,0,0,128) );
-
-                xwstring Text1 = (const char *)xfs( ">=30:%03d%%(%d)", (s32)(100.0f*(f32)m_FPSCount30/(f32)TotalCount), m_FPSCount30 );
-                g_UiMgr->TextSize( font, Rect, Text1, Text1.GetLength());
-                Rect.Translate(x, y);
-                g_UiMgr->RenderText( font, Rect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), Text1 );
-                y += g_UiMgr->GetLineHeight(font);
-
-                xwstring Text2 = (const char *)xfs( "   20:%03d%%(%d)", (s32)(100.0f*(f32)m_FPSCount20/(f32)TotalCount), m_FPSCount20 );
-                g_UiMgr->TextSize( font, Rect, Text2, Text2.GetLength());
-                Rect.Translate(x, y);
-                g_UiMgr->RenderText( font, Rect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), Text2 );
-                y += g_UiMgr->GetLineHeight(font);
-
-                xwstring Text3 = (const char *)xfs( "<=15:%03d%%(%d)", (s32)(100.0f*(f32)m_FPSCount15/(f32)TotalCount), m_FPSCount15 );
-                g_UiMgr->TextSize( font, Rect, Text3, Text3.GetLength());
-                Rect.Translate(x, y);
-                g_UiMgr->RenderText( font, Rect, ui_font::h_left|ui_font::v_top, xcolor(XCOLOR_WHITE), Text3 );
-            }
-#endif //!defined X_EDITOR
-
-            if( m_ShowBelow30Image )
-            {
-                s32 XRes,YRes;
-                eng_GetRes(XRes,YRes);
-
-                rhandle<texture> ScreenEdgeTexture;
-                ScreenEdgeTexture.SetName( "HUD_30fps.xbmp" );
-
-                texture* pTexture = ScreenEdgeTexture.GetPointer();
-                if( pTexture != NULL )
-                {
-                    g_UIRenderer.DrawImage( *pTexture,
-                                            vector2( (f32)XRes - 200.0f, (f32)YRes - 64.0f ),
-                                            vector2( 64.0f, 64.0f ),
-                                            vector2( 0.0f, 0.0f ),
-                                            vector2( 1.0f, 1.0f ) );
-                }
-            }
-
-            //eng_End();
-        }
-#endif
-    }
 }
 
 //==============================================================================

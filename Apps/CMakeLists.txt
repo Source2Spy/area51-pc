@@ -10,11 +10,11 @@ if( A51_BUILD_SELECTED_APPS )
         message( STATUS "Skipping desktop asset tools for Android." )
     endif()
 
-    if( WIN32 )
+    if( WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux" )
         add_subdirectory( DfsTool )
         list( APPEND _a51_portable_app_targets dfsTool )
     else()
-        message( STATUS "Skipping DfsTool: current implementation requires Windows headers." )
+        message( STATUS "Skipping DfsTool: unsupported host platform." )
     endif()
 
     if( A51_ENABLE_QT AND Qt6_FOUND )
@@ -36,23 +36,10 @@ if( A51_BUILD_SELECTED_APPS )
         endif()
     endif()
 
-    if( WIN32 AND A51_BUILD_WINDOWS_TARGETS )
-        add_subdirectory( SoundPackager )
-        list( APPEND _a51_windows_app_targets SoundPackager )
-    endif()
-
-    if( A51_BUILD_DXC AND
-        ( CMAKE_SYSTEM_NAME STREQUAL "Linux" OR
-          ( WIN32 AND A51_BUILD_WINDOWS_TARGETS ) ) )
-        add_subdirectory( ShaderTool )
-        if( WIN32 )
-            list( APPEND _a51_windows_app_targets ShaderTool )
-        else()
-            list( APPEND _a51_portable_app_targets ShaderTool )
-        endif()
-    else()
-        message( STATUS "Skipping Windows-only application targets: SoundPackager, ShaderTool." )
-    endif()
+    # if( WIN32 AND A51_BUILD_WINDOWS_TARGETS )
+    #     add_subdirectory( SoundPackager )
+    #     list( APPEND _a51_windows_app_targets SoundPackager )
+    # endif()
 
     add_custom_target( a51_portable_apps )
     add_dependencies( a51_portable_apps ${_a51_portable_app_targets} )
@@ -67,4 +54,8 @@ if( A51_BUILD_SELECTED_APPS )
         ${_a51_portable_app_targets}
         ${_a51_windows_app_targets}
     )
+endif()
+
+if( A51_BUILD_SHADER_TOOL )
+    add_subdirectory( ShaderTool )
 endif()

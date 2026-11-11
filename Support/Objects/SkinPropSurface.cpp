@@ -100,7 +100,7 @@ skin_prop_surface::skin_prop_surface( void )
     m_iMaterial = MAT_TYPE_NULL; 
     m_iBackupAnimString = -1;
 
-    m_FloorProperties.Init( 50.0f, 0.128f );
+    m_FloorProperties.Init( 1.0f, 0.128f );
 }
 
 //=============================================================================
@@ -275,7 +275,7 @@ void skin_prop_surface::OnEnumProp( prop_enum& List )
 
     m_Inst.OnEnumProp ( List );
 
-    List.PropEnumExternal( "RenderInst\\Anim",           "Resource\0anim",    "Resource File", PROP_TYPE_MUST_ENUM );    
+    List.PropEnumExternal( "RenderInst\\Anim",           "Resource\0anim\0",    "Resource File", PROP_TYPE_MUST_ENUM );    
 
     List.PropEnumHeader  ( "SkinPropSurf", "This is the properties that are unique for the skin prop", 0 );
 

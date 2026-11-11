@@ -10,8 +10,6 @@
 //  PLATFORM CHECK
 //==============================================================================
 
-// Let it be only for PC, for now...
-
 #include "x_target.hpp"
 
 #if !defined( TARGET_DESKTOP ) && !defined( TARGET_MOBILE )
@@ -204,6 +202,7 @@ void ApplyAudioTrackConfig(player_config& Config, const mkvparser::Track* pTrack
     Config.AudioChannels   = (s32)pAudio->GetChannels();
     Config.AudioSampleRate = (s32)pAudio->GetSamplingRate();
     Config.AudioBitDepth   = (s32)pAudio->GetBitDepth();
+    Config.CodecDelay      = (s64)pTrack->GetCodecDelay();
 
     if (Config.AudioChannels <= 0)
         Config.AudioChannels = 2;
@@ -240,6 +239,7 @@ container::container(void)
     m_VideoTrack = -1;
     m_AudioTrack = -1;
     m_bEOF       = FALSE;
+    m_Error      = 0;
     m_bHasPendingSample = FALSE;
 }
 
@@ -270,6 +270,7 @@ xbool container::Open(const char* pFilename, player_config& Config)
     }
 
     m_bEOF              = FALSE;
+    m_Error             = 0;
     m_bHasPendingSample = FALSE;
     m_pCluster          = NULL;
     m_pEntry            = NULL;
@@ -295,6 +296,7 @@ void container::Close(void)
     m_TimeScale         = WEBM_NANOSEC;
     m_Duration          = 0.0;
     m_bEOF              = FALSE;
+    m_Error             = 0;
     m_bHasPendingSample = FALSE;
 
     m_FileReader.Close();
@@ -310,36 +312,38 @@ void container::Rewind(void)
     m_pCluster          = m_pSegment->GetFirst();
     m_pEntry            = NULL;
     m_bEOF              = FALSE;
+    m_Error             = 0;
     m_bHasPendingSample = FALSE;
 }
 
 //==============================================================================
 
-xbool container::PeekSample(sample& OutSample)
+sample_status container::PeekSample(sample& OutSample)
 {
     if (m_bHasPendingSample)
     {
         OutSample = m_PendingSample;
-        return TRUE;
+        return SAMPLE_READY;
     }
 
-    if (!AcquireSample(m_PendingSample))
-        return FALSE;
+    const sample_status status = AcquireSample(m_PendingSample);
+    if (status != SAMPLE_READY)
+        return status;
 
     m_bHasPendingSample = TRUE;
     OutSample = m_PendingSample;
-    return TRUE;
+    return SAMPLE_READY;
 }
 
 //==============================================================================
 
-xbool container::ReadSample(sample& OutSample)
+sample_status container::ReadSample(sample& OutSample)
 {
     if (m_bHasPendingSample)
     {
         OutSample = m_PendingSample;
         m_bHasPendingSample = FALSE;
-        return TRUE;
+        return SAMPLE_READY;
     }
 
     return AcquireSample(OutSample);
@@ -347,12 +351,12 @@ xbool container::ReadSample(sample& OutSample)
 
 //==============================================================================
 
-xbool container::AcquireSample(sample& OutSample)
+sample_status container::AcquireSample(sample& OutSample)
 {
+    if (m_Error)
+        return SAMPLE_ERROR;
     if (m_bEOF || !m_pSegment)
-        return FALSE;
-
-    s32 skippedBlocks = 0;
+        return SAMPLE_END;
 
     while (AdvanceEntry())
     {
@@ -364,27 +368,23 @@ xbool container::AcquireSample(sample& OutSample)
 
         if ((trackNumber != m_VideoTrack) && (trackNumber != m_AudioTrack))
         {
-            ++skippedBlocks;
-            if (skippedBlocks > 1024) // 1024 Max skipped blocks
-            {
-                x_DebugMsg("MoviePlayer_WebM: Skipped too many blocks, stopping\n");
-                m_bEOF = TRUE;
-                return FALSE;
-            }
             continue;
         }
 
+        OutSample.FrameIndex  = 0;
         OutSample.pEntry      = m_pEntry;
         OutSample.pBlock      = pBlock;
         OutSample.pCluster    = m_pCluster;
-        OutSample.TimeSeconds = (f64)pBlock->GetTime(m_pCluster) / WEBM_NANOSEC;
+        OutSample.TimeNanoseconds = pBlock->GetTime(m_pCluster);
+        OutSample.TimeSeconds = (f64)OutSample.TimeNanoseconds / WEBM_NANOSEC;
         OutSample.IsKeyFrame  = pBlock->IsKey();
+        OutSample.DiscardPadding = pBlock->GetDiscardPadding();
         OutSample.Type        = (trackNumber == m_VideoTrack) ? STREAm_Type_VIDEO : STREAm_Type_AUDIO;
-        return TRUE;
+        return SAMPLE_READY;
     }
 
     m_bEOF = TRUE;
-    return FALSE;
+    return m_Error ? SAMPLE_ERROR : SAMPLE_END;
 }
 
 //==============================================================================
@@ -447,6 +447,7 @@ xbool container::SelectTracks(player_config& Config)
             Config.Width  = (s32)pVideo->GetWidth();
             Config.Height = (s32)pVideo->GetHeight();
             Config.FrameRate = (f32)pVideo->GetFrameRate();
+            Config.VideoFrameDuration = (f64)pTrack->GetDefaultDuration() / WEBM_NANOSEC;
         }
         else if (pTrack->GetType() == mkvparser::Track::kAudio)
         {
@@ -504,9 +505,7 @@ xbool container::AdvanceEntry(void)
     if (m_bEOF)
         return FALSE;
 
-    s32 retries = 0;
-
-    while (retries < 128) // 128 Max retries
+    while (TRUE)
     {
         if (!m_pCluster)
         {
@@ -519,11 +518,16 @@ xbool container::AdvanceEntry(void)
             const mkvparser::BlockEntry* pEntry = NULL;
             const s32 status = (s32)m_pCluster->GetFirst(pEntry);
 
-            if ((status < 0) || !pEntry || pEntry->EOS())
+            if (status < 0)
+            {
+                m_Error = status;
+                return FALSE;
+            }
+
+            if (!pEntry || pEntry->EOS())
             {
                 if (!AdvanceCluster())
                     return FALSE;
-                ++retries;
                 continue;
             }
 
@@ -534,11 +538,16 @@ xbool container::AdvanceEntry(void)
         const mkvparser::BlockEntry* pNext = NULL;
         const s32 status = (s32)m_pCluster->GetNext(m_pEntry, pNext);
 
-        if ((status < 0) || !pNext || pNext->EOS())
+        if (status < 0)
+        {
+            m_Error = status;
+            return FALSE;
+        }
+
+        if (!pNext || pNext->EOS())
         {
             if (!AdvanceCluster())
                 return FALSE;
-            ++retries;
             continue;
         }
 
@@ -546,9 +555,6 @@ xbool container::AdvanceEntry(void)
         return TRUE;
     }
 
-    x_DebugMsg("MoviePlayer_WebM: Too many empty clusters\n");
-    m_bEOF = TRUE;
-    return FALSE;
 }
 
 //==============================================================================

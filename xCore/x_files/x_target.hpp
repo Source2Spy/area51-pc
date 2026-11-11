@@ -99,7 +99,7 @@ enum asset_platform
         #define TARGET_DEV
         #define X_DEBUG_MSG
         #define X_PROFILE 1
-        #if defined( TARGET_WINDOWS )
+        #if defined( TARGET_DESKTOP )
             #define X_PROFILE_TRACY 1
         #endif
         #define X_LOGGING
@@ -124,7 +124,7 @@ enum asset_platform
         #define X_LOGGING
         #define X_DEBUG
         #define X_PROFILE 1
-        #if defined( TARGET_WINDOWS )
+        #if defined( TARGET_DESKTOP )
             #define X_PROFILE_TRACY 1
         #endif
         #define X_MEM_DEBUG
@@ -175,7 +175,11 @@ enum asset_platform
 //------------------------------------------------------------------------------
 
 #ifndef X_PROFILE
-    #define X_PROFILE 0
+    #if defined( A51_PROFILE_NVTX ) && A51_PROFILE_NVTX
+        #define X_PROFILE 1
+    #else
+        #define X_PROFILE 0
+    #endif
 #endif
 
 #ifndef X_PROFILE_TRACY
@@ -186,20 +190,6 @@ enum asset_platform
 //  Applications
 //==============================================================================
 
-#if defined( CONFIG_VIEWER )
-    #if defined( VALID_CONFIG )
-        #define MULTIPLE_CONFIGS
-    #else
-        #define VALID_CONFIG
-        #define TARGET_DEV
-        #define X_LOGGING
-        #define X_ASSERT_LITE
-        #define X_ASSERT
-        #define X_OPTIMIZED
-        #define X_MEM_DEBUG
-        #define USE_OWNER_STACK
-    #endif
-#endif
 
 //------------------------------------------------------------------------------
 

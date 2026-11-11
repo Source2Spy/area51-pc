@@ -36,7 +36,6 @@ debug_menu_page_fx::debug_menu_page_fx( ) : debug_menu_page()
     AddItemBool     ( "Element Wire", FXDebug.ElementWire );
     AddItemBool     ( "Element Sprite Center", FXDebug.ElementSpriteCenter );
     AddItemBool     ( "Element Sprite Count", FXDebug.ElementSpriteCount );
-    AddItemBool     ( "Element Custom", FXDebug.ElementCustom );
 }
 
 //==============================================================================

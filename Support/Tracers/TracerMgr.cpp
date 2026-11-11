@@ -178,8 +178,7 @@ void tracer_mgr::Render( void )
                                                     render::PRIMITIVE_BLEND_ADDITIVE,
                                                     render::PRIMITIVE_DEPTH_READ_ONLY,
                                                     render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                    render::PRIMITIVE_SAMPLER_ANISOTROPIC_WRAP,
-                                                    render::PRIMITIVE_LAYER_ADDITIVE );
+                                                    render::PRIMITIVE_SAMPLER_ANISOTROPIC_WRAP);
         render::PrimitiveBatch Batch( Material );
         Batch.Reserve( MAX_TRACERS_PER_TYPE * 4, MAX_TRACERS_PER_TYPE * 6 );
 

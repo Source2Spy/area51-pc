@@ -125,8 +125,9 @@ void debug_menu_page_localization::OnRenderActive( void )
     ui_font* pFont;
     irect Rect;
 
-    s32 Xpos = 20;
-    s32 Ypos = 250;
+    const irect Bounds = g_UIRenderer.GetViewport().GetLogicalClipBounds();
+    s32 Xpos = Bounds.l + 20;
+    s32 Ypos = Bounds.t + 250;
 
     xwchar wc[2];
 
@@ -141,12 +142,12 @@ void debug_menu_page_localization::OnRenderActive( void )
                 wc[0] = ch;
                 wc[1] = 0;
 
-                Rect.Set(0,0,pFont->GetCharacter(ch).W,pFont->GetLineHeight());
+                Rect.Set(0,0,pFont->GetGlyphAdvance(ch),pFont->GetLineHeight());
 
-                if( Xpos + Rect.GetWidth() > 480 )
+                if( Xpos + Rect.GetWidth() > Bounds.r - 20 )
                 {
                     Ypos += Rect.GetHeight() + Spacing;
-                    Xpos = 20;
+                    Xpos = Bounds.l + 20;
                 }
 
                 Rect.Translate(Xpos, Ypos);
@@ -170,12 +171,12 @@ void debug_menu_page_localization::OnRenderActive( void )
                 wc[0] = ch;
                 wc[1] = 0;
 
-                Rect.Set(0,0,pFont->GetCharacter(ch).W,pFont->GetLineHeight());
+                Rect.Set(0,0,pFont->GetGlyphAdvance(ch),pFont->GetLineHeight());
 
-                if( Xpos + Rect.GetWidth() > 480 )
+                if( Xpos + Rect.GetWidth() > Bounds.r - 20 )
                 {
                     Ypos += Rect.GetHeight() + Spacing;
-                    Xpos = 20;
+                    Xpos = Bounds.l + 20;
                 }
 
                 Rect.Translate(Xpos, Ypos);

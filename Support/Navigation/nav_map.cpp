@@ -97,8 +97,7 @@ void RenderNavigationConnection( ng_connection2& Connection, s32 index, const ve
                                                 render::PRIMITIVE_BLEND_ALPHA,
                                                 render::PRIMITIVE_DEPTH_READ_ONLY,
                                                 render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                render::PRIMITIVE_LAYER_TRANSPARENT );
+                                                render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
     render::PrimitiveBatch Batch( Material );
     Batch.AddQuad( positions, uvs, colors );
     matrix4 Identity;
@@ -122,8 +121,7 @@ void RenderNavigationPolygon( const void* pPositions, s32 positionCount, s32 pos
                                                 render::PRIMITIVE_BLEND_ALPHA,
                                                 render::PRIMITIVE_DEPTH_READ_ONLY,
                                                 render::PRIMITIVE_RASTER_SOLID_NO_CULL,
-                                                render::PRIMITIVE_SAMPLER_LINEAR_CLAMP,
-                                                render::PRIMITIVE_LAYER_TRANSPARENT );
+                                                render::PRIMITIVE_SAMPLER_LINEAR_CLAMP);
     render::PrimitiveBatch Batch( Material );
     Batch.Reserve( ( positionCount - 2 ) * 3, ( positionCount - 2 ) * 3 );
     const byte* pPositionBytes = (const byte*)pPositions;

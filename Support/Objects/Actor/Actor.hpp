@@ -13,8 +13,8 @@
 // INCLUDES
 //=========================================================================
  
-#include "NetworkMgr/NetObj.hpp"
-#include "NetworkMgr/UpdateMgr.hpp"
+#include "NetworkMgr/Replication/NetObj.hpp"
+#include "NetworkMgr/Replication/UpdateMgr.hpp"
 
 #include "Objects/CorpsePain.hpp"
 #include "Objects/NewWeapon.hpp"
@@ -585,6 +585,7 @@ virtual xbool           IsFlashlightOn          ( void );
         void            SetCollidedActor        ( guid collidedActor )      { m_CollidedActor = collidedActor; }
 virtual f32             GetActorCollisionRadius ( void );
 virtual void            Push                    ( const vector3& PushVector );
+virtual xbool           CanBePushedBy           ( actor& Other );
 virtual f32             GetCollisionHeight      ( void );
 virtual f32             GetCollisionRadius      ( void );
         void            WakeUpDoors             ( void );
@@ -909,7 +910,6 @@ public:
     virtual void            net_SetSkin         ( s32 Skin );
     virtual void            net_SetVoiceActor   ( s32 VoiceActor );
     
-    virtual void            net_AcceptUpdate    ( const bitstream& BitStream );
     virtual void            net_AcceptUpdate    ( const update&    Update    );
     virtual void            net_ProvideUpdate   (       bitstream& BitStream, 
                                                         u32&       DirtyBits );
@@ -1012,7 +1012,7 @@ vector3 actor::GetVelocity( void ) const
 {
     // Use loco physics?
     if( m_pLoco )
-        return m_pLoco->m_Physics.GetVelocity();
+        return m_pLoco->m_Physics.GetContactVelocity();
         
     // Just use base class
     return object::GetVelocity();        

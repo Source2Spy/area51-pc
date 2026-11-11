@@ -54,7 +54,7 @@ inline
 rhandle_base::rhandle_base( const char* pResourceName )
 {
     SetIndex( -1 );
-    g_RscMgr.AddRHandle( *this, pResourceName );
+    g_RscMgr.AddRHandle( *this, pResourceName, TRUE );
 }
 
 //==============================================================================
@@ -72,10 +72,10 @@ void rhandle_base::Destroy( void )
 
 //==============================================================================
 inline
-void rhandle_base::SetName( const char* pResourceName )
+void rhandle_base::SetName( const char* pResourceName, xbool LoadOnBind )
 {
     if( pResourceName != NULL )
-        g_RscMgr.AddRHandle( *this, pResourceName );
+        g_RscMgr.AddRHandle( *this, pResourceName, LoadOnBind );
 }
 
 //==============================================================================
