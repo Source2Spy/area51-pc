@@ -20,18 +20,19 @@ This file contains the following sections:
 
 1. [About the Port](#about-the-port)
 2. [Renderer Features Explained](#renderer-features-explained)
-3. [General Notes](#general-notes)
-4. [License](#license)
-5. [Getting the Source Code](#getting-the-source-code)
-6. [Compiling on Windows](#compiling-on-windows)
-7. [Compiling on Linux](#compiling-on-linux)
-8. [Compiling on Android](#compiling-on-android)
-9. [Original Xbox (Legacy)](#original-xbox-legacy)
-10. [Shader Pipeline](#shader-pipeline)
-11. [Installation](#installation)
-12. [Development and Modding Tools](#development-and-modding-tools)
-13. [Bug Reports](#bug-reports)
-14. [FAQ](#faq)
+3. [TODO](#todo)
+4. [General Notes](#general-notes)
+5. [License](#license)
+6. [Getting the Source Code](#getting-the-source-code)
+7. [Compiling on Windows](#compiling-on-windows)
+8. [Compiling on Linux](#compiling-on-linux)
+9. [Compiling on Android](#compiling-on-android)
+10. [Original Xbox (Legacy)](#original-xbox-legacy)
+11. [Shader Pipeline](#shader-pipeline)
+12. [Installation](#installation)
+13. [Development and Modding Tools](#development-and-modding-tools)
+14. [Bug Reports](#bug-reports)
+15. [FAQ](#faq)
 
 # About the Port
 
@@ -141,6 +142,53 @@ The post-processing work also includes film grain and screen warp from beta vers
 ## Cloth and Primitive Rendering
 
 Cloth uses tessellation in the new renderer. The rewritten `d3deng_draw` path handles engine-drawn primitives with proper lighting and shading, including geometry that did not behave correctly through the old rendering code.
+
+# TODO
+
+## Planned Features
+
+* Add path tracing support.
+* Add NVIDIA DLSS support.
+* Introduce DSP-based audio processing.
+* Expand the existing Lua scripting support.
+* Add a mod loader for custom game content.
+* Jolt Physics.
+* Add support for `.DFS` V4 archives.
+
+## Known Issues
+
+* Investigate movement in water on Rift. The player cannot jump while submerged; it is unclear whether jumping or surfacing should take precedence.
+* Certain settings can produce a black prewarm screen.
+
+## Deferred Work
+
+* Improve physics.
+* Reduce delays when switching between zones.
+* Fix cases where the multiplayer death camera breaks zone visibility.
+* Optimize runtime font generation.
+* Revisit font scaling.
+* Fix button prompts for keyboard controls.
+* Restore the older `bin_level` files in Dreamland (low priority).
+* Investigate cubemaps appearing as star-shaped artifacts (BC compression) (low priority).
+
+<details>
+<summary>Items crossed off in the original notes</summary>
+
+* ~~Fix the Invader elevator.~~
+* ~~Prevent the player controller from catching on walls.~~
+* ~~Fix shadow artifacts near the bases of omnidirectional lights.~~
+* ~~Correct the glow effect.~~
+* ~~Fix localization issues.~~
+* ~~Include the player's hands in the depth prepass so they contribute to XeGTAO.~~
+* ~~Remove the Xbox fog implementation.~~
+* ~~Set up Android builds through GitHub Actions.~~
+* ~~Update the credits.~~
+* ~~Remove Carl Johnson.~~
+* ~~Investigate shader caching.~~
+* ~~Reduce the size of the button UI element by half.~~
+* ~~Fix the camera exploit that allows looking past cover by tilting upward and backing into a wall.~~
+
+</details>
 
 # General Notes
 
