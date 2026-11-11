@@ -202,6 +202,7 @@ Cloth uses tessellation in the new renderer. The rewritten `d3deng_draw` path ha
 | macOS | Not planned |
 | iOS | Not planned |
 | Original Xbox | Legacy branch |
+| PlayStation 2 | Deleted |
 
 The original Xbox target uses the older console toolchain and is separate from the CMake/SDL3 port.
 
