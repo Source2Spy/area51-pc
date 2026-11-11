@@ -215,14 +215,6 @@ The original Xbox target uses the older console toolchain and is separate from t
 | `MiscUtils/` | Additional utilities |
 | `cmake/` | Build scripts, toolchains, shader preparation and packaging |
 
-## A Short History of Area-51
-
-*Area-51* was released on April 25, 2005, for PC, PlayStation 2 and the original Xbox. It was developed by Inevitable Entertainment and published by Midway Games. The PC version was later distributed as freeware with United States Air Force sponsorship. Official support eventually ended.
-
-The source used by this project comes from a development snapshot dated March 31, 2005, at 10:40:19, shortly before the game's commercial release. According to the history accompanying the original source release, the files were discovered at a garage sale involving a former THQ developer.
-
-That snapshot contains the Entropy engine, game code and targets for PC, PlayStation 2 and Xbox, as well as early GameCube work and debug symbols for several platforms. The source snapshot does not contain the complete retail game assets.
-
 # Getting the Source Code
 
 Clone the `master` branch:
@@ -475,6 +467,14 @@ The statuses below come from the project's original tool list. Several programs 
 Report bugs through the [GitHub issue tracker](https://github.com/Source2Spy/area51-pc/issues). Include the build or commit, operating system, graphics API, and instructions for reproducing the problem. Logs and screenshots help with startup and rendering bugs.
 
 Project discussion is also available on [Discord](https://discord.gg/7gGhFSjxsq).
+
+## A Short History of Area-51
+
+*Area-51* was released on April 25, 2005, for PC, PlayStation 2 and the original Xbox. It was developed by Inevitable Entertainment and published by Midway Games. The PC version was later distributed as freeware with United States Air Force sponsorship. Official support eventually ended.
+
+The source used by this project comes from a development snapshot dated March 31, 2005, at 10:40:19, shortly before the game's commercial release. According to the history accompanying the original source release, the files were discovered at a garage sale involving a former THQ developer.
+
+That snapshot contains the Entropy engine, game code and targets for PC, PlayStation 2 and Xbox, as well as early GameCube work and debug symbols for several platforms. The source snapshot does not contain the complete retail game assets.
 
 # License
 
