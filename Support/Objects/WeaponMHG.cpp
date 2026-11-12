@@ -251,7 +251,7 @@ xbool weapon_mhg::FireWeaponProtected( const vector3& InitPos , const vector3& B
         ((energy_projectile*)pBaseProjectile)->LoadEffect( m_PrimaryProjectileFx.GetName(), InitPos, Rot );
         
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
         
         // Decrement count of bullets in current clip
         DecrementAmmo();
@@ -309,7 +309,7 @@ xbool weapon_mhg::FireSecondaryProtected( const vector3& InitPos , const vector3
          ((energy_projectile*)pBaseProjectile)->LoadEffect( m_SecondayProjectileFx.GetName(), InitPos, Rot );
         
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
 
         // clear all ammo
         ClearAmmo();
@@ -359,7 +359,7 @@ xbool weapon_mhg::FireNPCWeaponProtected ( const vector3& BaseVelocity , const v
      ((energy_projectile*)pBaseProjectile)->LoadEffect( m_PrimaryProjectileFx.GetName(), InitPos, Rot );
 
     //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
 
     g_AudioManager.Play( "MHG_Primary_Fire", audio_manager::GUN_SHOT, GetPosition(), 
                                             GetZone1(), GetGuid() );

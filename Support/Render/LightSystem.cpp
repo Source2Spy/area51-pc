@@ -454,7 +454,8 @@ void LightSystem::RemoveLight( s32 LightIndex )
 
 //=========================================================================
 
-void LightSystem::AddFadingLight( vector3 const& Position, xcolor const& Color, f32 Radius, f32 Intensity, f32 FadeTime )
+void LightSystem::AddFadingLight( vector3 const& Position, xcolor const& Color, f32 Radius, f32 Intensity, f32 FadeTime,
+                                  xbool CastShadows )
 {
     if( FadeTime <= 0.0f )
     {
@@ -472,6 +473,7 @@ void LightSystem::AddFadingLight( vector3 const& Position, xcolor const& Color, 
     m_FadingLights[LightIndex].Valid = TRUE;
     m_FadingLights[LightIndex].InterpolationT = 0.0f;
     m_FadingLights[LightIndex].Intensity = Intensity;
+    m_FadingLights[LightIndex].CastShadows = CastShadows;
 }
 
 //=========================================================================
@@ -692,6 +694,59 @@ void LightSystem::GetDynamicLight( s32 Index, vector3& Position, f32& Radius, xc
 
 //=========================================================================
 
+xbool LightSystem::GetShadowLight( s32 Index, vector3& Position, f32& Radius, xcolor& Color,
+                                  s32& Shape, xbool& CastShadows, f32& InnerRadius,
+                                  vector3& Direction, f32& Falloff, f32& InnerAngle, f32& OuterAngle,
+                                  s32& ShadowMapResolution, s32& ShadowPriority,
+                                  xbool& IsFlashlight ) const
+{
+    ASSERT( ( Index >= 0 ) && ( Index < MAX_SHADOW_LIGHTS ) );
+
+    if( Index < MAX_DYNAMIC_LIGHTS )
+    {
+        if( Index >= m_nDynamicLights )
+        {
+            return FALSE;
+        }
+
+        GetDynamicLight( Index, Position, Radius, Color, Shape, CastShadows, InnerRadius,
+                         Direction, Falloff, InnerAngle, OuterAngle, ShadowMapResolution,
+                         ShadowPriority, IsFlashlight );
+        return TRUE;
+    }
+
+#ifndef X_RETAIL
+    debug_options const& Options = GetRenderPipeline().GetDebugOptions();
+    if( Options.DisableLocalLights || Options.DisableFadingLights )
+    {
+        return FALSE;
+    }
+#endif
+
+    fading_light const& Light = m_FadingLights[Index - MAX_DYNAMIC_LIGHTS];
+    if( !Light.Valid || !Light.CastShadows )
+    {
+        return FALSE;
+    }
+
+    Position = Light.Pos;
+    Radius = Light.Radius;
+    ScaleLightColor( Color, Light.CurrentColor, Light.Intensity );
+    Shape = LIGHT_SHAPE_OMNI;
+    CastShadows = TRUE;
+    InnerRadius = 0.0f;
+    Direction.Set( 0.0f, 0.0f, 1.0f );
+    Falloff = 1.0f;
+    InnerAngle = 30.0f;
+    OuterAngle = 45.0f;
+    ShadowMapResolution = 512;
+    ShadowPriority = 1;
+    IsFlashlight = FALSE;
+    return TRUE;
+}
+
+//=========================================================================
+
 void LightSystem::BeginLightCollection( void )
 {
     static xprofile_counter LightCollectionBuilds =
@@ -794,7 +849,7 @@ void LightSystem::BeginLightCollection( void )
         m_pSpadLights[LightCount].CookieIndex = -1;
         m_pSpadLights[LightCount].CookieU.Set( 1.0f, 0.0f, 0.0f );
         m_pSpadLights[LightCount].CookieV.Set( 0.0f, 1.0f, 0.0f );
-        m_pSpadLights[LightCount].DynamicLightIndex = -1;
+        m_pSpadLights[LightCount].DynamicLightIndex = Light.CastShadows ? MAX_DYNAMIC_LIGHTS + CurrentLink : -1;
         LightCount++;
 
         CurrentLink = Light.NextLink;
@@ -1290,7 +1345,8 @@ s32 LightSystem::CollectCharLightsOnly( matrix4 const& LocalToWorld, bbox const&
         {
             spad_light const& Candidate = m_pSpadLights[m_pLightBvhLightIndices[Node.FirstLight + LightOffset]];
             // Fading lights apply to characters; regular dynamic lights do not here.
-            if( !Candidate.CharOnly && ( Candidate.DynamicLightIndex >= 0 ) )
+            if( !Candidate.CharOnly && ( Candidate.DynamicLightIndex >= 0 ) &&
+                ( Candidate.DynamicLightIndex < MAX_DYNAMIC_LIGHTS ) )
             {
                 continue;
             }

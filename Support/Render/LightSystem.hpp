@@ -32,6 +32,7 @@ public:
         MAX_CHAR_LIGHTS      = 128,
         MAX_DYNAMIC_LIGHTS   = 64,
         MAX_FADING_LIGHTS    = 64,
+        MAX_SHADOW_LIGHTS    = MAX_DYNAMIC_LIGHTS + MAX_FADING_LIGHTS,
         MAX_COLLECTED_LIGHTS = 16,
         MAX_SPAD_LIGHTS      = MAX_FADING_LIGHTS + MAX_DYNAMIC_LIGHTS + MAX_CHAR_LIGHTS,
         MAX_LIGHT_BVH_NODES  = ( MAX_SPAD_LIGHTS * 2 ) - 1,
@@ -72,6 +73,7 @@ protected:
         f32     Intensity;
         s32     PrevLink;
         s32     NextLink;
+        xbool   CastShadows;
     };
 
     //-------------------------------------------------------------------------
@@ -169,10 +171,10 @@ public:
     LightSystem( void );
     virtual ~LightSystem( void );
 
-    // Add lights once per frame. Fading lights persist and expire automatically.
+    // Add lights once per frame. Fading lights persist, cast shadows by default, and expire automatically.
     void ClearLights     ( vector3 const& ViewPosition );
     void AddFadingLight  ( vector3 const& Position, xcolor const& Color, f32 Radius,
-                           f32 Intensity, f32 FadeTime );
+                           f32 Intensity, f32 FadeTime, xbool CastShadows = TRUE );
     void AddDynamicLight ( vector3 const& Position, xcolor const& Color, f32 Radius,
                            f32 Intensity, xbool CharOnly, s32 Shape = LIGHT_SHAPE_OMNI,
                            xbool CastShadows = TRUE, f32 InnerRadius = 0.0f,
@@ -187,6 +189,13 @@ public:
     s32  GetNCharLights    ( void ) const { return m_nCharLights; }
     s32  GetNFadingLights  ( void ) const { return m_nFadingLights; }
     void GetDynamicLight   ( s32 Index, vector3& Position, f32& Radius, xcolor& Color,
+                             s32& Shape, xbool& CastShadows, f32& InnerRadius,
+                             vector3& Direction, f32& Falloff, f32& InnerAngle,
+                             f32& OuterAngle, s32& ShadowMapResolution,
+                             s32& ShadowPriority, xbool& IsFlashlight ) const;
+
+    // Sparse shadow IDs: dynamic slots followed by fading slots. Inactive slots return FALSE.
+    xbool GetShadowLight   ( s32 Index, vector3& Position, f32& Radius, xcolor& Color,
                              s32& Shape, xbool& CastShadows, f32& InnerRadius,
                              vector3& Direction, f32& Falloff, f32& InnerAngle,
                              f32& OuterAngle, s32& ShadowMapResolution,

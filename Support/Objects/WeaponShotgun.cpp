@@ -292,7 +292,7 @@ xbool weapon_shotgun::FireWeaponProtected( const vector3& InitPos , const vector
         HandleSweeperCone( InitPos, BaseVelocity, InitRot, PainHandle, Angle, Dist );
 
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
 
         //decrement count of bullets in current clip
         DecrementAmmo();
@@ -358,7 +358,7 @@ xbool weapon_shotgun::FireSecondaryProtected( const vector3& InitPos , const vec
         HandleSweeperCone( InitPos, BaseVelocity, InitRot, PainHandle, Angle, Dist );
 
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
 
         // decrement count of bullets in current clip
         DecrementAmmo(AMMO_PRIMARY, PelletMultiplier);
@@ -410,7 +410,7 @@ xbool weapon_shotgun::FireNPCWeaponProtected ( const vector3& BaseVelocity , con
     }
     
     //add a muzzle light where the bullet was fired from (will fade out really quickly)
-    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
 
     // Play the sound associated with this actor's faction.
     object* pObj = g_ObjMgr.GetObjectByGuid( Owner );

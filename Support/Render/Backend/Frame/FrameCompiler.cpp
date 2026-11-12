@@ -1736,7 +1736,7 @@ xbool FrameCompiler::BuildPackets( const xarray<geom_draw_item>&    Draws,
                                                       ? m_lSkinFrameLighting[Packet.FirstInstance + Instance]
                                                       : m_lRigidFrameLighting[Packet.FirstInstance + Instance];
             Packet.Shadows = HasLocalShadows( m_pContext->pLighting->Get( Lighting ), m_DynamicLightShadowIndex,
-                                              LightSystem::MAX_DYNAMIC_LIGHTS );
+                                              LightSystem::MAX_SHADOW_LIGHTS );
         }
 
         const u32 ShaderFlags = Packet.Kind == GEOM_PACKET_DYNAMIC ? BuildInstFlags( Packet.InstFeatures )
@@ -3008,7 +3008,7 @@ xbool FrameCompiler::CopyLightingData( GeomLightingConstants&           Destinat
 
         const s32 DynamicLightIndex = Source.DynamicLightIndex[i];
 
-        if( ( DynamicLightIndex >= 0 ) && ( DynamicLightIndex < LightSystem::MAX_DYNAMIC_LIGHTS ) )
+        if( ( DynamicLightIndex >= 0 ) && ( DynamicLightIndex < LightSystem::MAX_SHADOW_LIGHTS ) )
         {
             Projection.LightShadowIndex[i] = m_DynamicLightShadowIndex[DynamicLightIndex];
         }

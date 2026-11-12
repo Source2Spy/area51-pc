@@ -210,7 +210,7 @@ xbool weapon_dual_smp::FireWeaponProtected( const vector3& InitPos , const vecto
 //        BP->SetDamageAmount( g_MultiplayerPainTweaks.m_SMPDamage );
  
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
         
         // Decrement count of bullets in current clip
         DecrementAmmo();
@@ -246,7 +246,7 @@ xbool weapon_dual_smp::FireNPCWeaponProtected ( const vector3& BaseVelocity , co
     BP = CreateBullet( GetLogicalName(), InitPos, TargetRot, BaseVelocity, Owner, PainHandle, AMMO_PRIMARY, bHitLiving, FIRE_POINT_DEFAULT );
 
     //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
 
     if( g_AudioMgr.IsValidVoiceIdCached( m_LoopVoiceId ) )
     {

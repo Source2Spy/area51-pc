@@ -382,7 +382,7 @@ xbool weapon_sniper_rifle::FireWeaponProtected( const vector3& InitPos , const v
 //            pBullet->SetDamageAmount( g_MultiplayerPainTweaks.m_SniperDamage );
 
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
 
         // decrement count of bullets in current clip
         DecrementAmmo();
@@ -433,7 +433,7 @@ xbool weapon_sniper_rifle::FireNPCWeaponProtected ( const vector3& InheritedVelo
     pBullet = CreateBullet( GetLogicalName(), InitPos, TargetRot, InheritedVelocity, Owner, PainHandle, AMMO_PRIMARY, isHit );
      
     //add a muzzle light where the bullet was fired from (will fade out really quickly)
-    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
      
     // Play the sound associated with this actor's faction.
     object* pObj = g_ObjMgr.GetObjectByGuid( Owner );

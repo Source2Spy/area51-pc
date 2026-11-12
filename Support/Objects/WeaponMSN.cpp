@@ -611,7 +611,7 @@ xbool weapon_msn::FireWeaponProtected( const vector3& InitPos , const vector3& B
             pBullet->SetPainDegradation( PainDropDistTweak.GetF32(), PainDropScaleTweak.GetF32() );
 */
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        render::GetRenderPipeline().GetLightSystem().AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
         
         // Decrement count of bullets in current clip
         DecrementAmmo();
@@ -680,7 +680,7 @@ xbool weapon_msn::FireSecondaryProtected( const vector3& InitPos , const vector3
     pProjectile->SetTarget( m_TargetGuid );
 
     //add a muzzle light where the bullet was fired from (will fade out really quickly)
-    render::GetRenderPipeline().GetLightSystem().AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
 
     if( 1 )  // just a tap fire
     {
@@ -769,7 +769,7 @@ xbool weapon_msn::FireNPCWeaponProtected ( const vector3& BaseVelocity , const v
             PainHandle );
 
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        render::GetRenderPipeline().GetLightSystem().AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
 
         // Play the sound associated with this actor's faction.
         object* pObj = g_ObjMgr.GetObjectByGuid( Owner );
@@ -829,7 +829,7 @@ xbool weapon_msn::FireGhostPrimary( s32 iFirePoint, xbool, vector3& )
     }
 
     // add a muzzle light where the bullet was fired from (will fade out really quickly)
-    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
 
     // Play the sound associated with this actor's faction.
     object* pObj = g_ObjMgr.GetObjectByGuid( m_ParentGuid );
@@ -878,7 +878,7 @@ xbool weapon_msn::FireGhostSecondary( s32 iFirePoint )
     }
 
     // add a muzzle light where the bullet was fired from (will fade out really quickly)
-    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
 
     // Play the sound associated with this actor's faction.
     object* pObj = g_ObjMgr.GetObjectByGuid( m_ParentGuid );

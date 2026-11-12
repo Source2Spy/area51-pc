@@ -536,11 +536,14 @@ xbool BuildShadowLightCandidate( ShadowLight& ShadowLightData, s32 LightIndex, p
     s32                ShadowMapResolution;
     s32                ShadowPriority;
 
-    GetRenderPipeline().GetLightSystem().GetDynamicLight( LightIndex, DynamicLightData.Pos, DynamicLightData.Radius,
+    if( !GetRenderPipeline().GetLightSystem().GetShadowLight( LightIndex, DynamicLightData.Pos, DynamicLightData.Radius,
                                 DynamicLightData.Color, DynamicLightData.Shape, CastShadows, UnusedInnerRadius,
                                 DynamicLightData.Direction, DynamicLightData.Falloff, UnusedInnerAngle,
                                 DynamicLightData.OuterAngle, ShadowMapResolution, ShadowPriority,
-                                DynamicLightData.IsFlashlight );
+                                DynamicLightData.IsFlashlight ) )
+    {
+        return FALSE;
+    }
 
     static_cast<void>( UnusedInnerRadius );
     static_cast<void>( UnusedInnerAngle );
@@ -608,7 +611,7 @@ xbool SortsBeforeShadowLight( ShadowLight const& A, ShadowLight const& B )
 static
 void InsertShadowLight( ShadowLight* pLights, s32& LightCount, ShadowLight const& Light )
 {
-    if( LightCount >= LightSystem::MAX_DYNAMIC_LIGHTS )
+    if( LightCount >= LightSystem::MAX_SHADOW_LIGHTS )
     {
         if( !SortsBeforeShadowLight( Light, pLights[LightCount - 1] ) )
         {
@@ -1920,8 +1923,8 @@ void ShadowMapAtlas::CreateShadowMap( void )
     static xprofile_counter ShadowMapAtlasSources =
         x_GetProfiler().RegisterCounter( "ShadowMapAtlasSources", "RenderCounter" );
 
-    ShadowLight                 ShadowLightCandidates[LightSystem::MAX_DYNAMIC_LIGHTS];
-    ShadowLight                 ShadowLights[LightSystem::MAX_DYNAMIC_LIGHTS];
+    ShadowLight                 ShadowLightCandidates[LightSystem::MAX_SHADOW_LIGHTS];
+    ShadowLight                 ShadowLights[LightSystem::MAX_SHADOW_LIGHTS];
     s32                         CandidateShadowLightCount = 0;
     player*                     pActivePlayer = SMP_UTIL_GetActivePlayer();
     ScratchData&                Scratch = GetScratch();
@@ -1939,7 +1942,7 @@ void ShadowMapAtlas::CreateShadowMap( void )
     ShadowMapDynamicLights.Add( DynamicLightCount );
     {
         X_PROFILE_SCOPE_CATEGORY( "Renderer", "ShadowMap/BuildLightCandidates" );
-        for( s32 LightIndex = 0; LightIndex < DynamicLightCount; LightIndex++ )
+        for( s32 LightIndex = 0; LightIndex < LightSystem::MAX_SHADOW_LIGHTS; LightIndex++ )
         {
             ShadowLight ShadowLightData;
             if( !BuildShadowLightCandidate( ShadowLightData, LightIndex, pActivePlayer ) )
@@ -1962,9 +1965,9 @@ void ShadowMapAtlas::CreateShadowMap( void )
     // Query casters only for selected sources; replace empty selections from the ranked list.
     {
         X_PROFILE_SCOPE_CATEGORY( "Renderer", "ShadowMap/BuildSelectedLightCasters" );
-        xbool CasterTested[LightSystem::MAX_DYNAMIC_LIGHTS] = { FALSE };
-        xbool HasCasters[LightSystem::MAX_DYNAMIC_LIGHTS] = { FALSE };
-        xbool AtlasRejected[LightSystem::MAX_DYNAMIC_LIGHTS] = { FALSE };
+        xbool CasterTested[LightSystem::MAX_SHADOW_LIGHTS] = { FALSE };
+        xbool HasCasters[LightSystem::MAX_SHADOW_LIGHTS] = { FALSE };
+        xbool AtlasRejected[LightSystem::MAX_SHADOW_LIGHTS] = { FALSE };
         s32 LightsWithCastersCount = 0;
         for( s32 LightIndex = 0; LightIndex < ShadowLightCount; LightIndex++ )
         {
@@ -1989,7 +1992,7 @@ void ShadowMapAtlas::CreateShadowMap( void )
             RefillShadowLights( ShadowLightCandidates, CandidateShadowLightCount, ShadowLights, ShadowLightCount,
                                 CasterTested, HasCasters, AtlasRejected, RelevantCasters );
 
-            xbool SelectedBeforeResolve[LightSystem::MAX_DYNAMIC_LIGHTS] = { FALSE };
+            xbool SelectedBeforeResolve[LightSystem::MAX_SHADOW_LIGHTS] = { FALSE };
             for( s32 LightIndex = 0; LightIndex < ShadowLightCount; LightIndex++ )
             {
                 SelectedBeforeResolve[ShadowLights[LightIndex].DynamicLightIndex] = TRUE;

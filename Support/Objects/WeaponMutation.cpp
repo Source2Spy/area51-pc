@@ -525,7 +525,7 @@ xbool weapon_mutation::FireWeaponProtected( const vector3& InitPos , const vecto
         }
         
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        render::GetRenderPipeline().GetLightSystem().AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
     }
 
     return TRUE;
@@ -730,7 +730,7 @@ xbool weapon_mutation::FireSecondaryProtected( const vector3& InitPos , const ve
 
 
     //add a muzzle light where the bullet was fired from (will fade out really quickly)
-    render::GetRenderPipeline().GetLightSystem().AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
 
 
     s32 VoiceId = g_AudioMgr.Play( "MSN_Alt_Fire_Tap", GetPosition(), GetZone1(), TRUE );
@@ -769,7 +769,7 @@ xbool weapon_mutation::FireGhostPrimary( s32 iFirePoint, xbool , vector3& )
     }
 
     // add a muzzle light where the bullet was fired from (will fade out really quickly)
-    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
 
     // Play the sound associated with this actor's faction.
     object* pObj = g_ObjMgr.GetObjectByGuid( m_ParentGuid );
@@ -829,7 +829,7 @@ xbool weapon_mutation::FireGhostSecondary( s32 iFirePoint )
     }
 
     // add a muzzle light where the bullet was fired from (will fade out really quickly)
-    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
 
     // Play the sound associated with this actor's faction.
     object* pObj = g_ObjMgr.GetObjectByGuid( m_ParentGuid );

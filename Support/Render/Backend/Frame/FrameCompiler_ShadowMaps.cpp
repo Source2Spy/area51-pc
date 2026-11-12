@@ -36,7 +36,7 @@ xbool FrameCompiler::InitShadowMaps( void )
     x_memset( m_FaceShadowMatrices, 0, sizeof( m_FaceShadowMatrices ) );
     x_memset( &m_ShadowMapData, 0, sizeof( m_ShadowMapData ) );
 
-    for( s32 i = 0; i < LightSystem::MAX_DYNAMIC_LIGHTS; ++i )
+    for( s32 i = 0; i < LightSystem::MAX_SHADOW_LIGHTS; ++i )
     {
         m_DynamicLightShadowIndex[i] = kInvalidShadowIndex;
     }
@@ -116,7 +116,7 @@ xbool FrameCompiler::ApplyPassInputs( const BackendPassInputs& Inputs )
 
 u32 FrameCompiler::GetDynamicLightShadowIndex( s32 DynamicLightIndex ) const
 {
-    if( ( DynamicLightIndex < 0 ) || ( DynamicLightIndex >= LightSystem::MAX_DYNAMIC_LIGHTS ) )
+    if( ( DynamicLightIndex < 0 ) || ( DynamicLightIndex >= LightSystem::MAX_SHADOW_LIGHTS ) )
     {
         return kInvalidShadowIndex;
     }
@@ -166,7 +166,7 @@ xbool FrameCompiler::BuildShadowMapConstants( FrameGraphBuilder& Graph )
     x_memset( m_FaceShadowMatrices, 0, sizeof( m_FaceShadowMatrices ) );
     x_memset( &m_ShadowMapData, 0, sizeof( m_ShadowMapData ) );
 
-    for( s32 i = 0; i < LightSystem::MAX_DYNAMIC_LIGHTS; ++i )
+    for( s32 i = 0; i < LightSystem::MAX_SHADOW_LIGHTS; ++i )
     {
         m_DynamicLightShadowIndex[i] = kInvalidShadowIndex;
     }
@@ -221,7 +221,7 @@ xbool FrameCompiler::BuildShadowMapConstants( FrameGraphBuilder& Graph )
         nFaceShadows++;
 
         const xbool HasDynamicLightIndex =
-            ( Source.DynamicLightIndex >= 0 ) && ( Source.DynamicLightIndex < LightSystem::MAX_DYNAMIC_LIGHTS );
+            ( Source.DynamicLightIndex >= 0 ) && ( Source.DynamicLightIndex < LightSystem::MAX_SHADOW_LIGHTS );
 
         if( Source.Type != ShadowMapAtlas::SHADOW_SOURCE_POINT_FACE )
         {

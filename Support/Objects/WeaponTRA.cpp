@@ -385,7 +385,7 @@ xbool weapon_tra::FireWeaponProtected( const vector3& InitPos , const vector3& B
         BP = CreateBullet( GetLogicalName(), InitPos, InitRot, BaseVelocity, Owner, PainHandle );
 
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
 
         // Decrement count of bullets in current clip
         DecrementAmmo();
@@ -427,7 +427,7 @@ xbool weapon_tra::FireSecondaryProtected( const vector3& InitPos , const vector3
         BP = CreateBullet( GetLogicalName(), InitPos, InitRot, BaseVelocity, Owner, PainHandle, AMMO_SECONDARY );
 
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
 
         // Decrement count of bullets in current clip
         DecrementAmmo( AMMO_SECONDARY );
@@ -495,7 +495,7 @@ xbool weapon_tra::FireNPCWeaponProtected ( const vector3& BaseVelocity , const v
             PainHandle );
 
         //add a muzzle light where the bullet was fired from (will fade out really quickly)
-        render::GetRenderPipeline().GetLightSystem().AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+        render::GetRenderPipeline().GetLightSystem().AddFadingLight( StartPosition, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
 
         // Decrement count of bullets in current clip
         DecrementAmmo();
@@ -553,7 +553,7 @@ xbool weapon_tra::FireGhostPrimary( s32 iFirePoint, xbool , vector3& )
     }
 
     // add a muzzle light where the bullet was fired from (will fade out really quickly)
-    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
 
     // Play the sound associated with this actor's faction.
     object* pObj = g_ObjMgr.GetObjectByGuid( m_ParentGuid );
@@ -597,7 +597,7 @@ xbool weapon_tra::FireGhostSecondary( s32 iFirePoint )
     }
 
     // add a muzzle light where the bullet was fired from (will fade out really quickly)
-    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f );
+    render::GetRenderPipeline().GetLightSystem().AddFadingLight( InitPos, xcolor( 76, 76, 38 ), 200.0f, 3.0f, 0.1f, TRUE );
 
     // Play the sound associated with this actor's faction.
     object* pObj = g_ObjMgr.GetObjectByGuid( m_ParentGuid );

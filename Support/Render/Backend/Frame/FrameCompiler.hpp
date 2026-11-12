@@ -846,7 +846,7 @@ protected:
     rbuffer                       m_ShadowDataBuffer;
     matrix4                       m_FaceShadowMatrices[MAX_SHADOW_SOURCES];
     CbShadowMapData               m_ShadowMapData;
-    u32                           m_DynamicLightShadowIndex[LightSystem::MAX_DYNAMIC_LIGHTS];
+    u32                           m_DynamicLightShadowIndex[LightSystem::MAX_SHADOW_LIGHTS];
     xbool                         m_areShadowMapConstantsValid;
     xarray<const geom_draw_item*>  m_OrderedDraws;
     OrderedDrawJob                 m_OrderedDrawJob;
