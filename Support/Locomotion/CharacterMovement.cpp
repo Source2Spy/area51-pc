@@ -142,7 +142,10 @@ xbool SweepGround( CharacterMovementCollision& Collision, const CharacterMovemen
                           const vector3& Start, const vector3& End, CharacterMovementSupport& Ground )
 {
     CharacterMovementContact Contacts[MAX_MOVE_CONTACTS];
-    const s32 Hits  = Collision.Sweep( Start, End, Settings.Radius, Settings.Height, Contacts, MAX_MOVE_CONTACTS );
+    // Scripted poses may intentionally put the torso through furniture. Only
+    // the foot hemisphere should find ground when world collision is disabled.
+    const f32 Height = Settings.WorldCollision ? Settings.Height : Settings.Radius * 2.0f;
+    const s32 Hits   = Collision.Sweep( Start, End, Settings.Radius, Height, Contacts, MAX_MOVE_CONTACTS );
     s32       First = -1;
     const f32 TimeTolerance = CONTACT_POSITION_EPSILON / x_max( MOVE_EPSILON, ( End - Start ).Length() );
     for( s32 i = 0; i < Hits; i++ )
@@ -155,11 +158,34 @@ xbool SweepGround( CharacterMovementCollision& Collision, const CharacterMovemen
         {
             continue;
         }
+
+        vector3 Position = Start + ( End - Start ) * Contacts[i].T;
+        if( !Settings.WorldCollision )
+        {
+            // A sweep starting inside a surface returns T=0, not a resolved
+            // position. Reconstruct the foot height from the contact point on
+            // the lower sphere. Otherwise every probe can add GroundTolerance
+            // again and lift a seated character onto the furniture.
+            vector3 Horizontal = Contacts[i].Point - Start;
+            Horizontal.GetY() = 0.0f;
+            const f32 VerticalSquared = SQR( Settings.Radius ) - Horizontal.LengthSquared();
+            if( VerticalSquared < 0.0f )
+            {
+                continue;
+            }
+            Position.GetY() = Contacts[i].Point.GetY() - Settings.Radius + x_sqrt( VerticalSquared );
+            if( Position.GetY() > Start.GetY() + CONTACT_POSITION_EPSILON )
+            {
+                continue;
+            }
+        }
+
         if( ( First == -1 ) || ( Contacts[i].T < Contacts[First].T - TimeTolerance ) ||
             ( ( x_abs( Contacts[i].T - Contacts[First].T ) <= TimeTolerance ) &&
               ( Contacts[i].SurfaceNormal.GetY() > Contacts[First].SurfaceNormal.GetY() ) ) )
         {
             First = i;
+            Ground.Position = Position;
         }
     }
     if( First == -1 )
@@ -168,7 +194,6 @@ xbool SweepGround( CharacterMovementCollision& Collision, const CharacterMovemen
     }
 
     Ground.Contact  = Contacts[First];
-    Ground.Position = Start + ( End - Start ) * Ground.Contact.T;
     Ground.Position.GetY() += Settings.ContactOffset / Ground.Contact.Normal.GetY();
     vector3 Correction;
     return !Settings.WorldCollision ||
@@ -509,7 +534,13 @@ xbool CharacterMovement::FindSupport( CharacterMovementCollision& Collision, con
         return FALSE;
     }
 
-    const f32 RiseTolerance  = Settings.ContactOffset / x_max( MOVE_EPSILON, Ground.Contact.Normal.GetY() );
+    const f32 NormalY       = x_max( MOVE_EPSILON, Ground.Contact.Normal.GetY() );
+    const f32 Clearance     = Settings.ContactOffset / NormalY;
+    // Recovery intentionally leaves shallow overlaps alone. They must still
+    // count as support, including authored checkpoint positions inside the floor.
+    const f32 RiseTolerance = Settings.WorldCollision ?
+                                  Clearance + CAPSULE_PENETRATION_TOLERANCE / NormalY + CONTACT_POSITION_EPSILON :
+                                  Settings.GroundTolerance + Clearance;
     const f32 GroundDistance = Position.GetY() - Ground.Position.GetY();
     if( ( GroundDistance < -RiseTolerance ) || ( GroundDistance > Distance + MOVE_EPSILON ) )
     {
@@ -520,13 +551,8 @@ xbool CharacterMovement::FindSupport( CharacterMovementCollision& Collision, con
     Ground.State = CharacterSupportState::Contact;
     if( IsWalkable( Ground.Contact, Settings.GetMinGroundNormalY() ) )
     {
-        if( GroundDistance < 0.0f )
+        if( Settings.WorldCollision && ( GroundDistance < 0.0f ) )
         {
-            const f32 Clearance = Settings.ContactOffset / Ground.Contact.Normal.GetY();
-            if( GroundDistance < -Clearance - CONTACT_POSITION_EPSILON )
-            {
-                return FALSE;
-            }
             Ground.Position = Position;
         }
 

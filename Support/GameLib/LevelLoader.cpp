@@ -801,9 +801,7 @@ void level_loader::UpdateLevelLoad( f32 TimeBudgetSeconds )
                     }
                     else if( x_strcmp( Command, "load_resource" ) == 0 )
                     {
-                        rhandle_base Handle;
-                        Handle.SetName( Arguments );
-                        Handle.GetPointer();
+                        g_RscMgr.Load( Arguments );
                     }
                     else if( x_strcmp( Command, "mount_dfs" ) == 0 )
                     {

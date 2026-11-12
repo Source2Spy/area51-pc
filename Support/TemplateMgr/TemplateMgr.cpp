@@ -99,6 +99,54 @@ xbool template_mgr::VisitObjectTypes( object_type_fn* pFunction, void* pContext 
 
 //=========================================================================
 
+void template_mgr::GetTemplateNames( xarray<xstring>& Names ) const
+{
+    Names.Clear();
+    if( !m_pDictionary )
+    {
+        return;
+    }
+
+    Names.SetCapacity( m_nTemplates );
+    for( s32 i = 0; i < m_nTemplates; i++ )
+    {
+        Names.Append() = m_pDictionary->GetString( m_pTemplate[i].NameIndex );
+    }
+}
+
+//=========================================================================
+
+xbool template_mgr::GetTemplateObjectTypes( const char* pName, xarray<xstring>& Types ) const
+{
+    Types.Clear();
+    if( !m_pDictionary || !pName )
+    {
+        return FALSE;
+    }
+
+    s32 NameIndex = m_pDictionary->Find( pName );
+    if( NameIndex == -1 )
+    {
+        return FALSE;
+    }
+    for( s32 i = 0; i < m_nTemplates; i++ )
+    {
+        const template_entry& Template = m_pTemplate[i];
+        if( Template.NameIndex == NameIndex )
+        {
+            Types.SetCapacity( Template.nObjects );
+            for( s32 j = 0; j < Template.nObjects; j++ )
+            {
+                Types.Append() = m_pDictionary->GetString( m_pObject[Template.iObject + j].TypeIndex );
+            }
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+//=========================================================================
+
 void template_mgr::ClearData( )
 {
     //delete all arrays

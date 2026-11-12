@@ -998,7 +998,7 @@ void AppendRigidGeomDraw( PrivateInst const& RegisteredInst, rigid_geom& geom, x
 
 static
 void AppendSkinGeomDraw( PrivateInst const& RegisteredInst, skin_geom& geom, xhandle hMaterial,
-                             s32 iSurface, matrix4 const* pBones, RenderLightingHandle Lighting, u32 flags,
+                             s32 iSurface, matrix4 const* pBones, s32 BoneCount, RenderLightingHandle Lighting, u32 flags,
                              render::geom_inst_features ProjFeatures, bbox const& WorldBBox,
                              u8 alpha, xbool FadingAlpha,
                              render::RenderContributionPolicy ContributionPolicy )
@@ -1041,7 +1041,7 @@ void AppendSkinGeomDraw( PrivateInst const& RegisteredInst, skin_geom& geom, xha
     item.Lighting = Lighting;
     item.Data.Skin.pGeom = &geom;
     item.Data.Skin.pBones = pBones;
-    item.Data.Skin.BoneCount = 0;
+    item.Data.Skin.BoneCount = BoneCount;
     item.SortDepth = SortDepth;
     item.Sequence = FrameSubmission().NextGeomSequence()++;
     item.ShadowSourceIndex = -1;
@@ -2004,7 +2004,7 @@ void RenderSubmission::AddRigidInstance( xhandle hInst, u32 const* pCol, matrix4
 
 //=========================================================================
 
-void RenderSubmission::AddSkinInstance( xhandle hInst, matrix4 const* pBone, u64 mask, u32 vTextureMask, u32 flags,
+void RenderSubmission::AddSkinInstance( xhandle hInst, matrix4 const* pBone, s32 BoneCount, u64 mask, u32 vTextureMask, u32 flags,
                               xcolor const& ambient, render::RenderContributionPolicy ContributionPolicy )
 {
 #ifndef X_RETAIL
@@ -2023,6 +2023,12 @@ void RenderSubmission::AddSkinInstance( xhandle hInst, matrix4 const* pBone, u64
     PrivateInst& RegisteredInst = s_RegisteredInsts( hInst );
     ASSERT( RegisteredInst.m_Type == GeomType::Skin );
     skin_geom* pGeom = static_cast<skin_geom*>( RegisteredInst.m_pGeom );
+
+    if( !pBone || ( BoneCount <= 0 ) || ( BoneCount > pGeom->m_nBones ) )
+    {
+        RENDER_THROW( "RenderSubmission", "invalid skin pose bone count %d (geometry: %d)", BoneCount, pGeom->m_nBones );
+        return;
+    }
 
     // calculate lighting
     RenderLightingHandle Lighting = platform_CalculateSkinLighting( flags, pBone[0], pGeom->m_BBox, ambient );
@@ -2054,6 +2060,12 @@ void RenderSubmission::AddSkinInstance( xhandle hInst, matrix4 const* pBone, u64
 
         // add each of the submeshes to the render list
         geom::mesh& mesh = pGeom->m_pMesh[iMesh];
+        if( mesh.nBones > BoneCount )
+        {
+            RENDER_THROW( "RenderSubmission", "skin mesh %d requires %d bones, pose has %d", iMesh, mesh.nBones, BoneCount );
+            return;
+        }
+
         for ( s32 iSubMesh = mesh.iSubMesh; iSubMesh < mesh.iSubMesh + mesh.nSubMeshes; iSubMesh++ )
         {
             geom::submesh&  SubMesh = pGeom->m_pSubMesh[iSubMesh];
@@ -2065,16 +2077,16 @@ void RenderSubmission::AddSkinInstance( xhandle hInst, matrix4 const* pBone, u64
 
             ASSERT( ( hMat >= 0 ) && ( hMat < kMaxRegisteredMaterials ) );
 
-            AppendSkinGeomDraw( RegisteredInst, *pGeom, hMat, iSubMesh, pBone, Lighting, flags, ProjFeatures,
-                                    WorldBBox,
-                                    ambient.A, bFadingAlpha, ContributionPolicy );
+            AppendSkinGeomDraw( RegisteredInst, *pGeom, hMat, iSubMesh, pBone, BoneCount, Lighting, flags, ProjFeatures,
+                                WorldBBox,
+                                ambient.A, bFadingAlpha, ContributionPolicy );
         }
     }
 }
 
 //=========================================================================
 
-void RenderSubmission::AddSkinInstanceDistorted( xhandle hInst, matrix4 const* pBone, u64 mask, u32 flags,
+void RenderSubmission::AddSkinInstanceDistorted( xhandle hInst, matrix4 const* pBone, s32 BoneCount, u64 mask, u32 flags,
                                        radian3 const& NormalRot, xcolor ambient )
 {
 #ifndef X_RETAIL
@@ -2094,6 +2106,12 @@ void RenderSubmission::AddSkinInstanceDistorted( xhandle hInst, matrix4 const* p
     ASSERT( RegisteredInst.m_Type == GeomType::Skin );
     skin_geom* pGeom = static_cast<skin_geom*>( RegisteredInst.m_pGeom );
 
+    if( !pBone || ( BoneCount <= 0 ) || ( BoneCount > pGeom->m_nBones ) )
+    {
+        RENDER_THROW( "RenderSubmission", "invalid skin pose bone count %d (geometry: %d)", BoneCount, pGeom->m_nBones );
+        return;
+    }
+
     // calculate lighting
     // TODO: Ignore dynamic lights for "cloaked" objects
     RenderLightingHandle Lighting = platform_CalculateSkinLighting( flags, pBone[0], pGeom->m_BBox, ambient );
@@ -2110,6 +2128,12 @@ void RenderSubmission::AddSkinInstanceDistorted( xhandle hInst, matrix4 const* p
 
         // add each of the submeshes to the render list
         geom::mesh& mesh = pGeom->m_pMesh[iMesh];
+        if( mesh.nBones > BoneCount )
+        {
+            RENDER_THROW( "RenderSubmission", "skin mesh %d requires %d bones, pose has %d", iMesh, mesh.nBones, BoneCount );
+            return;
+        }
+
         for ( s32 iSubMesh = mesh.iSubMesh; iSubMesh < mesh.iSubMesh + mesh.nSubMeshes; iSubMesh++ )
         {
             geom::submesh&  SubMesh = pGeom->m_pSubMesh[iSubMesh];
@@ -2153,7 +2177,7 @@ void RenderSubmission::AddSkinInstanceDistorted( xhandle hInst, matrix4 const* p
             item.Lighting = Lighting;
             item.Data.Skin.pGeom = pGeom;
             item.Data.Skin.pBones = pBone;
-            item.Data.Skin.BoneCount = 0;
+            item.Data.Skin.BoneCount = BoneCount;
             item.DistortionNormalRot = NormalRot;
             item.SortDepth = SortDepth;
             item.Sequence = (*this).NextGeomSequence()++;

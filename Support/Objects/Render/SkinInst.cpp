@@ -46,7 +46,6 @@ void skin_inst::Render( const matrix4* pL2W,
                         const xcolor&  Ambient,
                         render::RenderContributionPolicy ContributionPolicy )
 {
-    (void)nBone;
     (void)pL2W;
 
     // calculate ambient
@@ -61,6 +60,7 @@ void skin_inst::Render( const matrix4* pL2W,
     // Add a Skin Instance
     render::GetRenderPipeline().GetSubmission().AddSkinInstance( m_hInst,
                              pBone,
+                             nBone,
                              LODMask,
                              m_VTextureMask,
                              Flags,
@@ -78,11 +78,10 @@ void skin_inst::RenderDistortion( const matrix4* pL2W,
                                   const radian3& NormalRot,
                                   const xcolor&  Ambient )
 {
-    (void)nBone;
     (void)pL2W;
 
     // Add a Skin Instance
-    render::GetRenderPipeline().GetSubmission().AddSkinInstanceDistorted( m_hInst, pBone, LODMask, Flags, NormalRot, Ambient );
+    render::GetRenderPipeline().GetSubmission().AddSkinInstanceDistorted( m_hInst, pBone, nBone, LODMask, Flags, NormalRot, Ambient );
 }
 
 //=============================================================================

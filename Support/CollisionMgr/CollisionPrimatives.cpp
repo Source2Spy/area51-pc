@@ -957,10 +957,11 @@ xbool ComputeCapsuleTriPenetration( const vector3* Triangle,
     const f32     Distance = Offset.Length();
 
     // Ignore shallow overlap, then include recovery clearance in the correction.
-    if( Radius - Distance <= 0.1f )
+    if( Radius - Distance <= CAPSULE_PENETRATION_TOLERANCE )
         return FALSE;
 
-    Correction = ( Distance > 0.000001f ? Offset / Distance : Normal ) * ( Radius - Distance + 0.1f );
+    Correction = ( Distance > 0.000001f ? Offset / Distance : Normal ) *
+                 ( Radius - Distance + CAPSULE_PENETRATION_TOLERANCE );
 
     return TRUE;
 }
@@ -1136,11 +1137,11 @@ xbool ComputeCapsuleCapsulePenetration( const vector3& A,
     vector3   Normal;
     const f32 Depth = -ComputeCapsuleCapsuleSeparation( A, B, Radius, C, D, OtherRadius, CoincidentNormal, Normal );
 
-    if( Depth <= 0.1f )
+    if( Depth <= CAPSULE_PENETRATION_TOLERANCE )
         return FALSE;
 
     // Add clearance so recovery does not leave the capsules exactly touching.
-    Correction = Normal * ( Depth + 0.1f );
+    Correction = Normal * ( Depth + CAPSULE_PENETRATION_TOLERANCE );
 
     return TRUE;
 }

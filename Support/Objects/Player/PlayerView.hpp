@@ -98,6 +98,8 @@ public:
                                                    f32& NearClip, f32& Clearance );
     static vector3  GetFirstPersonPivotCorrection ( const vector3& BindOffset,
                                                      const radian3& Rotation );
+    static void     GetFirstPersonLeanCapsule   ( f32 Height, f32 Radius, f32 Clearance,
+                                                   f32& BottomOffset, f32& CapsuleHeight );
     static vector3  ConstrainFirstPersonPosition ( const vector3& Position,
                                                    const vector3& CapsuleBottom,
                                                    f32 Height, f32 Radius, f32 Clearance );

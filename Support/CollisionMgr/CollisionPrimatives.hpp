@@ -18,6 +18,7 @@
 //=========================================================================
 
 static const f32 CAPSULE_CAST_EPSILON = 0.001f;
+static const f32 CAPSULE_PENETRATION_TOLERANCE = 0.1f;
 
 //=========================================================================
 //  CAPSULE QUERIES

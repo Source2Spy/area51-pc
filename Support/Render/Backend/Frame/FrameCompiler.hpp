@@ -130,6 +130,7 @@ struct SkinBatchDesc
 {
     const skin_geom*                 pGeom;
     const matrix4*                   pBones;
+    s32                              BoneCount;
     RenderLightingHandle             Lighting;
     xhandle                          hMesh;
     s32                              iSubMesh;

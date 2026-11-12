@@ -254,10 +254,9 @@ vector3 player::ConstrainFirstPersonViewPosition( const vector3& Position )
     f32 NearClip, Clearance;
     GetFirstPersonViewClearance( NearClip, Clearance );
 
-    // Lean is intentional movement, validated separately with the player capsule.
-    // Its downward eye offset is still bounded by the capsule's floor clearance.
-    vector3 Lean = GetLeanOffset();
-    Lean.GetY() = 0.0f;
+    // The upper-body hull follows exactly the offset validated by ConstrainLean,
+    // including the downward motion. The movement capsule stays at the feet.
+    const vector3 Lean = GetLeanOffset();
     return PlayerView::ConstrainFirstPersonPosition( Position, GetPosition() + Lean,
                                                      m_Physics.GetColHeight(),
                                                      m_Physics.GetColRadius(), Clearance );

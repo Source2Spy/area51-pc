@@ -34,6 +34,8 @@ public:
     void        ClearData                   ( void );
     typedef xbool object_type_fn( const char* pTypeName, void* pContext );
     xbool       VisitObjectTypes            ( object_type_fn* pFunction, void* pContext ) const;
+    void        GetTemplateNames            ( xarray<xstring>& Names ) const;
+    xbool       GetTemplateObjectTypes      ( const char* pName, xarray<xstring>& Types ) const;
     xbool       LoadData                    ( const char* pFile, const char* pDictionary );
     xbool       CreateTemplate              ( const char* pName, const vector3& Pos, const radian3& Rot , u16 Zone1, u16 Zone2, guid ObjectGuid = NULL_GUID );
     guid        CreateSingleTemplate        ( const char* pName, const vector3& Pos, const radian3& Rot , u16 Zone1, u16 Zone2 );

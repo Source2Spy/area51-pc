@@ -1607,6 +1607,7 @@ xbool FrameCompiler::BuildPackets( const xarray<geom_draw_item>&    Draws,
         {
             SkinBatch.pGeom              = Item.Data.Skin.pGeom;
             SkinBatch.pBones             = Item.Data.Skin.pBones;
+            SkinBatch.BoneCount          = Item.Data.Skin.BoneCount;
             SkinBatch.Lighting           = Item.Lighting;
             SkinBatch.hMesh              = m_pContext->pGeometry->GetSkinSurface( Item.hRenderGeom, Item.iSurface );
             SkinBatch.iSubMesh           = Item.iSurface;
@@ -2597,19 +2598,23 @@ xbool FrameCompiler::ReserveFrameArrays( const xarray<geom_draw_item>&    Draws,
         {
             skin_geom* pGeom = Item.Data.Skin.pGeom;
 
-            if( pGeom && ( pGeom->m_nBones > 0 ) )
+            const s32 BoneCount = Item.Data.Skin.BoneCount;
+            if( !pGeom || !Item.Data.Skin.pBones || ( BoneCount <= 0 ) || ( BoneCount > pGeom->m_nBones ) )
             {
-                const s32 Slot = FindSkinPoseSlot( Item.Data.Skin.pBones, pGeom->m_nBones );
+                RENDER_THROW( "FrameCompiler", "invalid submitted skin pose bone count %d", BoneCount );
+                return FALSE;
+            }
 
-                if( m_SkinPoseSlots[Slot] < 0 )
-                {
-                    SkinPose& Pose = m_SkinPoses.Append();
-                    Pose.pBones    = Item.Data.Skin.pBones;
-                    Pose.BoneCount = pGeom->m_nBones;
-                    Pose.FirstBone = static_cast<u32>( SkinBoneCount );
-                    SkinBoneCount += static_cast<u64>( Pose.BoneCount );
-                    m_SkinPoseSlots[Slot] = m_SkinPoses.GetCount() - 1;
-                }
+            const s32 Slot = FindSkinPoseSlot( Item.Data.Skin.pBones, BoneCount );
+
+            if( m_SkinPoseSlots[Slot] < 0 )
+            {
+                SkinPose& Pose = m_SkinPoses.Append();
+                Pose.pBones    = Item.Data.Skin.pBones;
+                Pose.BoneCount = BoneCount;
+                Pose.FirstBone = static_cast<u32>( SkinBoneCount );
+                SkinBoneCount += static_cast<u64>( Pose.BoneCount );
+                m_SkinPoseSlots[Slot] = m_SkinPoses.GetCount() - 1;
             }
         }
     }
@@ -2637,24 +2642,11 @@ xbool FrameCompiler::ReserveFrameArrays( const xarray<geom_draw_item>&    Draws,
 
     m_lSkinFrameBones.SetCount( static_cast<s32>( SkinBoneCount ) );
 
-    matrix4 Identity;
-    Identity.Identity();
-
     for( s32 i = 0; i < m_SkinPoses.GetCount(); ++i )
     {
         const SkinPose& Pose = m_SkinPoses[i];
 
-        if( Pose.pBones )
-        {
-            x_memcpy( &m_lSkinFrameBones[Pose.FirstBone], Pose.pBones, Pose.BoneCount * sizeof( matrix4 ) );
-        }
-        else
-        {
-            for( s32 Bone = 0; Bone < Pose.BoneCount; ++Bone )
-            {
-                m_lSkinFrameBones[Pose.FirstBone + Bone] = Identity;
-            }
-        }
+        x_memcpy( &m_lSkinFrameBones[Pose.FirstBone], Pose.pBones, Pose.BoneCount * sizeof( matrix4 ) );
     }
 
     const u64 RequestedRemapSlots = MAX( 8ull, DrawCount * 2ull );

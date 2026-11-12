@@ -86,6 +86,7 @@ public:
                            xcolor                           Ambient = XCOLOR_WHITE );
     void AddSkinInstance( xhandle                          hInst,
                           const matrix4*                   pBone,
+                          s32                              BoneCount,
                           u64                              Mask,
                           u32                              VTextureMask,
                           u32                              Flags,
@@ -93,6 +94,7 @@ public:
                           render::RenderContributionPolicy ContributionPolicy = render::RENDER_CONTRIBUTION_DEFAULT );
     void AddSkinInstanceDistorted( xhandle        hInst,
                                    const matrix4* pBone,
+                                   s32            BoneCount,
                                    u64            Mask,
                                    u32            Flags,
                                    const radian3& NormalRot,

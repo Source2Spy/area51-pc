@@ -351,6 +351,7 @@ public:
     const   view_info&      GetViewInfo         ( void ) { return m_ViewInfo; }
             xbool           IsAvatar            ( void );
             xbool           IsMutated           ( void ) { return m_bIsMutated; }
+            xbool           IsChangingMutation  ( void ) const;
             xbool           IsMutantVisionOn    ( void ) { return m_bIsMutantVisionOn; }
     virtual xbool           SetMutated          ( xbool bMutate );
     virtual void            SetupMutationChange ( xbool bMutate );
@@ -818,7 +819,6 @@ public:
 #endif
 
 protected:
-            xbool           IsChangingMutation              ( void ) const;
             void            HandleFireInput                 ( xbool IsAlternateFire );
             xbool           SetupDualWeaponDiscard          ( inven_item &WeaponItem );
 

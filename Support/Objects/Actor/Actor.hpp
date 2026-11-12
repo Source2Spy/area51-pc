@@ -567,6 +567,7 @@ virtual void            AddNewWeapon2           ( inven_item WeaponItem ) { (voi
 virtual void            PickupWeapon2           ( inven_item WeaponItem ) { (void)WeaponItem; }
 virtual void            SwitchWeapon2           ( inven_item WeaponItem ) { (void)WeaponItem; }
         new_weapon*     GetCurrentWeaponPtr     ( void );
+        inven_item      GetCurrentWeaponItem    ( void ) const { return m_CurrentWeaponItem; }
         new_weapon*     GetWeaponPtr            ( inven_item WeaponItem );
 
 virtual void            MoveWeapon              ( xbool UpdateWeaponRenderState );
@@ -1101,7 +1102,7 @@ inline
 void actor::SetFriendFlags( u32 NewFriends )
 {
     m_FriendFlags = NewFriends | FACTION_NEUTRAL;
-    m_FriendFlags = m_FriendFlags & !FACTION_DEATHMATCH;
+    m_FriendFlags = m_FriendFlags & ~FACTION_DEATHMATCH;
 }
 
 //===========================================================================

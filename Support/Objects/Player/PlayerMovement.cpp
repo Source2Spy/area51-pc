@@ -463,18 +463,26 @@ vector3 player::GetLeanOffset( void )
 
 void player::ConstrainLean( void )
 {
-    vector3 Delta = GetLeanOffset();
-    Delta.GetY() = 0.0f;
+    const vector3 Delta = GetLeanOffset();
     const f32 Distance = Delta.Length();
     if( (Distance <= ZERO) || !m_Physics.IsLocoCollisionOn() )
     {
         return;
     }
 
-    // Validate a virtual player capsule at the leaned position. The eye and its
-    // near plane stay inside this hull; arms spring offsets do not move the hull.
-    const vector3 Start = GetPosition();
-    m_Physics.SetupPlayerCollisionCheck( Start, Start + Delta );
+    f32 NearClip, Clearance;
+    GetFirstPersonViewClearance( NearClip, Clearance );
+    f32 BottomOffset, CapsuleHeight;
+    const f32 Radius = m_Physics.GetColRadius();
+    PlayerView::GetFirstPersonLeanCapsule( m_Physics.GetColHeight(), Radius, Clearance,
+                                           BottomOffset, CapsuleHeight );
+
+    // Sweep shoulders/head, not the feet. Include the downward lean offset;
+    // GetLeanOffset is linear in the soft lean amount on each side, so the hit
+    // fraction constrains both axes consistently. Recheck from upright every
+    // frame, including return motion and changes to position, yaw or crouch.
+    const vector3 Start = GetPosition() + vector3( 0.0f, BottomOffset, 0.0f );
+    g_CollisionMgr.CapsuleSetup( GetGuid(), Start, Start + Delta, Radius, CapsuleHeight );
     g_CollisionMgr.UseLowPoly();
     g_CollisionMgr.SetMaxCollisions( MAX_COLLISION_MGR_COLLISIONS );
     g_CollisionMgr.DoNotRemoveDuplicateGuids();
@@ -485,9 +493,12 @@ void player::ConstrainLean( void )
     for( s32 i = 0; i < g_CollisionMgr.m_nCollisions; i++ )
     {
         const collision_mgr::collision& Hit = g_CollisionMgr.m_Collisions[i];
-        if( Hit.SlipPlane.Normal.Dot( Delta ) < -ZERO )
+        const f32 ClosingDistance = -Hit.SlipPlane.Normal.Dot( Delta );
+        if( ClosingDistance > ZERO )
         {
-            Fraction = MIN( Fraction, x_max( 0.0f, Hit.T - PlayerView::ClearanceMargin / Distance ) );
+            // Keep the margin along the contact normal, including grazing hits.
+            // Tangential/separating contacts must still allow leaning away.
+            Fraction = MIN( Fraction, x_max( 0.0f, Hit.T - PlayerView::ClearanceMargin / ClosingDistance ) );
         }
     }
     if( Fraction >= 1.0f )

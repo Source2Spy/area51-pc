@@ -253,7 +253,7 @@ void FrameCompiler::AddSkinBatchInst( const SkinBatchDesc& Desc )
         m_nInstanceLights += MIN( pLighting->LightCount, MAX_GEOM_LIGHTS );
     }
 
-    const s32 nBones = Desc.pGeom->m_nBones;
+    const s32 nBones = Desc.BoneCount;
 
     if( nBones <= 0 )
     {

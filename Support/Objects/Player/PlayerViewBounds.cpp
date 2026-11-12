@@ -45,6 +45,26 @@ vector3 PlayerView::GetFirstPersonPivotCorrection( const vector3& BindOffset,
 
 //=========================================================================
 
+void PlayerView::GetFirstPersonLeanCapsule( f32 Height, f32 Radius, f32 Clearance,
+                                           f32& BottomOffset, f32& CapsuleHeight )
+{
+    ASSERT( Radius > 0.0f );
+    ASSERT( Height >= Radius * 2.0f );
+    ASSERT( (Clearance >= 0.0f) && (Clearance <= Radius) );
+
+    // Only shoulders/head move when leaning. Keep the lower hemisphere above
+    // the feet, and derive both endpoints from the current (possibly crouched) height.
+    const f32 LowerAxis = MAX( Radius, Height * 0.5f );
+    // Preserve the existing eye anchor's upper limit, including its projection
+    // margin. The query hull must contain that eye sphere, not just its center.
+    const f32 UpperAxis = MAX( LowerAxis, Height - Clearance );
+
+    BottomOffset = LowerAxis - Radius;
+    CapsuleHeight = UpperAxis - LowerAxis + Radius * 2.0f;
+}
+
+//=========================================================================
+
 vector3 PlayerView::ConstrainFirstPersonPosition( const vector3& Position,
                                                   const vector3& CapsuleBottom,
                                                   f32 Height, f32 Radius, f32 Clearance )
@@ -53,11 +73,15 @@ vector3 PlayerView::ConstrainFirstPersonPosition( const vector3& Position,
     ASSERT( Height >= Radius * 2.0f );
     ASSERT( (Clearance >= 0.0f) && (Clearance <= Radius) );
 
-    // Erode the physics capsule by a sphere containing the eye and every near
-    // plane corner. This bounds animation without another world collision solver.
+    f32 BottomOffset, CapsuleHeight;
+    GetFirstPersonLeanCapsule( Height, Radius, Clearance, BottomOffset, CapsuleHeight );
+
+    // Erode the same upper-body capsule used by the lean sweep by a sphere
+    // containing the eye and every near-plane corner. Arms animation cannot
+    // move the camera outside the volume whose path was checked against the world.
     vector3 AxisPosition = CapsuleBottom;
-    AxisPosition.GetY() = x_clamp( Position.GetY(), CapsuleBottom.GetY() + Radius,
-                                                    CapsuleBottom.GetY() + Height - Clearance );
+    AxisPosition.GetY() = x_clamp( Position.GetY(), CapsuleBottom.GetY() + BottomOffset + Radius,
+                                                    CapsuleBottom.GetY() + BottomOffset + CapsuleHeight - Radius );
     const vector3 Offset = Position - AxisPosition;
     const f32 DistanceSquared = Offset.LengthSquared();
     const f32 AllowedRadius = Radius - Clearance;
