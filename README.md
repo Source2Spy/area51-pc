@@ -6,7 +6,7 @@
 ██████  ██   ██ ███████ ██   ██ ██      ██ ███████ ██   ██ ██   ████ ██████        ███████  ██ 
 ```
 
-[![CMake portability](https://github.com/Source2Spy/area51-pc/actions/workflows/cmake.yml/badge.svg?branch=forward%2B)](https://github.com/Source2Spy/area51-pc/actions/workflows/cmake.yml)
+[![CMake portability](https://github.com/Source2Spy/area51-pc/actions/workflows/cmake.yml/badge.svg?branch=master)](https://github.com/Source2Spy/area51-pc/actions/workflows/cmake.yml)
 [![Branch](https://img.shields.io/badge/branch-master-555555)](https://github.com/Source2Spy/area51-pc/tree/master)
 [![GitHub issues](https://img.shields.io/github/issues/Source2Spy/area51-pc)](https://github.com/Source2Spy/area51-pc/issues)
 
