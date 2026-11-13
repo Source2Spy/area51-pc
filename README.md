@@ -61,7 +61,7 @@ The original PC code was written around Direct3D, 32-bit Windows and the develop
 * Restored beta-era film grain and screen-warp effects.
 * Restored PlayStation 2 radial blur and fog effects.
 * Correct brightness and contrast adjustments in the game's video settings.
-* High-resolution UI textures, without AI upscaling. The original PC menu artwork and layout are retained.
+* High-resolution UI textures, without AI upscaling. The original console menu artwork and layout are retained.
 * Support for 500+ FPS, with corrected gameplay logic, AI and movement at high frame rates instead of tying these systems to the original frame timing.
 
 ## Gameplay / Controls / Interface
