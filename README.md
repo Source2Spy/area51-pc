@@ -42,7 +42,7 @@ The original PC code was written around Direct3D, 32-bit Windows and the develop
 
 ## Gaming / Graphics Related
 
-* Direct3D 12 and Vulkan renderer support. SDL3 handles window creation and the platform layer; the rendering backends use the corresponding graphics APIs.
+* Direct3D 12 and Vulkan renderer support via SDL3.
 * Reworked framegraph renderer with separate rendering passes for effects such as XeGTAO and Screen Space Reflections. New passes no longer have to be inserted into the old primitive rendering path.
 * Reimplemented `d3deng_draw` primitive renderer, including proper shading and lighting for primitives drawn by the engine.
 * Exponential Variance Shadow Maps (EVSM) and hard shadows for light sources.
