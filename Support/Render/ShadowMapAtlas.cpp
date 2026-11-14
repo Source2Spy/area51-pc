@@ -13,11 +13,13 @@
 #include "x_array.hpp"
 #include "../Objects/object.hpp"
 #include "../Objects/Player/Player.hpp"
+#include "../Objects/VolumetricLight.hpp"
 #include "../Obj_mgr/obj_mgr.hpp"
 #include "../PlaySurfaceMgr/PlaySurfaceMgr.hpp"
 #include "../ZoneMgr/ZoneMgr.hpp"
 #include "LightSystem.hpp"
 #include "Render.hpp"
+#include "Volumetric.hpp"
 #include "Entropy.hpp"
 
 namespace render
@@ -107,6 +109,15 @@ struct ShadowCasterHashEntry
     ShadowCasterRecord Caster;
     u64                SourceMask;
     xbool              Occupied;
+};
+
+//-------------------------------------------------------------------------
+
+struct ShadowVolume
+{
+    s32 SourceIndex;
+    s32 RelevantCasterStart;
+    s32 RelevantCasterCount;
 };
 
 //-------------------------------------------------------------------------
@@ -785,6 +796,49 @@ xbool CollectShadowLightCasters( ShadowLight& ShadowLightData, xarray<ShadowCast
 //=========================================================================
 
 static
+void CollectShadowVolumeCasters( ShadowVolume& Volume, bbox const& WorldBBox,
+                                xarray<ShadowCasterRecord>& RelevantCasters )
+{
+    Volume.RelevantCasterStart = RelevantCasters.GetCount();
+
+    // Deliberately query the entire beam, not the camera-visible caster list.
+    // A caster outside the camera frustum can still occlude a visible volume.
+    g_ObjMgr.SelectBBox( object::ATTR_ALL, WorldBBox, object::TYPE_ALL_TYPES );
+    for( slot_id Slot = g_ObjMgr.StartLoop(); Slot != SLOT_NULL; Slot = g_ObjMgr.GetNextResult( Slot ) )
+    {
+        object* pCandidate = g_ObjMgr.GetObjectBySlot( Slot );
+        if( !pCandidate || pCandidate->GetType() == object::TYPE_PLAY_SURFACE )
+        {
+            continue;
+        }
+#ifdef X_EDITOR
+        if( pCandidate->IsHidden() )
+        {
+            continue;
+        }
+#endif
+        if( WorldBBox.Intersect( pCandidate->GetBBox() ) )
+        {
+            RelevantCasters.Append( MakeObjectShadowCaster( pCandidate, pCandidate->GetBBox() ) );
+        }
+    }
+    g_ObjMgr.EndLoop();
+
+    g_PlaySurfaceMgr.CollectSurfaces( WorldBBox, object::ATTR_ALL, 0 );
+    for( playsurface_mgr::surface* pSurface = g_PlaySurfaceMgr.GetNextSurface(); pSurface;
+                                  pSurface = g_PlaySurfaceMgr.GetNextSurface() )
+    {
+        if( !pSurface->RenderInst.IsNull() && WorldBBox.Intersect( pSurface->WorldBBox ) )
+        {
+            RelevantCasters.Append( MakePlaySurfaceShadowCaster( pSurface, pSurface->WorldBBox ) );
+        }
+    }
+    Volume.RelevantCasterCount = RelevantCasters.GetCount() - Volume.RelevantCasterStart;
+}
+
+//=========================================================================
+
+static
 void RefillShadowLights( ShadowLight* pShadowLightCandidates, s32 CandidateShadowLightCount, ShadowLight* pShadowLights, s32& ShadowLightCount,
                          xbool* pCasterTested, xbool* pHasCasters, xbool const* pAtlasRejected, xarray<ShadowCasterRecord>& RelevantCasters )
 {
@@ -952,7 +1006,8 @@ void AddShadowCastersInLight( xarray<ShadowCasterRecord> const& RelevantCasters,
 static
 void CollectShadowCastersForLights( xarray<ShadowCasterRecord> const& RelevantCasters, ShadowLight const* pShadowLights, s32 ShadowLightCount,
                                     xarray<ShadowCasterRecord>& ShadowCasters, xarray<u64>& CasterMasks,
-                                    xarray<ShadowCasterHashEntry>& CasterHash, ShadowMapAtlas const& Atlas )
+                                    xarray<ShadowCasterHashEntry>& CasterHash, ShadowMapAtlas const& Atlas,
+                                    ShadowVolume const* pVolumes, s32 VolumeCount )
 {
     if( RelevantCasters.GetCount() <= 0 )
     {
@@ -973,6 +1028,31 @@ void CollectShadowCastersForLights( xarray<ShadowCasterRecord> const& RelevantCa
         ShadowLight const& ShadowLightData = pShadowLights[LightIndex];
         AddShadowCastersInLight( RelevantCasters, ShadowLightData, CasterHash, HashSize - 1, SourceBase, Atlas );
         SourceBase += ShadowLightData.SourceCount;
+    }
+
+    for( s32 i = 0; i < VolumeCount; ++i )
+    {
+        ShadowVolume const& Volume     = pVolumes[i];
+        u64 const           SourceMask = u64( 1 ) << Volume.SourceIndex;
+        s32 const           End        = Volume.RelevantCasterStart + Volume.RelevantCasterCount;
+        for( s32 CasterIndex = Volume.RelevantCasterStart; CasterIndex < End; ++CasterIndex )
+        {
+            ShadowCasterRecord const& Caster = RelevantCasters[CasterIndex];
+            s32                       HashIndex = static_cast<s32>( GetShadowCasterHash( Caster ) & static_cast<u32>( HashSize - 1 ) );
+            while( CasterHash[HashIndex].Occupied && !SameShadowCaster( CasterHash[HashIndex].Caster, Caster ) )
+            {
+                HashIndex = ( HashIndex + 1 ) & ( HashSize - 1 );
+            }
+
+            ShadowCasterHashEntry& Entry = CasterHash[HashIndex];
+            if( !Entry.Occupied )
+            {
+                Entry.Caster     = Caster;
+                Entry.SourceMask = 0;
+                Entry.Occupied   = TRUE;
+            }
+            Entry.SourceMask |= SourceMask;
+        }
     }
 
     for( s32 EntryIndex = 0; EntryIndex < HashSize; EntryIndex++ )
@@ -1498,6 +1578,7 @@ void ShadowMapAtlas::ComputePerspectiveSource( ShadowSource& Destination, s32 So
     Proj2Clip( 2, 3 ) = 1.0f;
 
     Destination.Type = SourceType;
+    Destination.OwnerGuid = 0;
     Destination.DynamicLightIndex = -1;
     Destination.PointLightIndex = -1;
     Destination.FaceIndex = -1;
@@ -1888,6 +1969,100 @@ xbool ShadowMapAtlas::AddSpotSource( matrix4 const& LocalToWorld, radian FieldOf
 
 //=========================================================================
 
+s32 ShadowMapAtlas::FindVolumetricSource( guid Owner ) const
+{
+    for( s32 i = 0; i < m_SourceCount; ++i )
+    {
+        if( m_Sources[i].Type == SHADOW_SOURCE_VOLUMETRIC && m_Sources[i].OwnerGuid == Owner )
+        {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+//=========================================================================
+
+xbool ShadowMapAtlas::AddVolumetricSource( guid Owner, matrix4 const& LocalToWorld, f32 Radius, f32 Length )
+{
+    if( !m_Enabled || m_SourceCount >= MAX_SHADOW_SOURCES || !LocalToWorld.IsValid() ||
+        !x_isvalid( Radius ) || !x_isvalid( Length ) || Radius <= 0.0f || Length <= 0.0f )
+    {
+        return FALSE;
+    }
+
+    matrix4 WorldToLocal = LocalToWorld;
+    if( !WorldToLocal.InvertSRT() )
+    {
+        return FALSE;
+    }
+
+    // Admit only tiles that fit alongside existing lights, without evicting or
+    // reducing them. A rejected owner has no source, and renders unshadowed.
+    ShadowAtlasEntry Entries[MAX_SHADOW_SOURCES];
+    for( s32 i = 0; i <= m_SourceCount; ++i )
+    {
+        Entries[i].SourceIndex    = i;
+        Entries[i].TileSize       = i == m_SourceCount ? 512 : m_Sources[i].RequestedResolution;
+        Entries[i].ShadowPriority = i == m_SourceCount ? MinShadowPriority : m_Sources[i].ShadowPriority;
+        Entries[i].ShadowScore    = i == m_SourceCount ? 0.0f : m_Sources[i].ShadowScore;
+        Entries[i].AtlasTileX     = Entries[i].AtlasTileY = 0;
+    }
+    s32 Resolution = 512;
+    if( !GetShadowAtlasSizeForEntries( Entries, m_SourceCount + 1, GetScratch().AtlasFreeNodes ) )
+    {
+        // Packing sorts entries in place; find the candidate again.
+        for( s32 i = 0; i <= m_SourceCount; ++i )
+        {
+            if( Entries[i].SourceIndex == m_SourceCount )
+            {
+                Entries[i].TileSize = 256;
+            }
+        }
+        Resolution = 256;
+        if( !GetShadowAtlasSizeForEntries( Entries, m_SourceCount + 1, GetScratch().AtlasFreeNodes ) )
+        {
+            return FALSE;
+        }
+    }
+
+    ShadowSource& Source = m_Sources[m_SourceCount];
+    Source.Type                = SHADOW_SOURCE_VOLUMETRIC;
+    Source.OwnerGuid           = Owner;
+    Source.DynamicLightIndex  = Source.PointLightIndex = Source.FaceIndex = -1;
+    Source.RequestedResolution = Resolution;
+    Source.ShadowPriority      = MinShadowPriority;
+    Source.ShadowScore         = 0.0f;
+
+    matrix4 Projection;
+    Projection.Identity();
+    // Match the spot raster winding (negative X), but do not introduce a
+    // perspective divide or virtual point apex. Depth is exactly local Z/Length.
+    Projection( 0, 0 ) = -1.0f / Radius;
+    Projection( 1, 1 ) =  1.0f / Radius;
+    Projection( 2, 2 ) =  1.0f / Length;
+    Source.WorldToClip  = Projection * WorldToLocal;
+    Source.WorldToAtlas = Source.WorldToClip;
+    Source.LightPosRadius.Zero();
+    Source.FaceLightDirFalloff.Zero();
+    Source.FaceLightData.Zero();
+    Source.LightFalloff    = 0.0f;
+    Source.NearZ           = Source.ReceiveNearZ = 0.0f;
+    Source.FarZ            = Length;
+    Source.ProjectionScale = 1.0f / Radius;
+    Source.WorldBBox.Set( vector3( -Radius, -Radius, 0.0f ), vector3( Radius, Radius, Length ) );
+    Source.WorldBBox.Transform( LocalToWorld );
+    Source.AtlasX     = Source.AtlasY = Source.AtlasTileX = Source.AtlasTileY = 0;
+    Source.AtlasWidth = Source.AtlasHeight = Source.AtlasTileWidth = Source.AtlasTileHeight = Resolution;
+    ++m_SourceCount;
+    ++m_AtlasSourceCount;
+    m_AtlasLayoutDirty = TRUE;
+    return TRUE;
+}
+
+//=========================================================================
+
 void ShadowMapAtlas::CreateShadowMap( void )
 {
     X_PROFILE_SCOPE_CATEGORY( "Renderer", "ShadowMap/Create" );
@@ -2012,8 +2187,6 @@ void ShadowMapAtlas::CreateShadowMap( void )
             }
         } while( RemovedByAtlas );
     }
-    ShadowMapRelevantCasterRefs.Add( RelevantCasters.GetCount() );
-
     s32 PointLightCount = 0;
     s32 SpotLightCount = 0;
     for( s32 Index = 0; Index < ShadowLightCount; Index++ )
@@ -2031,29 +2204,58 @@ void ShadowMapAtlas::CreateShadowMap( void )
     ShadowMapPointLights.Add( PointLightCount );
     ShadowMapSpotLights.Add( SpotLightCount );
 
-    if( ShadowLightCount <= 0 )
-    {
-        ShadowMapUniqueCasters.Add( 0 );
-        ShadowMapObjectCasters.Add( 0 );
-        ShadowMapPlaySurfaceCasters.Add( 0 );
-        ShadowMapCasterSourceLinks.Add( 0 );
-        ShadowMapActiveSources.Add( 0 );
-        ShadowMapAtlasSources.Add( 0 );
-        return;
-    }
-
     if( eng_Begin( "Shadow Map" ) )
     {
+        // Begin clears both the atlas and the submission source count. All
+        // sources must be appended after it, including volume-only frames.
         GetRenderPipeline().GetShadowSubmission().Begin();
+        // Scene-light sources retain first claim on the shared budget. Volumes
+        // never create a scene light or populate a dynamic-light shadow index.
         AddShadowSources( ShadowLights, ShadowLightCount );
+        ShadowVolume Volumes[MAX_SHADOW_SOURCES];
+        s32 VolumeCount = 0;
+        for( slot_id Slot = g_ObjMgr.GetFirstVis( object::TYPE_VOLUMETRIC_LIGHT );
+             Slot != SLOT_NULL; Slot = g_ObjMgr.GetNextVis( Slot ) )
+        {
+            volumetric_light_obj* pVolume = static_cast<volumetric_light_obj*>( g_ObjMgr.GetObjectBySlot( Slot ) );
+            if( !pVolume )
+            {
+                continue;
+            }
+#ifdef X_EDITOR
+            if( pVolume->IsHidden() )
+            {
+                continue;
+            }
+#endif
+            volumetric_draw_desc Desc;
+            if( !pVolume->GetShadowVolume( Desc ) )
+            {
+                continue;
+            }
+            s32 const SourceIndex = m_SourceCount;
+            if( AddVolumetricSource( pVolume->GetGuid(), Desc.LocalToWorld,
+                                     0.5f * MAX( Desc.StartSize, Desc.EndSize ), Desc.Length ) )
+            {
+                Volumes[VolumeCount++].SourceIndex = SourceIndex;
+            }
+        }
+        // Direct atlas appends bypass the light-source submission wrappers.
+        // Rigid and skin caster expansion both iterate this count.
+        GetRenderPipeline().GetShadowSubmission().SourceCount() = m_SourceCount;
         FinalizeSources();
+        for( s32 i = 0; i < VolumeCount; ++i )
+        {
+            CollectShadowVolumeCasters( Volumes[i], GetSource( Volumes[i].SourceIndex ).WorldBBox, RelevantCasters );
+        }
+        ShadowMapRelevantCasterRefs.Add( RelevantCasters.GetCount() );
         ShadowMapActiveSources.Add( GetSourceCount() );
         ShadowMapAtlasSources.Add( GetAtlasSourceCount() );
 
         {
             X_PROFILE_SCOPE_CATEGORY( "Renderer", "ShadowMap/CollectCasters" );
             CollectShadowCastersForLights( RelevantCasters, ShadowLights, ShadowLightCount, ShadowCasters, CasterMasks,
-                                           Scratch.CasterHash, *this );
+                                           Scratch.CasterHash, *this, Volumes, VolumeCount );
         }
 
         s32 ObjectCasterCount = 0;
@@ -2110,6 +2312,7 @@ void ShadowMapAtlas::CreateShadowMap( void )
     }
     else
     {
+        ClearSources();
         ShadowMapUniqueCasters.Add( 0 );
         ShadowMapObjectCasters.Add( 0 );
         ShadowMapPlaySurfaceCasters.Add( 0 );

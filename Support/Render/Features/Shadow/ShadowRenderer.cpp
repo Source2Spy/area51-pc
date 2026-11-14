@@ -1523,6 +1523,7 @@ void ShadowRenderer::PrepareTileUpdates( const RenderFrameContext& Frame )
         m_TileCache.Append( i, Source.AtlasTileWidth );
         m_TileCache.Append( i, Source.AtlasTileHeight );
         m_TileCache.Append( i, Source.Type );
+        m_TileCache.Append( i, Source.OwnerGuid );
         m_TileCache.Append( i, static_cast<s32>( Atlas.GetShadowFilterType() ) );
         m_TileCache.Append( i, Source.NearZ );
         m_TileCache.Append( i, Source.FarZ );
@@ -1885,6 +1886,12 @@ xbool ShadowRenderer::ExecuteEVSMConvertPass( RenderPassContext& Context )
         }
 
         const ShadowMapAtlas::ShadowSource& Source  = GetRenderPipeline().GetShadowMapAtlas().GetSource( i );
+        // Volumes consume linear orthographic depth directly, never radial
+        // EVSM moments.
+        if( Source.Type == ShadowMapAtlas::SHADOW_SOURCE_VOLUMETRIC )
+        {
+            continue;
+        }
         const s32                           TargetX = Source.AtlasTileX * m_ShadowMomentAtlasSize / m_ShadowAtlasSize;
         const s32                           TargetY = Source.AtlasTileY * m_ShadowMomentAtlasSize / m_ShadowAtlasSize;
         const s32 TargetWidth  = Source.AtlasTileWidth * m_ShadowMomentAtlasSize / m_ShadowAtlasSize;
@@ -1987,6 +1994,10 @@ xbool ShadowRenderer::ExecuteEVSMBlurPass( RenderPassContext& Context, xbool Hor
         }
 
         const ShadowMapAtlas::ShadowSource& Source  = GetRenderPipeline().GetShadowMapAtlas().GetSource( i );
+        if( Source.Type == ShadowMapAtlas::SHADOW_SOURCE_VOLUMETRIC )
+        {
+            continue;
+        }
         const s32                           TargetX = Source.AtlasTileX * m_ShadowMomentAtlasSize / m_ShadowAtlasSize;
         const s32                           TargetY = Source.AtlasTileY * m_ShadowMomentAtlasSize / m_ShadowAtlasSize;
         const s32 TargetWidth  = Source.AtlasTileWidth * m_ShadowMomentAtlasSize / m_ShadowAtlasSize;
@@ -2048,12 +2059,15 @@ xbool ShadowRenderer::SetShadowCastConstants( u32 UniformSlot, const ShadowMapAt
     x_memset( &CbData, 0, sizeof( CbData ) );
     CbData.ShadowViewProjection = Source.WorldToClip;
 
-    CbData.ShadowOrigin = Source.LightPosRadius;
-    CbData.ShadowOrigin.GetW() = 0.0f;
-    CbData.ShadowViewProjection( 3, 0 ) = 0.0f;
-    CbData.ShadowViewProjection( 3, 1 ) = 0.0f;
-    CbData.ShadowViewProjection( 3, 2 ) = -( Source.NearZ * Source.FarZ ) / ( Source.FarZ - Source.NearZ );
-    CbData.ShadowViewProjection( 3, 3 ) = 0.0f;
+    if( Source.Type != ShadowMapAtlas::SHADOW_SOURCE_VOLUMETRIC )
+    {
+        CbData.ShadowOrigin               = Source.LightPosRadius;
+        CbData.ShadowOrigin.GetW()         = 0.0f;
+        CbData.ShadowViewProjection( 3, 0 ) = 0.0f;
+        CbData.ShadowViewProjection( 3, 1 ) = 0.0f;
+        CbData.ShadowViewProjection( 3, 2 ) = -( Source.NearZ * Source.FarZ ) / ( Source.FarZ - Source.NearZ );
+        CbData.ShadowViewProjection( 3, 3 ) = 0.0f;
+    }
 
     CbData.CoverageUsesTextureAlpha = CoverageUsesTextureAlpha;
 

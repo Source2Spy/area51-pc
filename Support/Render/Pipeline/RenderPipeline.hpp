@@ -25,6 +25,7 @@
 #include "../Features/Cloth/ClothFeature.hpp"
 #include "../Features/Cmaa2/Cmaa2Feature.hpp"
 #include "../Features/XeGtao/XeGtaoFeature.hpp"
+#include "../Features/Volumetric/VolumetricFeature.hpp"
 #include "../Features/Shadow/ShadowFeature.hpp"
 #include "../Features/PostProcess/PostProcessFeature.hpp"
 #include "e_Shader.hpp"
@@ -108,6 +109,9 @@ public:
     u32&                             NextGeomSequence( void );
     matrix4*                         StoreTransform( const matrix4& Transform );
 
+    xarray<volumetric_draw_desc>&       Volumetrics( void );
+    xarray<volumetric_draw_desc> const& GetVolumetrics( void ) const;
+
 private:
 
     //-------------------------------------------------------------------------
@@ -121,6 +125,7 @@ private:
     //-------------------------------------------------------------------------
 
     xarray<geom_draw_item>      m_Geom;
+    xarray<volumetric_draw_desc> m_Volumetrics;
     xarray<dynamic_geom_draw>   m_DynamicGeom;
     xarray<dynamic_geom_vertex> m_DynamicVertexStorage;
     xarray<u16>                 m_DynamicIndexStorage;
@@ -446,6 +451,7 @@ private:
     PostProcessFeature          m_PostProcessFeature;
     Cmaa2Feature                m_Cmaa2Feature;
     XeGtaoFeature               m_XeGtaoFeature;
+    VolumetricFeature           m_VolumetricFeature;
     OutputFeature               m_OutputFeature;
     RenderFrameContext          m_Frame;
     RenderSubmission            m_Submission;
@@ -604,6 +610,22 @@ dynamic_geom_storage RenderSubmission::GetDynamicStorage( void ) const
     Storage.IndexCount  = m_DynamicIndexStorage.GetCount();
 
     return Storage;
+}
+
+//=========================================================================
+
+inline
+xarray<volumetric_draw_desc>& RenderSubmission::Volumetrics( void )
+{
+    return m_Volumetrics;
+}
+
+//=========================================================================
+
+inline
+xarray<volumetric_draw_desc> const& RenderSubmission::GetVolumetrics( void ) const
+{
+    return m_Volumetrics;
 }
 
 //=========================================================================

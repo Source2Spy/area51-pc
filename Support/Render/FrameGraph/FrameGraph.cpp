@@ -328,6 +328,16 @@ const shader_resource* RenderPassContext::ReadStorageTexture( RenderResourceHand
 
 //=========================================================================
 
+const shader_resource* RenderPassContext::ReadTexture( RenderResourceHandle Resource ) const
+{
+    const RenderResourceDesc* pDesc = m_Graph.GetDesc( Resource );
+    return pDesc && !pDesc->IsBuffer() &&
+           m_Graph.PassDeclaresAccess( m_PassId, Resource, RENDER_RESOURCE_ACCESS_SAMPLED_READ )
+               ? m_Graph.GetShaderResource( Resource ) : NULL;
+}
+
+//=========================================================================
+
 xbool RenderPassContext::Dispatch( u32 GroupCountX, u32 GroupCountY, u32 GroupCountZ )
 {
     if( m_Pass.Type != RENDER_PASS_COMPUTE || m_isDispatched ||

@@ -427,6 +427,7 @@ public:
     const rtarget*            Write( RenderResourceHandle Resource ) const;
     const rbuffer*            ReadBuffer( RenderResourceHandle Resource ) const;
     const shader_resource*    ReadStorageTexture( RenderResourceHandle Resource ) const;
+    const shader_resource*    ReadTexture( RenderResourceHandle Resource ) const;
     xbool                     Dispatch( u32 GroupCountX, u32 GroupCountY = 1, u32 GroupCountZ = 1 );
     xbool                     DispatchIndirect( RenderResourceHandle Resource, u32 Offset = 0 );
     rtarget*                  WriteMutable( RenderResourceHandle Resource ) const;

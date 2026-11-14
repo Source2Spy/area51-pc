@@ -661,7 +661,7 @@ const char* PostProcessFeature::GetName( void ) const
 inline
 u32 PostProcessFeature::GetDependencyCount( void ) const
 {
-    return 1;
+    return 2;
 }
 
 //=========================================================================
@@ -669,7 +669,7 @@ u32 PostProcessFeature::GetDependencyCount( void ) const
 inline
 const char* PostProcessFeature::GetDependency( u32 Index ) const
 {
-    return ( Index == 0 ) ? "Geometry" : NULL;
+    return Index == 0 ? "Geometry" : ( Index == 1 ? "Volumetric" : NULL );
 }
 
 //=========================================================================

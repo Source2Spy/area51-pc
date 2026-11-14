@@ -45,11 +45,13 @@ public:
     {
         SHADOW_SOURCE_POINT_FACE = 0,
         SHADOW_SOURCE_SPOT,
+        SHADOW_SOURCE_VOLUMETRIC,
     };
 
     struct ShadowSource
     {
         s32     Type;
+        guid    OwnerGuid; // Autonomous volume owner; zero for scene-light sources.
         s32     DynamicLightIndex;
         s32     PointLightIndex;
         s32     FaceIndex;
@@ -98,17 +100,21 @@ public:
     ShadowMapAtlas( void );
     ~ShadowMapAtlas( void );
 
-    void  ClearSources        ( void );
-    void  FinalizeSources     ( void );
-    void  SetEnabled          ( xbool Enabled );
-    void  SetShadowMode       ( ShadowMode Mode );
-    void  SetShadowFilterType ( ShadowFilterType Type );
-    xbool AddPointSource      ( matrix4 const& LocalToWorld, radian FieldOfView,
-                                f32 LightRadius, f32 LightFalloff, s32 ShadowMapResolution,
-                                s32 ShadowPriority, f32 ShadowScore, s32 DynamicLightIndex );
-    xbool AddSpotSource       ( matrix4 const& LocalToWorld, radian FieldOfView,
-                                f32 LightRadius, f32 LightFalloff, s32 ShadowMapResolution,
-                                s32 ShadowPriority, f32 ShadowScore, s32 DynamicLightIndex );
+    void  ClearSources         ( void );
+    void  FinalizeSources      ( void );
+    void  SetEnabled           ( xbool Enabled );
+    void  SetShadowMode        ( ShadowMode Mode );
+    void  SetShadowFilterType  ( ShadowFilterType Type );
+    xbool AddPointSource       ( matrix4 const& LocalToWorld, radian FieldOfView,
+                                 f32 LightRadius, f32 LightFalloff, s32 ShadowMapResolution,
+                                 s32 ShadowPriority, f32 ShadowScore, s32 DynamicLightIndex );
+    xbool AddSpotSource        ( matrix4 const& LocalToWorld, radian FieldOfView,
+                                 f32 LightRadius, f32 LightFalloff, s32 ShadowMapResolution,
+                                 s32 ShadowPriority, f32 ShadowScore, s32 DynamicLightIndex );
+
+    // Parallel authored-beam projection: local +/-Radius in XY, Z in [0, Length].
+    xbool AddVolumetricSource  ( guid Owner, matrix4 const& LocalToWorld, f32 Radius, f32 Length );
+    s32   FindVolumetricSource ( guid Owner ) const;
 
     ShadowSource const& GetSource           ( s32 SourceIndex ) const;
     s32                 GetSourceCount      ( void ) const;

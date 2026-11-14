@@ -291,10 +291,8 @@ xbool FrameGraphBuilder::Compile( void )
                                      RENDER_RESOURCE_ACCESS_INDIRECT_READ;
             const u32 StorageAccess = RENDER_RESOURCE_ACCESS_STORAGE_READ | RENDER_RESOURCE_ACCESS_STORAGE_WRITE |
                                       RENDER_RESOURCE_ACCESS_STORAGE_READ_WRITE;
-            if( ( ( Access.Flags & ( RENDER_RESOURCE_ACCESS_VERTEX_READ | RENDER_RESOURCE_ACCESS_INDEX_READ ) ) &&
-                  PassData.Desc.Type != RENDER_PASS_GRAPHICS ) ||
-                ( !ResourceData.IsBuffer() && ( Access.Flags & StorageAccess ) &&
-                  PassData.Desc.Type != RENDER_PASS_COMPUTE ) )
+            if( ( Access.Flags & ( RENDER_RESOURCE_ACCESS_VERTEX_READ | RENDER_RESOURCE_ACCESS_INDEX_READ ) ) &&
+                PassData.Desc.Type != RENDER_PASS_GRAPHICS )
             {
                 Fail( "resource access is incompatible with the pass type" );
                 return FALSE;

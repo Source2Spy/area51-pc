@@ -106,6 +106,7 @@ void RenderSubmission::Begin( void )
     }
 
     m_Geom.SetCount( 0 );
+    m_Volumetrics.SetCount( 0 );
     m_DynamicGeom.SetCount( 0 );
     m_DynamicVertexStorage.SetCount( 0 );
     m_DynamicIndexStorage.SetCount( 0 );
@@ -128,6 +129,7 @@ void RenderSubmission::Begin( void )
 void RenderSubmission::Reset( void )
 {
     m_Geom.SetCount( 0 );
+    m_Volumetrics.SetCount( 0 );
     m_DynamicGeom.SetCount( 0 );
     m_DynamicVertexStorage.SetCount( 0 );
     m_DynamicIndexStorage.SetCount( 0 );
@@ -284,6 +286,7 @@ RenderPipeline::RenderPipeline( void )
       m_isExecuted( FALSE )
 {
     m_Features.Register( m_OutputFeature );
+    m_Features.Register( m_VolumetricFeature );
     m_Backend.ConfigureServices( m_LightSystem, m_LightingTable, m_ProjectionTextureRegistry, m_ShadowMapAtlas,
                                  m_ShadowFeature, m_PostProcessFeature, m_nSamples, m_isPhongShadingEnabled );
 }
@@ -364,6 +367,11 @@ xbool RenderPipeline::QueueCommonPipelines( const RenderScopeDesc& Scope )
     }
 
     const RenderFormatPolicy Formats = RenderQualityProfile::PlatformDefault().Formats;
+    if( !m_VolumetricFeature.QueuePipelines( m_CommonPipelines, Formats,
+                                            Scope.SampleCount ? Scope.SampleCount : m_nSamples ) )
+    {
+        return FALSE;
+    }
     auto Queue = [this]( const shader* pPixelShader, rtarget_format Format, u32 Samples = 1 ) -> xbool
     {
         render_pipeline_desc Desc;

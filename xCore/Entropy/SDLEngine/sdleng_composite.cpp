@@ -124,16 +124,17 @@ rstate_blend_preset composite_GetBlendPreset( composite_blend_mode BlendMode )
 {
     switch( BlendMode )
     {
-        case COMPOSITE_BLEND_ALPHA:              return RSTATE_BLEND_PRESET_ALPHA;         break;
-        case COMPOSITE_BLEND_ADDITIVE:           return RSTATE_BLEND_PRESET_ADD;           break;
-        case COMPOSITE_BLEND_MULTIPLY:           return RSTATE_BLEND_PRESET_MULTIPLY;      break;
-        case COMPOSITE_BLEND_OVERLAY:            return RSTATE_BLEND_PRESET_PREMULT_ALPHA; break;
-        case COMPOSITE_BLEND_COPY:               return RSTATE_BLEND_PRESET_NONE;          break;
-        case COMPOSITE_BLEND_ALPHA_RGB:          return RSTATE_BLEND_PRESET_ALPHA_RGB;     break;
-        case COMPOSITE_BLEND_COPY_RGB:           return RSTATE_BLEND_PRESET_NONE_RGB;      break;
-        case COMPOSITE_BLEND_ADDITIVE_RGB:       return RSTATE_BLEND_PRESET_ADD_RGB;       break;
-        case COMPOSITE_BLEND_CLAMP_NEGATIVE_RGB: return RSTATE_BLEND_PRESET_MAX_RGB;       break;
-        default:                                 return RSTATE_BLEND_PRESET_ALPHA;         break;
+        case COMPOSITE_BLEND_ALPHA:                return RSTATE_BLEND_PRESET_ALPHA;           break;
+        case COMPOSITE_BLEND_ADDITIVE:             return RSTATE_BLEND_PRESET_ADD;             break;
+        case COMPOSITE_BLEND_MULTIPLY:             return RSTATE_BLEND_PRESET_MULTIPLY;        break;
+        case COMPOSITE_BLEND_OVERLAY:              return RSTATE_BLEND_PRESET_PREMULT_ALPHA;   break;
+        case COMPOSITE_BLEND_COPY:                 return RSTATE_BLEND_PRESET_NONE;            break;
+        case COMPOSITE_BLEND_ALPHA_RGB:            return RSTATE_BLEND_PRESET_ALPHA_RGB;       break;
+        case COMPOSITE_BLEND_COPY_RGB:             return RSTATE_BLEND_PRESET_NONE_RGB;        break;
+        case COMPOSITE_BLEND_ADDITIVE_RGB:         return RSTATE_BLEND_PRESET_ADD_RGB;         break;
+        case COMPOSITE_BLEND_PREMULT_ADDITIVE_RGB: return RSTATE_BLEND_PRESET_PREMULT_ADD_RGB; break;
+        case COMPOSITE_BLEND_CLAMP_NEGATIVE_RGB:   return RSTATE_BLEND_PRESET_MAX_RGB;         break;
+        default:                                   return RSTATE_BLEND_PRESET_ALPHA;           break;
     }
 }
 

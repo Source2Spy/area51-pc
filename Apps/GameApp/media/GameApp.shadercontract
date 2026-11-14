@@ -51,6 +51,15 @@ shaders:
     {
     }
 
+    shader volumetric_ps pixel a51_volumetric.hlsl PSMain ps_6_0
+    {
+    }
+
+    shader volumetric_msaa_ps pixel a51_volumetric.hlsl PSMain ps_6_0
+    {
+        common_args "-DA51_VOLUMETRIC_MSAA=1"
+    }
+
     shader post_glow_blur_horizontal_ps pixel a51_post_glow.hlsl PS_BlurHorizontal ps_6_0
     {
         color_arithmetic float16
@@ -150,6 +159,8 @@ programs:
     program shadow_evsm_blur_horizontal shadow_evsm_vs shadow_evsm_blur_horizontal_ps
     program shadow_evsm_blur_vertical shadow_evsm_vs shadow_evsm_blur_vertical_ps
     program post_fog composite_vs post_fog_ps
+    program volumetric composite_vs volumetric_ps
+    program volumetric_msaa composite_vs volumetric_msaa_ps
     program post_glow_blur_horizontal composite_vs post_glow_blur_horizontal_ps
     program post_glow_blur_vertical composite_vs post_glow_blur_vertical_ps
     program post_glow_combine composite_vs post_glow_combine_ps
@@ -209,6 +220,8 @@ packages:
     package post
     {
         program post_fog
+        program volumetric
+        program volumetric_msaa
         program post_glow_blur_horizontal
         program post_glow_blur_vertical
         program post_glow_combine
@@ -230,6 +243,11 @@ packages:
         program scene_tonemap
         program scene_region_copy
     }
+
+resources:
+    resource VolumeMask
+    resource VolumeShadowMap
+    resource VolumetricParams
 
 surface_families:
     surface Rigid a51_rigid_simple.hlsl a51_surface.hlsl Surface
