@@ -119,7 +119,7 @@ The original PC code was written around Direct3D, 32-bit Windows and the develop
 
 The renderer has Direct3D 12 and Vulkan backends. Both use the original game's geometry and material data, but shaders and GPU resources are handled through the modern renderer rather than the old PC graphics code.
 
-SDL3 provides the operating-system layer: windows, events, input and audio. It is not the implementation of Direct3D 12 or Vulkan. Rendering work takes place in the engine's graphics backends.
+The graphics API is built around SDL3, which may introduce certain limitations due to the framework's relative novelty and ongoing development. Some features or behaviors may not yet be fully mature or optimized.
 
 ## Lighting and Shadows
 
