@@ -295,7 +295,7 @@ xbool ParseShaderProperties( token_stream& Tokenizer, shader_entry& Shader )
 static
 xbool ParseShader( token_stream& Tokenizer, shader_script& Script )
 {
-    shader_entry& Shader = Script.Shaders.Append();
+    shader_entry Shader;
 
     xstring Value;
 
@@ -353,7 +353,10 @@ xbool ParseShader( token_stream& Tokenizer, shader_script& Script )
     if( Shader.Stage == "compute" )
     {
         Script.ComputeShaders.Append() = Shader;
-        Script.Shaders.Delete( Script.Shaders.GetCount() - 1 );
+    }
+    else
+    {
+        Script.Shaders.Append() = Shader;
     }
 
     return TRUE;
