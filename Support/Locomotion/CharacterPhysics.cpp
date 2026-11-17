@@ -522,6 +522,13 @@ void character_physics::CollectPermeable( object* pActor, const vector3& StartPo
     ASSERT( pActor );
     ASSERT( pActor->IsKindOf( actor::GetRTTI() ) );
 
+    // Some scipted climbs can kill inside triggers.
+    // So just disable collision-disabled to avoid this.
+    if( !m_bLocoCollisionOn )
+    {
+        return;
+    }
+
     if( pActor->IsKindOf( character::GetRTTI() ) )
     {
         // We are assuming this actor is a character!
