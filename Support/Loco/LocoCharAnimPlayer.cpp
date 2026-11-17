@@ -251,6 +251,13 @@ void loco_char_anim_player::SetAnim( const anim_group::handle& hAnimGroup, s32 i
     // Copy current anim into blend anim incase blending is specified in anim
     m_AnimBlendTrack = m_AnimCurrTrack ;
 
+    // Resume outgoing cinema playback
+    if( ( m_AnimBlendTrack.GetAnimFlags() & loco::ANIM_FLAG_CINEMA ) &&
+        ( m_AnimBlendTrack.GetRate() == 0.0f ) )
+    {
+        m_AnimBlendTrack.SetRate( 1.0f ) ;
+    }
+
     // Set the current animation, preserving the yaw
     m_AnimCurrTrack.SetAnim  ( hAnimGroup, iAnim, Flags ) ;
     m_AnimCurrTrack.SetRate  ( Rate ) ;
@@ -290,6 +297,8 @@ void loco_char_anim_player::SetAnim( const anim_group::handle& hAnimGroup, s32 i
     {
         // Turn off blend
         m_AnimBlendTrack.SetWeight( 0.0f ) ;
+        m_AnimBlendFrame  = 0 ;
+        m_AnimBlendLength = 0 ;
     }
 
     // Owned by loco?

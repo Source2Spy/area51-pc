@@ -1251,6 +1251,9 @@ xbool cinema_object::AreAnimsDone( void )
     // Check all characters/surfaces to make sure anims have finished
     for( s32 i = 0; i < m_Characters.GetCount(); i++ )
     {
+        if( !m_Characters[i].IsPlaying )
+            continue;
+
         // Lookup character guid
         guid CharGuid = m_Characters[i].CharacterAffecter.GetGuid();
 
@@ -1592,6 +1595,9 @@ void cinema_object::ProcessAnims ( void )
     {
         // Lookup actor
         cinema_character& CinChar = m_Characters[i];
+        if( !CinChar.IsPlaying )
+            continue;
+
         object_ptr<actor> pActor( CinChar.CharacterAffecter.GetGuid() ) ;
 
         // Present?
@@ -1603,9 +1609,12 @@ void cinema_object::ProcessAnims ( void )
         if( !pLoco )
             continue;
             
-        // Playing full body lip sync and finished or blending out?
+        // Use stored mask flags since the controller may already be cleared
+        const xbool bFullBody = ( CinChar.AnimFlags & loco::ANIM_FLAG_MASK_TYPE_FULL_BODY ) ||
+                               ( ( CinChar.AnimFlags & loco::ANIM_FLAG_MASK_TYPE_ALL ) == 0 );
+
         loco_lip_sync_controller& LipSyncCont = pLoco->GetLipSyncController();
-        if( LipSyncCont.IsFullBody() )
+        if( bFullBody )
         {
             // Is anim finished or about to be?
             if(    ( LipSyncCont.IsPlaying() == FALSE )
@@ -1788,6 +1797,8 @@ void cinema_object::UpdateAnims( void )
         // Lookup character
         cinema_character& CinChar  = m_Characters[i];
         guid              CharGuid = CinChar.CharacterAffecter.GetGuid();
+        if( !CinChar.IsPlaying )
+            continue;
         
         // Lookup the object
         object* pObject = g_ObjMgr.GetObjectByGuid( CharGuid );
@@ -1847,6 +1858,8 @@ void cinema_object::StopAnims( void )
         // Lookup character info
         cinema_character& CinChar  = m_Characters[i];
         guid              CharGuid = CinChar.CharacterAffecter.GetGuid();
+        if( !CinChar.IsPlaying )
+            continue;
 
         // Lookup the object
         object* pObject = g_ObjMgr.GetObjectByGuid( CharGuid );
@@ -2006,13 +2019,9 @@ void cinema_object::OnAdvanceSimulation( f32 DeltaTime )
             LOG_MESSAGE( "cinema_object::OnAdvanceSimulation", "ANIM_STATUS_DONE" );
             m_AnimStatus = ANIM_STATUS_DONE;
         }
+        break;
 
-        // Fall through to process characters so their Ai can be resumed when anims finish
-    
     case ANIM_STATUS_DONE:
-        
-        // Checks for anims ending so that character ai can be resumed
-        ProcessAnims();
         break;
     }
 
@@ -2024,6 +2033,12 @@ void cinema_object::OnAdvanceSimulation( f32 DeltaTime )
 
     // Update anim surface and skin prop animations
     UpdateAnims();
+
+    // Resume Ai after updating animation time
+    if( ( m_AnimStatus == ANIM_STATUS_PLAYING ) || ( m_AnimStatus == ANIM_STATUS_DONE ) )
+    {
+        ProcessAnims();
+    }
 
     //==========================================================================
     // Process markers

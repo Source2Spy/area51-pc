@@ -192,9 +192,6 @@ void loco_motion_controller::Advance( const anim_info& AnimInfo,
         }
     }
 
-    // Adjust yaw
-    m_Yaw += DeltaYaw ;
-
     // Rotate delta pos by current yaw
     DeltaPos.RotateY(YawFix) ;
 }
@@ -299,6 +296,9 @@ void loco_motion_controller::Advance( f32 DeltaTime, vector3&  DeltaPos, radian&
                  DeltaYaw );
     }
     
+    // Accumulate mixed yaw
+    m_Yaw += DeltaYaw ;
+
     ASSERT( x_abs( DeltaPos.GetX() ) < ( 100.0f * 10.0f ) );
     ASSERT( x_abs( DeltaPos.GetY() ) < ( 100.0f * 10.0f ) );
     ASSERT( x_abs( DeltaPos.GetZ() ) < ( 100.0f * 10.0f ) );
