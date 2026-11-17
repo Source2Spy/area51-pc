@@ -4415,7 +4415,9 @@ FrameCompiler::RenderStateSelection FrameCompiler::ResolveRenderStates( const ma
 
     const material_blend_mode ResolvedBlendMode  = pMaterial ? pMaterial->GetBlendMode() : MATERIAL_BLEND_OPAQUE;
     const xbool               BBlended           = BFadingAlpha || ( ResolvedBlendMode != MATERIAL_BLEND_OPAQUE );
-    const xbool               BDisableDepthWrite = BBlended || ( pMaterial && !pMaterial->WritesDepth() );
+    const xbool               BForceZFill        = pMaterial && pMaterial->ForcesZFill();
+    const xbool               BDisableDepthWrite = BFadingAlpha || ( BBlended && !BForceZFill ) ||
+                                                                   ( pMaterial && !pMaterial->WritesDepth() );
 
     PipelineState.Depth = BDisableDepthWrite ? RSTATE_DEPTH_PRESET_NO_WRITE : RSTATE_DEPTH_PRESET_NORMAL;
 
