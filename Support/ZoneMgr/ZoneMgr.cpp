@@ -1376,6 +1376,12 @@ void zone_mgr::AdvanceZoneTracking( object&        Object,
                                     tracker&       Tracker,
                                     const vector3& NewPosition ) const
 {
+    if( ( Object.GetZone1() != Tracker.GetMainZone() ) ||
+        ( Object.GetZone2() != Tracker.GetZone2() ) )
+    {
+        RebaseZoneTracking( Tracker, Tracker.GetPosition(), Object.GetZone1(), Object.GetZone2() );
+    }
+
     AdvanceZoneTracking( Tracker, NewPosition );
     Object.SetZone1( Tracker.GetMainZone() );
     Object.SetZone2( Tracker.GetZone2() );
