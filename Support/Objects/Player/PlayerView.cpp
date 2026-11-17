@@ -254,10 +254,41 @@ vector3 player::ConstrainFirstPersonViewPosition( const vector3& Position )
     f32 NearClip, Clearance;
     GetFirstPersonViewClearance( NearClip, Clearance );
 
-    // The upper-body hull follows exactly the offset validated by ConstrainLean,
-    // including the downward motion. The movement capsule stays at the feet.
+    // The movement capsule stays at the feet, but step-down smoothing keeps
+    // the view above it. Sweep that extra height before extending the eye hull.
+
     const vector3 Lean = GetLeanOffset();
-    return PlayerView::ConstrainFirstPersonPosition( Position, GetPosition() + Lean,
+    vector3 CapsuleBottom = GetPosition() + Lean;
+    const f32 StepOffset = x_max( 0.0f, m_StepView.GetOffset() );
+    if( ( StepOffset > F32_MIN ) && m_Physics.IsLocoCollisionOn() )
+    {
+        f32 BottomOffset, CapsuleHeight;
+        const f32 Radius = m_Physics.GetColRadius();
+        PlayerView::GetFirstPersonLeanCapsule( m_Physics.GetColHeight(), Radius, Clearance,
+                                               BottomOffset, CapsuleHeight );
+
+        const vector3 Delta( 0.0f, StepOffset, 0.0f );
+        const vector3 Start = CapsuleBottom + vector3( 0.0f, BottomOffset, 0.0f );
+        g_CollisionMgr.CapsuleSetup( GetGuid(), Start, Start + Delta, Radius, CapsuleHeight );
+        g_CollisionMgr.UseLowPoly();
+        g_CollisionMgr.SetMaxCollisions( MAX_COLLISION_MGR_COLLISIONS );
+        g_CollisionMgr.DoNotRemoveDuplicateGuids();
+        g_CollisionMgr.CheckCollisions( object::TYPE_ALL_TYPES, object::ATTR_BLOCKS_PLAYER,
+                                        object::ATTR_COLLISION_PERMEABLE | object::ATTR_LIVING );
+
+        f32 Fraction = 1.0f;
+        for( s32 i = 0; i < g_CollisionMgr.m_nCollisions; i++ )
+        {
+            const collision_mgr::collision& Hit = g_CollisionMgr.m_Collisions[i];
+            const f32 ClosingDistance = -Hit.SlipPlane.Normal.Dot( Delta );
+            if( ClosingDistance > F32_MIN )
+            {
+                Fraction = MIN( Fraction, x_max( 0.0f, Hit.T - PlayerView::ClearanceMargin / ClosingDistance ) );
+            }
+        }
+        CapsuleBottom += Delta * Fraction;
+    }
+    return PlayerView::ConstrainFirstPersonPosition( Position, CapsuleBottom,
                                                      m_Physics.GetColHeight(),
                                                      m_Physics.GetColRadius(), Clearance );
 }
