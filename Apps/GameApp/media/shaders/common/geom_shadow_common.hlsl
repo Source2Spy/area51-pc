@@ -171,8 +171,10 @@ bool TrySampleFaceShadow( uint SourceIndex,
                           float3 PointToLightDir,
                           out float Visibility )
 {
+    const float3 ShadowWorldPos =
+        ComputeNormalBiasedShadowWorldPos( SourceIndex, WorldPos, GeometricNormal, PointToLightDir );
     float3 ShadowUVW;
-    if( !ProjectFaceShadowSource( SourceIndex, WorldPos, ShadowUVW ) )
+    if( !ProjectFaceShadowSource( SourceIndex, ShadowWorldPos, ShadowUVW ) )
     {
         Visibility = 1.0f;
         return false;
@@ -180,23 +182,14 @@ bool TrySampleFaceShadow( uint SourceIndex,
 
     if( GetShadowParams().w > 0.5f )
     {
-        Visibility = SampleFaceShadowEVSM( SourceIndex, WorldPos, ShadowUVW );
+        Visibility = SampleFaceShadowEVSM( SourceIndex, ShadowWorldPos, ShadowUVW );
     }
     else
     {
         float2 DepthGradient = 0.0f;
         float DepthError = 0.0f;
-        if( !ComputeFaceShadowReceiverPlane( SourceIndex, ShadowUVW, WorldPos, GeometricNormal,
-                                             DepthGradient, DepthError ) )
-        {
-            const float3 BiasedWorldPos =
-                ComputeNormalBiasedShadowWorldPos( SourceIndex, WorldPos, GeometricNormal, PointToLightDir );
-            if( !ProjectFaceShadowSource( SourceIndex, BiasedWorldPos, ShadowUVW ) )
-            {
-                Visibility = 1.0f;
-                return false;
-            }
-        }
+        ComputeFaceShadowReceiverPlane( SourceIndex, ShadowUVW, ShadowWorldPos, GeometricNormal,
+                                        DepthGradient, DepthError );
 
         Visibility = SampleFaceShadowHard( SourceIndex, ShadowUVW, DepthGradient, DepthError );
     }

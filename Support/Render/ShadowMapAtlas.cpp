@@ -1679,8 +1679,7 @@ void ShadowMapAtlas::UpdateAtlasLayout( void )
             f32 const FilterPadding  = DepthFilterRadius + DepthToMomentScale * 0.5f + 0.5f;
             f32 const Padding        = x_ceil( FilterPadding + SHADOW_SEAM_BLEND_TEXELS );
             f32 const Coverage       = 1.0f - 2.0f * Padding / Resolution;
-            f32 const NormalBias     = m_ShadowFilterType == ShadowFilterType::Hard
-                                           ? 2.0f * SHADOW_NORMAL_BIAS_TEXELS / Resolution : 0.0f;
+            f32 const NormalBias     = 2.0f * SHADOW_NORMAL_BIAS_TEXELS / Resolution;
             f32 const BiasedCoverage = Coverage - NormalBias;
             f32 const Discriminant   = BiasedCoverage * BiasedCoverage - 4.0f * Coverage * NormalBias;
 
