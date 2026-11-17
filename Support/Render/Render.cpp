@@ -1060,6 +1060,14 @@ void AppendSkinGeomDraw( PrivateInst const& RegisteredInst, skin_geom& geom, xha
 //=========================================================================
 
 static
+xbool ShouldCastShadow( material const& Material )
+{
+    return !Material.IsAlpha() || ( Material.ForcesZFill() && Material.UsesShadowAlpha() );
+}
+
+//=========================================================================
+
+static
 void AppendRigidShadowDraw( PrivateInst const& RegisteredInst, rigid_geom& geom, xhandle hMaterial,
                             s32 iSurface, matrix4 const* pL2W, s32 ShadowSourceIndex )
 {
@@ -2506,7 +2514,7 @@ void RenderShadowSubmission::AddRigidCasterSimple( xhandle hInst,
             geom::material& GeomMaterial = pGeom->m_pMaterial[SubMesh.iMaterial];
             xhandle hMat = GetRegisteredMaterialHandle( RegisteredInst.m_GeomHandle, GeomMaterial.iVirtualMat );
             ASSERT( ( hMat >= 0 ) && ( hMat < kMaxRegisteredMaterials ) );
-            if ( s_RegisteredMaterials( hMat ).IsAlpha() )
+            if( !ShouldCastShadow( s_RegisteredMaterials( hMat ) ) )
             {
                 continue;
             }
@@ -2552,7 +2560,7 @@ void RenderShadowSubmission::AddRigidCaster( xhandle hInst, matrix4 const* pL2W,
             geom::material& GeomMaterial = pGeom->m_pMaterial[SubMesh.iMaterial];
             xhandle hMat = GetRegisteredMaterialHandle( RegisteredInst.m_GeomHandle, GeomMaterial.iVirtualMat );
             ASSERT( ( hMat >= 0 ) && ( hMat < kMaxRegisteredMaterials ) );
-            if ( s_RegisteredMaterials( hMat ).IsAlpha() )
+            if( !ShouldCastShadow( s_RegisteredMaterials( hMat ) ) )
             {
                 continue;
             }
@@ -2637,13 +2645,13 @@ void RenderShadowSubmission::AddSkinCaster( xhandle hInst, matrix4 const* pBone,
                         ( RegisteredInst.m_GeomHandle < kMaxRegisteredGeoms ) );
                 ASSERT( ( iSubMesh >= 0 ) && ( iSubMesh < 256 ) );
 
-                // don't let alpha cast shadows
+                // Only depth-writing, coverage-tested alpha can cast shadows.
                 geom::submesh&  SubMesh = pGeom->m_pSubMesh[iSubMesh];
                 geom::material& GeomMaterial = pGeom->m_pMaterial[SubMesh.iMaterial];
                 xhandle         hMat =
                     GetRegisteredMaterialHandle( RegisteredInst.m_GeomHandle, GeomMaterial.iVirtualMat );
                 ASSERT( ( hMat >= 0 ) && ( hMat < kMaxRegisteredMaterials ) );
-                if ( s_RegisteredMaterials( hMat ).IsAlpha() )
+                if( !ShouldCastShadow( s_RegisteredMaterials( hMat ) ) )
                 {
                     continue;
                 }
