@@ -783,7 +783,6 @@ void character_physics::SetLocoGravityOn( xbool Enable )
         m_bLocoGravityOn        = Enable;
         m_Support.State         = CharacterSupportState::None;
         m_MotionVelocity.GetY() = 0.0f;
-        LeavePlatform( FALSE );
     }
 }
 
@@ -1198,15 +1197,23 @@ void character_physics::WatchForRidingPlatform( void )
     s32           iPlatformBone = -1;
     guid          PlatformGuid  = 0;
 
-    // Now check and see if we are still standing on any platform
-    if( IsGrounded() && m_Support.Contact.Object )
+    CharacterMovementSupport Support = m_Support;
+    if( m_bUseGravity &&
+        ( !m_bLocoGravityOn ||
+          ( ( m_MovingPlatformGuid != 0 ) && !Support.IsWalkable() && ( m_MotionVelocity.GetY() <= 0.0f ) ) ) )
     {
-        object* pObject = g_ObjMgr.GetObjectByGuid( m_Support.Contact.Object );
+        CharacterMovement::FindSupport( *this, GetMovementSettings(), m_Position, m_ContactOffset, Support );
+    }
+
+    // Now check and see if we are still standing on any platform
+    if( Support.IsWalkable() && Support.Contact.Object )
+    {
+        object* pObject = g_ObjMgr.GetObjectByGuid( Support.Contact.Object );
         if( pObject && ( pObject->GetAttrBits() & object::ATTR_ACTOR_RIDEABLE ) )
         {
-            PlatformGuid  = m_Support.Contact.Object;
+            PlatformGuid  = Support.Contact.Object;
             pPlatform     = (anim_surface*)pObject;
-            iPlatformBone = GetBoneIndexFromPolyCachePrimKey( m_Support.Contact.PrimitiveKey );
+            iPlatformBone = GetBoneIndexFromPolyCachePrimKey( Support.Contact.PrimitiveKey );
         }
     }
 
@@ -1216,7 +1223,7 @@ void character_physics::WatchForRidingPlatform( void )
         // Detach from old platform
         if( ( PlatformGuid != m_MovingPlatformGuid ) || ( iPlatformBone != m_MovingPlatformBone ) )
         {
-            LeavePlatform( !IsGrounded() );
+            LeavePlatform( UsesGravity() && !Support.IsWalkable() );
         }
 
         // Is new ground a moving platform?
