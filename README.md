@@ -108,6 +108,7 @@ The original PC code was written around Direct3D, 32-bit Windows and the develop
 
 * Runtime emulation of `.DFS` archives for loading and modifying game resources.
 * Editable ASCII `.strings` and `.fonts` resource formats.
+* .png .tga image support.
 * Experimental Lua scripting.
 * Updated resource serialization for models, decals and lightmaps across compiler and architecture boundaries.
 * `ResourceTool` geometry compile/decompile workflow using `.rawgeom` descriptors, glTF meshes and separate collision output.
