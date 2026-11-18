@@ -9,7 +9,10 @@
 //=========================================================================
 
 #include "TextureFile.hpp"
+
 #include "Bitmap/aux_Bitmap.hpp"
+#include "IOManager/io_filesystem.hpp"
+
 #include "x_files.hpp"
 
 #include <SDL3/SDL_iostream.h>
@@ -27,7 +30,7 @@ struct texture_stream
 
 //-------------------------------------------------------------------------
 
-struct texture_fallback
+struct texture_variant
 {
     char const* pExtension;
     xbool     (*pLoad)( xbitmap& Bitmap, X_FILE* pFile );
@@ -244,46 +247,50 @@ xbool texture_file::LoadXBMP( xbitmap& Bitmap, X_FILE* pFile )
 
 X_FILE* texture_file::LoadWithFallback( xbitmap& Bitmap, char const* pFileName )
 {
-    X_FILE* pFile = x_fopen( pFileName, "rb" );
-    if( pFile )
+    static 
+    texture_variant const s_Variants[] =
     {
-        if( LoadXBMP( Bitmap, pFile ) )
-        {
-            return pFile;
-        }
-        x_fclose( pFile );
-    }
-
-    char const* pExtension = x_strrchr( pFileName, '.' );
-    if( !pExtension || ( x_stricmp( pExtension, ".xbmp" ) != 0 ) )
-    {
-        return NULL;
-    }
-
-    static texture_fallback const s_Fallbacks[] =
-    {
+        { NULL,   LoadXBMP },
         { ".png", LoadPNG },
         { ".tga", LoadTGA },
     };
+    constexpr s32 nVariants = sizeof( s_Variants ) / sizeof( s_Variants[0] );
 
-    xstring const Stem( pFileName, static_cast<s32>( pExtension - pFileName ) );
-    for( texture_fallback const& Fallback : s_Fallbacks )
+    char const* Paths[nVariants] = { pFileName };
+    xstring     FallbackPaths[nVariants-1];
+    s32         nPaths = 1;
+    char const* pExtension = x_strrchr( pFileName, '.' );
+
+    if( pExtension && ( x_stricmp( pExtension, ".xbmp" ) == 0 ) )
     {
-        xstring const Path = Stem + Fallback.pExtension;
-        pFile = x_fopen( Path, "rb" );
-        if( !pFile )
+        xstring const Stem( pFileName, static_cast<s32>( pExtension - pFileName ) );
+        for( ; nPaths < nVariants; ++nPaths )
         {
-            continue;
+            FallbackPaths[nPaths-1] = Stem + s_Variants[nPaths].pExtension;
+            Paths[nPaths] = FallbackPaths[nPaths-1];
         }
-
-        if( Fallback.pLoad( Bitmap, pFile ) )
-        {
-            x_DebugMsg( "texture_file::LoadWithFallback: Using fallback '%s' for '%s'\n",
-                        static_cast<char const*>( Path ), pFileName );
-            return pFile;
-        }
-        x_fclose( pFile );
     }
 
-    return NULL;
+    struct texture_load
+    {
+        xbitmap&           Bitmap;
+        char const* const* ppPaths;
+    } Load{ Bitmap, Paths };
+
+    return g_IOFSMgr.OpenReadVariants( Paths, nPaths,
+        []( X_FILE* pFile, s32 iPath, void* pData ) -> xbool
+        {
+            texture_load const& Load = *static_cast<texture_load const*>( pData );
+            if( !s_Variants[iPath].pLoad( Load.Bitmap, pFile ) )
+            {
+                return FALSE;
+            }
+
+            if( iPath != 0 )
+            {
+                x_DebugMsg( "texture_file::LoadWithFallback: Using fallback '%s' for '%s'\n",
+                            Load.ppPaths[iPath], Load.ppPaths[0] );
+            }
+            return TRUE;
+        }, &Load );
 }

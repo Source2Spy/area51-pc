@@ -64,10 +64,10 @@ private:
 
 struct io_dfs_data
 {
-    xstring                 PathName;           // dfs pathname.
+    xstring                 PathName;           // DFS pathname.
     char*                   RamAddress;
-    s32                     SearchPriority;
-    s32                     FindIndex;
+    s32                     SearchPriority;     // Lower values are searched first.
+    s32                     FindIndex;          // Index of the last file found in this DFS.
     dfs_header*             pHeader;
     xbool                   bEmulated;
     xstring                 EmuRootPath;
@@ -76,25 +76,27 @@ struct io_dfs_data
 
 private:
 
-    xarray<io_dfs_data> m_DFS;
-    io_cache            m_Caches[ NUM_CACHES ];
-    s32                 m_Retries;
-    io_open_file        m_Files[ MAX_FILES ];
-    io_open_file*       m_FreeFiles;
-    s32                 m_CurrentDFS;
-    s32                 m_CurrentDFSIndex;
-    s32                 m_LogFlags;
-    xmutex              m_Mutex;
+    xarray<io_dfs_data>  m_DFS;
+    xarray<s32>          m_DFSSearchOrder;
+    io_cache             m_Caches[ NUM_CACHES ];
+    s32                  m_Retries;
+    io_open_file         m_Files[ MAX_FILES ];
+    io_open_file*        m_FreeFiles;
+    s32                  m_LogFlags;
+    xmutex               m_Mutex;
 
 private:
 
-    io_open_file*       AcquireFile         ( void );
-    void                ReleaseFile         ( io_open_file* pFile );
-    io_cache*           AcquireCache        ( io_open_file* pFile );
-    void                ReleaseCache        ( io_cache* pChache );
-    xbool               FindFile            ( const char* pPathName, io_device_file* &DeviceFile, u32 &Offset, u32 &Length, void* &pRAM );
-    xbool               SearchDFS           ( const char* pPathName, io_device_file* &DeviceFile, u32 &Offset, u32 &Length, s32 SubFile, s32 StartIndex, void* &pRAM );
-    xbool               CompareFile         ( const char* pPathName, io_device_file* &DeviceFile, u32 &Offset, u32 &Length, s32 SubFile, s32 Index, void* &pRAM );
+    io_open_file*       AcquireFile          ( void );
+    io_open_file*       AcquireDFSFile       ( const char* pPathName, io_device_file* pDeviceFile, u32 Offset, u32 Length, void* pRAM, s32 OpenFlags );
+    void                ReleaseFile          ( io_open_file* pFile );
+    io_cache*           AcquireCache         ( io_open_file* pFile );
+    void                ReleaseCache         ( io_cache* pChache );
+    void                UpdateDFSSearchOrder ( void );
+    xbool               FindFile             ( const char* pPathName, io_device_file* &DeviceFile, u32 &Offset, u32 &Length, void* &pRAM );
+    xbool               SearchDFS            ( const char* pPathName, io_device_file* &DeviceFile, u32 &Offset, u32 &Length, s32 SubFile, void* &pRAM );
+    xbool               CompareFile          ( const char* pPathName, io_device_file* &DeviceFile, u32 &Offset, u32 &Length, s32 SubFile, s32 Index, void* &pRAM );
+    io_open_file*       Open                 ( const char* pPathName, const char* pMode, xbool bSearchDFS );
      
 
 public:
@@ -108,6 +110,8 @@ public:
     xbool               UnmountFileSystem       ( const char* pPathName );
     void                EnableChecksum          ( void* pOpenFile, xbool bEnable );
     io_open_file*       Open                    ( const char* pPathName, const char* pMode );
+    X_FILE*             OpenReadVariants        ( const char* const* ppPaths, s32 nPaths,
+                                                  xbool (*pRead)( X_FILE*, s32, void* ), void* pData );
 #if defined( TARGET_DESKTOP ) || defined( TARGET_MOBILE )
     X_FILE*             OpenHostFile            ( const char* pPathName, const char* pMode );
     xbool               WriteHostFileAtomic     ( const char* pPathName, const void* pData, s32 Bytes );

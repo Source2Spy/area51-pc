@@ -1285,6 +1285,7 @@ void level_loader::UnloadLevel( xbool bFullUnload )
 
 void level_loader::MountDefaultFilesystems( void )
 {
+    g_IOFSMgr.MountFileSystem( "CUSTOM", 0 );
     g_IOFSMgr.MountFileSystem( "PRELOAD", 1 );
     g_IOFSMgr.MountFileSystem( "UI", 1 );
     g_IOFSMgr.MountFileSystem( "AUDIO\\MUSIC", 10 );
@@ -1321,4 +1322,5 @@ void level_loader::UnmountDefaultFilesystems( void )
     g_IOFSMgr.UnmountFileSystem( "AUDIO\\MUSIC" );
     g_IOFSMgr.UnmountFileSystem( "UI" );
     g_IOFSMgr.UnmountFileSystem( "PRELOAD" );
+    g_IOFSMgr.UnmountFileSystem( "CUSTOM" );
 }

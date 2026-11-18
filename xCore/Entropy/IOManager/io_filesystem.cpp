@@ -384,10 +384,8 @@ static s32 io_length( X_FILE* pFile )
 
 io_fs::io_fs( void )
 {
-    m_CurrentDFS      = -1;
-    m_CurrentDFSIndex = 0;
-    m_Retries         = 10;
-    m_LogFlags        = 0;
+    m_Retries  = 10;
+    m_LogFlags = 0;
 }
 
 //==============================================================================
@@ -456,8 +454,9 @@ xbool io_fs::Init( void )
 #endif
 
 
-    // Set Initial Capacity of m_DFS now to reduce memory fragmentation
+    // Set initial capacities now to reduce memory fragmentation
     m_DFS.SetCapacity( 16 );
+    m_DFSSearchOrder.SetCapacity( m_DFS.GetCapacity() );
 
     // All good now!
     s_Initialized = TRUE;
@@ -548,7 +547,7 @@ xbool io_fs::MountFileSystemRAM( const char* pPathName, void* pHeaderData, s32 H
         m_DFS[FileIndex].RamAddress     = (char*)pRawData;
         m_DFS[FileIndex].SearchPriority = 0;
         m_DFS[FileIndex].pHeader        = pHeader;
-        m_DFS[FileIndex].FindIndex      = -1;
+        m_DFS[FileIndex].FindIndex      = 0;
         m_DFS[FileIndex].bEmulated      = FALSE;
         m_DFS[FileIndex].EmuRootPath.Clear();
 
@@ -558,8 +557,8 @@ xbool io_fs::MountFileSystemRAM( const char* pPathName, void* pHeaderData, s32 H
         // Another one is mounted...
         s_MountedCount++;
 
-        // Let FileSystem search in latest mounted .dfs
-        m_CurrentDFS = -1;
+        // Use priority search.
+        UpdateDFSSearchOrder();
     }
 
     // Release the mutex!
@@ -668,7 +667,7 @@ xbool io_fs::MountFileSystem( const char* pPathName, s32 SearchPriority )
         m_DFS[FileIndex].RamAddress     = NULL;
         m_DFS[FileIndex].SearchPriority = SearchPriority;
         m_DFS[FileIndex].pHeader        = pHeader;
-        m_DFS[FileIndex].FindIndex      = -1;
+        m_DFS[FileIndex].FindIndex      = 0;
         m_DFS[FileIndex].bEmulated      = FALSE;
         m_DFS[FileIndex].EmuRootPath.Clear();
 
@@ -743,7 +742,7 @@ xbool io_fs::MountFileSystem( const char* pPathName, s32 SearchPriority )
             m_DFS[FileIndex].RamAddress     = NULL;
             m_DFS[FileIndex].SearchPriority = SearchPriority;
             m_DFS[FileIndex].pHeader        = pHeader;
-            m_DFS[FileIndex].FindIndex      = -1;
+            m_DFS[FileIndex].FindIndex      = 0;
             m_DFS[FileIndex].bEmulated      = TRUE;
 #if defined( TARGET_POSIX )
             m_DFS[FileIndex].EmuRootPath    = pEmuRootPath;
@@ -773,8 +772,8 @@ xbool io_fs::MountFileSystem( const char* pPathName, s32 SearchPriority )
     {
         s_MountedCount++;
 
-        // Let FileSystem search in latest mounted .dfs
-        m_CurrentDFS = -1;
+        // Use priority search.
+        UpdateDFSSearchOrder();
 
         //DumpFileSystem( m_DFS.GetCount() - 1 );
     }
@@ -820,13 +819,6 @@ xbool io_fs::UnmountFileSystem( const char* pPathName )
     // Find it?
     if( i<m_DFS.GetCount() )
     {
-        // This the current file?
-        if( i == m_CurrentDFS )
-        {
-            m_CurrentDFS      = -1;
-            m_CurrentDFSIndex = 0;
-        }
-
         // For each opened sub-file...
         for( s32 j=0 ; j<m_DFS[i].DeviceFiles.GetCount() ; j++ )
         {
@@ -855,6 +847,9 @@ xbool io_fs::UnmountFileSystem( const char* pPathName )
         m_DFS[i].PathName.Clear();
         m_DFS[i].PathName.FreeExtra();
         m_DFS.Delete( i );
+
+        // Use priority search.
+        UpdateDFSSearchOrder();
 
         // One less file mounted...
         s_MountedCount--;
@@ -946,6 +941,43 @@ void io_fs::ReleaseFile( io_open_file* pFile )
 
     // Release it!
     m_Mutex.Exit();
+}
+
+//==============================================================================
+
+io_open_file* io_fs::AcquireDFSFile( const char* pPathName, io_device_file* pDeviceFile, u32 Offset, u32 Length, void* pRAM, s32 OpenFlags )
+{
+    io_open_file* pOpenFile = AcquireFile();
+    ASSERTS( pOpenFile, "Open: Out of file handles" );
+    if( !pOpenFile )
+    {
+        if( pDeviceFile && !pDeviceFile->pHeader )
+        {
+            g_IoMgr.CloseDeviceFile( pDeviceFile );
+        }
+        return NULL;
+    }
+
+    pOpenFile->bRead           = (OpenFlags & io_device::READ) != 0;
+    pOpenFile->bWrite          = (OpenFlags & io_device::WRITE) != 0;
+    pOpenFile->bAppend         = (OpenFlags & io_device::APPEND) != 0;
+    pOpenFile->PassThrough     = NULL;
+    pOpenFile->pDeviceFile     = pDeviceFile;
+    pOpenFile->pRAM            = pRAM;
+    pOpenFile->Offset          = Offset;
+    pOpenFile->Length          = Length;
+    pOpenFile->Position        = 0;
+    pOpenFile->Mode            = OpenFlags;
+    pOpenFile->pNext           = NULL;
+    pOpenFile->bEnableChecksum = pDeviceFile &&
+                                 pDeviceFile->pHeader &&
+                                 (dfs_GetChecksums( (dfs_header*)pDeviceFile->pHeader ) != NULL);
+
+#ifdef IO_RETAIN_FILENAME
+    x_strncpy( pOpenFile->Filename, pPathName, 256 );
+#endif
+
+    return pOpenFile;
 }
 
 //==============================================================================
@@ -1197,14 +1229,12 @@ xbool io_fs::CompareFile( const char* pPathName, io_device_file* &DeviceFile, u3
 
 //==============================================================================
 
-xbool io_fs::SearchDFS( const char* pPathName, io_device_file* &DeviceFile, u32 &Offset, u32 &Length, s32 SubFile, s32 StartIndex, void* &pRAM )
+xbool io_fs::SearchDFS( const char* pPathName, io_device_file* &DeviceFile, u32 &Offset, u32 &Length, s32 SubFile, void* &pRAM )
 {
-    s32 nFiles  = m_DFS[SubFile].pHeader->nFiles;
-    s32 iMinus  = StartIndex;
-    s32 iPlus   = StartIndex+1;
-
-    // Default.
-    m_CurrentDFSIndex = 0;
+    io_dfs_data& DFS    = m_DFS[SubFile];
+    s32          nFiles = DFS.pHeader->nFiles;
+    s32          iMinus = DFS.FindIndex;
+    s32          iPlus  = DFS.FindIndex+1;
 
     // If it is an empty dfs - dont search.
     if( nFiles == 0 )
@@ -1220,7 +1250,7 @@ xbool io_fs::SearchDFS( const char* pPathName, io_device_file* &DeviceFile, u32 
             // Does this one match?
             if( CompareFile( pPathName, DeviceFile, Offset, Length, SubFile, iMinus, pRAM ) )
             {
-                m_CurrentDFSIndex = iMinus;
+                DFS.FindIndex = iMinus;
                 return TRUE;
             }
             else
@@ -1235,7 +1265,7 @@ xbool io_fs::SearchDFS( const char* pPathName, io_device_file* &DeviceFile, u32 
             // Does this one match?
             if( CompareFile( pPathName, DeviceFile, Offset, Length, SubFile, iPlus, pRAM ) )
             {
-                m_CurrentDFSIndex = iPlus;
+                DFS.FindIndex = iPlus;
                 return TRUE;
             }
             else
@@ -1248,6 +1278,28 @@ xbool io_fs::SearchDFS( const char* pPathName, io_device_file* &DeviceFile, u32 
 
     // Ack...
     return FALSE;
+}
+
+//==============================================================================
+
+void io_fs::UpdateDFSSearchOrder( void )
+{
+    // Sort the search indices without moving the mounted file systems.
+    m_DFSSearchOrder.SetCount( m_DFS.GetCount() );
+    for( s32 i=0 ; i<m_DFS.GetCount() ; i++ )
+    {
+        s32 Position = i;
+
+        // At the same priority, search the last mounted DFS first.
+        while( (Position>0) &&
+               (m_DFS[m_DFSSearchOrder[Position-1]].SearchPriority >= m_DFS[i].SearchPriority) )
+        {
+            m_DFSSearchOrder[Position] = m_DFSSearchOrder[Position-1];
+            Position--;
+        }
+
+        m_DFSSearchOrder[Position] = i;
+    }
 }
 
 //==============================================================================
@@ -1273,50 +1325,34 @@ xbool io_fs::FindFile( const char* pPathName, io_device_file* &DeviceFile, u32 &
     x_DebugMsg( "FS: searching for '%s' (clean '%s') across %d mounted DFS files\n", pPathName, pCleanFilename, m_DFS.GetCount() );
 #endif
 
-    // Current DFS valid?
-    if( m_CurrentDFS != -1 )
+    // Search the disk file systems in priority order.
+    for( s32 i=0 ; i<m_DFSSearchOrder.GetCount() ; i++ )
     {
-        #ifdef DEBUG_IO    
-        x_DebugMsg( "FS: searching current DFS '%s' from index %d\n", (const char*)m_DFS[m_CurrentDFS].PathName, m_CurrentDFSIndex );
-        #endif
-        // Look in the current disk file system...
-        Result = SearchDFS( pCleanFilename, DeviceFile, Offset, Length, m_CurrentDFS, m_CurrentDFSIndex, pRAM );
-    }
+        s32 DFSIndex = m_DFSSearchOrder[i];
 
-    // Don't look further if we found it...
-    if( !Result )
-    {
-        s32 nFileSystems = m_DFS.GetCount();
-        // TODO: Prioritize the search.
-        for( s32 i=nFileSystems-1 ; (i>=0) && (!Result) ; i-- )
+        #ifdef DEBUG_IO
+        x_DebugMsg( "FS: searching DFS '%s' from index %d\n",
+                    (const char*)m_DFS[DFSIndex].PathName,
+                    m_DFS[DFSIndex].FindIndex );
+        #endif
+
+        if( SearchDFS( pCleanFilename, DeviceFile, Offset, Length, DFSIndex, pRAM ) )
         {
-            // Don't look in the one we have already searched.
-            if( i != m_CurrentDFS )
-            {
-                #ifdef DEBUG_IO    
-                x_DebugMsg( "FS: searching DFS '%s' from index 0\n", (const char*)m_DFS[i].PathName );
-                #endif
-                // Is it there?
-                Result = SearchDFS( pCleanFilename, DeviceFile, Offset, Length, i, 0, pRAM );
-                if( Result )
-                {
-                    m_CurrentDFS = i;
-                }
-            }
+            Result = TRUE;
+            #ifdef DEBUG_IO
+            x_DebugMsg( "FS: found '%s' in DFS '%s' (offset %u, length %u)%s\n",
+                        pCleanFilename,
+                        (const char*)m_DFS[DFSIndex].PathName,
+                        Offset,
+                        Length,
+                        pRAM ? " [RAM]" : "" );
+            #endif
+            break;
         }
     }
 
-#ifdef DEBUG_IO    
-    if( Result )
-    {
-        x_DebugMsg( "FS: found '%s' in DFS '%s' (offset %u, length %u)%s\n",
-                    pCleanFilename,
-                    (const char*)m_DFS[m_CurrentDFS].PathName,
-                    Offset,
-                    Length,
-                    pRAM ? " [RAM]" : "" );
-    }
-    else
+#ifdef DEBUG_IO
+    if( !Result )
     {
         x_DebugMsg( "FS: '%s' not found in mounted DFS files\n", pCleanFilename );
     }
@@ -1455,6 +1491,13 @@ xbool io_fs::WriteHostFileAtomic( const char* pPathName, const void* pData, s32 
 
 io_open_file* io_fs::Open( const char* pPathName, const char* pMode )
 {
+    return Open( pPathName, pMode, TRUE );
+}
+
+//==============================================================================
+
+io_open_file* io_fs::Open( const char* pPathName, const char* pMode, xbool bSearchDFS )
+{
     io_open_file* pOpenFile       = NULL;
     xbool         bRead           = FALSE;
     xbool         bWrite          = FALSE;
@@ -1496,7 +1539,7 @@ io_open_file* io_fs::Open( const char* pPathName, const char* pMode )
     x_DebugMsg( "FS Open: '%s'\n", pPathName );
 #endif
         
-    if( bIsHost && s_MountedCount && bRead )
+    if( bSearchDFS && bIsHost && s_MountedCount && bRead )
     {
         u32             Offset;
         u32             Length;
@@ -1506,33 +1549,7 @@ io_open_file* io_fs::Open( const char* pPathName, const char* pMode )
         // File found?
         if( FindFile( pPathName, pDeviceFile, Offset, Length, pRAM ) )
         {
-            // Create a new openfile structure
-            pOpenFile = AcquireFile();
-            ASSERTS( pOpenFile, "Open: Out of file handles" );
-
-            if( pOpenFile )
-            {
-                // Set up the open file
-                pOpenFile->bRead             = bRead;
-                pOpenFile->bWrite            = bWrite;
-                pOpenFile->bAppend           = bAppend;
-                pOpenFile->PassThrough       = NULL;
-                pOpenFile->pDeviceFile       = pDeviceFile;
-                pOpenFile->pRAM              = pRAM;
-                pOpenFile->Offset            = Offset;
-                pOpenFile->Length            = Length;
-                pOpenFile->Position          = 0;
-                pOpenFile->Mode              = OpenFlags; 
-                pOpenFile->pNext             = NULL;
-                pOpenFile->bEnableChecksum   = pDeviceFile &&
-                                                pDeviceFile->pHeader &&
-                                                (dfs_GetChecksums( (dfs_header*)pDeviceFile->pHeader ) != NULL);
-
-#ifdef IO_RETAIN_FILENAME
-                // Save the filename...
-                x_strncpy( pOpenFile->Filename, pPathName, 256 );
-#endif
-            }
+            pOpenFile = AcquireDFSFile( pPathName, pDeviceFile, Offset, Length, pRAM, OpenFlags );
         }
     }
 
@@ -1623,6 +1640,102 @@ io_open_file* io_fs::Open( const char* pPathName, const char* pMode )
 
     // Return the file handle
     return pOpenFile;
+}
+
+//==============================================================================
+
+X_FILE* io_fs::OpenReadVariants( const char* const* ppPaths, s32 nPaths,
+                                xbool (*pRead)( X_FILE*, s32, void* ), void* pData )
+{
+    ASSERT( ppPaths && (nPaths>0) && pRead );
+
+    auto AcceptFile = [pRead, pData]( X_FILE* pFile, s32 iPath ) -> X_FILE*
+    {
+        if( !pFile )
+        {
+            return NULL;
+        }
+
+        // Close the file unless the reader accepts it.
+        struct variant_file
+        {
+            X_FILE* pFile;
+
+            ~variant_file( void )
+            {
+                if( pFile )
+                {
+                    x_fclose( pFile );
+                }
+            }
+        } File = { pFile };
+
+        if( pRead( pFile, iPath, pData ) )
+        {
+            File.pFile = NULL;
+            return pFile;
+        }
+
+        return NULL;
+    };
+
+    xbool bSearchDFS = FALSE;
+#if ( (defined(TARGET_DESKTOP) || defined(TARGET_MOBILE)) && !defined(X_EDITOR) )
+    bSearchDFS = s_Initialized;
+#endif
+
+    if( bSearchDFS )
+    {
+        // Keep the search order and its indices valid while trying the variants.
+        struct dfs_search_lock
+        {
+            xmutex& Mutex;
+
+            dfs_search_lock( xmutex& Lock ) : Mutex( Lock ) { Mutex.Enter(); }
+            ~dfs_search_lock( void )                       { Mutex.Exit();  }
+        } Lock( m_Mutex );
+
+        for( s32 i=0 ; i<m_DFSSearchOrder.GetCount() ; i++ )
+        {
+            s32 DFSIndex = m_DFSSearchOrder[i];
+            for( s32 j=0 ; j<nPaths ; j++ )
+            {
+                char            pCleanFilename[X_MAX_PATH];
+                io_device_file* pDeviceFile = NULL;
+                u32             Offset      = 0;
+                u32             Length      = 0;
+                void*           pRAM        = NULL;
+
+                io_clean_path( pCleanFilename, ppPaths[j] );
+                if( SearchDFS( pCleanFilename, pDeviceFile, Offset, Length, DFSIndex, pRAM ) )
+                {
+                    io_open_file* pOpenFile = AcquireDFSFile( ppPaths[j], pDeviceFile, Offset, Length, pRAM, io_device::READ );
+                    X_FILE*       pFile     = AcceptFile( (X_FILE*)pOpenFile, j );
+                    if( pFile )
+                    {
+                        return pFile;
+                    }
+                }
+            }
+        }
+
+#if !ENABLE_PASSTHROUGH
+        return NULL;
+#endif
+    }
+
+    // Try the underlying file system without starting another DFS search.
+    for( s32 i=0 ; i<nPaths ; i++ )
+    {
+        X_FILE* pFile = bSearchDFS ? (X_FILE*)Open( ppPaths[i], "rb", FALSE ) : x_fopen( ppPaths[i], "rb" );
+        pFile = AcceptFile( pFile, i );
+        if( pFile )
+        {
+            return pFile;
+        }
+    }
+
+    return NULL;
 }
 
 //==============================================================================
