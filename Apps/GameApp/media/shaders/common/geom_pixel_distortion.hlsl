@@ -62,7 +62,8 @@ float4 GeomShadeDistortionPixel( GEOM_PIXEL_INPUT Input, uint MaterialFlags, flo
     const float2 UVDy = ddy( Input.UV );
     if( txDiffuse.SampleGrad( samDiffuse, Input.UV, UVDx, UVDy ).a < AlphaRef ) discard;
 #endif
-    const float3 SceneColor = txDistortionScene.SampleGrad( samDistortion, SceneUV, SceneDx, SceneDy ).rgb;
+    const float4 Scene      = txDistortionScene.SampleGrad( samDistortion, SceneUV, SceneDx, SceneDy );
+    const float3 SceneColor = Scene.rgb;
 
     float3 FinalColor = SceneColor;
 
@@ -81,7 +82,15 @@ float4 GeomShadeDistortionPixel( GEOM_PIXEL_INPUT Input, uint MaterialFlags, flo
 #endif
     FinalColor = lerp( SceneColor, FinalColor, FadeAlpha );
 
+#if A51_RECIPE_FORCED_GLOW
+    // Tint the refracted scene and keep its existing glow mask.
+    const float4 Glow     = GeomGetLightAmbCol( Input );
+    const float  Strength = saturate( Glow.a ) * FadeAlpha;
+    FinalColor = lerp( FinalColor, Glow.rgb, 0.5f * Strength );
+    return float4( FinalColor, max( Scene.a, Strength ) );
+#else
     return float4( FinalColor, FadeAlpha );
+#endif
 }
 
 //==============================================================================

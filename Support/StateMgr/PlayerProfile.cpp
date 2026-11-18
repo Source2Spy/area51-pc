@@ -195,7 +195,7 @@ void player_profile::RestoreCommonControlDefaults( void )
     SetLookspringOn( FALSE );
     SetCrouchOn( FALSE );
     SetWeaponAutoSwitch( TRUE );
-    SetAimToggleEnabled( FALSE );
+    SetAimToggleEnabled( TRUE );
 }
 
 //=========================================================================

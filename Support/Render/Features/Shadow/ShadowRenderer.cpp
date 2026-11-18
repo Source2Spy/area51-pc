@@ -929,21 +929,21 @@ void ShadowRenderer::Init( void )
 
 xbool ShadowRenderer::QueueGeometryPipeline( xbool Skin, xbool Alpha, xbool TwoSided )
 {
-    return RequestPipelines( Skin ? SHADOW_CASTER_SKIN : SHADOW_CASTER_RIGID, Alpha, TwoSided, TRUE );
+    return RequestCasterPipelines( Skin ? SHADOW_CASTER_SKIN : SHADOW_CASTER_RIGID, Alpha, TwoSided, TRUE );
 }
 
 //=========================================================================
 
 xbool ShadowRenderer::QueueDynamicPipeline( void )
 {
-    return RequestPipelines( SHADOW_CASTER_DYNAMIC, TRUE, TRUE, TRUE );
+    return RequestCasterPipelines( SHADOW_CASTER_DYNAMIC, TRUE, TRUE, TRUE );
 }
 
 //=========================================================================
 
-xbool ShadowRenderer::QueueFilterPipelines( void )
+xbool ShadowRenderer::QueueAtlasPipelines( xbool UseEVSM )
 {
-    return RequestPipelines( SHADOW_CASTER_NONE, FALSE, FALSE, TRUE );
+    return RequestTileClearPipeline( TRUE ) && ( !UseEVSM || RequestFilterPipelines( TRUE ) );
 }
 
 //=========================================================================
@@ -979,7 +979,7 @@ static xbool StoreShadowCasterPipelines( GraphicsPipelineCache&      Cache,
 
 //=========================================================================
 
-xbool ShadowRenderer::RequestPipelines( s32 Caster, xbool Alpha, xbool isTwoSided, xbool IsPrewarm )
+xbool ShadowRenderer::RequestCasterPipelines( s32 Caster, xbool Alpha, xbool isTwoSided, xbool IsPrewarm )
 {
     if( !m_isInitialized )
     {
@@ -1153,67 +1153,82 @@ xbool ShadowRenderer::RequestPipelines( s32 Caster, xbool Alpha, xbool isTwoSide
         }
     }
 
-    if( Caster == SHADOW_CASTER_NONE )
+    return TRUE;
+}
+
+//=========================================================================
+
+xbool ShadowRenderer::RequestTileClearPipeline( xbool IsPrewarm )
+{
+    if( !m_isInitialized )
     {
-        shader_vertex_element     ClearLayout[] = { shader_vertex_element( 0, 0, SHADER_VERTEX_FORMAT_FLOAT3, 0 ),
-                                                    shader_vertex_element( 3, 0, SHADER_VERTEX_FORMAT_UINT1, 12 ) };
-        shader_vertex_buffer_desc ClearBuffer;
-        ClearBuffer.Slot   = 0;
-        ClearBuffer.Stride = 16;
+        return FALSE;
+    }
 
-        render_pipeline_desc Clear;
-        Clear.Shader.pVertexShader     = &m_RigidVertexShader;
-        Clear.Shader.pPixelShader      = &m_OpaqueDepthPixelShader;
-        Clear.Shader.pVertexBuffers    = &ClearBuffer;
-        Clear.Shader.VertexBufferCount = 1;
-        Clear.Shader.pInputElements    = ClearLayout;
-        Clear.Shader.InputElementCount = ARRAYSIZE( ClearLayout );
-        Clear.Shader.Topology          = SHADER_TOPOLOGY_TRIANGLE_LIST;
-        Clear.Raster                   = rstate_GetRasterDesc( RSTATE_RASTER_PRESET_SOLID_NO_CULL );
-        Clear.Depth                    = rstate_GetDepthDesc( RSTATE_DEPTH_PRESET_WRITE_ALWAYS );
-        Clear.ColorCount               = 0;
-        Clear.DepthFormat              = RTARGET_FORMAT_DEPTH32F;
-        Clear.pDebugName               = "ShadowTileClear";
+    shader_vertex_element     ClearLayout[] = { shader_vertex_element( 0, 0, SHADER_VERTEX_FORMAT_FLOAT3, 0 ),
+                                                shader_vertex_element( 3, 0, SHADER_VERTEX_FORMAT_UINT1, 12 ) };
+    shader_vertex_buffer_desc ClearBuffer;
+    ClearBuffer.Slot   = 0;
+    ClearBuffer.Stride = 16;
 
-        if( !StoreShadowPipeline( m_CasterPipelines, m_pCasterHandles[static_cast<u32>( ShadowPipeline::TileClear )],
-                                  Clear, IsPrewarm ) )
+    render_pipeline_desc Clear;
+    Clear.Shader.pVertexShader      = &m_RigidVertexShader;
+    Clear.Shader.pPixelShader       = &m_OpaqueDepthPixelShader;
+    Clear.Shader.pVertexBuffers    = &ClearBuffer;
+    Clear.Shader.VertexBufferCount = 1;
+    Clear.Shader.pInputElements    = ClearLayout;
+    Clear.Shader.InputElementCount = ARRAYSIZE( ClearLayout );
+    Clear.Shader.Topology          = SHADER_TOPOLOGY_TRIANGLE_LIST;
+    Clear.Raster                   = rstate_GetRasterDesc( RSTATE_RASTER_PRESET_SOLID_NO_CULL );
+    Clear.Depth                    = rstate_GetDepthDesc( RSTATE_DEPTH_PRESET_WRITE_ALWAYS );
+    Clear.ColorCount               = 0;
+    Clear.DepthFormat              = RTARGET_FORMAT_DEPTH32F;
+    Clear.pDebugName               = "ShadowTileClear";
+
+    return StoreShadowPipeline( m_CasterPipelines, m_pCasterHandles[static_cast<u32>( ShadowPipeline::TileClear )],
+                                Clear, IsPrewarm ) != NULL;
+}
+
+//=========================================================================
+
+xbool ShadowRenderer::RequestFilterPipelines( xbool IsPrewarm )
+{
+    if( !m_isInitialized )
+    {
+        return FALSE;
+    }
+
+    const shader* PixelShaders[] = {
+        &m_EvsmConvertPixelShader,
+        &m_EvsmBlurHorizontalPixelShader,
+        &m_EvsmBlurVerticalPixelShader,
+    };
+    const char* DebugNames[] = {
+        "ShadowEVSMConvert",
+        "ShadowEVSMBlurHorizontal",
+        "ShadowEVSMBlurVertical",
+    };
+
+    for( u32 i = 0; i < ARRAYSIZE( PixelShaders ); ++i )
+    {
+        render_pipeline_desc Desc;
+        Desc.Shader.pVertexShader   = &m_EvsmVertexShader;
+        Desc.Shader.pPixelShader    = PixelShaders[i];
+        Desc.Shader.Topology        = SHADER_TOPOLOGY_TRIANGLE_LIST;
+        Desc.Raster                 = rstate_GetRasterDesc( RSTATE_RASTER_PRESET_SOLID_NO_CULL );
+        Desc.Depth                  = rstate_GetDepthDesc( RSTATE_DEPTH_PRESET_DISABLED_NO_WRITE );
+        Desc.ColorTargets[0].Format = RTARGET_FORMAT_RGBA32F;
+        Desc.ColorTargets[0].Blend  = rstate_GetBlendDesc( RSTATE_BLEND_PRESET_NONE );
+        Desc.ColorCount             = 1;
+        Desc.DepthFormat            = RTARGET_FORMAT_COUNT;
+        Desc.pDebugName             = DebugNames[i];
+
+        const ShadowEVSMPipeline Pipeline = static_cast<ShadowEVSMPipeline>( i );
+
+        if( !StoreShadowPipeline( m_EvsmPipelines, m_pEvsmHandles[static_cast<u32>( Pipeline )], Desc, IsPrewarm ) )
         {
+            RENDER_THROW( "ShadowRenderer", "failed to prepare %s pipeline", DebugNames[i] );
             return FALSE;
-        }
-
-        const shader* PixelShaders[] = {
-            &m_EvsmConvertPixelShader,
-            &m_EvsmBlurHorizontalPixelShader,
-            &m_EvsmBlurVerticalPixelShader,
-        };
-        const char* DebugNames[] = {
-            "ShadowEVSMConvert",
-            "ShadowEVSMBlurHorizontal",
-            "ShadowEVSMBlurVertical",
-        };
-
-        for( u32 i = 0; i < ARRAYSIZE( PixelShaders ); ++i )
-        {
-            render_pipeline_desc Desc;
-            Desc.Shader.pVertexShader   = &m_EvsmVertexShader;
-            Desc.Shader.pPixelShader    = PixelShaders[i];
-            Desc.Shader.Topology        = SHADER_TOPOLOGY_TRIANGLE_LIST;
-            Desc.Raster                 = rstate_GetRasterDesc( RSTATE_RASTER_PRESET_SOLID_NO_CULL );
-            Desc.Depth                  = rstate_GetDepthDesc( RSTATE_DEPTH_PRESET_DISABLED_NO_WRITE );
-            Desc.ColorTargets[0].Format = RTARGET_FORMAT_RGBA32F;
-            Desc.ColorTargets[0].Blend  = rstate_GetBlendDesc( RSTATE_BLEND_PRESET_NONE );
-            Desc.ColorCount             = 1;
-            Desc.DepthFormat            = RTARGET_FORMAT_COUNT;
-            Desc.pDebugName             = DebugNames[i];
-
-            const ShadowEVSMPipeline Pipeline = static_cast<ShadowEVSMPipeline>( i );
-
-            if( !( StoreShadowPipeline( m_EvsmPipelines, m_pEvsmHandles[static_cast<u32>( Pipeline )], Desc,
-                                        IsPrewarm ) ) )
-            {
-                RENDER_THROW( "ShadowRenderer", "failed to prewarm %s pipeline", DebugNames[i] );
-                return FALSE;
-            }
         }
     }
 
@@ -1593,7 +1608,7 @@ void ShadowRenderer::PrepareTileUpdates( const RenderFrameContext& Frame )
 
 xbool ShadowRenderer::ClearUpdatedTiles( void )
 {
-    if( !RequestPipelines( SHADOW_CASTER_NONE, FALSE, FALSE, FALSE ) ||
+    if( !RequestTileClearPipeline( FALSE ) ||
         !render_BindPipeline( *m_pCasterHandles[static_cast<u32>( ShadowPipeline::TileClear )] ) ||
         !rbuffer_BindVertex( m_ClearVertices, 0, 0 ) ||
         !shader_BindStorageBuffer( shader_storage_buffer_binding( SHADER_STAGE_VERTEX, m_RigidInstanceSlot,
@@ -1850,16 +1865,13 @@ xbool ShadowRenderer::ExecuteEVSMConvertPass( RenderPassContext& Context )
         return FALSE;
     }
 
-    render_pipeline* pConvertPipeline = m_pEvsmHandles[static_cast<u32>( ShadowEVSMPipeline::Convert )];
-
-    if( !RequestPipelines( SHADOW_CASTER_NONE, FALSE, FALSE, FALSE ) )
+    if( !RequestFilterPipelines( FALSE ) )
     {
         return FALSE;
     }
 
-    pConvertPipeline = m_pEvsmHandles[static_cast<u32>( ShadowEVSMPipeline::Convert )];
-
-    const shader_resource* pDepthResource = rtarget_GetShaderResource( *pDepthAtlas );
+    render_pipeline*       pConvertPipeline = m_pEvsmHandles[static_cast<u32>( ShadowEVSMPipeline::Convert )];
+    const shader_resource* pDepthResource   = rtarget_GetShaderResource( *pDepthAtlas );
 
     if( !pConvertPipeline || !pDepthResource )
     {
@@ -1951,15 +1963,13 @@ xbool ShadowRenderer::ExecuteEVSMBlurPass( RenderPassContext& Context, xbool Hor
     const rtarget*             pDestination = Context.Write( Destination );
     const ShadowEVSMPipeline   Pipeline =
         Horizontal ? ShadowEVSMPipeline::BlurHorizontal : ShadowEVSMPipeline::BlurVertical;
-    render_pipeline* pPipeline = m_pEvsmHandles[static_cast<u32>( Pipeline )];
 
-    if( !RequestPipelines( SHADOW_CASTER_NONE, FALSE, FALSE, FALSE ) )
+    if( !RequestFilterPipelines( FALSE ) )
     {
         return FALSE;
     }
 
-    pPipeline = m_pEvsmHandles[static_cast<u32>( Pipeline )];
-
+    render_pipeline*       pPipeline       = m_pEvsmHandles[static_cast<u32>( Pipeline )];
     const shader_resource* pSourceResource = pSource ? rtarget_GetShaderResource( *pSource ) : NULL;
     const u32 ConstantsSlot = Horizontal ? m_EvsmBlurHorizontalConstantsSlot : m_EvsmBlurVerticalConstantsSlot;
     const u32 TextureSlot   = Horizontal ? m_EvsmBlurHorizontalTextureSlot : m_EvsmBlurVerticalTextureSlot;
@@ -2128,7 +2138,7 @@ void ShadowRenderer::ApplySource( s32 SourceIndex, s32 CasterShader, xbool isAlp
         pVertexShader                 = isAlphaTest ? &m_SkinMaskedVertexShader : &m_SkinVertexShader;
     }
 
-    if( !RequestPipelines( CasterShader, isAlphaTest, isTwoSided, FALSE ) )
+    if( !RequestCasterPipelines( CasterShader, isAlphaTest, isTwoSided, FALSE ) )
     {
         return;
     }
@@ -2203,7 +2213,7 @@ void ShadowRenderer::ApplyDynamicSource( s32 SourceIndex )
     render_pipeline** pCasterHandles = Source.Type == ShadowMapAtlas::SHADOW_SOURCE_POINT_FACE
                                           ? m_pCasterHandles : m_pSpotCasterHandles;
 
-    if( !RequestPipelines( SHADOW_CASTER_DYNAMIC, TRUE, TRUE, FALSE ) )
+    if( !RequestCasterPipelines( SHADOW_CASTER_DYNAMIC, TRUE, TRUE, FALSE ) )
     {
         return;
     }

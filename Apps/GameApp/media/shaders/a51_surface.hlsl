@@ -68,17 +68,22 @@ GeomSceneOutput PSMain( GEOM_PIXEL_INPUT Input )
 #elif A51_RECIPE_DISTORTION
 #include "common/geom_textures.hlsl"
 #include "common/geom_pixel_core.hlsl"
+#if A51_RECIPE_FORCED_GLOW
+#include "common/lighting_constants.hlsl"
+#include "common/geom_pixel_instances.hlsl"
+#endif
 #include "common/geom_pixel_distortion.hlsl"
 GeomSceneOutput PSMain( GEOM_PIXEL_INPUT Input, bool FrontFace : SV_IsFrontFace )
 {
     Input.Normal = normalize(Input.Normal);
     if( SurfaceTwoSided && FrontFace ) Input.Normal = -Input.Normal;
-    float4 Color = GeomShadeDistortionPixel(Input, A51_RECIPE_FLAGS, saturate(Input.FadeAlpha));
-    const float Depth = GeomEncodeLinearDepth(Input).r;
+    const float FadeAlpha = saturate(Input.FadeAlpha);
+    float4 Color          = GeomShadeDistortionPixel(Input, A51_RECIPE_FLAGS, FadeAlpha);
+    const float Depth     = GeomEncodeLinearDepth(Input).r;
 #if A51_RECIPE_FOG
     Color = ApplyFogToColor(Color, Depth);
 #endif
-    Color.rgb *= Color.a;
+    Color.rgb *= FadeAlpha;
     GeomSceneOutput Output;
     Output.Color = Color;
 #if A51_SCENE_DEPTH_TARGET

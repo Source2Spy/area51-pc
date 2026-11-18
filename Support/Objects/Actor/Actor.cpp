@@ -993,13 +993,15 @@ void actor::OnRender( void )
             NormalRot.Pitch += x_frand( R_0, MaxRot );
             NormalRot.Roll  += x_frand( R_0, MaxRot );
         }
-        GetSkinInst().RenderDistortion(&GetL2W(), 
-            pMatrices, 
+
+        xcolor CloakAmbient = (Flags & render::GLOWING) ? Ambient : xcolor(128,128,128,Ambient.A);
+        GetSkinInst().RenderDistortion(&GetL2W(),
+            pMatrices,
             nActiveBones,
             Flags,
             LODMask,
             NormalRot,
-            xcolor(128,128,128,Ambient.A));
+            CloakAmbient);
     }
     else
     {

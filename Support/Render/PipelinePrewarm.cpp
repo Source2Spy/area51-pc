@@ -140,9 +140,10 @@ xbool PipelinePrewarmContext::QueueBuiltins( void )
         return FALSE;
     }
 
-    if( m_isShadowsEnabled && GetRenderPipeline().GetShadowMapAtlas().GetShadowMode() != ShadowMode::Disabled &&
-        GetRenderPipeline().GetShadowMapAtlas().GetShadowFilterType() == ShadowFilterType::Evsm &&
-        !GetRenderPipeline().GetShadowFeatureRef().Backend().QueueFilterPipelines() )
+    const ShadowMapAtlas& Atlas = GetRenderPipeline().GetShadowMapAtlas();
+    if( m_isShadowsEnabled && Atlas.GetShadowMode() != ShadowMode::Disabled &&
+        !GetRenderPipeline().GetShadowFeatureRef().Backend().QueueAtlasPipelines(
+            Atlas.GetShadowFilterType() == ShadowFilterType::Evsm ) )
     {
         return FALSE;
     }

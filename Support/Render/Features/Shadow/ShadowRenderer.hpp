@@ -125,7 +125,7 @@ public:
     void  Kill( void );
     xbool QueueGeometryPipeline( xbool Skin, xbool Alpha, xbool TwoSided );
     xbool QueueDynamicPipeline( void );
-    xbool QueueFilterPipelines( void );
+    xbool QueueAtlasPipelines( xbool UseEVSM );
     void  ReleaseLevelPipelines( void );
     xbool IsInitialized( void ) const;
 
@@ -161,7 +161,9 @@ private:
     //-------------------------------------------------------------------------
 
     xbool BuildCasterSubmission( FrameGraphBuilder& Graph );
-    xbool RequestPipelines( s32 Caster, xbool Alpha, xbool TwoSided, xbool IsPrewarm );
+    xbool RequestCasterPipelines( s32 Caster, xbool Alpha, xbool TwoSided, xbool IsPrewarm );
+    xbool RequestTileClearPipeline( xbool IsPrewarm );
+    xbool RequestFilterPipelines( xbool IsPrewarm );
 
     //-------------------------------------------------------------------------
     //  INTERNAL HELPERS
