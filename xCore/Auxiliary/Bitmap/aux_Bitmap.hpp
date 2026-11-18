@@ -21,6 +21,7 @@
 
 xbool   auxbmp_Info         (                        const char* pFileName, xbitmap::info& BitmapInfo );
 xbool   auxbmp_Load         (       xbitmap& Bitmap, const char* pFileName );
+xbool   auxbmp_LoadTGA      (       xbitmap& Bitmap, X_FILE*      pFile ); // Leaves the stream open.
 xbool   auxbmp_Save         ( const xbitmap& Bitmap, const char* pFileName );
 
 void    auxbmp_ConvertToD3D (       xbitmap& Bitmap );

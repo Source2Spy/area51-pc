@@ -63,6 +63,7 @@
         "${CMAKE_CURRENT_LIST_DIR}/RigidGeom.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/SkinGeom.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Texture.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/TextureFile.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/CollisionVolume.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/geom.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/GeomFile.hpp"
@@ -116,6 +117,7 @@
         "${CMAKE_CURRENT_LIST_DIR}/RigidGeom.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/SkinGeom.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/Texture.hpp"
+        "${CMAKE_CURRENT_LIST_DIR}/TextureFile.hpp"
     PRIVATE_INCLUDE_DIRECTORIES
         "${CMAKE_SOURCE_DIR}/xCore"
         "${CMAKE_SOURCE_DIR}/xCore/x_files"
@@ -124,4 +126,4 @@
         "${CMAKE_SOURCE_DIR}/xCore/Auxiliary"
 )
 
-target_link_libraries( Render PRIVATE Font )
+target_link_libraries( Render PRIVATE Font aux_Bitmap a51::SDL3 )

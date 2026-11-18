@@ -8,9 +8,9 @@
 //  INCLUDES
 //==============================================================================
 
+#include "aux_Bitmap.hpp"
 #include "x_debug.hpp"
 #include "x_memory.hpp"
-#include "x_bitmap.hpp"
 
 #ifdef EXIT_FAILURE 
 #undef EXIT_FAILURE
@@ -130,25 +130,23 @@ xbool tga_ReadEncodedData( byte*    pData,
 
 //==============================================================================
 
-xbool tga_Load( xbitmap& Bitmap, const char* pFileName )
+xbool auxbmp_LoadTGA( xbitmap& Bitmap, X_FILE* pFile )
 {
     tga_info    Info;
     byte        Buffer[18];
-    X_FILE*     pFile = NULL;
     byte*       pData = NULL;
     s32         NPixels;
     s32         BytesPerPixel;
     s32         DataSize;
     s32         BytesRead;
+    s32         BytesToSkip;
+    s32         MinimumSize;
+    s32         Position;
+    s32         Length;
 
     xbitmap::format Format = xbitmap::FMT_NULL;
 
-    ASSERT( pFileName );
-
-    // Attempt to open the specified file for read.
-    pFile = x_fopen( pFileName, "rb" );
-    if( !pFile )
-        goto EXIT_FAILURE;
+    ASSERT( pFile );
 
     // Read the header data into the buffer.
     BytesRead = x_fread( &Buffer, 1, 18, pFile );
@@ -167,29 +165,52 @@ xbool tga_Load( xbitmap& Bitmap, const char* pFileName )
     Info.PixelDepth     = Buffer[16];
     Info.ImageDesc      = Buffer[17];
 
-    // Skip the Image ID.
-    x_fseek( pFile, Info.IDLength, X_SEEK_CUR );
-
-    // Skip the color map data.
-    if( Info.CMapType )
-    {
-        s32 CMapSize = ((Info.CMapEntrySize + 7) >> 3) * Info.CMapLength;
-        x_fseek( pFile, CMapSize, X_SEEK_CUR );
-    }
-
     // Fail on unsupported formats.
     if( (Info.ImageType != 2) && (Info.ImageType != 10) )
+    {
         goto EXIT_FAILURE;
+    }
 
     // Determine number of bytes per pixel.
     BytesPerPixel = ((Info.PixelDepth + 7) >> 3);
     if( !IN_RANGE( 2, BytesPerPixel, 4 ) )
+    {
         goto EXIT_FAILURE;
+    }
 
-    // Allocate pixel data.
+    // xbitmap dimensions are signed 16-bit. Leave room for 32-bit conversion,
+    // which computes the data size in bits before converting to bytes.
+    if( !IN_RANGE( 1, Info.Width, S16_MAX ) || !IN_RANGE( 1, Info.Height, S16_MAX ) ||
+        ( Info.Width * Info.Height > S32_MAX / 32 ) )
+    {
+        goto EXIT_FAILURE;
+    }
     NPixels  = Info.Width * Info.Height;
     DataSize = NPixels * BytesPerPixel;
-    pData    = (byte*)x_malloc( DataSize );
+
+    // Validate the ID, color map and minimum pixel payload before seeking or
+    // allocating. A single RLE packet can encode up to 128 identical pixels.
+    BytesToSkip = Info.IDLength;
+    if( Info.CMapType )
+    {
+        BytesToSkip += ( ( Info.CMapEntrySize + 7 ) >> 3 ) * Info.CMapLength;
+    }
+    MinimumSize = ( Info.ImageType == 10 ) ? ( ( NPixels + 127 ) / 128 ) * ( BytesPerPixel + 1 )
+                                           : DataSize;
+    Position    = x_ftell( pFile );
+    Length      = x_flength( pFile );
+    if( ( Position < 0 ) || ( Position > Length ) ||
+        ( BytesToSkip + MinimumSize > Length - Position ) ||
+        ( x_fseek( pFile, BytesToSkip, X_SEEK_CUR ) != 0 ) )
+    {
+        goto EXIT_FAILURE;
+    }
+
+    pData = static_cast<byte*>( x_malloc( DataSize ) );
+    if( !pData )
+    {
+        goto EXIT_FAILURE;
+    }
 
     // Load the pixel data.
     if( Info.ImageType == 10 )
@@ -210,29 +231,42 @@ xbool tga_Load( xbitmap& Bitmap, const char* pFileName )
             goto EXIT_FAILURE;
     }
 
-    // Done reading from file.
-    x_fclose( pFile );
-
-    // Image flipped vertically?
-    if( !(Info.ImageDesc & 0x20) )
+    // Normalize the origin to the top left.
+    if( !( Info.ImageDesc & 0x20 ) )
     {
-        s32   i;
-        byte  Temp;
-        byte* pTop = pData;
-        byte* pBot = pData + (Info.Height-1) * Info.Width * BytesPerPixel;
-
-        while( pTop < pBot )
+        s32 const RowBytes = Info.Width * BytesPerPixel;
+        for( s32 Y = 0; Y < Info.Height / 2; ++Y )
         {
-            // Swap the Top row with the Bottom row.  
-            for( i = Info.Width * BytesPerPixel; i > 0; i-- )
-            {
-                Temp    = *pTop;
-                *pTop++ = *pBot;
-                *pBot++ = Temp;
-            }
+            byte* pTop    = pData + Y * RowBytes;
+            byte* pBottom = pData + ( Info.Height - 1 - Y ) * RowBytes;
 
-            // Prepare Bottom pointer for next row up.
-            pBot -= (2 * Info.Width * BytesPerPixel);
+            for( s32 I = 0; I < RowBytes; ++I )
+            {
+                byte const Temp = pTop[I];
+                pTop[I]    = pBottom[I];
+                pBottom[I] = Temp;
+            }
+        }
+    }
+    if( Info.ImageDesc & 0x10 )
+    {
+        s32 const RowBytes = Info.Width * BytesPerPixel;
+        for( s32 Y = 0; Y < Info.Height; ++Y )
+        {
+            byte* pRow = pData + Y * RowBytes;
+
+            for( s32 X = 0; X < Info.Width / 2; ++X )
+            {
+                byte* pLeft  = pRow + X * BytesPerPixel;
+                byte* pRight = pRow + ( Info.Width - 1 - X ) * BytesPerPixel;
+
+                for( s32 I = 0; I < BytesPerPixel; ++I )
+                {
+                    byte const Temp = pLeft[I];
+                    pLeft[I]  = pRight[I];
+                    pRight[I] = Temp;
+                }
+            }
         }
     }
 
@@ -296,8 +330,24 @@ xbool tga_Load( xbitmap& Bitmap, const char* pFileName )
     // Failure!
     EXIT_FAILURE:
     if( pData )     x_free  ( pData );
-    if( pFile )     x_fclose( pFile );
     return( FALSE );
+}
+
+//==============================================================================
+
+xbool tga_Load( xbitmap& Bitmap, const char* pFileName )
+{
+    ASSERT( pFileName );
+
+    X_FILE* pFile = x_fopen( pFileName, "rb" );
+    if( !pFile )
+    {
+        return FALSE;
+    }
+
+    xbool const Result = auxbmp_LoadTGA( Bitmap, pFile );
+    x_fclose( pFile );
+    return Result;
 }
 
 //==============================================================================
