@@ -331,6 +331,8 @@ bbox ladder_field::GetLocalBBox( void ) const
 
 //===========================================================================
 
+static const f32 LADDER_FIELD_DEPTH = 10.0f ;
+
 xbool ladder_field::DoesCylinderIntersect( const vector3& Pos, f32 Height, f32 Radius ) const
 {
     matrix4 W2L = GetL2W();
@@ -339,8 +341,25 @@ xbool ladder_field::DoesCylinderIntersect( const vector3& Pos, f32 Height, f32 R
     const vector3 B = W2L.Transform( Pos + vector3( 0.0f, Height - Radius, 0.0f ) );
     const vector3& D = m_Dimensions;
     bbox Bounds( vector3( -D.GetX() * 0.5f, 0.0f, 0.0f ),
-                 vector3( D.GetX() * 0.5f, D.GetY(), 10.0f ) );
+                 vector3( D.GetX() * 0.5f, D.GetY(), LADDER_FIELD_DEPTH ) );
     return ComputeCapsuleAABBoxOverlap( A, B, Radius, Bounds );
+}
+
+//===========================================================================
+
+xbool ladder_field::CanKeepGripAtTop( const vector3& Pos, f32 Radius, f32 Skin, f32 TopOffset ) const
+{
+    matrix4 W2L = GetL2W() ;
+    W2L.InvertRT() ;
+
+    const vector3 LocalPos = W2L.Transform(Pos) ;
+    const f32     Reach    = Radius + Skin ;
+    const f32     Top      = m_Dimensions.GetY() ;
+    return (  (LocalPos.GetY() >= (Top - Reach))
+           && (LocalPos.GetY() <= (Top + TopOffset))
+           && (x_abs(LocalPos.GetX()) <= (m_Dimensions.GetX() * 0.5f + Reach))
+           && (LocalPos.GetZ() >= -Skin)
+           && (LocalPos.GetZ() <= (LADDER_FIELD_DEPTH + Reach)) ) ;
 }
 
 //===========================================================================

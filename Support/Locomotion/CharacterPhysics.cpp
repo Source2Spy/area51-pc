@@ -816,11 +816,16 @@ void character_physics::ApplyImpulse( const vector3& Delta )
 
 //=========================================================================
 
-void character_physics::SetMotionVelocity( const vector3& Velocity )
+void character_physics::SetMotionVelocity( const vector3& Velocity, xbool bExternal )
 {
     ASSERT( Velocity.IsValid() );
-    m_MotionVelocity = Velocity;
     if( Velocity.LengthSquared() <= F32_MIN )
+    {
+        ClearMotionVelocity();
+        return;
+    }
+
+    if( !bExternal )
     {
         ClearMotionVelocity();
     }
@@ -830,6 +835,8 @@ void character_physics::SetMotionVelocity( const vector3& Velocity )
         m_ExternalAirControl = m_AirControl;
         m_LastImpulseSource  = NULL_GUID;
     }
+    m_MotionVelocity = Velocity;
+
     if( Velocity.GetY() > 0.0f )
     {
         DetachFromGround();
@@ -1458,6 +1465,23 @@ void character_physics::DetachFromGround( void )
 {
     m_Support.State = CharacterSupportState::None;
     LeavePlatform( TRUE );
+}
+
+//=========================================================================
+
+xbool character_physics::TryAttachToGround( f32 Distance )
+{
+    CharacterMovementSupport Support;
+    if( !CharacterMovement::FindSupport( *this, GetMovementSettings(), m_Position, Distance, Support ) )
+    {
+        return FALSE;
+    }
+
+    SetUseGravity( TRUE );
+    m_StepOffset += Support.Position.GetY() - m_Position.GetY();
+    m_Position = Support.Position;
+    m_Support  = Support;
+    return TRUE;
 }
 
 //=========================================================================

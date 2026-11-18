@@ -47,7 +47,7 @@ public:
     vector3                     GetWorldVelocity                ( void ) const;
     f32                         GetStepOffset                   ( void ) const;
     void                        ApplyImpulse                    ( const vector3& Delta );
-    void                        SetMotionVelocity               ( const vector3& Velocity );
+    void                        SetMotionVelocity               ( const vector3& Velocity, xbool bExternal = TRUE );
     void                        ClearMotionVelocity             ( void );
     virtual void                OnEnumProp                      ( prop_enum& List );
     virtual xbool               OnProperty                      ( prop_query& I );
@@ -104,6 +104,7 @@ public:
     void                        SetupPlayerCollisionCheck       ( const vector3& Start, const vector3& End );
 
     void                        DetachFromGround                ( void );
+    xbool                       TryAttachToGround               ( f32 Distance );
     void                        InitialGroundCheck              ( const vector3& Position );
     xbool                       CanMoveTo                       ( const vector3& Position );
     CharacterMovementSettings   GetMovementSettings             ( void ) const;

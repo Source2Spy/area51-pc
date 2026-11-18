@@ -769,11 +769,6 @@ void player::UpdateFallState( xbool HadLaunchResponse )
             TakeFallPain();
         }
     }
-
-    if( !m_bFalling )
-    {
-        m_JumpedOffLadderGuid = 0;
-    }
 }
 
 //=========================================================================
@@ -785,7 +780,7 @@ void player::ResetFallStateAfterDiscontinuity( void )
     m_bJustLanded = FALSE;
     m_JumpBufferTime = 0.0f;
     m_bJumpStarted = FALSE;
-    m_JumpedOffLadderGuid = NULL_GUID;
+    m_LadderReattachBlockedGuid = NULL_GUID;
     SetIsAirborn( m_Physics.IsAirborne() );
 }
 

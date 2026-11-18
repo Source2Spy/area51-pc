@@ -172,7 +172,7 @@ player::player( void ) :
     m_ProximityAlertRadius( 300.0f ),
     m_bSpeaking                         ( FALSE ),
     m_LastLadderGuid                    ( 0 ),
-    m_JumpedOffLadderGuid               ( 0 ),
+    m_LadderReattachBlockedGuid         ( 0 ),
     m_WeaponState                       ( WEAPON_STATE_NONE ),
     m_ReticleRadius                     ( 0.0f ),
     m_ReticleGrowSpeed                  ( 0.0f ),    

@@ -1300,7 +1300,7 @@ protected:
     xbool                   m_bSpeaking;
 
     guid                    m_LastLadderGuid;
-    guid                    m_JumpedOffLadderGuid;
+    guid                    m_LadderReattachBlockedGuid;
 
     weapon_state            m_WeaponState;
     f32                     m_ReticleRadius;

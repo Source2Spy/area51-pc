@@ -17,10 +17,54 @@
 //  IMPLEMENTATION
 //=========================================================================
 
+// Ladder tweakables
+static f32 LADDER_CLIMB_SPEED       = 300.0f ;  // Vertical speed
+static f32 LADDER_STRAFE_SPEED      = 100.0f ;  // Horizontal speed
+static f32 LADDER_FLIP_UP_ANGLE     = 25.0f ;   // Angle at which to swap up/down when facing ladder
+static f32 LADDER_AT_TOP_OFFSET     = 10.0f ;   // Dismount distance from top
+static f32 LADDER_TOP_CLIMB_FACTOR  = 0.25f ;   // Vertical speed fraction while clearing the top
+static f32 LADDER_AT_BOT_OFFSET     = 10.0f ;   // Dismount distance from bottom
+static f32 LADDER_JUMP_OFF_VEL      = 150.0f ;  // Push away vel when jumping
+//static f32 LADDER_MOVING_AWAY_VEL   = 300.0f ;   // Vel threshold for detecting moving away from ladder
+
+//===========================================================================
+
 guid player::IsInLadderField( void )
 {
     // Lookup character physics
     const character_physics& Physics = m_Physics ;
+
+    // Clear the last ladder after landing outside its field
+    if (m_LadderReattachBlockedGuid && Physics.IsGrounded())
+    {
+        const object* pObject = g_ObjMgr.GetObjectByGuid(m_LadderReattachBlockedGuid) ;
+        if (  !pObject
+           || (pObject->GetType() != object::TYPE_LADDER_FIELD)
+           || !(pObject->GetAttrBits() & object::ATTR_COLLIDABLE)
+           || !((const ladder_field*)pObject)->DoesCylinderIntersect(Physics.GetPosition(),
+                                                                     Physics.GetColHeight(),
+                                                                     Physics.GetColRadius()) )
+        {
+            m_LadderReattachBlockedGuid = NULL_GUID ;
+        }
+    }
+
+    // Keep the current ladder at the top where the capsule rounds away from the field
+    if (m_bOnLadder && (m_LastLadderGuid != m_LadderReattachBlockedGuid))
+    {
+        const object* pObject = g_ObjMgr.GetObjectByGuid(m_LastLadderGuid) ;
+        if (  pObject
+           && (pObject->GetType() == object::TYPE_LADDER_FIELD)
+           && (pObject->GetAttrBits() & object::ATTR_COLLIDABLE) )
+        {
+            const ladder_field* pLadder = (const ladder_field*)pObject ;
+            const f32 Skin = Physics.GetMovementSettings().ContactOffset ;
+            if (pLadder->CanKeepGripAtTop(Physics.GetPosition(), Physics.GetColRadius(), Skin, LADDER_AT_TOP_OFFSET))
+            {
+                return m_LastLadderGuid ;
+            }
+        }
+    }
 
     // Search for being inside a ladder
     g_ObjMgr.SelectBBox( object::ATTR_COLLIDABLE, GetBBox(), object::TYPE_LADDER_FIELD) ;
@@ -32,10 +76,10 @@ guid player::IsInLadderField( void )
         ASSERT(pLadder) ;
 
         // Overlapping this ladder?
-        if (  (pLadder->GetGuid() != m_JumpedOffLadderGuid)         // did we just jump off this ladder?
-            && pLadder->DoesCylinderIntersect(Physics.GetPosition(),// are we in the field? 
-            Physics.GetColHeight(), 
-            Physics.GetColRadius()))
+        if (  (pLadder->GetGuid() != m_LadderReattachBlockedGuid)       // did we just get off this ladder?
+           && pLadder->DoesCylinderIntersect(Physics.GetPosition(),   // are we in the field?
+                                            Physics.GetColHeight(),
+                                            Physics.GetColRadius()) )
         {
             g_ObjMgr.EndLoop();
             return pLadder->GetGuid() ;
@@ -52,27 +96,22 @@ guid player::IsInLadderField( void )
 
 //===========================================================================
 
-// Ladder tweakables
-static f32 LADDER_CLIMB_SPEED       = 300.0f ;  // Vertical speed
-static f32 LADDER_STRAFE_SPEED      = 100.0f ;  // Horizontal speed
-static f32 LADDER_FLIP_UP_ANGLE     = 25.0f ;   // Angle at which to swap up/down when facing ladder
-static f32 LADDER_AT_TOP_OFFSET     = 10.0f ;   // Dismount distance from top
-static f32 LADDER_AT_BOT_OFFSET     = 10.0f ;   // Dismount distance from bottom
-static f32 LADDER_JUMP_OFF_VEL      = 150.0f ;  // Push away vel when jumping
-//static f32 LADDER_MOVING_AWAY_VEL   = 300.0f ;   // Vel threshold for detecting moving away from ladder
-
 xbool player::UpdateLadderMovement( f32 DeltaTime )
 {
     // Lookup physics to use
     character_physics& Physics = m_Physics ;
 
+    // On a ladder?
+    guid LadderGuid = IsInLadderField() ;
+    if (!LadderGuid && m_LadderReattachBlockedGuid && Physics.IsGrounded())
+        LadderGuid = m_LadderReattachBlockedGuid ;
+
+    const xbool bWasOnLadder = m_bOnLadder && (LadderGuid == m_LastLadderGuid) ;
+
     // Default to not being on a ladder
     m_bOnLadder = FALSE ;
     m_LadderOutDir.Zero() ;
-    Physics.SetUseGravity(TRUE) ;
 
-    // On a ladder?
-    guid LadderGuid = IsInLadderField() ;
     if (!LadderGuid)
         return FALSE ;
 
@@ -97,9 +136,10 @@ xbool player::UpdateLadderMovement( f32 DeltaTime )
     plane LadderOutPlane ;
     LadderOutPlane.Setup(pLadder->GetPosition(), LadderOut) ;
     f32 Dist = LadderOutPlane.Distance(GetPosition()) ;
+    const f32 PlaneOffset = bWasOnLadder ? Physics.GetMovementSettings().ContactOffset : 0.0f ;
 
     // Behind the ladder? (eg. when entering the ladder from the top of a ledge)
-    if (Dist < 0)
+    if (Dist < -PlaneOffset)
         return FALSE ;
 
     // Compute player facing forward direction
@@ -129,27 +169,73 @@ xbool player::UpdateLadderMovement( f32 DeltaTime )
     f32 Bottom = pLadder->GetBottom() ;
     f32 Feet   = GetPosition().GetY() ;
 
-    // If moving down and past bottom of ladder, push the player off ready for dismount
-    if ((UpDownVelocity.GetY() < 0) && (Feet < (Bottom + LADDER_AT_BOT_OFFSET)))
-        SideVelocity += PlayerRun * LADDER_CLIMB_SPEED;
+    const f32 RunOutward = LadderOut.Dot(PlayerRun) ;
+
+    // Let the player climb again after landing without having to leave the field
+    if (LadderGuid == m_LadderReattachBlockedGuid)
+    {
+        if (  (UpDownVelocity.GetY() <= 0)
+           || (RunOutward >= 0)
+           || (Feet >= (Top - LADDER_AT_TOP_OFFSET)) )
+        {
+            return FALSE ;
+        }
+
+        m_LadderReattachBlockedGuid = NULL_GUID ;
+    }
+
+    // If moving down and near the bottom of the ladder, let go even if the capsule is still in the field
+    if ((UpDownVelocity.GetY() < 0) && (Feet <= (Bottom + LADDER_AT_BOT_OFFSET)))
+    {
+        if (bWasOnLadder)
+            m_LadderReattachBlockedGuid = LadderGuid ;
+        return FALSE ;
+    }
+
+    const xbool bClimbingNearTop   = (UpDownVelocity.GetY() > 0) && (Feet > (Top - LADDER_AT_TOP_OFFSET)) ;
+    const xbool bClimbingOntoLedge = (RunOutward < 0) && bClimbingNearTop ;
 
     // Running into the ladder?
-    if (LadderOut.Dot(PlayerRun) < 0)
+    if (RunOutward < 0)
     {
         // If near top and moving up, push the player off ready dismount
-        if ( (UpDownVelocity.GetY() > 0) && (Feet > (Top - LADDER_AT_TOP_OFFSET)) )
-            SideVelocity += PlayerRun * LADDER_CLIMB_SPEED;
+        if (bClimbingOntoLedge)
+        {
+            const CharacterMovementSettings Settings = Physics.GetMovementSettings() ;
+            vector3 RunDir = PlayerRun ;
+            RunDir.Normalize() ;
+
+            // Check past the requested move so the ground tolerance does not hide a blocked ledge
+            const vector3 RunVelocity = PlayerRun * LADDER_CLIMB_SPEED ;
+            const vector3 TestPos     = Physics.GetPosition() + RunVelocity * DeltaTime +
+                                        RunDir * (Settings.GroundTolerance + Settings.ContactOffset) ;
+            if (Physics.CanMoveTo(TestPos))
+            {
+                f32 Blend = x_clamp((Feet - Top + LADDER_AT_TOP_OFFSET) / LADDER_AT_TOP_OFFSET, 0.0f, 1.0f) ;
+                Blend = Blend * Blend * (3.0f - 2.0f * Blend) ;
+
+                // Blend from climbing up to moving onto the ledge
+                UpDownVelocity *= 1.0f - Blend * (1.0f - LADDER_TOP_CLIMB_FACTOR) ;
+                SideVelocity   += RunVelocity * Blend ;
+            }
+        }
     }
     else
     {
         // If pulling away from the ladder, pulling back on the stick, and looking down, then let go!
-        if ((PlayerRun.Dot(LadderOut) > 0) && (m_fMoveValue < 0) && (bLookingDownLadder))
+        if ((RunOutward > 0) && (m_fMoveValue < 0) && (bLookingDownLadder))
             return FALSE ;
 
         // If the player is NOT facing the ladder and moving up, then stop from going off the top
-        if ( (UpDownVelocity.GetY() > 0) && (Feet > (Top - LADDER_AT_TOP_OFFSET)) )
+        if (bClimbingNearTop)
             UpDownVelocity.Zero();
     }
+
+    // Build up ground movement speed before getting off at the top
+    if (bClimbingOntoLedge)
+        EvaluateMovementSpeeds(DeltaTime) ;
+    else
+        m_Movement.Clear() ;
 
     // Compute final vel
     vector3 const FinalVelocity = UpDownVelocity + SideVelocity;
@@ -165,6 +251,22 @@ xbool player::UpdateLadderMovement( f32 DeltaTime )
 
     // Update
     Physics.Advance( Physics.GetPosition() + m_DeltaPos, DeltaTime );
+
+    // If past the ladder plane or clear of the top, dismount and turn gravity back on
+    if (  bClimbingOntoLedge
+       && (  (LadderOutPlane.Distance(Physics.GetPosition()) < -PlaneOffset)
+          || (Physics.GetPosition().GetY() > (Top + LADDER_AT_TOP_OFFSET)) ) )
+    {
+        m_LadderReattachBlockedGuid = LadderGuid ;
+
+        // Use the surface below the player instead of dropping from the top of the field
+        if (!Physics.TryAttachToGround(LADDER_AT_TOP_OFFSET))
+            Physics.SetUseGravity(TRUE) ;
+
+        OnMove( Physics.GetPosition() );
+        return TRUE ;
+    }
+
     OnMove( Physics.GetPosition() );
 
     // Record player is on a ladder
@@ -188,11 +290,12 @@ xbool player::Jump( void )
     if( m_bOnLadder )
     {
         m_bOnLadder = FALSE ;
-        m_JumpedOffLadderGuid = m_LastLadderGuid;
+        m_LadderReattachBlockedGuid = m_LastLadderGuid;
         vector3 Vel = Physics.GetMotionVelocity();
         Vel += m_LadderOutDir * LADDER_JUMP_OFF_VEL;
         Physics.SetUseGravity( TRUE );
-        Physics.SetMotionVelocity( Vel );
+        // Apply push away vel in the air only
+        Physics.SetMotionVelocity( Vel, FALSE );
         m_bJumpStarted = TRUE;
         return TRUE;
     }

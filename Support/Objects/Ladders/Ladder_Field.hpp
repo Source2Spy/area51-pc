@@ -3,9 +3,6 @@
 
 #include "../object.hpp"
 
-
-
-
 class ladder_field : public object
 {
 public:
@@ -61,6 +58,7 @@ public:
                                     
     // Ladder field utilities.      
                     xbool           DoesCylinderIntersect   ( const vector3& Pos, f32 Height, f32 Radius ) const ;
+                    xbool           CanKeepGripAtTop         ( const vector3& Pos, f32 Radius, f32 Skin, f32 TopOffset ) const ;
                     const vector3   GetDimensions           ( void ) const ;
                     f32             GetTop                  ( void ) const ;
                     f32             GetBottom               ( void ) const ;
@@ -70,7 +68,5 @@ public:
 protected:
     vector3         m_Dimensions;
 };
-
-
 
 #endif

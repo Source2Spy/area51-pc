@@ -204,11 +204,15 @@ void player::UpdateMovement( f32 DeltaTime )
 
     if( UpdateLadderMovement( DeltaTime ) )
     {
-        m_Movement.Clear();
-        m_StepView.Clear();
+        if( m_bOnLadder )
+            m_StepView.Clear();
+        else
+            m_StepView.Advance( m_Physics.GetStepOffset(), 0.0f, m_Physics.GetMovementSettings().StepHeight );
         OnMoveViewPosition( GetPosition() );
         return;
     }
+
+    m_Physics.SetUseGravity( TRUE );
 
     vector3 ViewX( 1.0f, 0.0f, 0.0f );
     vector3 ViewZ( 0.0f, 0.0f, 1.0f );
