@@ -947,33 +947,39 @@ void io_fs::ReleaseFile( io_open_file* pFile )
 
 io_open_file* io_fs::AcquireDFSFile( const char* pPathName, io_device_file* pDeviceFile, u32 Offset, u32 Length, void* pRAM, s32 OpenFlags )
 {
+    // Create a new openfile structure
     io_open_file* pOpenFile = AcquireFile();
     ASSERTS( pOpenFile, "Open: Out of file handles" );
+
     if( !pOpenFile )
     {
+        // Only close it if the DFS does not own it.
         if( pDeviceFile && !pDeviceFile->pHeader )
         {
             g_IoMgr.CloseDeviceFile( pDeviceFile );
         }
+
         return NULL;
     }
 
-    pOpenFile->bRead           = (OpenFlags & io_device::READ) != 0;
-    pOpenFile->bWrite          = (OpenFlags & io_device::WRITE) != 0;
-    pOpenFile->bAppend         = (OpenFlags & io_device::APPEND) != 0;
-    pOpenFile->PassThrough     = NULL;
-    pOpenFile->pDeviceFile     = pDeviceFile;
-    pOpenFile->pRAM            = pRAM;
-    pOpenFile->Offset          = Offset;
-    pOpenFile->Length          = Length;
-    pOpenFile->Position        = 0;
-    pOpenFile->Mode            = OpenFlags;
-    pOpenFile->pNext           = NULL;
-    pOpenFile->bEnableChecksum = pDeviceFile &&
-                                 pDeviceFile->pHeader &&
-                                 (dfs_GetChecksums( (dfs_header*)pDeviceFile->pHeader ) != NULL);
+    // Set up the open file
+    pOpenFile->bRead             = (OpenFlags & io_device::READ) != 0;
+    pOpenFile->bWrite            = (OpenFlags & io_device::WRITE) != 0;
+    pOpenFile->bAppend           = (OpenFlags & io_device::APPEND) != 0;
+    pOpenFile->PassThrough       = NULL;
+    pOpenFile->pDeviceFile       = pDeviceFile;
+    pOpenFile->pRAM              = pRAM;
+    pOpenFile->Offset            = Offset;
+    pOpenFile->Length            = Length;
+    pOpenFile->Position          = 0;
+    pOpenFile->Mode              = OpenFlags;
+    pOpenFile->pNext             = NULL;
+    pOpenFile->bEnableChecksum   = pDeviceFile &&
+                                    pDeviceFile->pHeader &&
+                                    (dfs_GetChecksums( (dfs_header*)pDeviceFile->pHeader ) != NULL);
 
 #ifdef IO_RETAIN_FILENAME
+    // Save the filename...
     x_strncpy( pOpenFile->Filename, pPathName, 256 );
 #endif
 
