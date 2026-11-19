@@ -149,6 +149,7 @@ void debug_menu_page_render::RenderLightingStats( void )
     f32 const Average = S.LightingSets ? static_cast<f32>(S.AssignedLights) / S.LightingSets : 0.0f;
     Line( xfs( "Sets %u | lights/set avg %.2f, max %u/%u", S.LightingSets, Average, S.MaxAssignedLights, MAX_GEOM_LIGHTS ) );
     Line( xfs( "Sets 0/1/2/3/4: %u/%u/%u/%u/%u", S.LightHistogram[0], S.LightHistogram[1], S.LightHistogram[2], S.LightHistogram[3], S.LightHistogram[4] ) );
+    Line( xfs( "Sets 5/6/7/8: %u/%u/%u/%u", S.LightHistogram[5], S.LightHistogram[6], S.LightHistogram[7], S.LightHistogram[8] ) );
     Line( xfs( "Scene: queries %u | candidates %u | hits %u", S.Collection.SceneQueries, S.Collection.SceneCandidates, S.Collection.SceneHits ) );
     Line( xfs( "Char: queries %u | candidates %u | hits %u", S.Collection.CharQueries, S.Collection.CharCandidates, S.Collection.CharHits ) );
     Line( xfs( "Projections: lights %u | shadows %u", S.ProjectedLights, S.ProjectedShadows ) );

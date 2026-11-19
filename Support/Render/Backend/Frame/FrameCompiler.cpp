@@ -2964,6 +2964,11 @@ u32 FrameCompiler::GetForwardOpaqueSkinIndirectCommandCount( void ) const
 //  LIGHTING PREPARATION
 //=========================================================================
 
+static_assert( sizeof( GeomLightingConstants::LightVec ) == sizeof( cb_geom_lighting::LightVec ) &&
+               sizeof( GeomProjectionLightingConstants::LightCookieU ) == sizeof( cb_geom_lighting::LightCookieU ) &&
+               sizeof( GeomProjectionLightingConstants::LightShadowIndex ) == MAX_GEOM_LIGHTS * sizeof( u32 ),
+               "Geometry lighting capacity must match the shader ABI" );
+
 xbool FrameCompiler::CopyLightingData( GeomLightingConstants&           Destination,
                                        GeomProjectionLightingConstants& Projection,
                                        GeomAmbientConstants&            Ambient,

@@ -21,7 +21,7 @@
 //  CONSTANTS
 //=========================================================================
 
-#define MAX_GEOM_LIGHTS 4
+#define MAX_GEOM_LIGHTS 8
 
 static const s32 RENDER_MAX_LIGHTING_SETS = 32768;
 

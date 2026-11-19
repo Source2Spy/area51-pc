@@ -1,11 +1,11 @@
 buffers:
     buffer GeomLightingData GeomLightingConstants GeomLighting
     {
-        float4 LightVec 4
-        float4 LightCol 4
-        float4 LightDir 4
-        float4 LightCone 4
-        float4 LightRadial 4
+        float4 LightVec 8
+        float4 LightCol 8
+        float4 LightDir 8
+        float4 LightCone 8
+        float4 LightRadial 8
     }
     buffer GeomFrameData GeomFrameConstants cbFrameConstants
     {
@@ -199,12 +199,12 @@ buffers:
 buffers:
     buffer GeomProjectionLightingData GeomProjectionLightingConstants GeomProjectionLighting
     {
-        float4 LightCookieU 4
-        float4 LightCookieV 4
-        float4 LightCookieAtlas 4
-        float4 LightCookieTileBounds 4
-        float4 LightCookieInfo 4
-        uint4 LightShadowIndex 1
+        float4 LightCookieU 8
+        float4 LightCookieV 8
+        float4 LightCookieAtlas 8
+        float4 LightCookieTileBounds 8
+        float4 LightCookieInfo 8
+        u32 LightShadowIndex 8
     }
     buffer GeomAmbientData GeomAmbientConstants GeomAmbient
     {
