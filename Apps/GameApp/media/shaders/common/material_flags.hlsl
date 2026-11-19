@@ -5,12 +5,13 @@
 //  Shared shader flag definitions.
 //
 //==============================================================================
+
+//==============================================================================
 //  DEFINES
 //==============================================================================
 
 #define MATERIAL_FLAG_ALPHA_TEST             ( 1u << 0 )
 #define MATERIAL_FLAG_ADDITIVE               ( 1u << 1 )
-#define MATERIAL_FLAG_SUBTRACTIVE            ( 1u << 2 )
 #define MATERIAL_FLAG_VERTEX_COLOR           ( 1u << 3 )
 #define MATERIAL_FLAG_ENVIRONMENT            ( 1u << 5 )
 #define MATERIAL_FLAG_DISTORTION             ( 1u << 6 )
@@ -23,7 +24,6 @@
 #define MATERIAL_FLAG_DETAIL                 ( 1u << 13 )
 #define MATERIAL_FLAG_ENV_CUBEMAP            ( 1u << 14 )
 #define MATERIAL_FLAG_ENV_VIEWSPACE          ( 1u << 15 )
-#define MATERIAL_FLAG_ENV_WORLDSPACE         ( 1u << 16 )
 
 //------------------------------------------------------------------------------
 
@@ -35,7 +35,5 @@
 
 //------------------------------------------------------------------------------
 
-#define MAX_PROJ_LIGHTS  4
-#define MAX_PROJ_SHADOWS 8
 #define MAX_SKIN_BONES 96
 #define MAX_GEOM_LIGHTS 8
