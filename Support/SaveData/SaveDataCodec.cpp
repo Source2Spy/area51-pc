@@ -356,7 +356,7 @@ xbool SaveDataCodec::SettingsFieldsAreValid( const global_settings& Settings )
            ( Settings.m_VideoLanguage >= XL_LANG_ENGLISH ) && ( Settings.m_VideoLanguage < XL_NUM_LANGUAGES ) &&
            ( Settings.m_UIScale >= UI_SCALE_MIN_PERCENT ) && ( Settings.m_UIScale <= UI_SCALE_MAX_PERCENT ) &&
            ( Settings.m_HUDScale >= HUD_SCALE_MIN_PERCENT ) && ( Settings.m_HUDScale <= HUD_SCALE_MAX_PERCENT ) &&
-           ( ( Settings.m_LetterboxEnabled == FALSE ) || ( Settings.m_CutsceneLetterboxEnabled == TRUE ) ) &&
+           ( ( Settings.m_LetterboxEnabled == FALSE ) || ( Settings.m_LetterboxEnabled == TRUE ) ) &&
            ( Settings.m_Brightness >= BRIGHTNESS_MIN_PERCENT ) && ( Settings.m_Brightness <= BRIGHTNESS_MAX_PERCENT ) &&
            ( Settings.m_Contrast >= CONTRAST_MIN_PERCENT ) && ( Settings.m_Contrast <= CONTRAST_MAX_PERCENT ) &&
            ( Settings.m_RenderScale >= RENDER_SCALE_MIN_PERCENT ) &&
