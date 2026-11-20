@@ -357,14 +357,27 @@ The package contains the game executable and `SHADERS/` directory. Game data mus
 
 # Installation
 
-## Windows, Linux and Android
+## Windows, Linux
 
 1. Download the [Asset Pack](https://github.com/Source2Spy/area51-pc/releases).
 2. Download the executable for your platform from [GitHub Actions](https://github.com/Source2Spy/area51-pc/actions), or compile it yourself using the instructions above.
 3. Extract the game assets to a new directory.
 4. Copy the executable and its `SHADERS/` folder into that directory, keeping the existing resource paths.
 5. Install the required textures according to the internal guide.
-6. Start `A51.exe` on Windows or `A51` on Linux or install `.apk` file on Android.
+6. Start `A51.exe` on Windows or `A51` on Linux.
+
+## Android
+
+1. Download the [Asset Pack](https://github.com/Source2Spy/area51-pc/releases).
+2. Download the executable for your platform from [GitHub Actions](https://github.com/Source2Spy/area51-pc/actions), or compile it yourself using the instructions above.
+3. Extract the game assets to a new directory.
+4. Copy `SHADERS/` folder into that directory, keeping the existing resource paths.
+5. Install the required textures according to the internal guide.
+6. Create com.area51.game/files/ folders in android/data/.
+7. Put assets inside com.area51.game/files/.
+8. Install `.apk` file.
+
+### Remember
 
 Keep the compiled shader packages from the same build as the executable. The runtime checks their identity against the compiled shader catalog.
 
