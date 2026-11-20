@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline, versioned migrations for Area 51 saves (Python 3.10+, stdlib only)."""
+"""Offline, versioned migrations for Area 51 profiles (Python 3.10+, stdlib only)."""
 
 from __future__ import annotations
 
@@ -68,8 +68,8 @@ PROFILE_V3_VALID_KEYS = frozenset((
 PROFILE_V4_STATS = struct.Struct("<11i")
 HOST_SETTINGS_SIZE = 240
 MULTIPLAYER_PREFERENCES_SIZE = HOST_SETTINGS_SIZE + 4 + 2 * 260 + 2 * (64 + 32) + 8 * 4
-CURRENT_VERSIONS = {b"A51P": 5, b"A51S": 12}
-SAVE_NAME = re.compile(r"AREA-51-(?:PROFILE[0-9]{5}|SETTINGS)\Z")
+CURRENT_VERSIONS = {b"A51P": 5}
+PROFILE_NAME = re.compile(r"AREA-51-PROFILE[0-9]{5}\Z")
 
 
 class MigrationError(ValueError):
@@ -106,46 +106,6 @@ def creation_ns(info: os.stat_result) -> int:
     if os.name == "nt":
         return info.st_ctime_ns
     return info.st_mtime_ns
-
-
-SETTINGS_JOIN_OFFSET = 8 + 5 * 4 + 4 * 4 + 16384 + 4 + (4 * 4 + 35 * 4) + (24 * 2 + 16 + 8 * 4 + 35 * 4 + 4)
-SETTINGS_V6_SIZE = SETTINGS_JOIN_OFFSET + 5 * 4 + 35 * 4 + 22 * 4
-SETTINGS_HOST_OFFSET = SETTINGS_JOIN_OFFSET - HOST_SETTINGS_SIZE
-
-
-def settings_v5_to_v6(payload: bytes, info: os.stat_result) -> bytes:
-    return payload + struct.pack("<i", 5)
-
-
-def settings_v6_to_v7(payload: bytes, info: os.stat_result) -> bytes:
-    return payload[:SETTINGS_JOIN_OFFSET] + payload[SETTINGS_JOIN_OFFSET + 5 * 4:]
-
-
-def settings_v7_to_v8(payload: bytes, info: os.stat_result) -> bytes:
-    return payload[:SETTINGS_HOST_OFFSET] + payload[SETTINGS_JOIN_OFFSET:]
-
-
-def settings_v8_to_v9(payload: bytes, info: os.stat_result) -> bytes:
-    return payload
-
-
-def settings_v9_to_v10(payload: bytes, info: os.stat_result) -> bytes:
-    offset = len(payload) - 4 * 4
-    return payload[:offset] + struct.pack("<i", 1) + payload[offset:]
-
-
-def settings_v10_to_v11(payload: bytes, info: os.stat_result) -> bytes:
-    offset = len(payload) - 5 * 4
-    return payload[:offset] + payload[offset + 4:]
-
-
-def settings_v11_to_v12(payload: bytes, info: os.stat_result) -> bytes:
-    return payload + struct.pack("<i", 3)
-
-
-def validate_settings(payload: bytes, size: int) -> None:
-    if len(payload) != size:
-        raise MigrationError("settings payload has an invalid size")
 
 
 def profile_v1_to_v2(payload: bytes, info: os.stat_result) -> bytes:
@@ -234,13 +194,6 @@ MIGRATIONS = {
     (b"A51P", 2): Migration(3, profile_v2_to_v3),
     (b"A51P", 3): Migration(4, profile_v3_to_v4),
     (b"A51P", 4): Migration(5, profile_v4_to_v5),
-    (b"A51S", 5): Migration(6, settings_v5_to_v6),
-    (b"A51S", 6): Migration(7, settings_v6_to_v7),
-    (b"A51S", 7): Migration(8, settings_v7_to_v8),
-    (b"A51S", 8): Migration(9, settings_v8_to_v9),
-    (b"A51S", 9): Migration(10, settings_v9_to_v10),
-    (b"A51S", 10): Migration(11, settings_v10_to_v11),
-    (b"A51S", 11): Migration(12, settings_v11_to_v12),
 }
 VALIDATORS: dict[tuple[bytes, int], Callable[[bytes], None]] = {
     (b"A51P", 1): validate_profile_v1,
@@ -248,14 +201,6 @@ VALIDATORS: dict[tuple[bytes, int], Callable[[bytes], None]] = {
     (b"A51P", 3): validate_profile_v3,
     (b"A51P", 4): validate_profile_v4,
     (b"A51P", 5): validate_profile_v5,
-    (b"A51S", 5): lambda payload: validate_settings(payload, SETTINGS_V6_SIZE - 4),
-    (b"A51S", 6): lambda payload: validate_settings(payload, SETTINGS_V6_SIZE),
-    (b"A51S", 7): lambda payload: validate_settings(payload, SETTINGS_V6_SIZE - 20),
-    (b"A51S", 8): lambda payload: validate_settings(payload, SETTINGS_V6_SIZE - 20 - HOST_SETTINGS_SIZE),
-    (b"A51S", 9): lambda payload: validate_settings(payload, SETTINGS_V6_SIZE - 20 - HOST_SETTINGS_SIZE),
-    (b"A51S", 10): lambda payload: validate_settings(payload, SETTINGS_V6_SIZE - 20 - HOST_SETTINGS_SIZE + 4),
-    (b"A51S", 11): lambda payload: validate_settings(payload, SETTINGS_V6_SIZE - 20 - HOST_SETTINGS_SIZE),
-    (b"A51S", 12): lambda payload: validate_settings(payload, SETTINGS_V6_SIZE - 20 - HOST_SETTINGS_SIZE + 4),
 }
 
 
@@ -290,20 +235,14 @@ def encode(save: SaveFile) -> bytes:
                        len(save.payload), zlib.crc32(save.payload)) + save.payload
 
 
-def migrate(save: SaveFile, info: os.stat_result, host: bytes | None = None) -> SaveFile:
+def migrate(save: SaveFile, info: os.stat_result) -> SaveFile:
     validate(save)
-    original_version = save.version
     target = CURRENT_VERSIONS[save.magic]
     while save.version != target:
         step = MIGRATIONS.get((save.magic, save.version))
         if step is None or not save.version < step.target_version <= target:
             raise MigrationError(f"no migration from {save.magic!r} v{save.version} to v{target}")
         save = SaveFile(save.magic, step.target_version, step.convert(save.payload, info))
-        validate(save)
-    if save.magic == b"A51P" and original_version < 5 and host is not None:
-        offset = len(save.payload) - MULTIPLAYER_PREFERENCES_SIZE
-        save = SaveFile(save.magic, save.version,
-                        save.payload[:offset] + host + save.payload[offset + HOST_SETTINGS_SIZE:])
         validate(save)
     return save
 
@@ -343,15 +282,7 @@ def convert_file(path: Path, *, dry_run: bool = False) -> str:
         raise MigrationError("expected a regular save file")
     data = path.read_bytes()
     original = decode(data)
-    host = None
-    settings_path = path.with_name("AREA-51-SETTINGS")
-    if original.magic == b"A51P" and original.version < 5 and settings_path.exists():
-        settings = decode(settings_path.read_bytes())
-        if settings.magic != b"A51S":
-            raise MigrationError("the settings file has an invalid signature")
-        if settings.version < 8:
-            host = settings.payload[SETTINGS_HOST_OFFSET:SETTINGS_JOIN_OFFSET]
-    converted = migrate(original, info, host)
+    converted = migrate(original, info)
     if snapshot(path.stat()) != snapshot(info):
         raise MigrationError("file changed while being read; close the game and retry")
     if converted.version == original.version:
@@ -393,9 +324,9 @@ def collect_files(paths: list[Path]) -> list[Path]:
     for raw in paths:
         path = raw.expanduser().absolute()
         if path.is_dir():
-            matches = sorted(child for child in path.iterdir() if SAVE_NAME.fullmatch(child.name))
+            matches = sorted(child for child in path.iterdir() if PROFILE_NAME.fullmatch(child.name))
             if not matches:
-                raise MigrationError(f"no save files found in {path}")
+                raise MigrationError(f"no profile files found in {path}")
             files.update(dict.fromkeys(matches))
         else:
             files[path] = None
@@ -405,11 +336,10 @@ def collect_files(paths: list[Path]) -> list[Path]:
 def main(argv: list[str] | None = None) -> int:
     arguments = sys.argv[1:] if argv is None else argv
     if not arguments:
-        print("Drag a save file or the SAVES folder onto this .py file.")
+        print("Drag a profile file or the SAVES folder onto this .py file.")
         return 0
     try:
         files = collect_files([Path(argument) for argument in arguments])
-        files.sort(key=lambda path: path.name == "AREA-51-SETTINGS")
     except (OSError, MigrationError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

@@ -222,6 +222,7 @@ void global_settings::ResetInterfaceDefaults( void )
 {
     SetUIScale( UI_SCALE_DEFAULT_PERCENT );
     SetHUDScale( HUD_SCALE_DEFAULT_PERCENT );
+    SetLetterboxEnabled( TRUE );
 }
 
 //==============================================================================

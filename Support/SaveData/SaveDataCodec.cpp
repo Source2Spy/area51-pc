@@ -34,7 +34,7 @@ static const bitsery_io::file_format PROFILE_FILE_FORMAT =
 static const bitsery_io::file_format SETTINGS_FILE_FORMAT =
 {
     { 'A', '5', '1', 'S' },
-    12,
+    13,
 };
 
 //=========================================================================
@@ -356,6 +356,7 @@ xbool SaveDataCodec::SettingsFieldsAreValid( const global_settings& Settings )
            ( Settings.m_VideoLanguage >= XL_LANG_ENGLISH ) && ( Settings.m_VideoLanguage < XL_NUM_LANGUAGES ) &&
            ( Settings.m_UIScale >= UI_SCALE_MIN_PERCENT ) && ( Settings.m_UIScale <= UI_SCALE_MAX_PERCENT ) &&
            ( Settings.m_HUDScale >= HUD_SCALE_MIN_PERCENT ) && ( Settings.m_HUDScale <= HUD_SCALE_MAX_PERCENT ) &&
+           ( ( Settings.m_LetterboxEnabled == FALSE ) || ( Settings.m_CutsceneLetterboxEnabled == TRUE ) ) &&
            ( Settings.m_Brightness >= BRIGHTNESS_MIN_PERCENT ) && ( Settings.m_Brightness <= BRIGHTNESS_MAX_PERCENT ) &&
            ( Settings.m_Contrast >= CONTRAST_MIN_PERCENT ) && ( Settings.m_Contrast <= CONTRAST_MAX_PERCENT ) &&
            ( Settings.m_RenderScale >= RENDER_SCALE_MIN_PERCENT ) &&
@@ -543,6 +544,7 @@ void SaveDataCodec::SerializeSettings( SERIALIZER& Serializer, global_settings& 
     s32 AmbientOcclusion = static_cast<s32>( Value.m_AmbientOcclusionQuality );
     Serializer.value4b( AmbientOcclusion );
     Value.m_AmbientOcclusionQuality = static_cast<render::AmbientOcclusionQuality>( AmbientOcclusion );
+    Serializer.value4b( Value.m_LetterboxEnabled );
 }
 
 //=========================================================================

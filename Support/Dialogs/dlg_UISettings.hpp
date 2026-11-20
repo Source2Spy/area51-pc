@@ -62,10 +62,12 @@ protected:
 
     ui_combo*           m_pUIScale;
     ui_combo*           m_pHUDScale;
+    ui_combo*           m_pLetterbox;
     ui_button*          m_pButtonApply;
 
     ui_text*            m_pUIScaleText;
     ui_text*            m_pHUDScaleText;
+    ui_text*            m_pLetterboxText;
 
     s32                 m_CurrHL;
     xbool               m_bRenderBlackout;

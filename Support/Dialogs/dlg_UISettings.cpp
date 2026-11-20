@@ -25,9 +25,11 @@ enum ui_settings_controls
 {
     IDC_UI_SETTINGS_UI_SCALE_TEXT,
     IDC_UI_SETTINGS_HUD_SCALE_TEXT,
+    IDC_UI_SETTINGS_LETTERBOX_TEXT,
 
     IDC_UI_SETTINGS_UI_SCALE,
     IDC_UI_SETTINGS_HUD_SCALE,
+    IDC_UI_SETTINGS_LETTERBOX,
     IDC_UI_SETTINGS_BUTTON_APPLY,
 };
 
@@ -35,12 +37,14 @@ enum ui_settings_controls
 
 ui_manager::control_tem UISettingsControls[] =
 {
-    { IDC_UI_SETTINGS_UI_SCALE_TEXT,  "IDS_NULL",                   "text",   40,  40, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_UI_SETTINGS_HUD_SCALE_TEXT, "IDS_NULL",                   "text",   40,  75, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_UI_SETTINGS_UI_SCALE_TEXT,  "IDS_NULL",                 "text",   40,  40, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_UI_SETTINGS_HUD_SCALE_TEXT, "IDS_NULL",                 "text",   40,  75, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_UI_SETTINGS_LETTERBOX_TEXT, "IDS_NULL",                 "text",   40, 110, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
 
-    { IDC_UI_SETTINGS_UI_SCALE,       "IDS_NULL",                   "combo", 290,  40, 140, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_UI_SETTINGS_HUD_SCALE,      "IDS_NULL",                   "combo", 290,  75, 140, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_UI_SETTINGS_BUTTON_APPLY,   "IDS_PROFILE_OPTIONS_ACCEPT", "button", 40, 285, 220, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_UI_SETTINGS_UI_SCALE,     "IDS_NULL",                   "combo", 290,  40, 140, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_UI_SETTINGS_HUD_SCALE,    "IDS_NULL",                   "combo", 290,  75, 140, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_UI_SETTINGS_LETTERBOX,    "IDS_NULL",                   "combo", 290, 110, 140, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_UI_SETTINGS_BUTTON_APPLY, "IDS_PROFILE_OPTIONS_ACCEPT", "button", 40, 285, 220, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
 };
 
 //==============================================================================
@@ -98,18 +102,24 @@ xbool dlg_ui_settings::Create( s32                       UserID,
 
     xbool const Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
-    m_pUIScale     = (ui_combo*) FindChildByID( IDC_UI_SETTINGS_UI_SCALE );
-    m_pHUDScale    = (ui_combo*) FindChildByID( IDC_UI_SETTINGS_HUD_SCALE );
-    m_pButtonApply = (ui_button*)FindChildByID( IDC_UI_SETTINGS_BUTTON_APPLY );
+    m_pUIScale      = (ui_combo*) FindChildByID( IDC_UI_SETTINGS_UI_SCALE );
+    m_pHUDScale     = (ui_combo*) FindChildByID( IDC_UI_SETTINGS_HUD_SCALE );
+    m_pLetterbox    = (ui_combo*)FindChildByID( IDC_UI_SETTINGS_LETTERBOX );
+    m_pButtonApply  = (ui_button*)FindChildByID( IDC_UI_SETTINGS_BUTTON_APPLY );
 
-    m_pUIScaleText  = (ui_text*)FindChildByID( IDC_UI_SETTINGS_UI_SCALE_TEXT );
-    m_pHUDScaleText = (ui_text*)FindChildByID( IDC_UI_SETTINGS_HUD_SCALE_TEXT );
+    m_pUIScaleText   = (ui_text*)FindChildByID( IDC_UI_SETTINGS_UI_SCALE_TEXT );
+    m_pHUDScaleText  = (ui_text*)FindChildByID( IDC_UI_SETTINGS_HUD_SCALE_TEXT );
+    m_pLetterboxText = (ui_text*)FindChildByID( IDC_UI_SETTINGS_LETTERBOX_TEXT );
 
     global_settings& PendingSettings = g_StateMgr.GetPendingSettings();
     m_OriginalSettings = PendingSettings;
 
-    m_pUIScale ->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV );
-    m_pHUDScale->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV );
+    m_pUIScale  ->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV );
+    m_pHUDScale ->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV );
+    m_pLetterbox->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV );
+    m_pLetterbox->AddItem( g_StringTableMgr( "ui", "IDS_OFF" ), FALSE );
+    m_pLetterbox->AddItem( g_StringTableMgr( "ui", "IDS_ON" ), TRUE );
+    m_pLetterbox->SetSelection( m_pLetterbox->FindItemByData( PendingSettings.GetLetterboxEnabled() ) );
 
     for( s32 Percent = UI_SCALE_MIN_PERCENT; Percent <= UI_SCALE_MAX_PERCENT; Percent += 10 )
     {
@@ -134,10 +144,12 @@ xbool dlg_ui_settings::Create( s32                       UserID,
     }
     m_pHUDScale->SetSelection( HUDScaleSelection );
 
-    m_pUIScaleText ->SetLabel( g_StringTableMgr( "ui", "IDS_DISPLAY_UI_SCALE" ) );
-    m_pHUDScaleText->SetLabel( g_StringTableMgr( "ui", "IDS_DISPLAY_HUD_SCALE" ) );
-    m_pUIScaleText ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
-    m_pHUDScaleText->SetLabelFlags( ui_font::h_left|ui_font::v_center );
+    m_pUIScaleText  ->SetLabel( g_StringTableMgr( "ui", "IDS_DISPLAY_UI_SCALE" ) );
+    m_pHUDScaleText ->SetLabel( g_StringTableMgr( "ui", "IDS_DISPLAY_HUD_SCALE" ) );
+    m_pUIScaleText  ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
+    m_pHUDScaleText ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
+    m_pLetterboxText->SetLabel( xwstring( "Cutscene Letterboxing" ) );
+    m_pLetterboxText->SetLabelFlags( ui_font::h_left|ui_font::v_center );
     m_pButtonApply->SetFlag( ui_win::WF_BUTTON_LEFT, TRUE );
 
     s32 const CurrentControl = g_StateMgr.GetCurrentControl();
@@ -151,11 +163,13 @@ xbool dlg_ui_settings::Create( s32                       UserID,
         m_CurrentControl = CurrentControl;
     }
 
-    m_pUIScale     ->SetFlag( ui_win::WF_VISIBLE, FALSE );
-    m_pHUDScale    ->SetFlag( ui_win::WF_VISIBLE, FALSE );
-    m_pButtonApply ->SetFlag( ui_win::WF_VISIBLE, FALSE );
-    m_pUIScaleText ->SetFlag( ui_win::WF_VISIBLE, FALSE );
-    m_pHUDScaleText->SetFlag( ui_win::WF_VISIBLE, FALSE );
+    m_pUIScale      ->SetFlag( ui_win::WF_VISIBLE, FALSE );
+    m_pHUDScale     ->SetFlag( ui_win::WF_VISIBLE, FALSE );
+    m_pButtonApply  ->SetFlag( ui_win::WF_VISIBLE, FALSE );
+    m_pUIScaleText  ->SetFlag( ui_win::WF_VISIBLE, FALSE );
+    m_pHUDScaleText ->SetFlag( ui_win::WF_VISIBLE, FALSE );
+    m_pLetterbox    ->SetFlag( ui_win::WF_VISIBLE, FALSE );
+    m_pLetterboxText->SetFlag( ui_win::WF_VISIBLE, FALSE );
 
     m_CurrHL = 0;
     m_PopUp = NULL;
@@ -274,6 +288,7 @@ void dlg_ui_settings::ApplySettings( global_settings& Settings )
     {
         Settings.SetHUDScale( static_cast<s32>( m_pHUDScale->GetSelectedItemData() ) );
     }
+    Settings.SetLetterboxEnabled( m_pLetterbox->GetSelectedItemData() == TRUE );
 }
 
 //==============================================================================
@@ -346,6 +361,7 @@ void dlg_ui_settings::OnDelete( ui_win* pWin )
         PendingSettings.Reset( RESET_INTERFACE );
         m_pUIScale->SetSelection( m_pUIScale->FindItemByData( PendingSettings.GetUIScale() ) );
         m_pHUDScale->SetSelection( m_pHUDScale->FindItemByData( PendingSettings.GetHUDScale() ) );
+        m_pLetterbox->SetSelection( m_pLetterbox->FindItemByData( PendingSettings.GetLetterboxEnabled() ) );
     }
 }
 
@@ -377,11 +393,13 @@ void dlg_ui_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( g_UiMgr->IsScreenScaling() && (UpdateScreenScaling( DeltaTime ) == FALSE) )
     {
-        m_pUIScale     ->SetFlag( ui_win::WF_VISIBLE, TRUE );
-        m_pHUDScale    ->SetFlag( ui_win::WF_VISIBLE, TRUE );
-        m_pButtonApply ->SetFlag( ui_win::WF_VISIBLE, TRUE );
-        m_pUIScaleText ->SetFlag( ui_win::WF_VISIBLE, TRUE );
-        m_pHUDScaleText->SetFlag( ui_win::WF_VISIBLE, TRUE );
+        m_pUIScale      ->SetFlag( ui_win::WF_VISIBLE, TRUE );
+        m_pHUDScale     ->SetFlag( ui_win::WF_VISIBLE, TRUE );
+        m_pButtonApply  ->SetFlag( ui_win::WF_VISIBLE, TRUE );
+        m_pUIScaleText  ->SetFlag( ui_win::WF_VISIBLE, TRUE );
+        m_pHUDScaleText ->SetFlag( ui_win::WF_VISIBLE, TRUE );
+        m_pLetterbox    ->SetFlag( ui_win::WF_VISIBLE, TRUE );
+        m_pLetterboxText->SetFlag( ui_win::WF_VISIBLE, TRUE );
 
         s32 const CurrentControl = g_StateMgr.GetCurrentControl();
         if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
@@ -420,9 +438,20 @@ void dlg_ui_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         m_pHUDScaleText->SetLabelColor( xcolor(126,220,60,255) );
     }
 
-    if( m_pButtonApply->IsFocused() )
+    if( m_pLetterbox->IsFocused() )
     {
         highLight = 2;
+        m_pLetterboxText->SetLabelColor( xcolor(255,252,204,255) );
+        g_UiMgr->SetScreenHighlight( m_pLetterboxText->GetPosition() );
+    }
+    else
+    {
+        m_pLetterboxText->SetLabelColor( xcolor(126,220,60,255) );
+    }
+
+    if( m_pButtonApply->IsFocused() )
+    {
+        highLight = 3;
         g_UiMgr->SetScreenHighlight( m_pButtonApply->GetPosition() );
     }
 

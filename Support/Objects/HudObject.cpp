@@ -590,9 +590,12 @@ void hud_object::OnRender( void )
     // Draw the cinematic bars?
     if( ( g_first_person ) && ( IsLetterBoxOn() ) )
     {
-        g_UIRenderer.PushScreenSpace( ScreenViewport );
-        RenderLetterBox( ScreenViewport, GetLetterBoxAmount() );
-        g_UIRenderer.PopScreenSpace();
+        if( g_StateMgr.GetActiveSettings().GetLetterboxEnabled() )
+        {
+            g_UIRenderer.PushScreenSpace( ScreenViewport );
+            RenderLetterBox( ScreenViewport, GetLetterBoxAmount() );
+            g_UIRenderer.PopScreenSpace();
+        }
 
         g_UIRenderer.PushHudSpace( ScreenViewport );
         ((hud_renderable*)PlayerHud.m_HudComponents[ HUD_ELEMENT_TEXT_BOX ])->OnRender( pActivePlayer );

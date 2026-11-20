@@ -211,6 +211,8 @@ public:
     s32                 GetUIScale              ( void ) const;
     void                SetHUDScale             ( s32 Percent );
     s32                 GetHUDScale             ( void ) const;
+    void                SetLetterboxEnabled     ( xbool Enabled );
+    xbool               GetLetterboxEnabled     ( void ) const;
     void                SetBrightness           ( s32 Percent );
     s32                 GetBrightness           ( void ) const;
     void                SetContrast             ( s32 Percent );
@@ -292,6 +294,7 @@ private:
     // Persisted interface, display, and presentation settings.
     s32                 m_UIScale;
     s32                 m_HUDScale;
+    xbool               m_LetterboxEnabled;
     s32                 m_Brightness;
     s32                 m_Contrast;
     s32                 m_RenderScale;
@@ -441,6 +444,20 @@ inline s32 global_settings::GetUIScale( void ) const
 inline s32 global_settings::GetHUDScale( void ) const
 {
     return m_HUDScale;
+}
+
+//==============================================================================
+
+inline void global_settings::SetLetterboxEnabled( xbool Enabled )
+{
+    m_LetterboxEnabled = Enabled != FALSE;
+}
+
+//==============================================================================
+
+inline xbool global_settings::GetLetterboxEnabled( void ) const
+{
+    return m_LetterboxEnabled;
 }
 
 //==============================================================================
