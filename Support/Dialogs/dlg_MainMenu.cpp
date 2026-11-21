@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_main_menu.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -20,9 +24,9 @@
 
 #include "../../Apps/GameApp/Config.hpp"    
 
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem MainMenuControls[] = 
 {
@@ -46,51 +50,47 @@ ui_manager::dialog_tem MainMenuDialog =
     0
 };
 
-//=========================================================================
-//  Defines
-//=========================================================================
+//==============================================================================
 
 static const s32 MAIN_MENU_LOGO_WIDTH  = 128;
 static const s32 MAIN_MENU_LOGO_HEIGHT =  32;
 static const s32 MAIN_MENU_LOGO_TOP    =   2;
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_main_menu_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "main menu", &MainMenuDialog, &dlg_main_menu_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_main_menu_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_main_menu* pDialog = new dlg_main_menu;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_main_menu
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_main_menu::dlg_main_menu( void )
 {
     m_LogoBitmapID = -1;
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_main_menu::~dlg_main_menu( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_main_menu::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -114,20 +114,20 @@ xbool dlg_main_menu::Create( s32                        UserID,
     m_LogoBitmapID = g_UiMgr->FindBitmap( "a51_logo" );
     ASSERT( m_LogoBitmapID >= 0 );
 
-    m_pButtonCampaign       = (ui_button*)  FindChildByID( IDC_MAIN_MENU_CAMPAIGN           );
-    m_pButtonMultiPlayer    = (ui_button*)  FindChildByID( IDC_MAIN_MENU_MULTI              );
-    m_pButtonOnline         = (ui_button*)  FindChildByID( IDC_MAIN_MENU_ONLINE             );
-    m_pButtonSettings       = (ui_button*)  FindChildByID( IDC_MAIN_MENU_SETTINGS           );
-    m_pButtonProfiles       = (ui_button*)  FindChildByID( IDC_MAIN_MENU_PROFILES           );
-    m_pButtonCredits        = (ui_button*)  FindChildByID( IDC_MAIN_MENU_CREDITS            );
+    m_pButtonCampaign       = static_cast<ui_button*>( FindChildByID( IDC_MAIN_MENU_CAMPAIGN           ) );
+    m_pButtonMultiPlayer    = static_cast<ui_button*>( FindChildByID( IDC_MAIN_MENU_MULTI              ) );
+    m_pButtonOnline         = static_cast<ui_button*>( FindChildByID( IDC_MAIN_MENU_ONLINE             ) );
+    m_pButtonSettings       = static_cast<ui_button*>( FindChildByID( IDC_MAIN_MENU_SETTINGS           ) );
+    m_pButtonProfiles       = static_cast<ui_button*>( FindChildByID( IDC_MAIN_MENU_PROFILES           ) );
+    m_pButtonCredits        = static_cast<ui_button*>( FindChildByID( IDC_MAIN_MENU_CREDITS            ) );
 #if defined(TARGET_DESKTOP)        
-    m_pButtonExit           = (ui_button*)  FindChildByID( IDC_MAIN_MENU_EXIT               );
+    m_pButtonExit           = static_cast<ui_button*>( FindChildByID( IDC_MAIN_MENU_EXIT               ) );
 #endif    
 
     s32 iControl = g_StateMgr.GetCurrentControl();
     if( (iControl == -1) || (GotoControl(iControl)==NULL) )
     {
-        GotoControl( (ui_control*)m_pButtonCampaign );
+        GotoControl( m_pButtonCampaign );
         m_CurrentControl =  IDC_MAIN_MENU_CAMPAIGN;
     }
     else
@@ -165,7 +165,9 @@ xbool dlg_main_menu::Create( s32                        UserID,
 
     // set the frame to be disabled (if coming from off screen)
     if (g_UiMgr->IsScreenOn() == FALSE)
+    {
         SetFlag( WF_DISABLED, TRUE );
+    }
 
     // make the dialog active
     m_State = DIALOG_STATE_ACTIVE;
@@ -183,7 +185,7 @@ xbool dlg_main_menu::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_main_menu::Destroy( void )
 {
@@ -193,11 +195,11 @@ void dlg_main_menu::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_main_menu::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
@@ -263,57 +265,57 @@ void dlg_main_menu::Render( s32 ox, s32 oy )
 
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_main_menu::OnAccept( ui_win* pWin )
 {
     if ( m_State == DIALOG_STATE_ACTIVE )
     {
-        if( pWin == (ui_win*)m_pButtonCampaign )
+        if( pWin == m_pButtonCampaign )
         {
             g_AudioMgr.Play("Select_Norm");
             m_CurrentControl =  IDC_MAIN_MENU_CAMPAIGN;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin == (ui_win*)m_pButtonMultiPlayer )
+        else if( pWin == m_pButtonMultiPlayer )
         {
             g_AudioMgr.Play("Select_Norm");
             m_CurrentControl = IDC_MAIN_MENU_MULTI;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin == (ui_win*)m_pButtonOnline )
+        else if( pWin == m_pButtonOnline )
         {
             g_AudioMgr.Play("Select_Norm");
             m_CurrentControl = IDC_MAIN_MENU_ONLINE;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin == (ui_win*)m_pButtonSettings )
+        else if( pWin == m_pButtonSettings )
         {
             g_AudioMgr.Play("Select_Norm");
             m_CurrentControl = IDC_MAIN_MENU_SETTINGS;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin == (ui_win*)m_pButtonProfiles )
+        else if( pWin == m_pButtonProfiles )
         {
             g_AudioMgr.Play("Select_Norm");
             m_CurrentControl = IDC_MAIN_MENU_PROFILES;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin == (ui_win*)m_pButtonCredits )
+        else if( pWin == m_pButtonCredits )
         {
             g_AudioMgr.Play("Select_Norm");
             m_CurrentControl = IDC_MAIN_MENU_CREDITS;
             m_State = DIALOG_STATE_SELECT;
         }
 #if defined(TARGET_DESKTOP)            
-        else if( pWin == (ui_win*)m_pButtonExit )
+        else if( pWin == m_pButtonExit )
         {
             g_AudioMgr.Play("Select_Norm");
             if( m_PopUp == NULL )
             {
                 m_PopUpResult = DLG_POPUP_IDLE;
                 irect r = g_UiMgr->GetUserBounds( m_UserID );
-                m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog( m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|ui_win::WF_INPUTMODAL );
+                m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog( m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|ui_win::WF_INPUTMODAL ) );
 
                 xwstring navText( g_StringTableMgr( "ui", "IDS_NAV_YES" ) );
                 navText += g_StringTableMgr( "ui", "IDS_NAV_NO" );
@@ -332,7 +334,7 @@ void dlg_main_menu::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_main_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -360,7 +362,7 @@ void dlg_main_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             s32 iControl = g_StateMgr.GetCurrentControl();
             if( (iControl == -1) || (GotoControl(iControl)==NULL) )
             {
-                GotoControl( (ui_control*)m_pButtonCampaign );
+                GotoControl( m_pButtonCampaign );
                 g_UiMgr->SetScreenHighlight( m_pButtonCampaign->GetPosition() );
                 m_CurrentControl =  IDC_MAIN_MENU_CAMPAIGN;
             }
@@ -449,7 +451,9 @@ void dlg_main_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     if( highLight != m_CurrHL )
     {
         if( highLight != -1 )
+        {
             g_AudioMgr.Play("Cusor_Norm");
+        }
 
         m_CurrHL = highLight;
     }
@@ -481,4 +485,4 @@ void dlg_main_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 #endif
 }
 
-//=========================================================================
+//==============================================================================

@@ -19,10 +19,14 @@
 #include "ui_control.hpp"
 
 //==============================================================================
-//  ui_listbox
+//  REGISTRATION
 //==============================================================================
 
 extern ui_win* ui_blankbox_factory( s32 UserID, ui_manager* pManager, const irect& Position, ui_win* pParent, s32 Flags );
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class ui_blankbox : public ui_control
 {

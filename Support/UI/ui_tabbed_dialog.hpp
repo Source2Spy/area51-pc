@@ -21,10 +21,14 @@
 #include "ui_dialog.hpp"
 
 //==============================================================================
-//  ui_tabbed_dialog
+//  REGISTRATION
 //==============================================================================
 
 extern ui_win* ui_tabbed_dialog_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class ui_tabbed_dialog : public ui_dialog
 {

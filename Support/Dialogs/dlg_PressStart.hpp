@@ -23,13 +23,21 @@
 #include "Obj_mgr/obj_mgr.hpp"
 
 //==============================================================================
-//  dlg_press_start
+//  REGISTRATION
 //==============================================================================
 
 extern void     dlg_press_start_register  ( ui_manager* pManager );
 extern ui_win*  dlg_press_start_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 class ui_button;
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class dlg_press_start : public ui_dialog
 {
@@ -80,4 +88,6 @@ protected:
     s32                 m_BlocksRequired;
 };
 
+//==============================================================================
 #endif // DLG_PRESSSTART
+//==============================================================================

@@ -17,15 +17,22 @@
 #include "UI/ui_combo.hpp"
 #include "UI/ui_listbox.hpp"
 
-
 //==============================================================================
-//  dlg_resume_game
+//  REGISTRATION
 //==============================================================================
 
 extern void     dlg_resume_game_register  ( ui_manager* pManager );
 extern ui_win*  dlg_resume_game_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 class ui_button;
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class dlg_resume_game : public ui_dialog
 {

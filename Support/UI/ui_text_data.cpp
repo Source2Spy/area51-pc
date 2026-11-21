@@ -40,7 +40,7 @@ void ui_text_data::AppendButton( s32 ButtonCode, const vector2& Size, f32 Spacin
     Run.InlineId      = ButtonCode;
     Run.InlineSize    = Size;
     Run.InlineSpacing = Spacing;
-    Text += (xwchar)0xfffc;
+    Text += static_cast<xwchar>( 0xfffc );
     Runs.Append() = Run;
 }
 

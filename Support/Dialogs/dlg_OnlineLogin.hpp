@@ -24,8 +24,9 @@
 #include "NetworkMgr/Game/GameMgr.hpp"
 
 //==============================================================================
-//  dlg_online_login
+//  ENUMS
 //==============================================================================
+
 enum dlg_login_state
 {
     LOGIN_IDLE,
@@ -36,11 +37,22 @@ enum dlg_login_state
     LOGIN_PASSWORD_ERROR,
 };
 
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 extern void     dlg_online_login_register  ( ui_manager* pManager );
 extern ui_win*  dlg_online_login_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 class ui_button;
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class dlg_online_login : public ui_dialog
 {

@@ -21,13 +21,21 @@
 #include "NetworkMgr/NetworkMgr.hpp"
 
 //==============================================================================
-//  dlg_report_error
+//  REGISTRATION
 //==============================================================================
 
 extern void     dlg_report_error_register  ( ui_manager* pManager );
 extern ui_win*  dlg_report_error_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 class ui_button;
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class dlg_report_error : public ui_dialog
 {

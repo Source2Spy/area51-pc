@@ -4,6 +4,10 @@
 //
 //==============================================================================
 
+//==============================================================================
+//  INCLUDES
+//==============================================================================
+
 #include "Entropy.hpp"
 
 #include "UI/ui_button.hpp"
@@ -21,23 +25,25 @@
 #include "dlg_PopUp.hpp"
 
 //==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem GraphicsAdvancedSettingsControls[] =
 {
-    { IDC_GRAPHICS_ADVANCED_PHONG_SHADING_TEXT,      "IDS_NULL",                   "text",  40,  40, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_ADVANCED_SHADOWS_TEXT,            "IDS_NULL",                   "text",  40,  75, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_ADVANCED_SHADOW_FILTER_TEXT,      "IDS_NULL",                   "text",  40, 110, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_ADVANCED_BACKGROUND_BLUR_TEXT,    "IDS_NULL",                   "text",  40, 145, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_ADVANCED_TESSELLATION_TEXT,       "IDS_NULL",                   "text",  40, 180, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_ADVANCED_AMBIENT_OCCLUSION_TEXT,  "IDS_NULL",                   "text",  40, 215, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_ADVANCED_PHONG_SHADING_TEXT,     "IDS_GRAPHICS_PHONG_SHADING",     "text",  40,  40, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_ADVANCED_SHADOWS_TEXT,           "IDS_GRAPHICS_SHADOWS",           "text",  40,  75, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_ADVANCED_SHADOW_FILTER_TEXT,     "IDS_GRAPHICS_SHADOW_FILTER",     "text",  40, 110, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_ADVANCED_BACKGROUND_BLUR_TEXT,   "IDS_GRAPHICS_BACKGROUND_BLUR",   "text",  40, 145, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_ADVANCED_TESSELLATION_TEXT,      "IDS_GRAPHICS_TESSELATION",       "text",  40, 180, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_ADVANCED_AMBIENT_OCCLUSION_TEXT, "IDS_GRAPHICS_AMBIENT_OCCLUSION", "text",  40, 215, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
 
-    { IDC_GRAPHICS_ADVANCED_PHONG_SHADING,           "IDS_NULL",                   "combo", 290,  40, 140, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_ADVANCED_SHADOWS,                 "IDS_NULL",                   "combo", 290,  75, 140, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_ADVANCED_SHADOW_FILTER,           "IDS_NULL",                   "combo", 290, 110, 140, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_ADVANCED_BACKGROUND_BLUR,         "IDS_NULL",                   "check", 290, 145, 140, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_ADVANCED_TESSELLATION,            "IDS_NULL",                   "check", 290, 180, 140, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_ADVANCED_AMBIENT_OCCLUSION,       "IDS_NULL",                   "combo", 290, 215, 140, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_ADVANCED_BUTTON_APPLY,            "IDS_PROFILE_OPTIONS_ACCEPT", "button", 40, 285, 220, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_ADVANCED_PHONG_SHADING,          "IDS_NULL",                       "combo", 290,  40, 140, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_ADVANCED_SHADOWS,                "IDS_NULL",                       "combo", 290,  75, 140, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_ADVANCED_SHADOW_FILTER,          "IDS_NULL",                       "combo", 290, 110, 140, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_ADVANCED_BACKGROUND_BLUR,        "IDS_NULL",                       "check", 290, 145, 140, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_ADVANCED_TESSELLATION,           "IDS_NULL",                       "check", 290, 180, 140, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_ADVANCED_AMBIENT_OCCLUSION,      "IDS_NULL",                       "combo", 290, 215, 140, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_ADVANCED_BUTTON_APPLY,           "IDS_PROFILE_OPTIONS_ACCEPT",     "button", 40, 285, 220, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE },
 };
 
 //==============================================================================
@@ -51,6 +57,8 @@ ui_manager::dialog_tem GraphicsAdvancedSettingsDialog =
     0
 };
 
+//==============================================================================
+//  REGISTRATION
 //==============================================================================
 
 void dlg_graphics_advanced_settings_register( ui_manager* pManager )
@@ -72,9 +80,11 @@ ui_win* dlg_graphics_advanced_settings_factory( s32 UserID,
 {
     dlg_graphics_advanced_settings* pDialog = new dlg_graphics_advanced_settings;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
+//==============================================================================
+//  IMPLEMENTATION
 //==============================================================================
 
 dlg_graphics_advanced_settings::dlg_graphics_advanced_settings( void )
@@ -103,20 +113,20 @@ xbool dlg_graphics_advanced_settings::Create( s32                       UserID,
 
     xbool const Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
-    m_pPhongShading      = (ui_combo*) FindChildByID( IDC_GRAPHICS_ADVANCED_PHONG_SHADING );
-    m_pShadows           = (ui_combo*) FindChildByID( IDC_GRAPHICS_ADVANCED_SHADOWS );
-    m_pShadowFilter      = (ui_combo*) FindChildByID( IDC_GRAPHICS_ADVANCED_SHADOW_FILTER );
-    m_pBackgroundBlur    = (ui_check*) FindChildByID( IDC_GRAPHICS_ADVANCED_BACKGROUND_BLUR );
-    m_pTessellation      = (ui_check*) FindChildByID( IDC_GRAPHICS_ADVANCED_TESSELLATION );
-    m_pAmbientOcclusion  = (ui_combo*) FindChildByID( IDC_GRAPHICS_ADVANCED_AMBIENT_OCCLUSION );
-    m_pButtonApply       = (ui_button*)FindChildByID( IDC_GRAPHICS_ADVANCED_BUTTON_APPLY );
+    m_pPhongShading      = static_cast<ui_combo*>( FindChildByID( IDC_GRAPHICS_ADVANCED_PHONG_SHADING ) );
+    m_pShadows           = static_cast<ui_combo*>( FindChildByID( IDC_GRAPHICS_ADVANCED_SHADOWS ) );
+    m_pShadowFilter      = static_cast<ui_combo*>( FindChildByID( IDC_GRAPHICS_ADVANCED_SHADOW_FILTER ) );
+    m_pBackgroundBlur    = static_cast<ui_check*>( FindChildByID( IDC_GRAPHICS_ADVANCED_BACKGROUND_BLUR ) );
+    m_pTessellation      = static_cast<ui_check*>( FindChildByID( IDC_GRAPHICS_ADVANCED_TESSELLATION ) );
+    m_pAmbientOcclusion  = static_cast<ui_combo*>( FindChildByID( IDC_GRAPHICS_ADVANCED_AMBIENT_OCCLUSION ) );
+    m_pButtonApply       = static_cast<ui_button*>( FindChildByID( IDC_GRAPHICS_ADVANCED_BUTTON_APPLY ) );
 
-    m_pPhongShadingText      = (ui_text*)FindChildByID( IDC_GRAPHICS_ADVANCED_PHONG_SHADING_TEXT );
-    m_pShadowsText           = (ui_text*)FindChildByID( IDC_GRAPHICS_ADVANCED_SHADOWS_TEXT );
-    m_pShadowFilterText      = (ui_text*)FindChildByID( IDC_GRAPHICS_ADVANCED_SHADOW_FILTER_TEXT );
-    m_pBackgroundBlurText    = (ui_text*)FindChildByID( IDC_GRAPHICS_ADVANCED_BACKGROUND_BLUR_TEXT );
-    m_pTessellationText      = (ui_text*)FindChildByID( IDC_GRAPHICS_ADVANCED_TESSELLATION_TEXT );
-    m_pAmbientOcclusionText  = (ui_text*)FindChildByID( IDC_GRAPHICS_ADVANCED_AMBIENT_OCCLUSION_TEXT );
+    m_pPhongShadingText      = static_cast<ui_text*>( FindChildByID( IDC_GRAPHICS_ADVANCED_PHONG_SHADING_TEXT ) );
+    m_pShadowsText           = static_cast<ui_text*>( FindChildByID( IDC_GRAPHICS_ADVANCED_SHADOWS_TEXT ) );
+    m_pShadowFilterText      = static_cast<ui_text*>( FindChildByID( IDC_GRAPHICS_ADVANCED_SHADOW_FILTER_TEXT ) );
+    m_pBackgroundBlurText    = static_cast<ui_text*>( FindChildByID( IDC_GRAPHICS_ADVANCED_BACKGROUND_BLUR_TEXT ) );
+    m_pTessellationText      = static_cast<ui_text*>( FindChildByID( IDC_GRAPHICS_ADVANCED_TESSELLATION_TEXT ) );
+    m_pAmbientOcclusionText  = static_cast<ui_text*>( FindChildByID( IDC_GRAPHICS_ADVANCED_AMBIENT_OCCLUSION_TEXT ) );
 
     global_settings& PendingSettings = g_StateMgr.GetPendingSettings();
     m_OriginalSettings = PendingSettings;
@@ -173,15 +183,9 @@ xbool dlg_graphics_advanced_settings::Create( s32                       UserID,
     m_pAmbientOcclusion->SetSelection(
         m_pAmbientOcclusion->FindItemByData( static_cast<s32>( PendingSettings.GetAmbientOcclusionQuality() ) ) );
 
-    m_pBackgroundBlurText->SetLabel( g_StringTableMgr( "ui", "IDS_GRAPHICS_BACKGROUND_BLUR" ) );
     m_pBackgroundBlurText->SetLabelFlags( ui_font::h_left | ui_font::v_center );
-    m_pTessellationText->SetLabel( xwstring( "Tessellation" ) );
     m_pTessellationText->SetLabelFlags( ui_font::h_left | ui_font::v_center );
-    m_pAmbientOcclusionText->SetLabel( g_StringTableMgr( "ui", "IDS_GRAPHICS_AMBIENT_OCCLUSION" ) );
     m_pAmbientOcclusionText->SetLabelFlags( ui_font::h_left | ui_font::v_center );
-    m_pPhongShadingText     ->SetLabel( g_StringTableMgr( "ui", "IDS_GRAPHICS_PHONG_SHADING" ) );
-    m_pShadowsText          ->SetLabel( g_StringTableMgr( "ui", "IDS_GRAPHICS_SHADOWS" ) );
-    m_pShadowFilterText     ->SetLabel( g_StringTableMgr( "ui", "IDS_GRAPHICS_SHADOW_FILTER" ) );
 
     m_pPhongShadingText     ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
     m_pShadowsText          ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
@@ -191,7 +195,7 @@ xbool dlg_graphics_advanced_settings::Create( s32                       UserID,
     s32 const CurrentControl = g_StateMgr.GetCurrentControl();
     if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
     {
-        GotoControl( (ui_control*)m_pPhongShading );
+        GotoControl( m_pPhongShading );
         m_CurrentControl = IDC_GRAPHICS_ADVANCED_PHONG_SHADING;
     }
     else
@@ -232,6 +236,7 @@ xbool dlg_graphics_advanced_settings::Create( s32                       UserID,
 
 void dlg_graphics_advanced_settings::Destroy( void )
 {
+    // Cancel outstanding save callbacks before destroying the dialog.
     g_SaveDataMgr.CancelCallbacks( this );
     ui_dialog::Destroy();
     g_UiMgr->ResetScreenWipe();
@@ -241,36 +246,38 @@ void dlg_graphics_advanced_settings::Destroy( void )
 
 void dlg_graphics_advanced_settings::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
-    static s32 gap   = 9;
-    static s32 width = 4;
-    irect rb;
+    s32 const Offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
+    static s32 const Gap = 9;
+    static s32 const Width = 4;
+    irect Bounds;
 
+    // Dim the background behind the dialog.
     if( m_bRenderBlackout )
     {
-        rb = g_UiMgr->GetUserBounds( m_UserID );
-        g_UiMgr->RenderGouraudRect( rb,
-                                    xcolor(0,0,0,180), xcolor(0,0,0,180),
-                                    xcolor(0,0,0,180), xcolor(0,0,0,180), FALSE );
+        Bounds = g_UiMgr->GetUserBounds( m_UserID );
+        g_UiMgr->RenderGouraudRect( Bounds,
+                                   xcolor( 0, 0, 0, 180 ), xcolor( 0, 0, 0, 180 ),
+                                   xcolor( 0, 0, 0, 180 ), xcolor( 0, 0, 0, 180 ), FALSE );
     }
 
-    rb.l = m_CurrPos.l + 22;
-    rb.t = m_CurrPos.t;
-    rb.r = m_CurrPos.r - 23;
-    rb.b = m_CurrPos.b;
-    g_UiMgr->RenderGouraudRect( rb,
-                                xcolor(56,115,58,64), xcolor(56,115,58,64),
-                                xcolor(56,115,58,64), xcolor(56,115,58,64), FALSE );
+    // Draw the translucent panel inside the side bars.
+    Bounds.Set( m_CurrPos.l + 22, m_CurrPos.t, m_CurrPos.r - 23, m_CurrPos.b );
+    g_UiMgr->RenderGouraudRect( Bounds,
+                               xcolor( 56, 115, 58, 64 ), xcolor( 56, 115, 58, 64 ),
+                               xcolor( 56, 115, 58, 64 ), xcolor( 56, 115, 58, 64 ), FALSE );
 
-    for( s32 y = rb.t + offset; y < rb.b; y += gap )
+    for( s32 Y = Bounds.t + Offset; Y < Bounds.b; Y += Gap )
     {
-        irect bar( rb.l, y, rb.r, MIN( y + width, rb.b ) );
-        g_UiMgr->RenderGouraudRect( bar,
-                                    xcolor(56,115,58,30), xcolor(56,115,58,30),
-                                    xcolor(56,115,58,30), xcolor(56,115,58,30), FALSE );
+        irect const Bar( Bounds.l, Y, Bounds.r, MIN( Y + Width, Bounds.b ) );
+        g_UiMgr->RenderGouraudRect( Bar,
+                                   xcolor( 56, 115, 58, 30 ), xcolor( 56, 115, 58, 30 ),
+                                   xcolor( 56, 115, 58, 30 ), xcolor( 56, 115, 58, 30 ), FALSE );
     }
 
+    // render the normal dialog stuff
     ui_dialog::Render( ox, oy );
+
+    // render the glow bar
     g_UiMgr->RenderGlowBar();
 }
 
@@ -278,7 +285,7 @@ void dlg_graphics_advanced_settings::Render( s32 ox, s32 oy )
 
 void dlg_graphics_advanced_settings::OnAccept( ui_win* pWin )
 {
-    if( (m_State != DIALOG_STATE_ACTIVE) || (pWin != (ui_win*)m_pButtonApply) )
+    if( (m_State != DIALOG_STATE_ACTIVE) || (pWin != m_pButtonApply) )
     {
         return;
     }
@@ -302,20 +309,23 @@ void dlg_graphics_advanced_settings::OnAccept( ui_win* pWin )
 void dlg_graphics_advanced_settings::OnCancel( ui_win* pWin )
 {
     (void)pWin;
-    if( m_State == DIALOG_STATE_ACTIVE )
-    {
-        global_settings Settings = m_OriginalSettings;
-        ApplySettings( Settings );
-        if( !Settings.HasChanged() )
-        {
-            g_AudioMgr.Play( "Backup" );
-            m_State = DIALOG_STATE_BACK;
-            return;
-        }
 
-        g_StateMgr.GetPendingSettings() = Settings;
-        OpenSavePopup();
+    if( m_State != DIALOG_STATE_ACTIVE )
+    {
+        return;
     }
+
+    global_settings Settings = m_OriginalSettings;
+    ApplySettings( Settings );
+    if( !Settings.HasChanged() )
+    {
+        g_AudioMgr.Play( "Backup" );
+        m_State = DIALOG_STATE_BACK;
+        return;
+    }
+
+    g_StateMgr.GetPendingSettings() = Settings;
+    OpenSavePopup();
 }
 
 //==============================================================================
@@ -434,6 +444,7 @@ void dlg_graphics_advanced_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
     (void)pWin;
     s32 highLight = -1;
 
+    // Consume the popup result once before resuming the dialog.
     if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
     {
         s32 const Result = m_PopUpResult;
@@ -453,6 +464,7 @@ void dlg_graphics_advanced_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         }
     }
 
+    // Show the controls only after the opening animation finishes.
     if( g_UiMgr->IsScreenScaling() && (UpdateScreenScaling( DeltaTime ) == FALSE) )
     {
         m_pPhongShading        ->SetFlag( ui_win::WF_VISIBLE, TRUE );
@@ -472,7 +484,7 @@ void dlg_graphics_advanced_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         s32 const CurrentControl = g_StateMgr.GetCurrentControl();
         if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
         {
-            GotoControl( (ui_control*)m_pPhongShading );
+            GotoControl( m_pPhongShading );
             m_CurrentControl = IDC_GRAPHICS_ADVANCED_PHONG_SHADING;
         }
         else
@@ -487,7 +499,7 @@ void dlg_graphics_advanced_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
     m_pShadowFilterText->SetFlag( ui_win::WF_DISABLED, !ShadowFilterEnabled );
     if( !ShadowFilterEnabled && m_pShadowFilter->IsFocused() )
     {
-        GotoControl( (ui_control*)m_pShadows );
+        GotoControl( m_pShadows );
     }
 
     g_UiMgr->UpdateGlowBar( DeltaTime );

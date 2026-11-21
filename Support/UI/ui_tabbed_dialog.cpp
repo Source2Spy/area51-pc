@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  ui_tabbed_dialog.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 #include "../AudioMgr/AudioMgr.hpp"
@@ -12,46 +16,33 @@
 #include "ui_control.hpp"
 #include "ui_font.hpp"
 
-
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
-
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 ui_win* ui_tabbed_dialog_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     ui_tabbed_dialog* pDialog = new ui_tabbed_dialog;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  ui_tabbed_dialog
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 ui_tabbed_dialog::ui_tabbed_dialog( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_tabbed_dialog::~ui_tabbed_dialog( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_tabbed_dialog::Create( s32                        UserID,
                                 ui_manager*                pManager,
@@ -88,7 +79,7 @@ xbool ui_tabbed_dialog::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_tabbed_dialog::Render( s32 ox, s32 oy )
 {
@@ -130,9 +121,13 @@ void ui_tabbed_dialog::Render( s32 ox, s32 oy )
 
             // Set Tab Width
             if( m_TabWidth == -1 )
+            {
                 r.SetWidth( m_Tabs[i].w );
+            }
             else
+            {
                 r.SetWidth( m_TabWidth );
+            }
 
             // Highlight if active tab
             if( m_iActiveTab == i )
@@ -161,11 +156,9 @@ void ui_tabbed_dialog::Render( s32 ox, s32 oy )
     }
 }
 
-//=========================================================================
-//=========================================================================
-//  Message Handler Functions
-//=========================================================================
-//=========================================================================
+//==============================================================================
+//  MESSAGE HANDLERS
+//==============================================================================
 
 void ui_tabbed_dialog::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
@@ -181,17 +174,28 @@ void ui_tabbed_dialog::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses
     // Which way are we moving
     switch( Code )
     {
-    case ui_navigation::Up:
-        dy = -1;
+        case ui_navigation::Up:
+        {
+            dy = -1;
+        }
         break;
-    case ui_navigation::Down:
-        dy = 1;
+
+        case ui_navigation::Down:
+        {
+            dy = 1;
+        }
         break;
-    case ui_navigation::Left:
-        dx = -1;
+
+        case ui_navigation::Left:
+        {
+            dx = -1;
+        }
         break;
-    case ui_navigation::Right:
-        dx = 1;
+
+        case ui_navigation::Right:
+        {
+            dx = 1;
+        }
         break;
     }
 
@@ -199,8 +203,14 @@ void ui_tabbed_dialog::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses
     if( m_Tabs.GetCount() > 0 )
     {
         s32 iTab = m_iActiveTab + dx;
-        if( iTab <                  0 ) iTab = m_Tabs.GetCount()-1;
-        if( iTab >= m_Tabs.GetCount() ) iTab = 0;
+        if( iTab <                  0 )
+        {
+            iTab = m_Tabs.GetCount()-1;
+        }
+        if( iTab >= m_Tabs.GetCount() )
+        {
+            iTab = 0;
+        }
         ActivateTab( iTab );
     }
 
@@ -212,13 +222,15 @@ void ui_tabbed_dialog::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses
             for( s32 i=0 ; i<m_Tabs[m_iActiveTab].pDialog->GetNumControls() ; i++ )
             {
                 if( m_Tabs[m_iActiveTab].pDialog->GotoControl( i ) )
+                {
                     break;
+                }
             }
         }
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_tabbed_dialog::OnAccept( ui_win* pWin )
 {
@@ -226,10 +238,12 @@ void ui_tabbed_dialog::OnAccept( ui_win* pWin )
 
     // Activate the dialog
     if( m_iActiveTab != -1 )
-        m_Tabs[m_iActiveTab].pDialog->GotoControl( (s32)0 );
+    {
+        m_Tabs[m_iActiveTab].pDialog->GotoControl( static_cast<s32>( 0 ) );
+    }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_tabbed_dialog::OnCancel( ui_win* pWin )
 {
@@ -238,21 +252,21 @@ void ui_tabbed_dialog::OnCancel( ui_win* pWin )
     m_pManager->EndDialog( m_UserID, TRUE );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_tabbed_dialog::SetBackgroundColor( xcolor Color )
 {
     m_BackgroundColor = Color;
 }
 
-//=========================================================================
+//==============================================================================
 
 xcolor ui_tabbed_dialog::GetBackgroundColor( void ) const
 {
     return m_BackgroundColor;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_tabbed_dialog::AddTab( const xwstring& Label, ui_dialog* pDialog )
 {
@@ -260,7 +274,7 @@ s32 ui_tabbed_dialog::AddTab( const xwstring& Label, ui_dialog* pDialog )
 
     // Get size of label
     irect r;
-    m_pManager->TextSize( m_Font, r, (const xwchar*)Label, -1 );
+    m_pManager->TextSize( m_Font, r, static_cast<const xwchar*>( Label ), -1 );
 
     // Create a new tab
     tab& Tab = m_Tabs.Append();
@@ -278,7 +292,7 @@ s32 ui_tabbed_dialog::AddTab( const xwstring& Label, ui_dialog* pDialog )
     return m_Children.GetCount()-1;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_tabbed_dialog::FitTabs( void )
 {
@@ -302,13 +316,16 @@ void ui_tabbed_dialog::FitTabs( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_tabbed_dialog::ActivateTab( s32 iTab )
 {
     s32 OldActiveTab = m_iActiveTab;
 
-    if( iTab >= m_Tabs.GetCount() ) iTab = 0;
+    if( iTab >= m_Tabs.GetCount() )
+    {
+        iTab = 0;
+    }
 
     // Hide previous Tab
     if( m_iActiveTab != -1 )
@@ -328,21 +345,27 @@ void ui_tabbed_dialog::ActivateTab( s32 iTab )
 
     // Track the active tab
     if( m_pTabTracker )
+    {
         *m_pTabTracker = iTab;
+    }
 
     // Focus the newly activated tab dialog
     if( m_iActiveTab != -1 )
+    {
         m_pManager->SetFocusWindow( m_UserID, m_Tabs[m_iActiveTab].pDialog );
+    }
 
     // Send notification on change of tab
     if( m_iActiveTab != OldActiveTab )
     {
         if( m_pParent )
+        {
             Notify( ui_notification_type::TabChanged, static_cast<s32>( m_iActiveTab  ) );
+        }
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_tabbed_dialog::ActivateTab( ui_dialog* pDialog )
 {
@@ -357,26 +380,28 @@ void ui_tabbed_dialog::ActivateTab( ui_dialog* pDialog )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_tabbed_dialog::GetActiveTab( void ) const
 {
     return m_iActiveTab;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_tabbed_dialog::SetTabWidth( s32 TabWidth )
 {
     m_TabWidth = TabWidth;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_tabbed_dialog::GetTabWidth( void ) const
 {
     return m_TabWidth;
 }
+
+//==============================================================================
 
 const xwstring& ui_tabbed_dialog::GetTabLabel( s32 iTab ) const
 {
@@ -385,7 +410,7 @@ const xwstring& ui_tabbed_dialog::GetTabLabel( s32 iTab ) const
     return m_Tabs[iTab].Label;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_tabbed_dialog::OnPointerDown( ui_win* pWin, s32 x, s32 y )
 {
@@ -414,11 +439,11 @@ void ui_tabbed_dialog::OnPointerDown( ui_win* pWin, s32 x, s32 y )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_tabbed_dialog::SetTabTracking( s32* pTabTracker )
 {
     m_pTabTracker = pTabTracker;
 }
 
-//=========================================================================
+//==============================================================================

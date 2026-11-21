@@ -4,6 +4,10 @@
 //
 //==============================================================================
 
+//==============================================================================
+//  INCLUDES
+//==============================================================================
+
 #include "Entropy.hpp"
 #include "dlg_OnlineHost.hpp"
 #include "dlg_PopUp.hpp"
@@ -19,6 +23,8 @@
 #include "Configuration/GameConfig.hpp"
 #include "SaveData/SaveDataMgr.hpp"
 
+//==============================================================================
+//  ENUMS
 //==============================================================================
 
 enum host_controls
@@ -36,6 +42,10 @@ enum host_controls
     IDC_CREATE,
 };
 
+//==============================================================================
+//  DATA
+//==============================================================================
+
 static ui_manager::control_tem OnlineHostControls[] =
 {
     { IDC_NAME_LABEL   , "IDS_HOST_SERVER_NAME"  , "text"   ,  45,  38, 410, 18, 0, 0, 0, 0, ui_win::WF_VISIBLE },
@@ -51,12 +61,16 @@ static ui_manager::control_tem OnlineHostControls[] =
     { IDC_CREATE       , "IDS_HOST_CREATE"       , "button" , 325, 306, 130, 24, 3, 5, 1, 1, ui_win::WF_VISIBLE },
 };
 
+//==============================================================================
+
 static ui_manager::dialog_tem OnlineHostDialog =
 {
     "IDS_ONLINE_HOST_TITLE", 4, 6,
     sizeof( OnlineHostControls ) / sizeof( ui_manager::control_tem ), OnlineHostControls, 1
 };
 
+//==============================================================================
+//  REGISTRATION
 //==============================================================================
 
 void dlg_online_host_register( ui_manager* pManager )
@@ -86,6 +100,8 @@ ui_win* dlg_online_host_factory( s32                       UserID,
 }
 
 //==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_online_host::~dlg_online_host( void )
 {
@@ -103,7 +119,9 @@ xbool dlg_online_host::Create( s32                       UserID,
                                void*                     pUserData )
 {
     if( !ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData ) )
+    {
         return FALSE;
+    }
 
     const multiplayer_preferences& Preferences = g_StateMgr.GetActiveProfile(
         g_StateMgr.GetProfileListIndex(0) ).GetMultiplayerPreferences();
@@ -118,25 +136,27 @@ xbool dlg_online_host::Create( s32                       UserID,
     m_ReconfigurePrompt = FALSE;
     m_Rebuilding = TRUE;
 
-    m_pName     = (ui_edit*)FindChildByID( IDC_NAME );
-    m_pMaps     = (ui_listbox*)FindChildByID( IDC_MAPS );
-    m_pRotation = (ui_listbox*)FindChildByID( IDC_ROTATION );
+    m_pName     = static_cast<ui_edit*>( FindChildByID( IDC_NAME ) );
+    m_pMaps     = static_cast<ui_listbox*>( FindChildByID( IDC_MAPS ) );
+    m_pRotation = static_cast<ui_listbox*>( FindChildByID( IDC_ROTATION ) );
 
     if( m_Options.Reconfigure )
+    {
         FindChildByID( IDC_CREATE )->SetLabel( g_StringTableMgr( "ui", "IDS_BROWSER_APPLY" ) );
+    }
 
     for( s32 i = 0; i < m_Children.GetCount(); i++ )
     {
         const char* pClass = pDialogTem->pControls[i].pClass;
         if( x_strcmp( pClass, "button" ) == 0 )
         {
-            ui_button* pButton = (ui_button*)m_Children[i];
+            ui_button* pButton = static_cast<ui_button*>( m_Children[i] );
             pButton->UseSmallText( TRUE );
             pButton->SetButtonStyle( ui_button::BUTTON_STYLE_FLAT );
         }
         else if( x_strcmp( pClass, "text" ) == 0 )
         {
-            ui_text* pText = (ui_text*)m_Children[i];
+            ui_text* pText = static_cast<ui_text*>( m_Children[i] );
             pText->UseSmallText( TRUE );
             pText->UseShadow( TRUE );
             pText->SetLabelFlags( ui_font::h_left | ui_font::v_center | ui_font::clip_ellipsis );
@@ -146,14 +166,16 @@ xbool dlg_online_host::Create( s32                       UserID,
 
     FindChildByID( IDC_ADD )->SetLabel( xwstring( ">" ) );
     FindChildByID( IDC_REMOVE )->SetLabel( xwstring( "<" ) );
-    FindChildByID( IDC_UP )->SetLabel( xwstring( (xwchar)0x2191 ) );
-    FindChildByID( IDC_DOWN )->SetLabel( xwstring( (xwchar)0x2193 ) );
+    FindChildByID( IDC_UP )->SetLabel( xwstring( static_cast<xwchar>( 0x2191 ) ) );
+    FindChildByID( IDC_DOWN )->SetLabel( xwstring( static_cast<xwchar>( 0x2193 ) ) );
 
     m_pName->Configure( FALSE );
     m_pName->SetBufferSize( NET_SERVER_NAME_LENGTH );
     m_pName->SetLabel( m_Options.Settings.m_ServerName );
     if( !m_Options.Settings.m_ServerName[0] )
+    {
         m_pName->SetLabel( g_StringTableMgr( "ui", "IDS_HOST_SERVER_NAME" ) );
+    }
 
     ui_listbox* Lists[] = { m_pMaps, m_pRotation };
     for( s32 i = 0; i < 2; i++ )
@@ -186,7 +208,9 @@ xbool dlg_online_host::Create( s32                       UserID,
 void dlg_online_host::Destroy( void )
 {
     if( !m_Created )
+    {
         return;
+    }
 
     m_Created = FALSE;
     SavePreferences();
@@ -210,18 +234,21 @@ void dlg_online_host::Render( s32 ox, s32 oy )
     if( m_Flags & WF_VISIBLE )
     {
         if( m_Options.Reconfigure )
+        {
             g_UiMgr->RenderRect( g_UiMgr->GetUserBounds( m_UserID ), xcolor( 0, 0, 0, 180 ), FALSE );
+        }
 
         irect r( m_CurrPos.l + 22, m_CurrPos.t + 28, m_CurrPos.r - 23, m_CurrPos.b - 12 );
         r.Translate( ox, oy );
         g_UiMgr->RenderRect( r, xcolor( 56, 115, 58, 64 ), FALSE );
 
-        s32 Offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+        s32 Offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
         for( s32 y = r.t + Offset; y < r.b; y += 9 )
             g_UiMgr->RenderRect( irect( r.l, y, r.r, MIN( y + 4, r.b ) ), xcolor( 56, 115, 58, 30 ), FALSE );
 
         if( !g_UiMgr->IsScreenScaling() )
         {
+            // Keep the custom panels within the part revealed by this dialog's wipe.
             const xbool WipeClipped = g_UiMgr->IsWipeActiveFor( this );
             if( WipeClipped )
             {
@@ -247,11 +274,16 @@ void dlg_online_host::Render( s32 ox, s32 oy )
             }
 
             if( WipeClipped )
+            {
                 g_UiMgr->PopClipWindow();
+            }
         }
     }
 
+    // render the normal dialog stuff
     ui_dialog::Render( ox, oy );
+
+    // render the glow bar
     g_UiMgr->RenderGlowBar();
 }
 
@@ -273,7 +305,9 @@ void dlg_online_host::FillMaps( xbool Reset )
         {
             xwstring Name;
             if( DecodeFontText( Entry.GetDisplayName(), Name ) )
+            {
                 m_pMaps->AddItem( Name, Entry.GetMapID() );
+            }
         }
     }
     m_pMaps->SetSelection( m_pMaps->GetItemCount() ? 0 : -1 );
@@ -283,7 +317,7 @@ void dlg_online_host::FillMaps( xbool Reset )
     if( Reset )
     {
         for( s32 i = 0; (i < m_pMaps->GetItemCount()) && (Count < MAP_CYCLE_SIZE); i++ )
-            Maps[Count++] = (s32)m_pMaps->GetItemData( i );
+            Maps[Count++] = static_cast<s32>( m_pMaps->GetItemData( i ) );
     }
     else
     {
@@ -292,7 +326,9 @@ void dlg_online_host::FillMaps( xbool Reset )
             s32 Index = (Rotation.m_MapCycleIdx + i) % Rotation.m_MapCycleCount;
             s32 MapID = Rotation.m_MapCycle[Index];
             if( m_pMaps->FindItemByData( MapID ) >= 0 )
+            {
                 Maps[Count++] = MapID;
+            }
         }
     }
 
@@ -314,7 +350,9 @@ void dlg_online_host::FillRotation( s32 Selection )
     {
         s32 Map = m_pMaps->FindItemByData( Rotation.m_MapCycle[i] );
         if( Map >= 0 )
+        {
             m_pRotation->AddItem( xwstring( xfs( "%d. ", i + 1 ) ) + m_pMaps->GetItemLabel( Map ), Rotation.m_MapCycle[i] );
+        }
     }
     m_pRotation->SetSelection( MIN( Selection, m_pRotation->GetItemCount() - 1 ) );
 }
@@ -325,9 +363,11 @@ void dlg_online_host::AddMap( void )
 {
     map_settings& Rotation = m_Options.Settings.m_MapSettings;
     if( (m_pMaps->GetSelection() < 0) || (Rotation.m_MapCycleCount >= MAP_CYCLE_SIZE) )
+    {
         return;
+    }
 
-    Rotation.m_MapCycle[Rotation.m_MapCycleCount++] = (s32)m_pMaps->GetSelectedItemData();
+    Rotation.m_MapCycle[Rotation.m_MapCycleCount++] = static_cast<s32>( m_pMaps->GetSelectedItemData() );
     Rotation.m_bUseDefault = FALSE;
     FillRotation( Rotation.m_MapCycleCount - 1 );
     SavePreferences();
@@ -339,7 +379,9 @@ void dlg_online_host::RemoveMap( void )
 {
     s32 Selection = m_pRotation->GetSelection();
     if( Selection < 0 )
+    {
         return;
+    }
 
     map_settings& Rotation = m_Options.Settings.m_MapSettings;
     for( s32 i = Selection; i < Rotation.m_MapCycleCount - 1; i++ )
@@ -358,7 +400,9 @@ void dlg_online_host::MoveMap( s32 Direction )
     map_settings& Rotation = m_Options.Settings.m_MapSettings;
     s32 Target = Selection + Direction;
     if( (Selection < 0) || (Target < 0) || (Target >= Rotation.m_MapCycleCount) )
+    {
         return;
+    }
 
     s32 MapID = Rotation.m_MapCycle[Target];
     Rotation.m_MapCycle[Target] = Rotation.m_MapCycle[Selection];
@@ -373,17 +417,25 @@ void dlg_online_host::MoveMap( s32 Direction )
 void dlg_online_host::OnNotify( ui_notification const& Event )
 {
     if( m_Rebuilding || (m_State != DIALOG_STATE_ACTIVE) || m_pOptionsDialog || m_pPopup )
+    {
         return;
+    }
 
     if( Event.m_Type == ui_notification_type::ListAccepted )
     {
         if( Event.m_pSender == m_pMaps )
+        {
             AddMap();
+        }
         else if( Event.m_pSender == m_pRotation )
+        {
             RemoveMap();
+        }
     }
     else
+    {
         ui_dialog::OnNotify( Event );
+    }
 }
 
 //==============================================================================
@@ -394,9 +446,11 @@ xbool dlg_online_host::FocusMapControl( s32 Start, s32 Direction )
 
     for( s32 i = Start; (i >= 0) && (i < 4); i += Direction )
     {
-        ui_control* pControl = (ui_control*)FindChildByID( Controls[i] );
+        ui_control* pControl = static_cast<ui_control*>( FindChildByID( Controls[i] ) );
         if( GotoControl( pControl ) )
+        {
             return TRUE;
+        }
     }
 
     return FALSE;
@@ -408,11 +462,15 @@ void dlg_online_host::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses,
                                  s32 Repeats, xbool WrapX, xbool WrapY )
 {
     if( !m_InputEnabled || (m_State != DIALOG_STATE_ACTIVE) || m_pOptionsDialog || m_pPopup )
+    {
         return;
+    }
 
     ui_win* pFocused = m_pManager->GetFocusedWindow( m_UserID );
     if( !pFocused )
+    {
         return;
+    }
 
     s32 Control = pFocused->GetControlID();
     xbool Footer = (Control == IDC_GAME_SETUP) || (Control == IDC_ADVANCED) || (Control == IDC_CREATE);
@@ -421,19 +479,25 @@ void dlg_online_host::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses,
         (pFocused == m_pMaps) || (pFocused == m_pRotation) )
     {
         if( FocusMapControl( 0, 1 ) )
+        {
             return;
+        }
     }
     else if( Footer && (Code == ui_navigation::Up) )
     {
         if( FocusMapControl( 3, -1 ) )
+        {
             return;
+        }
     }
 
     const s32 Controls[] = { IDC_ADD, IDC_REMOVE, IDC_UP, IDC_DOWN };
     for( s32 i = 0; i < 4; i++ )
     {
         if( Control != Controls[i] )
+        {
             continue;
+        }
 
         if( Code == ui_navigation::Left )
         {
@@ -448,13 +512,17 @@ void dlg_online_host::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses,
         if( Code == ui_navigation::Up )
         {
             if( !FocusMapControl( i - 1, -1 ) )
+            {
                 GotoControl( m_pName );
+            }
             return;
         }
         if( Code == ui_navigation::Down )
         {
             if( !FocusMapControl( i + 1, 1 ) )
-                GotoControl( (ui_control*)FindChildByID( IDC_GAME_SETUP ) );
+            {
+                GotoControl( static_cast<ui_control*>( FindChildByID( IDC_GAME_SETUP ) ) );
+            }
             return;
         }
     }
@@ -467,27 +535,57 @@ void dlg_online_host::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses,
 void dlg_online_host::OnAccept( ui_win* pWin )
 {
     if( (m_State != DIALOG_STATE_ACTIVE) || m_pOptionsDialog || m_pPopup )
+    {
         return;
+    }
 
     switch( pWin->GetControlID() )
     {
-    case IDC_GAME_SETUP:
-    case IDC_ADVANCED:
-    {
-        xbool Advanced = pWin->GetControlID() == IDC_ADVANCED;
-        irect Bounds( 0, 0, 360, Advanced ? 338 : 322 );
-        m_pOptionsDialog = (dlg_online_host_options*)m_pManager->OpenDialog( m_UserID,
-            Advanced ? "host advanced" : "host game setup", Bounds, NULL,
-            WF_VISIBLE | WF_INPUTMODAL | WF_DLG_CENTER, &m_Options );
+        case IDC_GAME_SETUP:
+        case IDC_ADVANCED:
+        {
+            xbool Advanced = pWin->GetControlID() == IDC_ADVANCED;
+            irect Bounds( 0, 0, 360, Advanced ? 338 : 322 );
+            m_pOptionsDialog = static_cast<dlg_online_host_options*>( m_pManager->OpenDialog( m_UserID,
+                Advanced ? "host advanced" : "host game setup", Bounds, NULL,
+                WF_VISIBLE | WF_INPUTMODAL | WF_DLG_CENTER, &m_Options ) );
+        }
         break;
-    }
 
-    case IDC_ADD:       AddMap();          break;
-    case IDC_REMOVE:    RemoveMap();       break;
-    case IDC_UP:        MoveMap( -1 );     break;
-    case IDC_DOWN:      MoveMap( 1 );      break;
-    case IDC_CREATE:    LaunchServer();    break;
-    default:                              break;
+        case IDC_ADD:
+        {
+            AddMap();
+        }
+        break;
+
+        case IDC_REMOVE:
+        {
+            RemoveMap();
+        }
+        break;
+
+        case IDC_UP:
+        {
+            MoveMap( -1 );
+        }
+        break;
+
+        case IDC_DOWN:
+        {
+            MoveMap( 1 );
+        }
+        break;
+
+        case IDC_CREATE:
+        {
+            LaunchServer();
+        }
+        break;
+
+        default:
+        {
+        }
+        break;
     }
 }
 
@@ -520,7 +618,9 @@ void dlg_online_host::OnUpdate( ui_win* pWin, f32 DeltaTime )
                 const host_settings& Settings = m_Options.Settings;
                 xbool ModeChanged = m_MapGameType != Settings.m_GameTypeID;
                 if( ModeChanged || (m_MapPlayerLimit != Settings.m_MaxPlayers) )
+                {
                     FillMaps( ModeChanged || Settings.m_MapSettings.m_bUseDefault );
+                }
                 SavePreferences();
             }
 
@@ -543,6 +643,7 @@ void dlg_online_host::OnUpdate( ui_win* pWin, f32 DeltaTime )
         }
     }
 
+    // Show the controls only after the opening animation finishes.
     if( g_UiMgr->IsScreenScaling() && !UpdateScreenScaling( DeltaTime ) )
     {
         ShowControls( TRUE );
@@ -565,8 +666,8 @@ void dlg_online_host::OnUpdate( ui_win* pWin, f32 DeltaTime )
 void dlg_online_host::ShowMessage( const char* pMessage )
 {
     irect Bounds = m_pManager->GetUserBounds( m_UserID );
-    m_pPopup = (dlg_popup*)m_pManager->OpenDialog( m_UserID, "popup", Bounds, NULL,
-        WF_VISIBLE | WF_BORDER | WF_DLG_CENTER | WF_INPUTMODAL );
+    m_pPopup = static_cast<dlg_popup*>( m_pManager->OpenDialog( m_UserID, "popup", Bounds, NULL,
+        WF_VISIBLE | WF_BORDER | WF_DLG_CENTER | WF_INPUTMODAL ) );
     m_pPopup->ConfigureMessage( g_StringTableMgr( "ui", "IDS_NETWORK_POPUP" ),
                                 g_StringTableMgr( "ui", pMessage ), &m_PopupResult );
 }
@@ -594,8 +695,8 @@ void dlg_online_host::LaunchServer( void )
     if( m_Options.Reconfigure )
     {
         irect Bounds( 0, 0, 280, 240 );
-        m_pPopup = (dlg_popup*)m_pManager->OpenDialog( m_UserID, "popup", Bounds, NULL,
-            WF_VISIBLE | WF_BORDER | WF_DLG_CENTER | WF_INPUTMODAL );
+        m_pPopup = static_cast<dlg_popup*>( m_pManager->OpenDialog( m_UserID, "popup", Bounds, NULL,
+            WF_VISIBLE | WF_BORDER | WF_DLG_CENTER | WF_INPUTMODAL ) );
         xwstring NavText( g_StringTableMgr( "ui", "IDS_NAV_APPLY_NOW" ) );
         NavText += g_StringTableMgr( "ui", "IDS_NAV_APPLY_AFTER" );
         NavText += g_StringTableMgr( "ui", "IDS_NAV_CANCEL" );
@@ -606,7 +707,9 @@ void dlg_online_host::LaunchServer( void )
     }
 
     if( !ApplySettings() )
+    {
         return;
+    }
 
     g_StateMgr.ActivatePendingSettings();
     m_State = DIALOG_STATE_ACTIVATE;
@@ -638,7 +741,7 @@ xbool dlg_online_host::ApplySettings( void )
     g_PendingConfig.SetServerName( Settings.m_ServerName );
     g_PendingConfig.SetPassword( Settings.m_Password );
     g_PendingConfig.SetPasswordEnabled( Settings.m_Password[0] != 0 );
-    g_PendingConfig.SetGameTypeID( (game_type)Settings.m_GameTypeID );
+    g_PendingConfig.SetGameTypeID( static_cast<game_type>( Settings.m_GameTypeID ) );
     const char* Modes[] = { "IDS_GAMETYPE_DM", "IDS_GAMETYPE_TDM", "IDS_GAMETYPE_CTF",
                            "IDS_GAMETYPE_TAG", "IDS_GAMETYPE_INF", "IDS_GAMETYPE_CNH" };
     g_PendingConfig.SetGameType( g_StringTableMgr( "ui", Modes[Settings.m_GameTypeID] ) );
@@ -698,7 +801,9 @@ void dlg_online_host::SavePreferences( void )
     Updated.Directory[MATCH_ENDPOINT_LENGTH - 1] = 0;
 
     if( x_memcmp( &Preferences, &Updated, sizeof(Preferences) ) == 0 )
+    {
         return;
+    }
 
     Preferences = Updated;
     g_StateMgr.SaveMultiplayerPreferences();

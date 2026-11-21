@@ -7,17 +7,31 @@
 #ifndef DLG_ONLINE_HOST_HPP
 #define DLG_ONLINE_HOST_HPP
 
+//==============================================================================
+//  INCLUDES
+//==============================================================================
+
 #include "UI/ui_dialog.hpp"
 #include "dlg_OnlineHostOptions.hpp"
+
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
 
 class ui_button;
 class ui_edit;
 class ui_listbox;
 class dlg_popup;
 
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
+
 void dlg_online_host_register( ui_manager* pManager );
 ui_win* dlg_online_host_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
 
+//==============================================================================
+//  CLASSES
 //==============================================================================
 
 class dlg_online_host : public ui_dialog
@@ -71,3 +85,4 @@ private:
 
 //==============================================================================
 #endif // DLG_ONLINE_HOST_HPP
+//==============================================================================

@@ -23,7 +23,7 @@
 #include "dlg_PopUp.hpp"
 
 //==============================================================================
-//  DEFINES
+//  ENUMS
 //==============================================================================
 
 enum profile_options_controls
@@ -43,6 +43,7 @@ enum profile_options_controls
 
 };
 
+//------------------------------------------------------------------------------
 
 enum profile_dlg_types
 {
@@ -51,13 +52,21 @@ enum profile_dlg_types
 };
 
 //==============================================================================
-//  dlg_profile_options
+//  REGISTRATION
 //==============================================================================
 
 extern void     dlg_profile_options_register  ( ui_manager* pManager );
 extern ui_win*  dlg_profile_options_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 class ui_button;
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class dlg_profile_options : public ui_dialog
 {

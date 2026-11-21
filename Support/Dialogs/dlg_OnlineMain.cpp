@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_online_main.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -16,9 +20,10 @@
 #include "StateMgr/StateMgr.hpp"
 #include "StringMgr/StringMgr.hpp"
 
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
+//  DATA
+//==============================================================================
+
 ui_manager::control_tem OnlineMenuControls[] = 
 {
     // Frames.
@@ -29,6 +34,7 @@ ui_manager::control_tem OnlineMenuControls[] =
     { IDC_ONLINE_SIGN_OUT,      "IDS_SIGN_OUT",             "button",   90, 240, 120, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
 };
 
+//==============================================================================
 
 ui_manager::dialog_tem OnlineMenuDialog =
 {
@@ -39,43 +45,41 @@ ui_manager::dialog_tem OnlineMenuDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_online_main_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "online menu", &OnlineMenuDialog, &dlg_online_main_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_online_main_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_online_main* pDialog = new dlg_online_main;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_online_main
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_online_main::dlg_online_main( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_online_main::~dlg_online_main( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_online_main::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -94,17 +98,17 @@ xbool dlg_online_main::Create( s32                        UserID,
     // Do dialog creation
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
-    m_pButtonJoin               = (ui_button*)  FindChildByID( IDC_ONLINE_JOIN         );
-    m_pButtonHost               = (ui_button*)  FindChildByID( IDC_ONLINE_HOST         );
-    m_pButtonEditProfile        = (ui_button*)  FindChildByID( IDC_ONLINE_EDIT_PROFILE );
-    m_pButtonViewStats          = (ui_button*)  FindChildByID( IDC_ONLINE_VIEW_STATS   );
-    m_pButtonSignOut            = (ui_button*)  FindChildByID( IDC_ONLINE_SIGN_OUT     );
+    m_pButtonJoin               = static_cast<ui_button*>( FindChildByID( IDC_ONLINE_JOIN         ) );
+    m_pButtonHost               = static_cast<ui_button*>( FindChildByID( IDC_ONLINE_HOST         ) );
+    m_pButtonEditProfile        = static_cast<ui_button*>( FindChildByID( IDC_ONLINE_EDIT_PROFILE ) );
+    m_pButtonViewStats          = static_cast<ui_button*>( FindChildByID( IDC_ONLINE_VIEW_STATS   ) );
+    m_pButtonSignOut            = static_cast<ui_button*>( FindChildByID( IDC_ONLINE_SIGN_OUT     ) );
     m_pPopUp                    = NULL;
 
     s32 iControl = g_StateMgr.GetCurrentControl();
     if( (iControl == -1) || (GotoControl( iControl )==NULL) )
     {
-        GotoControl( (ui_control*)m_pButtonJoin );
+        GotoControl( m_pButtonJoin );
         m_CurrentControl = IDC_ONLINE_HOST;
     }
     else
@@ -139,7 +143,7 @@ xbool dlg_online_main::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_main::Destroy( void )
 {
@@ -149,11 +153,11 @@ void dlg_online_main::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_main::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
@@ -203,7 +207,7 @@ void dlg_online_main::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_main::OnAccept( ui_win* pWin )
 {
@@ -211,32 +215,32 @@ void dlg_online_main::OnAccept( ui_win* pWin )
 
     if ( m_State == DIALOG_STATE_ACTIVE )
     {
-        if( pWin == (ui_win*)m_pButtonJoin )
+        if( pWin == m_pButtonJoin )
         {
             m_CurrentControl = IDC_ONLINE_JOIN;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin == (ui_win*)m_pButtonHost )
+        else if( pWin == m_pButtonHost )
         {
             m_CurrentControl = IDC_ONLINE_HOST;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin == (ui_win*)m_pButtonEditProfile )
+        else if( pWin == m_pButtonEditProfile )
         {
             g_StateMgr.InitPendingProfile( 0 );
             m_CurrentControl = IDC_ONLINE_EDIT_PROFILE;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin ==(ui_win*)m_pButtonViewStats )
+        else if( pWin == m_pButtonViewStats )
         {
             m_CurrentControl = IDC_ONLINE_VIEW_STATS;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin == (ui_win*)m_pButtonSignOut )
+        else if( pWin == m_pButtonSignOut )
         {
             // Open a dialog to confirm quitting the online game component
             irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-            m_pPopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+            m_pPopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
 
             // get message text
             xwstring Message( g_StringTableMgr( "ui", "IDS_ONLINE_DISCONNECT" ));
@@ -253,7 +257,7 @@ void dlg_online_main::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_main::OnCancel( ui_win* pWin )
 {
@@ -267,7 +271,7 @@ void dlg_online_main::OnCancel( ui_win* pWin )
 
             // Open a dialog to confirm quitting the online game component
             irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-            m_pPopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+            m_pPopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
 
             // get message text
             xwstring Message( g_StringTableMgr( "ui", "IDS_ONLINE_DISCONNECT" ));
@@ -282,7 +286,7 @@ void dlg_online_main::OnCancel( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_main::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -306,7 +310,7 @@ void dlg_online_main::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             s32 iControl = g_StateMgr.GetCurrentControl();
             if( (iControl == -1) || (GotoControl(iControl)==NULL) )
             {
-                GotoControl( (ui_control*)m_pButtonJoin );
+                GotoControl( m_pButtonJoin );
                 g_UiMgr->SetScreenHighlight( m_pButtonJoin->GetPosition() );
                 m_CurrentControl = IDC_ONLINE_HOST;
             }
@@ -351,7 +355,9 @@ void dlg_online_main::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     if( highLight != m_CurrHL )
     {
         if( highLight != -1 )
+        {
             g_AudioMgr.Play("Cusor_Norm");
+        }
 
         m_CurrHL = highLight;
     }

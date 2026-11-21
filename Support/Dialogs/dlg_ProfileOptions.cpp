@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_profile_options.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -20,9 +24,9 @@
 #include "StringMgr/StringMgr.hpp"
 #include "SaveData/SaveDataMgr.hpp"
 
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum
 {
@@ -31,7 +35,9 @@ enum
     OPTIONS_POPUP_PROFILE_HAS_CHANGED,
 };
 
-//-------------------------------------------------------------------------
+//==============================================================================
+//  DATA
+//==============================================================================
 
 // x, y, w, h
 s32 s_EDX = 80;
@@ -40,7 +46,7 @@ s32 s_EDW = 140;
 s32 s_PDX = 100;
 s32 s_PDW = 185;
 
-//-------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 ui_manager::control_tem ProfileOptionsControls_PAL[] = 
 {
@@ -60,7 +66,7 @@ ui_manager::control_tem ProfileOptionsControls_PAL[] =
 
 };
 
-//-------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 ui_manager::control_tem ProfileOptionsControls_ENG[] =
 {
@@ -79,7 +85,7 @@ ui_manager::control_tem ProfileOptionsControls_ENG[] =
 
 };
 
-//-------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 ui_manager::dialog_tem ProfileOptionsDialog =
 {
@@ -90,19 +96,21 @@ ui_manager::dialog_tem ProfileOptionsDialog =
         0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_profile_options_register( ui_manager* pManager )
 {
 #ifndef X_EDITOR
     switch( x_GetLocale() )
     {        
-    case XL_LANG_ENGLISH:    // English uses default
+        case XL_LANG_ENGLISH: // English uses default
+        {
+        }
         break;
 
-    default:  // PAL
+        default: // PAL
         {
             // set up new profile options dialog controls
             ProfileOptionsDialog.StringID = "IDS_PROFILE_OPTIONS_TITLE_EDIT";
@@ -113,41 +121,38 @@ void dlg_profile_options_register( ui_manager* pManager )
             ProfileOptionsDialog.FocusControl = 0;
         }
         break;
-
     }
 #endif    
 
     pManager->RegisterDialogClass( "profile options", &ProfileOptionsDialog, &dlg_profile_options_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_profile_options_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_profile_options* pDialog = new dlg_profile_options;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_profile_options
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_profile_options::dlg_profile_options( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_profile_options::~dlg_profile_options( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_profile_options::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -166,24 +171,24 @@ xbool dlg_profile_options::Create( s32                        UserID,
     // Do dialog creation
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
-    m_pButtonControls       = (ui_button*)  FindChildByID( IDC_PROFILE_OPTIONS_CONTROLS     );
-    m_pButtonAvatar         = (ui_button*)  FindChildByID( IDC_PROFILE_OPTIONS_AVATAR       );
-    m_pButtonDifficulty     = (ui_button*)  FindChildByID( IDC_PROFILE_OPTIONS_DIFFICULTY   );
-    m_pButtonAutosave       = (ui_button*)  FindChildByID( IDC_PROFILE_OPTIONS_AUTOSAVE     );
-    m_pButtonCreate         = (ui_button*)  FindChildByID( IDC_PROFILE_OPTIONS_ACCEPT       );
+    m_pButtonControls       = static_cast<ui_button*>( FindChildByID( IDC_PROFILE_OPTIONS_CONTROLS     ) );
+    m_pButtonAvatar         = static_cast<ui_button*>( FindChildByID( IDC_PROFILE_OPTIONS_AVATAR       ) );
+    m_pButtonDifficulty     = static_cast<ui_button*>( FindChildByID( IDC_PROFILE_OPTIONS_DIFFICULTY   ) );
+    m_pButtonAutosave       = static_cast<ui_button*>( FindChildByID( IDC_PROFILE_OPTIONS_AUTOSAVE     ) );
+    m_pButtonCreate         = static_cast<ui_button*>( FindChildByID( IDC_PROFILE_OPTIONS_ACCEPT       ) );
 
-    m_pDifficultyBBox       = (ui_blankbox*)FindChildByID( IDC_PROFILE_DIFFICULTY_BBOX      );
-    m_pDifficultySelect     = (ui_combo*)   FindChildByID( IDC_PROFILE_DIFFICULTY_SELECT    );
+    m_pDifficultyBBox       = static_cast<ui_blankbox*>( FindChildByID( IDC_PROFILE_DIFFICULTY_BBOX      ) );
+    m_pDifficultySelect     = static_cast<ui_combo*>( FindChildByID( IDC_PROFILE_DIFFICULTY_SELECT    ) );
 
 
-    m_pAutosaveBBox         = (ui_blankbox*)FindChildByID( IDC_PROFILE_AUTOSAVE_BBOX        );
-    m_pAutosaveSelect       = (ui_combo*)   FindChildByID( IDC_PROFILE_AUTOSAVE_SELECT      );
+    m_pAutosaveBBox         = static_cast<ui_blankbox*>( FindChildByID( IDC_PROFILE_AUTOSAVE_BBOX        ) );
+    m_pAutosaveSelect       = static_cast<ui_combo*>( FindChildByID( IDC_PROFILE_AUTOSAVE_SELECT      ) );
 
 
     s32 iControl = g_StateMgr.GetCurrentControl();
     if( (iControl == -1) || (GotoControl(iControl)==NULL) )
     {
-        GotoControl( (ui_control*)m_pButtonControls );
+        GotoControl( m_pButtonControls );
         m_CurrentControl =  IDC_PROFILE_OPTIONS_CONTROLS;
     }
     else
@@ -256,7 +261,9 @@ xbool dlg_profile_options::Create( s32                        UserID,
 
     // set the frame to be disabled (if coming from off screen)
     if (g_UiMgr->IsScreenOn() == FALSE)
+    {
         SetFlag( WF_DISABLED, TRUE );
+    }
 
     // make the dialog active
     m_State = DIALOG_STATE_ACTIVE;
@@ -271,7 +278,7 @@ xbool dlg_profile_options::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_options::Configure( profile_dlg_types Type, xbool bCreate )
 {
@@ -295,10 +302,11 @@ void dlg_profile_options::Configure( profile_dlg_types Type, xbool bCreate )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_options::Destroy( void )
 {
+    // Cancel outstanding save callbacks before destroying the dialog.
     g_SaveDataMgr.CancelCallbacks( this );
     ui_dialog::Destroy();
 
@@ -306,11 +314,11 @@ void dlg_profile_options::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_options::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
@@ -376,7 +384,7 @@ void dlg_profile_options::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_options::OnSaveProfileCB( void )
 {
@@ -404,25 +412,25 @@ void dlg_profile_options::OnSaveProfileCB( void )
     g_SaveDataMgr.GetProfileNames( ProfileNames );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_options::OnAccept( ui_win* pWin )
 {
     if ( m_State == DIALOG_STATE_ACTIVE )
     {
-        if( pWin == (ui_win*)m_pButtonControls )
+        if( pWin == m_pButtonControls )
         {
             g_AudioMgr.Play("Select_Norm");
             m_CurrentControl =  IDC_PROFILE_OPTIONS_CONTROLS;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin == (ui_win*)m_pButtonAvatar )
+        else if( pWin == m_pButtonAvatar )
         {
             g_AudioMgr.Play("Select_Norm");
             m_CurrentControl = IDC_PROFILE_OPTIONS_AVATAR;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin == (ui_win*)m_pButtonDifficulty )
+        else if( pWin == m_pButtonDifficulty )
         {
             // disable other options
             m_pButtonControls       ->SetFlag(ui_win::WF_DISABLED, TRUE);
@@ -450,9 +458,9 @@ void dlg_profile_options::OnAccept( ui_win* pWin )
             // set highlight
             g_UiMgr->SetScreenHighlight( m_pDifficultyBBox->GetPosition() );
 
-            GotoControl( (ui_control*)m_pDifficultySelect );
+            GotoControl( m_pDifficultySelect );
         }
-        else if( pWin == (ui_win*)m_pDifficultySelect )
+        else if( pWin == m_pDifficultySelect )
         {
             // set difficulty level
             player_profile& Profile = g_StateMgr.GetPendingProfile();
@@ -491,15 +499,17 @@ void dlg_profile_options::OnAccept( ui_win* pWin )
             SetNavText( navText );
 
             if( m_Type != PROFILE_OPTIONS_PAUSE )
+            {
                 m_pButtonAvatar     ->SetFlag(ui_win::WF_DISABLED, FALSE);
+            }
 
 
             // set highlight
             g_UiMgr->SetScreenHighlight( m_pButtonDifficulty->GetPosition() );
 
-            GotoControl( (ui_control*)m_pButtonDifficulty );
+            GotoControl( m_pButtonDifficulty );
         }
-        else if( pWin == (ui_win*)m_pButtonAutosave )
+        else if( pWin == m_pButtonAutosave )
         {
             // disable other options
             m_pButtonControls       ->SetFlag(ui_win::WF_DISABLED, TRUE);
@@ -528,9 +538,9 @@ void dlg_profile_options::OnAccept( ui_win* pWin )
             // set highlight
             g_UiMgr->SetScreenHighlight( m_pAutosaveBBox->GetPosition() );
 
-            GotoControl( (ui_control*)m_pAutosaveSelect );
+            GotoControl( m_pAutosaveSelect );
         }
-        else if( pWin == (ui_win*)m_pAutosaveSelect )
+        else if( pWin == m_pAutosaveSelect )
         {
             // set autosave status
             player_profile& Profile = g_StateMgr.GetPendingProfile();
@@ -557,14 +567,16 @@ void dlg_profile_options::OnAccept( ui_win* pWin )
             SetNavText( navText );
 
             if( m_Type != PROFILE_OPTIONS_PAUSE )
+            {
                 m_pButtonAvatar     ->SetFlag(ui_win::WF_DISABLED, FALSE);
+            }
 
             // set highlight
             g_UiMgr->SetScreenHighlight( m_pButtonAutosave->GetPosition() );
 
-            GotoControl( (ui_control*)m_pButtonAutosave );
+            GotoControl( m_pButtonAutosave );
         }
-        else if( pWin == (ui_win*)m_pButtonCreate )
+        else if( pWin == m_pButtonCreate )
         {
             // are we creating this profile?
             if( m_bCreate && g_StateMgr.GetProfileNotSaved( g_StateMgr.GetPendingProfileIndex() ) )
@@ -608,7 +620,7 @@ void dlg_profile_options::OnAccept( ui_win* pWin )
 }
 
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_options::OnProfileCreateCB( void )
 {
@@ -633,7 +645,7 @@ void dlg_profile_options::OnProfileCreateCB( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_options::OpenProfileChangedPopup( void )
 {
@@ -659,7 +671,7 @@ void dlg_profile_options::OpenProfileChangedPopup( void )
                         &m_PopUpResult );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_options::OnCancel( ui_win* pWin )
 {
@@ -667,7 +679,7 @@ void dlg_profile_options::OnCancel( ui_win* pWin )
 
     if ( m_State == DIALOG_STATE_ACTIVE )
     {
-        if( pWin == (ui_win*)m_pDifficultySelect )
+        if( pWin == m_pDifficultySelect )
         {
             // hide combo box
             m_pDifficultyBBox       ->SetFlag(ui_win::WF_VISIBLE, FALSE);
@@ -689,17 +701,19 @@ void dlg_profile_options::OnCancel( ui_win* pWin )
             SetNavText( navText );
 
             if( m_Type != PROFILE_OPTIONS_PAUSE )
+            {
                 m_pButtonAvatar     ->SetFlag(ui_win::WF_DISABLED, FALSE);
+            }
 
 
             // set highlight
             g_UiMgr->SetScreenHighlight( m_pButtonDifficulty->GetPosition() );
 
-            GotoControl( (ui_control*)m_pButtonDifficulty );
+            GotoControl( m_pButtonDifficulty );
 
             return;
         }
-        else if( pWin == (ui_win*)m_pAutosaveSelect )
+        else if( pWin == m_pAutosaveSelect )
         {
             // hide combo box
             m_pAutosaveBBox         ->SetFlag(ui_win::WF_VISIBLE, FALSE);
@@ -722,12 +736,14 @@ void dlg_profile_options::OnCancel( ui_win* pWin )
             SetNavText( navText );
 
             if( m_Type != PROFILE_OPTIONS_PAUSE )
+            {
                 m_pButtonAvatar     ->SetFlag(ui_win::WF_DISABLED, FALSE);
+            }
 
             // set highlight
             g_UiMgr->SetScreenHighlight( m_pButtonAutosave->GetPosition() );
 
-            GotoControl( (ui_control*)m_pButtonAutosave );
+            GotoControl( m_pButtonAutosave );
 
             return;
         }
@@ -737,7 +753,7 @@ void dlg_profile_options::OnCancel( ui_win* pWin )
         {
             // Confirm abandoning an unsaved profile.
             irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-            m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+            m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
             m_PopUpType = OPTIONS_POPUP_CANCEL_CREATE;
             m_State = DIALOG_STATE_POPUP;
 
@@ -770,7 +786,7 @@ void dlg_profile_options::OnCancel( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -797,7 +813,7 @@ void dlg_profile_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             {
                 if( (iControl == -1) || (GotoControl(iControl)==NULL) )
                 {
-                    GotoControl( (ui_control*)m_pButtonCreate );
+                    GotoControl( m_pButtonCreate );
                     g_UiMgr->SetScreenHighlight( m_pButtonCreate->GetPosition() );
                 }
                 else
@@ -811,7 +827,7 @@ void dlg_profile_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             {
                 if( (iControl == -1) || (GotoControl(iControl)==NULL) )
                 {
-                    GotoControl( (ui_control*)m_pButtonControls );
+                    GotoControl( m_pButtonControls );
                     g_UiMgr->SetScreenHighlight( m_pButtonControls->GetPosition() );
                 }
                 else
@@ -918,6 +934,7 @@ void dlg_profile_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     // update the glow bar
     g_UiMgr->UpdateGlowBar(DeltaTime);
 
+    // Use the navigation rows from the profile dialog templates, including gaps.
     if( m_pButtonControls->IsFocused() )
     {
         highLight = 0;
@@ -949,10 +966,12 @@ void dlg_profile_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     if( highLight != m_CurrHL )
     {
         if( highLight != -1 )
+        {
             g_AudioMgr.Play("Cusor_Norm");
+        }
 
         m_CurrHL = highLight;
     }
 }
 
-//=========================================================================
+//==============================================================================

@@ -4,6 +4,10 @@
 //
 //==============================================================================
 
+//==============================================================================
+//  INCLUDES
+//==============================================================================
+
 #include "Entropy.hpp"
 #include "dlg_BrowserOptions.hpp"
 #include "UI/ui_button.hpp"
@@ -16,6 +20,8 @@
 #include "NetworkMgr/Match/MatchMgr.hpp"
 #include "StateMgr/StateMgr.hpp"
 
+//==============================================================================
+//  ENUMS
 //==============================================================================
 
 enum browser_filter_controls
@@ -41,6 +47,10 @@ enum browser_filter_controls
     IDC_FILTER_NO_PASSWORD_LABEL,
 };
 
+//==============================================================================
+//  DATA
+//==============================================================================
+
 static ui_manager::control_tem BrowserFilterControls[] =
 {
     { IDC_FILTER_SOURCE_LABEL     , "IDS_BROWSER_SOURCE"     , "text"  ,  24,  48, 116, 22, 0, 0, 0, 0, ui_win::WF_VISIBLE },
@@ -64,11 +74,17 @@ static ui_manager::control_tem BrowserFilterControls[] =
     { IDC_FILTER_NO_PASSWORD_LABEL, "IDS_BROWSER_NO_PASSWORD", "text"  , 242, 204,  94, 24, 0, 0, 0, 0, ui_win::WF_VISIBLE },
 };
 
+//==============================================================================
+
 static ui_manager::dialog_tem BrowserFilterDialog =
 {
     "IDS_BROWSER_FILTERS", 3, 7,
     sizeof( BrowserFilterControls ) / sizeof( ui_manager::control_tem ), BrowserFilterControls, 5
 };
+
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum browser_advanced_controls
 {
@@ -84,6 +100,10 @@ enum browser_advanced_controls
     IDC_ADVANCED_APPLY,
 };
 
+//==============================================================================
+//  DATA
+//==============================================================================
+
 static ui_manager::control_tem BrowserAdvancedControls[] =
 {
     { IDC_ADVANCED_DIRECTORY_LABEL, "IDS_BROWSER_MASTER_ADDRESS", "text"  ,  24,  42, 312, 18, 0, 0, 0, 0, ui_win::WF_VISIBLE },
@@ -98,12 +118,16 @@ static ui_manager::control_tem BrowserAdvancedControls[] =
     { IDC_ADVANCED_APPLY          , "IDS_BROWSER_APPLY"         , "button", 240, 244,  96, 24, 2, 2, 1, 1, ui_win::WF_VISIBLE },
 };
 
+//==============================================================================
+
 static ui_manager::dialog_tem BrowserAdvancedDialog =
 {
     "IDS_BROWSER_ADVANCED", 3, 3,
     sizeof( BrowserAdvancedControls ) / sizeof( ui_manager::control_tem ), BrowserAdvancedControls, 3
 };
 
+//==============================================================================
+//  REGISTRATION
 //==============================================================================
 
 static ui_win* dlg_browser_filters_factory( s32                       UserID,
@@ -155,6 +179,8 @@ void dlg_browser_options_register( ui_manager* pManager )
 }
 
 //==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 xbool dlg_browser_options::Create( s32                       UserID,
                                    ui_manager*               pManager,
@@ -165,26 +191,28 @@ xbool dlg_browser_options::Create( s32                       UserID,
                                    void*                     pUserData )
 {
     if( !ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags & ~WF_BORDER, pUserData ) )
+    {
         return FALSE;
+    }
 
     for( s32 i = 0; i < m_Children.GetCount(); i++ )
     {
         const char* pClass = pDialogTem->pControls[i].pClass;
         if( x_strcmp( pClass, "button" ) == 0 )
         {
-            ui_button* pButton = (ui_button*)m_Children[i];
+            ui_button* pButton = static_cast<ui_button*>( m_Children[i] );
             pButton->UseSmallText( TRUE );
             pButton->SetButtonStyle( ui_button::BUTTON_STYLE_FLAT );
         }
         else if( x_strcmp( pClass, "combo" ) == 0 )
         {
-            ui_combo* pCombo = (ui_combo*)m_Children[i];
+            ui_combo* pCombo = static_cast<ui_combo*>( m_Children[i] );
             pCombo->SetLabelWidth( 0 );
             pCombo->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV | ui_combo::CB_CHANGE_ON_SELECT );
         }
         else if( x_strcmp( pClass, "text" ) == 0 )
         {
-            ui_text* pText = (ui_text*)m_Children[i];
+            ui_text* pText = static_cast<ui_text*>( m_Children[i] );
             pText->UseSmallText( TRUE );
             pText->SetLabelFlags( ui_font::h_left | ui_font::v_center | ui_font::clip_ellipsis );
             pText->SetLabelColor( xcolor( 255, 252, 204, 255 ) );
@@ -202,7 +230,9 @@ xbool dlg_browser_options::Create( s32                       UserID,
 void dlg_browser_options::Render( s32 ox, s32 oy )
 {
     if( !(m_Flags & WF_VISIBLE) )
+    {
         return;
+    }
 
     m_pManager->RenderRect( m_pManager->GetUserBounds( m_UserID ), xcolor( 0, 16, 0, 112 ), FALSE );
 
@@ -221,6 +251,7 @@ void dlg_browser_options::Render( s32 ox, s32 oy )
                             ui_font::h_left | ui_font::v_center | ui_font::clip_ellipsis,
                             xcolor( 255, 252, 204, 255 ), m_Label );
 
+    // render the normal dialog stuff
     ui_dialog::Render( ox, oy );
     m_pManager->RenderRect( r, xcolor( 79, 214, 60, 224 ), TRUE );
 }
@@ -232,7 +263,9 @@ void dlg_browser_options::OnCancel( ui_win* pWin )
     (void)pWin;
 
     if( m_State == DIALOG_STATE_ACTIVE )
+    {
         m_State = DIALOG_STATE_BACK;
+    }
 }
 
 //==============================================================================
@@ -246,30 +279,36 @@ xbool dlg_browser_filters::Create( s32                       UserID,
                                    void*                     pUserData )
 {
     if( !dlg_browser_options::Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData ) )
+    {
         return FALSE;
+    }
 
-    m_pSource     = (ui_combo*)FindChildByID( IDC_FILTER_SOURCE );
-    m_pMode       = (ui_combo*)FindChildByID( IDC_FILTER_MODE );
-    m_pPing       = (ui_combo*)FindChildByID( IDC_FILTER_PING );
-    m_pName       = (ui_edit*)FindChildByID( IDC_FILTER_NAME );
-    m_pMap        = (ui_edit*)FindChildByID( IDC_FILTER_MAP );
-    m_pNotFull    = (ui_check*)FindChildByID( IDC_FILTER_NOT_FULL );
-    m_pNotEmpty   = (ui_check*)FindChildByID( IDC_FILTER_NOT_EMPTY );
-    m_pNoPassword = (ui_check*)FindChildByID( IDC_FILTER_NO_PASSWORD );
+    m_pSource     = static_cast<ui_combo*>( FindChildByID( IDC_FILTER_SOURCE ) );
+    m_pMode       = static_cast<ui_combo*>( FindChildByID( IDC_FILTER_MODE ) );
+    m_pPing       = static_cast<ui_combo*>( FindChildByID( IDC_FILTER_PING ) );
+    m_pName       = static_cast<ui_edit*>( FindChildByID( IDC_FILTER_NAME ) );
+    m_pMap        = static_cast<ui_edit*>( FindChildByID( IDC_FILTER_MAP ) );
+    m_pNotFull    = static_cast<ui_check*>( FindChildByID( IDC_FILTER_NOT_FULL ) );
+    m_pNotEmpty   = static_cast<ui_check*>( FindChildByID( IDC_FILTER_NOT_EMPTY ) );
+    m_pNoPassword = static_cast<ui_check*>( FindChildByID( IDC_FILTER_NO_PASSWORD ) );
 
     m_pSource->AddItem( g_StringTableMgr( "ui", "IDS_BROWSER_ALL" ), MATCH_SOURCE_ALL );
     if( g_MatchMgr.GetCapabilities() & MATCH_CAP_DIRECTORY )
+    {
         m_pSource->AddItem( g_StringTableMgr( "ui", "IDS_BROWSER_INTERNET" ), MATCH_SOURCE_INTERNET );
+    }
     if( g_MatchMgr.GetCapabilities() & MATCH_CAP_LAN_DISCOVERY )
+    {
         m_pSource->AddItem( g_StringTableMgr( "ui", "IDS_BROWSER_LAN" ), MATCH_SOURCE_LAN );
+    }
 
-    m_pMode->AddItem( g_StringTableMgr( "ui", "IDS_BROWSER_MODE_ANY" ), (uaddr)GAME_MP );
+    m_pMode->AddItem( g_StringTableMgr( "ui", "IDS_BROWSER_MODE_ANY" ), static_cast<uaddr>( GAME_MP ) );
     const char* Modes[] = { "IDS_GAMETYPE_DM", "IDS_GAMETYPE_TDM", "IDS_GAMETYPE_CTF",
                            "IDS_GAMETYPE_TAG", "IDS_GAMETYPE_INF", "IDS_GAMETYPE_CNH" };
     for( s32 i = GAME_DM; i <= GAME_CNH; i++ )
         m_pMode->AddItem( g_StringTableMgr( "ui", Modes[i] ), i );
 
-    m_pPing->AddItem( g_StringTableMgr( "ui", "IDS_BROWSER_PING_ANY" ), (uaddr)-1 );
+    m_pPing->AddItem( g_StringTableMgr( "ui", "IDS_BROWSER_PING_ANY" ), static_cast<uaddr>( -1 ) );
     const s32 Pings[] = { 50, 100, 150, 250 };
     for( s32 i = 0; i < 4; i++ )
         m_pPing->AddItem( xwstring( xfs( "<= %d ms", Pings[i] ) ), Pings[i] );
@@ -295,8 +334,8 @@ void dlg_browser_filters::Configure( const match_browser_filter& Filter )
 
     s32 Source = m_pSource->FindItemByData( Filter.Source );
     m_pSource->SetSelection( Source >= 0 ? Source : 0 );
-    m_pMode->SetSelection( m_pMode->FindItemByData( (uaddr)Filter.GameType ) );
-    m_pPing->SetSelection( m_pPing->FindItemByData( (uaddr)Filter.MaxPing ) );
+    m_pMode->SetSelection( m_pMode->FindItemByData( static_cast<uaddr>( Filter.GameType ) ) );
+    m_pPing->SetSelection( m_pPing->FindItemByData( static_cast<uaddr>( Filter.MaxPing ) ) );
 
     m_pName->SetLabel( Filter.Name );
     m_pMap->SetLabel( Filter.Map );
@@ -311,31 +350,41 @@ void dlg_browser_filters::Configure( const match_browser_filter& Filter )
 void dlg_browser_filters::OnAccept( ui_win* pWin )
 {
     if( m_State != DIALOG_STATE_ACTIVE )
+    {
         return;
+    }
 
     switch( pWin->GetControlID() )
     {
-    case IDC_FILTER_RESET:
-        Configure( match_browser_filter() );
+        case IDC_FILTER_RESET:
+        {
+            Configure( match_browser_filter() );
+        }
         break;
 
-    case IDC_FILTER_CANCEL:
-        OnCancel( pWin );
+        case IDC_FILTER_CANCEL:
+        {
+            OnCancel( pWin );
+        }
         break;
 
-    case IDC_FILTER_APPLY:
-        m_Filter.Source = (u32)m_pSource->GetSelectedItemData();
-        m_Filter.GameType = (s32)m_pMode->GetSelectedItemData();
-        m_Filter.MaxPing = (s32)m_pPing->GetSelectedItemData();
-        m_Filter.Name = m_pName->GetLabel();
-        m_Filter.Map = m_pMap->GetLabel();
-        m_Filter.HideFull = m_pNotFull->IsChecked();
-        m_Filter.HideEmpty = m_pNotEmpty->IsChecked();
-        m_Filter.HidePassword = m_pNoPassword->IsChecked();
-        m_State = DIALOG_STATE_SELECT;
+        case IDC_FILTER_APPLY:
+        {
+            m_Filter.Source = static_cast<u32>( m_pSource->GetSelectedItemData() );
+            m_Filter.GameType = static_cast<s32>( m_pMode->GetSelectedItemData() );
+            m_Filter.MaxPing = static_cast<s32>( m_pPing->GetSelectedItemData() );
+            m_Filter.Name = m_pName->GetLabel();
+            m_Filter.Map = m_pMap->GetLabel();
+            m_Filter.HideFull = m_pNotFull->IsChecked();
+            m_Filter.HideEmpty = m_pNotEmpty->IsChecked();
+            m_Filter.HidePassword = m_pNoPassword->IsChecked();
+            m_State = DIALOG_STATE_SELECT;
+        }
         break;
 
-    default:
+        default:
+        {
+        }
         break;
     }
 }
@@ -351,11 +400,13 @@ xbool dlg_browser_advanced::Create( s32                       UserID,
                                     void*                     pUserData )
 {
     if( !dlg_browser_options::Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData ) )
+    {
         return FALSE;
+    }
 
-    m_pDirectory = (ui_edit*)FindChildByID( IDC_ADVANCED_DIRECTORY );
-    m_pAddress   = (ui_edit*)FindChildByID( IDC_ADVANCED_ADDRESS );
-    m_pStatus    = (ui_text*)FindChildByID( IDC_ADVANCED_STATUS );
+    m_pDirectory = static_cast<ui_edit*>( FindChildByID( IDC_ADVANCED_DIRECTORY ) );
+    m_pAddress   = static_cast<ui_edit*>( FindChildByID( IDC_ADVANCED_ADDRESS ) );
+    m_pStatus    = static_cast<ui_text*>( FindChildByID( IDC_ADVANCED_STATUS ) );
     m_Connected  = FALSE;
 
     const multiplayer_preferences& Preferences = g_StateMgr.GetActiveProfile(
@@ -383,49 +434,61 @@ xbool dlg_browser_advanced::Create( s32                       UserID,
 void dlg_browser_advanced::OnAccept( ui_win* pWin )
 {
     if( (m_State != DIALOG_STATE_ACTIVE) || (m_Resolving && (pWin->GetControlID() != IDC_ADVANCED_CANCEL)) )
+    {
         return;
+    }
 
     switch( pWin->GetControlID() )
     {
-    case IDC_ADVANCED_CANCEL:
-        OnCancel( pWin );
-        break;
-
-    case IDC_ADVANCED_RESET:
-        m_pDirectory->SetLabel( xwstring( "" ) );
-        m_pAddress->SetLabel( xwstring( "" ) );
-        m_pStatus->SetLabel( xwstring( "" ) );
-        break;
-
-    case IDC_ADVANCED_CONNECT:
-    {
-        match_endpoint Directory;
-
-        if( (g_MatchMgr.GetCapabilities() & MATCH_CAP_DIRECTORY) &&
-            m_pDirectory->GetLabel().GetLength() &&
-            !Directory.Parse( xstring( m_pDirectory->GetLabel() ), MATCH_DIRECTORY_PORT ) )
+        case IDC_ADVANCED_CANCEL:
         {
-            m_pStatus->SetLabel( g_StringTableMgr( "ui", "IDS_BROWSER_INVALID_ADDRESS" ) );
-            break;
+            OnCancel( pWin );
         }
-
-        HandleConnectionResult( g_MatchMgr.PrepareDirectConnection( xstring( m_pAddress->GetLabel() ) ) );
         break;
-    }
 
-    case IDC_ADVANCED_APPLY:
-        if( !(g_MatchMgr.GetCapabilities() & MATCH_CAP_DIRECTORY) ||
-            (xstring( m_pDirectory->GetLabel() ) == g_MatchMgr.GetDirectoryAddress()) ||
-            (g_MatchMgr.ConfigureDirectory( xstring( m_pDirectory->GetLabel() ) ) == MATCH_RESULT_OK) )
+        case IDC_ADVANCED_RESET:
         {
-            SavePreferences();
-            m_State = DIALOG_STATE_SELECT;
+            m_pDirectory->SetLabel( xwstring( "" ) );
+            m_pAddress->SetLabel( xwstring( "" ) );
+            m_pStatus->SetLabel( xwstring( "" ) );
         }
-        else
-            m_pStatus->SetLabel( g_StringTableMgr( "ui", "IDS_BROWSER_INVALID_ADDRESS" ) );
         break;
 
-    default:
+        case IDC_ADVANCED_CONNECT:
+        {
+            match_endpoint Directory;
+
+            if( (g_MatchMgr.GetCapabilities() & MATCH_CAP_DIRECTORY) &&
+                m_pDirectory->GetLabel().GetLength() &&
+                !Directory.Parse( xstring( m_pDirectory->GetLabel() ), MATCH_DIRECTORY_PORT ) )
+            {
+                m_pStatus->SetLabel( g_StringTableMgr( "ui", "IDS_BROWSER_INVALID_ADDRESS" ) );
+                break;
+            }
+
+            HandleConnectionResult( g_MatchMgr.PrepareDirectConnection( xstring( m_pAddress->GetLabel() ) ) );
+        }
+        break;
+
+        case IDC_ADVANCED_APPLY:
+        {
+            if( !(g_MatchMgr.GetCapabilities() & MATCH_CAP_DIRECTORY) ||
+                (xstring( m_pDirectory->GetLabel() ) == g_MatchMgr.GetDirectoryAddress()) ||
+                (g_MatchMgr.ConfigureDirectory( xstring( m_pDirectory->GetLabel() ) ) == MATCH_RESULT_OK) )
+            {
+                SavePreferences();
+                m_State = DIALOG_STATE_SELECT;
+            }
+            else
+            {
+                m_pStatus->SetLabel( g_StringTableMgr( "ui", "IDS_BROWSER_INVALID_ADDRESS" ) );
+            }
+        }
+        break;
+
+        default:
+        {
+        }
         break;
     }
 }
@@ -435,7 +498,9 @@ void dlg_browser_advanced::OnAccept( ui_win* pWin )
 dlg_browser_advanced::~dlg_browser_advanced( void )
 {
     if( m_Resolving )
+    {
         g_MatchMgr.CancelDirectConnection();
+    }
 }
 
 //==============================================================================
@@ -464,7 +529,9 @@ void dlg_browser_advanced::SavePreferences( void )
     Updated.Address[MATCH_ENDPOINT_LENGTH - 1] = 0;
 
     if( x_memcmp( &Preferences, &Updated, sizeof(Preferences) ) == 0 )
+    {
         return;
+    }
 
     Preferences = Updated;
     g_StateMgr.SaveMultiplayerPreferences();
@@ -474,6 +541,8 @@ void dlg_browser_advanced::SavePreferences( void )
 
 void dlg_browser_advanced::HandleConnectionResult( match_result Result )
 {
+    // Lock the connection inputs during name resolution. When it finishes,
+    // keep any inputs unsupported by the current backend disabled.
     m_Resolving = Result == MATCH_RESULT_PENDING;
     const s32 Controls[] = { IDC_ADVANCED_DIRECTORY, IDC_ADVANCED_ADDRESS, IDC_ADVANCED_CONNECT,
                              IDC_ADVANCED_APPLY, IDC_ADVANCED_RESET };
@@ -503,11 +572,34 @@ void dlg_browser_advanced::HandleConnectionResult( match_result Result )
     const char* pMessage = "IDS_ONLINE_NETWORK_DOWN";
     switch( Result )
     {
-    case MATCH_RESULT_PENDING:          pMessage = "IDS_DIRECT_RESOLVING";         break;
-    case MATCH_RESULT_INVALID_ADDRESS:  pMessage = "IDS_DIRECT_INVALID_ADDRESS";    break;
-    case MATCH_RESULT_NAME_NOT_FOUND:   pMessage = "IDS_DIRECT_RESOLVE_FAILED";     break;
-    case MATCH_RESULT_TIMEOUT:          pMessage = "IDS_DIRECT_RESOLVE_TIMEOUT";    break;
-    default:                                                                      break;
+        case MATCH_RESULT_PENDING:
+        {
+            pMessage = "IDS_DIRECT_RESOLVING";
+        }
+        break;
+
+        case MATCH_RESULT_INVALID_ADDRESS:
+        {
+            pMessage = "IDS_DIRECT_INVALID_ADDRESS";
+        }
+        break;
+
+        case MATCH_RESULT_NAME_NOT_FOUND:
+        {
+            pMessage = "IDS_DIRECT_RESOLVE_FAILED";
+        }
+        break;
+
+        case MATCH_RESULT_TIMEOUT:
+        {
+            pMessage = "IDS_DIRECT_RESOLVE_TIMEOUT";
+        }
+        break;
+
+        default:
+        {
+        }
+        break;
     }
     m_pStatus->SetLabel( g_StringTableMgr( "ui", pMessage ) );
 }
@@ -520,7 +612,9 @@ void dlg_browser_advanced::OnUpdate( ui_win* pWin, f32 DeltaTime )
     {
         match_result Result = g_MatchMgr.PollDirectConnection( DeltaTime );
         if( Result != MATCH_RESULT_PENDING )
+        {
             HandleConnectionResult( Result );
+        }
     }
     dlg_browser_options::OnUpdate( pWin, DeltaTime );
 }

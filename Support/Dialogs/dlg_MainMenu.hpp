@@ -16,8 +16,9 @@
 #include "UI/ui_text.hpp"
 #include "UI/ui_combo.hpp"
 #include "dlg_PopUp.hpp"
+
 //==============================================================================
-//  DEFINES
+//  ENUMS
 //==============================================================================
 
 enum menu_menu_controls
@@ -35,15 +36,22 @@ enum menu_menu_controls
     IDC_MAIN_MENU_SILENT_LOGIN_TEXT,
 };
 
-
 //==============================================================================
-//  dlg_main_menu
+//  REGISTRATION
 //==============================================================================
 
 extern void     dlg_main_menu_register  ( ui_manager* pManager );
 extern ui_win*  dlg_main_menu_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 class ui_button;
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class dlg_main_menu : public ui_dialog
 {

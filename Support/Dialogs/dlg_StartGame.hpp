@@ -16,16 +16,22 @@
 #include "UI/ui_text.hpp"
 #include "UI/ui_combo.hpp"
 
-
-
 //==============================================================================
-//  dlg_start_game
+//  REGISTRATION
 //==============================================================================
 
 extern void     dlg_start_game_register  ( ui_manager* pManager );
 extern ui_win*  dlg_start_game_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 class ui_button;
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class dlg_start_game : public ui_dialog
 {

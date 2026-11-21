@@ -15,7 +15,7 @@
 #include "UI/ui_text.hpp"
 
 //==============================================================================
-//  dlg_level_desc
+//  ENUMS
 //==============================================================================
 
 enum level_desc_mode
@@ -24,10 +24,22 @@ enum level_desc_mode
     LEVEL_DESC_INTERLEVEL,
 };
 
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
+
 extern void     dlg_level_desc_register  ( ui_manager* pManager );
 extern ui_win*  dlg_level_desc_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 class ui_frame;
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class dlg_level_desc : public ui_dialog
 {

@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_resume_game.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -23,16 +27,18 @@
 #include "../../Apps/GameApp/Config.hpp"    
 #include "Configuration/GameConfig.hpp"
 
-
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum controls
 {
     IDC_CHECKPOINT_LISTBOX,
 };
 
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem ResumeGameControls[] = 
 {
@@ -40,6 +46,7 @@ ui_manager::control_tem ResumeGameControls[] =
     { IDC_CHECKPOINT_LISTBOX,    "IDS_NULL",           "listbox",  50, 60, 220, 232, 0, 0, 1, 1, ui_win::WF_VISIBLE },
 };
 
+//==============================================================================
 
 ui_manager::dialog_tem ResumeGameDialog =
 {
@@ -50,43 +57,41 @@ ui_manager::dialog_tem ResumeGameDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_resume_game_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "resume game", &ResumeGameDialog, &dlg_resume_game_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_resume_game_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_resume_game* pDialog = new dlg_resume_game;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_resume_game
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_resume_game::dlg_resume_game( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_resume_game::~dlg_resume_game( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_resume_game::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -105,9 +110,9 @@ xbool dlg_resume_game::Create( s32                        UserID,
     // Do dialog creation
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
-    m_pCheckpointList    = (ui_listbox*) FindChildByID( IDC_CHECKPOINT_LISTBOX  );
+    m_pCheckpointList    = static_cast<ui_listbox*>( FindChildByID( IDC_CHECKPOINT_LISTBOX  ) );
     
-    GotoControl( (ui_control*)m_pCheckpointList );
+    GotoControl( m_pCheckpointList );
     m_CurrentControl = IDC_CHECKPOINT_LISTBOX;
 
     FillCheckpointList();
@@ -144,7 +149,7 @@ xbool dlg_resume_game::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_resume_game::Destroy( void )
 {
@@ -154,11 +159,11 @@ void dlg_resume_game::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_resume_game::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
@@ -208,7 +213,7 @@ void dlg_resume_game::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_resume_game::OnNotify( ui_notification const& Event )
 {
@@ -228,7 +233,7 @@ void dlg_resume_game::OnNotify( ui_notification const& Event )
             }
 
             // Get the checkpoint data
-            const level_check_points* pCheckpoint = (level_check_points*)m_pCheckpointList->GetSelectedItemData(0);
+            const level_check_points* pCheckpoint = reinterpret_cast<const level_check_points*>( m_pCheckpointList->GetSelectedItemData(0) );
             s32 CheckpointIndex = m_pCheckpointList->GetSelectedItemData(1);
 
             if( !pCheckpoint )
@@ -267,14 +272,14 @@ void dlg_resume_game::OnNotify( ui_notification const& Event )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_resume_game::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
     ui_dialog::OnNavigate( pWin, Code, Presses, Repeats, WrapX, WrapY );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_resume_game::OnAccept( ui_win* pWin )
 {
@@ -287,7 +292,7 @@ void dlg_resume_game::OnAccept( ui_win* pWin )
     m_pCheckpointList->OnAlternate( pWin );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_resume_game::OnCancel( ui_win* pWin )
 {
@@ -300,7 +305,7 @@ void dlg_resume_game::OnCancel( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_resume_game::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -315,7 +320,7 @@ void dlg_resume_game::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             // complete!  turn on the elements
             m_pCheckpointList ->SetFlag(ui_win::WF_VISIBLE, TRUE);
 
-            GotoControl( (ui_control*)m_pCheckpointList );
+            GotoControl( m_pCheckpointList );
             g_UiMgr->SetScreenHighlight( m_pCheckpointList->GetPosition() );
         }
     }
@@ -339,32 +344,44 @@ void dlg_resume_game::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
 }
 
-//=========================================================================
+//==============================================================================
 
 class checkpoint_sort_compare : public x_compare_functor<const ui_listbox::item&>
 {
 public:
     s32 operator()( const ui_listbox::item& A, const ui_listbox::item& B )
     {
-        const level_check_points& Left = (const level_check_points&)A.Data[0];
-        const level_check_points& Right = (const level_check_points&)B.Data[0];
+        const level_check_points& Left = *reinterpret_cast<const level_check_points*>( A.Data[0] );
+        const level_check_points& Right = *reinterpret_cast<const level_check_points*>( B.Data[0] );
         s32 LeftIndex   = A.Data[1];
         s32 RightIndex  = B.Data[1];
 
         // We want lowest map id at the top
-        if( Left.MapID < Right.MapID )          return -1;
-        if( Left.MapID > Right.MapID )          return 1;
+        if( Left.MapID < Right.MapID )
+        {
+            return -1;
+        }
+        if( Left.MapID > Right.MapID )
+        {
+            return 1;
+        }
 
         // If map ids are the same, we want the lowest index
         // at the top.
-        if( LeftIndex < RightIndex )            return -1;
-        if( LeftIndex > RightIndex )            return 1;
+        if( LeftIndex < RightIndex )
+        {
+            return -1;
+        }
+        if( LeftIndex > RightIndex )
+        {
+            return 1;
+        }
         return 0;
     }
 };
 
 
-//=========================================================================
+//==============================================================================
 
 void dlg_resume_game::FillCheckpointList( void )
 {
@@ -413,7 +430,7 @@ void dlg_resume_game::FillCheckpointList( void )
         {
             xwstring CheckpointName;
             CheckpointName += MapName;
-            m_pCheckpointList->AddItem( CheckpointName, (uaddr)&Checkpoint, 0 );
+            m_pCheckpointList->AddItem( CheckpointName, reinterpret_cast<uaddr>( &Checkpoint ), 0 );
         }
 
         // Now we construct each individual entry for that level's checkpoints.
@@ -443,7 +460,7 @@ void dlg_resume_game::FillCheckpointList( void )
                     CheckpointName += xwstring(xfs( " %d", j ));
                 }
                 
-                m_pCheckpointList->AddItem( CheckpointName, (uaddr)&Checkpoint, j );
+                m_pCheckpointList->AddItem( CheckpointName, reinterpret_cast<uaddr>( &Checkpoint ), j );
             }
         }
     }
@@ -461,4 +478,4 @@ void dlg_resume_game::FillCheckpointList( void )
     m_pCheckpointList->SetSelection( ( m_pCheckpointList->GetItemCount()-1 ) );
 }
 
-//=========================================================================
+//==============================================================================

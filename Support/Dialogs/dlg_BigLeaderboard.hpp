@@ -22,7 +22,7 @@
 #include "NetworkMgr/Game/GameMgr.hpp"
 
 //==============================================================================
-//  DEFINES
+//  ENUMS
 //==============================================================================
 
 enum big_leaderboard_controls
@@ -35,6 +35,8 @@ enum big_leaderboard_controls
     IDC_BIG_LEADERBOARD_LOADING_TEXT,
     IDC_BIG_LEADERBOARD_LOADING_PIPS,
 };
+
+//------------------------------------------------------------------------------
 
 enum player_data_types
 {
@@ -50,13 +52,21 @@ enum player_data_types
 };
 
 //==============================================================================
-//  dlg_big_leaderboard
+//  REGISTRATION
 //==============================================================================
 
 extern void     dlg_big_leaderboard_register  ( ui_manager* pManager );
 extern ui_win*  dlg_big_leaderboard_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 class ui_button;
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class dlg_big_leaderboard : public dlg_mp_score
 {

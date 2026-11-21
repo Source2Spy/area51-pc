@@ -14,17 +14,27 @@
 #include "UI/ui_dialog.hpp"
 #include "NetworkMgr/Match/MatchBrowser.hpp"
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 class ui_button;
 class ui_text;
 class ui_joinlist;
 class dlg_browser_filters;
 class dlg_browser_advanced;
 
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
+
 extern void dlg_online_join_register( ui_manager* pManager );
 extern ui_win* dlg_online_join_factory( s32 UserID, ui_manager* pManager,
                                         ui_manager::dialog_tem* pDialogTem, const irect& Position,
                                         ui_win* pParent, s32 Flags, void* pUserData );
 
+//==============================================================================
+//  CLASSES
 //==============================================================================
 
 class dlg_online_join : public ui_dialog

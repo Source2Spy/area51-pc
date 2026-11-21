@@ -24,7 +24,7 @@ static f32 const SCROLLBAR_REPEAT_DELAY       = 0.35f;
 static f32 const SCROLLBAR_REPEAT_INTERVAL    = 0.06f;
 
 //==============================================================================
-//  ui_scrollbar
+//  IMPLEMENTATION
 //==============================================================================
 
 ui_scrollbar::ui_scrollbar( void )

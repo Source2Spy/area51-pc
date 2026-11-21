@@ -1,12 +1,12 @@
-//=========================================================================
+//==============================================================================
 // 
 // dlg_PressStart.cpp
 // 
-//=========================================================================
+//==============================================================================
 
-//=========================================================================
-// Includes
-//=========================================================================
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -23,12 +23,15 @@
 
 #include "MoviePlayer/MoviePlayer.hpp"
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 extern xstring SelectBestClip( const char* pName );
 
-
-//=========================================================================
-//  Press Start Dialog
-//=========================================================================
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum
 {
@@ -43,6 +46,10 @@ enum controls
     IDC_PRESS_START,
 };
 
+//==============================================================================
+//  DATA
+//==============================================================================
+
 ui_manager::control_tem Press_StartControls[] =
 {
 //  { IDC_A51_LOGO,    "IDS_NULL",             "bitmap",  40,  10, 400, 100, 0, 0, 0, 0, 0 },
@@ -50,6 +57,8 @@ ui_manager::control_tem Press_StartControls[] =
     { IDC_START_BOX,   "IDS_NULL",             "bitmap",  90, 312, 300,  30, 0, 0, 0, 0, 0 },
     { IDC_PRESS_START, "IDS_PRESS_START_TEXT", "text",     0, 307, 480,  30, 0, 0, 1, 1, 0 },
 };
+
+//==============================================================================
 
 ui_manager::dialog_tem Press_StartDialog =
 {
@@ -62,36 +71,34 @@ ui_manager::dialog_tem Press_StartDialog =
 
 const f32 TIMEOUT_TIME = 60.0f;
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_press_start_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "press start", &Press_StartDialog, &dlg_press_start_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_press_start_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_press_start* pDialog = new dlg_press_start;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_press_start
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_press_start::dlg_press_start( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_press_start::~dlg_press_start( void )
 {
@@ -99,25 +106,25 @@ dlg_press_start::~dlg_press_start( void )
 }
 
 
-//=========================================================================
+//==============================================================================
 
 void dlg_press_start::DisableStartButton( void )
 {
     m_State = DIALOG_STATE_TIMEOUT;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_press_start::EnableStartButton( void )
 {
     m_WaitTime = 0.2f;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 s_PressStartVoiceID = 0;
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_press_start::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -136,9 +143,9 @@ xbool dlg_press_start::Create( s32                        UserID,
     // Do dialog creation
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
-    m_pLogoBitmap       = (ui_bitmap*) FindChildByID( IDC_A51_LOGO    );
-    m_pFrameBitmap      = (ui_bitmap*) FindChildByID( IDC_START_BOX   );
-    m_pButtonPressStart    = (ui_text*)   FindChildByID( IDC_PRESS_START );
+    m_pLogoBitmap       = static_cast<ui_bitmap*>( FindChildByID( IDC_A51_LOGO    ) );
+    m_pFrameBitmap      = static_cast<ui_bitmap*>( FindChildByID( IDC_START_BOX   ) );
+    m_pButtonPressStart    = static_cast<ui_text*>( FindChildByID( IDC_PRESS_START ) );
 
     // initialize logo bitmap
     m_pLogoBitmap->SetFlag(ui_win::WF_VISIBLE, FALSE);
@@ -154,7 +161,7 @@ xbool dlg_press_start::Create( s32                        UserID,
     // initialize start button
     m_pButtonPressStart ->SetFlag(ui_win::WF_VISIBLE, TRUE);
     m_pButtonPressStart ->SetLabelColor( xcolor(230, 230, 230, 255) );
-    GotoControl( (ui_control*)m_pButtonPressStart );
+    GotoControl( m_pButtonPressStart );
 
     m_PressStartState   = 0;
     m_DemoHoldTimer     = 0.0f;
@@ -182,7 +189,7 @@ xbool dlg_press_start::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_press_start::Destroy( void )
 {
@@ -191,17 +198,17 @@ void dlg_press_start::Destroy( void )
     g_AudioMgr.Release( s_PressStartVoiceID, 0.0f );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_press_start::Render( s32 ox, s32 oy )
 {
-    m_pButtonPressStart->SetLabelColor( xcolor(230, 230, 230, (u8)m_FadeStartInAlpha) );
+    m_pButtonPressStart->SetLabelColor( xcolor(230, 230, 230, static_cast<u8>( m_FadeStartInAlpha )) );
 
     // finally render all the normal dialog stuff
     ui_dialog::Render( ox, oy );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_press_start::OnAccept( ui_win* pWin )
 {
@@ -234,7 +241,7 @@ void dlg_press_start::OnAccept( ui_win* pWin )
      }
 }
 
-//=========================================================================
+//==============================================================================
 void dlg_press_start::OnHelp( ui_win* pWin )
 {
     (void)pWin;
@@ -268,7 +275,7 @@ void dlg_press_start::OnHelp( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_press_start::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -315,4 +322,4 @@ void dlg_press_start::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     }
 }
 
-//=========================================================================
+//==============================================================================

@@ -19,10 +19,14 @@
 #include "UI/ui_listbox.hpp"
 
 //==============================================================================
-//  ui_maplist
+//  REGISTRATION
 //==============================================================================
 
 extern ui_win* ui_maplist_factory( s32 UserID, ui_manager* pManager, const irect& Position, ui_win* pParent, s32 Flags );
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class ui_maplist : public ui_listbox
 {

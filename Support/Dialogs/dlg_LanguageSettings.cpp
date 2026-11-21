@@ -23,7 +23,7 @@
 #include "dlg_PopUp.hpp"
 
 //==============================================================================
-//  TYPES
+//  ENUMS
 //==============================================================================
 
 enum language_settings_controls
@@ -38,6 +38,10 @@ enum language_settings_controls
     IDC_LANGUAGE_BUTTON_APPLY,
 };
 
+//==============================================================================
+//  TYPES
+//==============================================================================
+
 struct language_item
 {
     x_language  Language;
@@ -45,8 +49,6 @@ struct language_item
     xbool       bTextOnly;
 };
 
-//==============================================================================
-//  DATA
 //==============================================================================
 
 static language_item const s_LanguageItems[] =
@@ -61,7 +63,9 @@ static language_item const s_LanguageItems[] =
     { XL_LANG_JAPANESE, "IDS_LANGUAGE_JAPANESE", TRUE  },
 };
 
-//------------------------------------------------------------------------------
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem LanguageSettingsControls[] =
 {
@@ -101,7 +105,7 @@ ui_win* dlg_language_settings_factory( s32 UserID, ui_manager* pManager, ui_mana
 {
     dlg_language_settings* pDialog = new dlg_language_settings;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
 //==============================================================================
@@ -125,7 +129,7 @@ void dlg_language_settings::PopulateLanguageCombo( ui_combo* pCombo, x_language 
 {
     pCombo->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV );
 
-    for( s32 i = 0; i < (s32)(sizeof(s_LanguageItems) / sizeof(language_item)); i++ )
+    for( s32 i = 0; i < static_cast<s32>( sizeof(s_LanguageItems) / sizeof(language_item) ); i++ )
     {
         if( s_LanguageItems[i].bTextOnly && !bIncludeTextOnly )
         {
@@ -165,13 +169,13 @@ xbool dlg_language_settings::Create( s32 UserID, ui_manager* pManager, ui_manage
 
     xbool const Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
-    m_pTextLanguage      = (ui_combo*)FindChildByID( IDC_LANGUAGE_TEXT );
-    m_pAudioLanguage     = (ui_combo*)FindChildByID( IDC_LANGUAGE_AUDIO );
-    m_pVideoLanguage     = (ui_combo*)FindChildByID( IDC_LANGUAGE_VIDEO );
-    m_pButtonApply       = (ui_button*)FindChildByID( IDC_LANGUAGE_BUTTON_APPLY );
-    m_pTextLanguageText  = (ui_text*)FindChildByID( IDC_LANGUAGE_TEXT_TEXT );
-    m_pAudioLanguageText = (ui_text*)FindChildByID( IDC_LANGUAGE_AUDIO_TEXT );
-    m_pVideoLanguageText = (ui_text*)FindChildByID( IDC_LANGUAGE_VIDEO_TEXT );
+    m_pTextLanguage      = static_cast<ui_combo*>( FindChildByID( IDC_LANGUAGE_TEXT ) );
+    m_pAudioLanguage     = static_cast<ui_combo*>( FindChildByID( IDC_LANGUAGE_AUDIO ) );
+    m_pVideoLanguage     = static_cast<ui_combo*>( FindChildByID( IDC_LANGUAGE_VIDEO ) );
+    m_pButtonApply       = static_cast<ui_button*>( FindChildByID( IDC_LANGUAGE_BUTTON_APPLY ) );
+    m_pTextLanguageText  = static_cast<ui_text*>( FindChildByID( IDC_LANGUAGE_TEXT_TEXT ) );
+    m_pAudioLanguageText = static_cast<ui_text*>( FindChildByID( IDC_LANGUAGE_AUDIO_TEXT ) );
+    m_pVideoLanguageText = static_cast<ui_text*>( FindChildByID( IDC_LANGUAGE_VIDEO_TEXT ) );
 
     global_settings& PendingSettings = g_StateMgr.GetPendingSettings();
     m_OriginalSettings = PendingSettings;
@@ -182,7 +186,7 @@ xbool dlg_language_settings::Create( s32 UserID, ui_manager* pManager, ui_manage
     s32 const CurrentControl = g_StateMgr.GetCurrentControl();
     if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
     {
-        GotoControl( (ui_control*)m_pTextLanguage );
+        GotoControl( m_pTextLanguage );
         m_CurrentControl = IDC_LANGUAGE_TEXT;
     }
     else
@@ -221,6 +225,7 @@ xbool dlg_language_settings::Create( s32 UserID, ui_manager* pManager, ui_manage
 
 void dlg_language_settings::Destroy( void )
 {
+    // Cancel outstanding save callbacks before destroying the dialog.
     g_SaveDataMgr.CancelCallbacks( this );
     ui_dialog::Destroy();
     g_UiMgr->ResetScreenWipe();
@@ -230,24 +235,38 @@ void dlg_language_settings::Destroy( void )
 
 void dlg_language_settings::Render( s32 ox, s32 oy )
 {
-    s32 const Offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    s32 const Offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
+    static s32 const Gap = 9;
+    static s32 const Width = 4;
     irect Bounds;
 
+    // Dim the background behind the dialog.
     if( m_bRenderBlackout )
     {
         Bounds = g_UiMgr->GetUserBounds( m_UserID );
-        g_UiMgr->RenderGouraudRect( Bounds, xcolor(0,0,0,180), xcolor(0,0,0,180), xcolor(0,0,0,180), xcolor(0,0,0,180), FALSE );
+        g_UiMgr->RenderGouraudRect( Bounds,
+                                   xcolor( 0, 0, 0, 180 ), xcolor( 0, 0, 0, 180 ),
+                                   xcolor( 0, 0, 0, 180 ), xcolor( 0, 0, 0, 180 ), FALSE );
     }
 
+    // Draw the translucent panel inside the side bars.
     Bounds.Set( m_CurrPos.l + 22, m_CurrPos.t, m_CurrPos.r - 23, m_CurrPos.b );
-    g_UiMgr->RenderGouraudRect( Bounds, xcolor(56,115,58,64), xcolor(56,115,58,64), xcolor(56,115,58,64), xcolor(56,115,58,64), FALSE );
-    for( s32 y = Bounds.t + Offset; y < Bounds.b; y += 9 )
+    g_UiMgr->RenderGouraudRect( Bounds,
+                               xcolor( 56, 115, 58, 64 ), xcolor( 56, 115, 58, 64 ),
+                               xcolor( 56, 115, 58, 64 ), xcolor( 56, 115, 58, 64 ), FALSE );
+
+    for( s32 Y = Bounds.t + Offset; Y < Bounds.b; Y += Gap )
     {
-        irect Bar( Bounds.l, y, Bounds.r, MIN( y + 4, Bounds.b ) );
-        g_UiMgr->RenderGouraudRect( Bar, xcolor(56,115,58,30), xcolor(56,115,58,30), xcolor(56,115,58,30), xcolor(56,115,58,30), FALSE );
+        irect const Bar( Bounds.l, Y, Bounds.r, MIN( Y + Width, Bounds.b ) );
+        g_UiMgr->RenderGouraudRect( Bar,
+                                   xcolor( 56, 115, 58, 30 ), xcolor( 56, 115, 58, 30 ),
+                                   xcolor( 56, 115, 58, 30 ), xcolor( 56, 115, 58, 30 ), FALSE );
     }
 
+    // render the normal dialog stuff
     ui_dialog::Render( ox, oy );
+
+    // render the glow bar
     g_UiMgr->RenderGlowBar();
 }
 
@@ -255,7 +274,7 @@ void dlg_language_settings::Render( s32 ox, s32 oy )
 
 void dlg_language_settings::OnAccept( ui_win* pWin )
 {
-    if( (m_State != DIALOG_STATE_ACTIVE) || (pWin != (ui_win*)m_pButtonApply) )
+    if( (m_State != DIALOG_STATE_ACTIVE) || (pWin != m_pButtonApply) )
     {
         return;
     }
@@ -284,25 +303,28 @@ void dlg_language_settings::OnAccept( ui_win* pWin )
 void dlg_language_settings::OnCancel( ui_win* pWin )
 {
     (void)pWin;
-    if( m_State == DIALOG_STATE_ACTIVE )
+
+    if( m_State != DIALOG_STATE_ACTIVE )
     {
-        global_settings Settings = m_OriginalSettings;
-
-        if( !ApplySettings( Settings ) )
-        {
-            return;
-        }
-
-        if( !Settings.HasChanged() )
-        {
-            g_AudioMgr.Play( "Backup" );
-            m_State = DIALOG_STATE_BACK;
-            return;
-        }
-
-        g_StateMgr.GetPendingSettings() = Settings;
-        OpenSavePopup();
+        return;
     }
+
+    global_settings Settings = m_OriginalSettings;
+
+    if( !ApplySettings( Settings ) )
+    {
+        return;
+    }
+
+    if( !Settings.HasChanged() )
+    {
+        g_AudioMgr.Play( "Backup" );
+        m_State = DIALOG_STATE_BACK;
+        return;
+    }
+
+    g_StateMgr.GetPendingSettings() = Settings;
+    OpenSavePopup();
 }
 
 //==============================================================================
@@ -311,6 +333,7 @@ xbool dlg_language_settings::ApplySettings( global_settings& Settings )
 {
     x_language Language = GetSelectedLanguage( m_pTextLanguage );
 
+    // Keep the current text language if the new string tables can't be loaded.
     if( Language != x_GetLocale() && !g_StringTableMgr.ValidateLocalizedTables( Language ) )
     {
         m_pTextLanguage->SetSelection( m_pTextLanguage->FindItemByData( static_cast<uaddr>( x_GetLocale() ) ) );
@@ -404,6 +427,7 @@ void dlg_language_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
     (void)pWin;
     s32 Highlight = -1;
 
+    // Consume the popup result once before resuming the dialog.
     if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
     {
         s32 const Result = m_PopUpResult;
@@ -423,6 +447,7 @@ void dlg_language_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         }
     }
 
+    // Show the controls only after the opening animation finishes.
     if( g_UiMgr->IsScreenScaling() && (UpdateScreenScaling( DeltaTime ) == FALSE) )
     {
         ui_win* pControls[] =
@@ -437,7 +462,7 @@ void dlg_language_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         s32 const CurrentControl = g_StateMgr.GetCurrentControl();
         if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
         {
-            GotoControl( (ui_control*)m_pTextLanguage );
+            GotoControl( m_pTextLanguage );
             m_CurrentControl = IDC_LANGUAGE_TEXT;
         }
         else

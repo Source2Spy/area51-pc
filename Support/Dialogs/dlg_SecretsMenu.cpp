@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_secrets_menu.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -21,11 +25,15 @@
 #include "StateMgr/SecretList.hpp"
 #include "MoviePlayer/MoviePlayer.hpp"
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 extern xstring SelectBestClip( const char* pName );
 
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum controls
 {   
@@ -43,31 +51,33 @@ enum controls
     IDC_SECRETS_TEXTBOX,
 };
 
-//-------------------------------------------------------------------------
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem SecretsMenuControls[] = 
 {
     // Frames.
 
-    { IDC_SECRETS_SELECT,      "IDS_NULL",    "combo",      138,  40, 220,  40, 0, 0, 5, 1, ui_win::WF_VISIBLE },
+    { IDC_SECRETS_SELECT,   "IDS_NULL",            "combo",      138,  40, 220,  40, 0, 0, 5, 1, ui_win::WF_VISIBLE },
 
-    { IDC_SECRETS_MAIN,        "IDS_NULL",    "blankbox",    40,  80, 416, 144, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_SECRETS_BUTTON_1,    "IDS_NULL",    "button",      56, 130,  64,  64, 0, 1, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_SECRETS_BUTTON_2,    "IDS_NULL",    "button",     136, 130,  64,  64, 1, 1, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_SECRETS_BUTTON_3,    "IDS_NULL",    "button",     216, 130,  64,  64, 2, 1, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_SECRETS_BUTTON_4,    "IDS_NULL",    "button",     296, 130,  64,  64, 3, 1, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_SECRETS_BUTTON_5,    "IDS_NULL",    "button",     376, 130,  64,  64, 4, 1, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_SECRETS_MAIN,     "IDS_SECRETS_VAULT",   "blankbox",    40,  80, 416, 144, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_SECRETS_BUTTON_1, "IDS_NULL",            "button",      56, 130,  64,  64, 0, 1, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_SECRETS_BUTTON_2, "IDS_NULL",            "button",     136, 130,  64,  64, 1, 1, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_SECRETS_BUTTON_3, "IDS_NULL",            "button",     216, 130,  64,  64, 2, 1, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_SECRETS_BUTTON_4, "IDS_NULL",            "button",     296, 130,  64,  64, 3, 1, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_SECRETS_BUTTON_5, "IDS_NULL",            "button",     376, 130,  64,  64, 4, 1, 1, 1, ui_win::WF_VISIBLE },
 
-    { IDC_SECRETS_DETAILS,     "IDS_NULL",    "blankbox",    40, 240, 416,  94, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_SECRETS_TEXT_1,      "IDS_NULL",    "text",        48, 262, 400,  94, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_SECRETS_TEXT_2,      "IDS_NULL",    "text",        48, 278,  90,  16, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_SECRETS_TEXT_3,      "IDS_NULL",    "text",        48, 294,  90,  16, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_SECRETS_DETAILS,  "IDS_SECRETS_DETAILS", "blankbox",    40, 240, 416,  94, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_SECRETS_TEXT_1,   "IDS_NULL",            "text",        48, 262, 400,  94, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_SECRETS_TEXT_2,   "IDS_NULL",            "text",        48, 278,  90,  16, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_SECRETS_TEXT_3,   "IDS_NULL",            "text",        48, 294,  90,  16, 0, 0, 0, 0, ui_win::WF_VISIBLE },
 
-    { IDC_SECRETS_TEXTBOX,     "IDS_NULL",    "textbox",     60, 240, 376,  93, 0, 2, 5, 1, ui_win::WF_VISIBLE },
+    { IDC_SECRETS_TEXTBOX,  "IDS_NULL",            "textbox",     60, 240, 376,  93, 0, 2, 5, 1, ui_win::WF_VISIBLE },
 
 };
 
-//-------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 ui_manager::dialog_tem SecretsMenuDialog =
 {
@@ -78,49 +88,45 @@ ui_manager::dialog_tem SecretsMenuDialog =
     0
 };
 
-//=========================================================================
-//  Data
-//=========================================================================
+//==============================================================================
 
 static xbool s_Scaled = FALSE;
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_secrets_menu_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "secrets", &SecretsMenuDialog, &dlg_secrets_menu_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_secrets_menu_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_secrets_menu* pDialog = new dlg_secrets_menu;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_secrets_menu
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_secrets_menu::dlg_secrets_menu( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_secrets_menu::~dlg_secrets_menu( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_secrets_menu::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -153,27 +159,25 @@ xbool dlg_secrets_menu::Create( s32                        UserID,
     SetNavText( navText );
 
     // setup secrets main box
-    m_pSecretsMain = (ui_blankbox*)FindChildByID( IDC_SECRETS_MAIN );
+    m_pSecretsMain = static_cast<ui_blankbox*>( FindChildByID( IDC_SECRETS_MAIN ) );
     m_pSecretsMain->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pSecretsMain->SetFlag(ui_win::WF_STATIC, TRUE);
     m_pSecretsMain->SetBackgroundColor( xcolor (39,117,28,128) );
     m_pSecretsMain->SetHasTitleBar( TRUE );
-    m_pSecretsMain->SetLabel( g_StringTableMgr( "ui", "IDS_SECRETS_VAULT" ) );
     m_pSecretsMain->SetLabelColor( xcolor(255,252,204,255) );
     m_pSecretsMain->SetTitleBarColor( xcolor(19,59,14,196) );
 
     // setup secrets details box
-    m_pSecretsDetails = (ui_blankbox*)FindChildByID( IDC_SECRETS_DETAILS );
+    m_pSecretsDetails = static_cast<ui_blankbox*>( FindChildByID( IDC_SECRETS_DETAILS ) );
     m_pSecretsDetails->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pSecretsDetails->SetBackgroundColor( xcolor (39,117,28,128) );
     m_pSecretsDetails->SetFlag(ui_win::WF_STATIC, TRUE);
     m_pSecretsDetails->SetHasTitleBar( TRUE );
-    m_pSecretsDetails->SetLabel( g_StringTableMgr( "ui", "IDS_SECRETS_DETAILS" ) );
     m_pSecretsDetails->SetLabelColor( xcolor(255,252,204,255) );
     m_pSecretsDetails->SetTitleBarColor( xcolor(19,59,14,196) );
 
     // set up textbox
-    m_pTextBox = (ui_textbox*)FindChildByID( IDC_SECRETS_TEXTBOX );
+    m_pTextBox = static_cast<ui_textbox*>( FindChildByID( IDC_SECRETS_TEXTBOX ) );
     
     m_pTextBox->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pTextBox->SetFlag( ui_win::WF_DISABLED, TRUE );
@@ -184,7 +188,7 @@ xbool dlg_secrets_menu::Create( s32                        UserID,
     m_pTextBox->SetLabelFlags( ui_font::h_left|ui_font::v_top );
     
     // set up secrets combo
-    m_pSecretsSelect = (ui_combo*)FindChildByID( IDC_SECRETS_SELECT );
+    m_pSecretsSelect = static_cast<ui_combo*>( FindChildByID( IDC_SECRETS_SELECT ) );
     m_pSecretsSelect->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV | ui_combo::CB_CHANGE_ON_SELECT | ui_combo::CB_NOTIFY_PARENT );
     m_pSecretsSelect->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pSecretsSelect->AddItem( g_StringTableMgr( "ui", "IDS_SECRETS_VAULT_1" ), 0 );
@@ -194,11 +198,11 @@ xbool dlg_secrets_menu::Create( s32                        UserID,
     m_pSecretsSelect->AddItem( g_StringTableMgr( "ui", "IDS_SECRETS_VAULT_5" ), 4 );
 
     // set up buttons
-    m_pSecretsButton[0]  = (ui_button*) FindChildByID( IDC_SECRETS_BUTTON_1 );
-    m_pSecretsButton[1]  = (ui_button*) FindChildByID( IDC_SECRETS_BUTTON_2 );
-    m_pSecretsButton[2]  = (ui_button*) FindChildByID( IDC_SECRETS_BUTTON_3 );
-    m_pSecretsButton[3]  = (ui_button*) FindChildByID( IDC_SECRETS_BUTTON_4 );
-    m_pSecretsButton[4]  = (ui_button*) FindChildByID( IDC_SECRETS_BUTTON_5 );
+    m_pSecretsButton[0]  = static_cast<ui_button*>( FindChildByID( IDC_SECRETS_BUTTON_1 ) );
+    m_pSecretsButton[1]  = static_cast<ui_button*>( FindChildByID( IDC_SECRETS_BUTTON_2 ) );
+    m_pSecretsButton[2]  = static_cast<ui_button*>( FindChildByID( IDC_SECRETS_BUTTON_3 ) );
+    m_pSecretsButton[3]  = static_cast<ui_button*>( FindChildByID( IDC_SECRETS_BUTTON_4 ) );
+    m_pSecretsButton[4]  = static_cast<ui_button*>( FindChildByID( IDC_SECRETS_BUTTON_5 ) );
 
     m_pSecretsButton[0]  ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pSecretsButton[1]  ->SetFlag(ui_win::WF_VISIBLE, FALSE);
@@ -207,9 +211,9 @@ xbool dlg_secrets_menu::Create( s32                        UserID,
     m_pSecretsButton[4]  ->SetFlag(ui_win::WF_VISIBLE, FALSE);
 
 
-    m_pSecretsLine1    = (ui_text*)FindChildByID( IDC_SECRETS_TEXT_1 );
-    m_pSecretsLine2    = (ui_text*)FindChildByID( IDC_SECRETS_TEXT_2 );
-    m_pSecretsLine3    = (ui_text*)FindChildByID( IDC_SECRETS_TEXT_3 );
+    m_pSecretsLine1    = static_cast<ui_text*>( FindChildByID( IDC_SECRETS_TEXT_1 ) );
+    m_pSecretsLine2    = static_cast<ui_text*>( FindChildByID( IDC_SECRETS_TEXT_2 ) );
+    m_pSecretsLine3    = static_cast<ui_text*>( FindChildByID( IDC_SECRETS_TEXT_3 ) );
     
     m_pSecretsLine1    ->UseSmallText( TRUE );
     m_pSecretsLine2    ->UseSmallText( TRUE );
@@ -234,7 +238,7 @@ xbool dlg_secrets_menu::Create( s32                        UserID,
     m_pSelectedIcon     = m_pSecretsButton[0];
 
     // set focus
-    GotoControl( (ui_control*)m_pSecretsSelect );
+    GotoControl( m_pSecretsSelect );
 
     // Initialize popup
     m_PopUp = NULL;
@@ -265,7 +269,7 @@ xbool dlg_secrets_menu::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_secrets_menu::Destroy( void )
 {
@@ -281,11 +285,11 @@ void dlg_secrets_menu::Destroy( void )
     g_UiMgr->UnloadBitmap( "Still" );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_secrets_menu::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
@@ -345,6 +349,7 @@ void dlg_secrets_menu::Render( s32 ox, s32 oy )
     // render the glow bar
     g_UiMgr->RenderGlowBar();
 
+    // Dim the menu behind the item preview.
     if( m_bScreenIsOn )
     {
         irect const UserBounds = g_UiMgr->GetUserBounds( m_UserID );
@@ -387,34 +392,36 @@ void dlg_secrets_menu::Render( s32 ox, s32 oy )
 }
 
 
-//=========================================================================
+//==============================================================================
 
 void dlg_secrets_menu::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
     // only allow navigation if active
     if( m_State == DIALOG_STATE_ACTIVE )
     {
-        if( pWin == (ui_win*)m_pSecretsSelect )
+        if( pWin == m_pSecretsSelect )
         {
             switch( Code )
             {
                 case ui_navigation::Left:
                 case ui_navigation::Right:
-                    PopulateSecretsDetails( TRUE );                   
+                {
+                    PopulateSecretsDetails( TRUE );
                     return;
+                }
             }
         }
         ui_dialog::OnNavigate( pWin, Code, Presses, Repeats, WrapX, WrapY );
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_secrets_menu::OnNotify( ui_notification const& Event )
 {
     (void)Event.m_pText;
 
-    if( Event.m_pSender == (ui_win*)m_pSecretsSelect )
+    if( Event.m_pSender == m_pSecretsSelect )
     {
         if( Event.m_Type == ui_notification_type::ComboSelectionChanged )
         {
@@ -426,7 +433,7 @@ void dlg_secrets_menu::OnNotify( ui_notification const& Event )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_secrets_menu::OnAccept( ui_win* pWin )
 {
@@ -434,14 +441,14 @@ void dlg_secrets_menu::OnAccept( ui_win* pWin )
 
     if ( m_State == DIALOG_STATE_ACTIVE )
     {
-        if( pWin == (ui_win*)m_pSecretsSelect )
+        if( pWin == m_pSecretsSelect )
         {
             PopulateSecretsDetails( TRUE );
             return;
         }
 
         // handle secrets item selection here!
-        if( pWin == (ui_win*)m_pSecretsButton[0] )
+        if( pWin == m_pSecretsButton[0] )
         {
             if( m_pSecretsButton[0]->GetBitmap() == m_SecretsIconID[SECRET_TYPE_UNKNOWN] )
             {
@@ -455,7 +462,7 @@ void dlg_secrets_menu::OnAccept( ui_win* pWin )
             InitIconScaling( FALSE );
             m_State = DIALOG_STATE_ACTIVATE;
         }
-        else if( pWin == (ui_win*)m_pSecretsButton[1] )
+        else if( pWin == m_pSecretsButton[1] )
         {
             if( m_pSecretsButton[1]->GetBitmap() == m_SecretsIconID[SECRET_TYPE_UNKNOWN] )
             {
@@ -469,7 +476,7 @@ void dlg_secrets_menu::OnAccept( ui_win* pWin )
             InitIconScaling( FALSE );
             m_State = DIALOG_STATE_ACTIVATE;
         }
-        else if( pWin == (ui_win*)m_pSecretsButton[2] )
+        else if( pWin == m_pSecretsButton[2] )
         {
             if( m_pSecretsButton[2]->GetBitmap() == m_SecretsIconID[SECRET_TYPE_UNKNOWN] )
             {
@@ -483,7 +490,7 @@ void dlg_secrets_menu::OnAccept( ui_win* pWin )
             InitIconScaling( FALSE );
             m_State = DIALOG_STATE_ACTIVATE;
         }
-        else if( pWin == (ui_win*)m_pSecretsButton[3] )
+        else if( pWin == m_pSecretsButton[3] )
         {
             if( m_pSecretsButton[3]->GetBitmap() == m_SecretsIconID[SECRET_TYPE_UNKNOWN] )
             {
@@ -497,7 +504,7 @@ void dlg_secrets_menu::OnAccept( ui_win* pWin )
             InitIconScaling( FALSE );
             m_State = DIALOG_STATE_ACTIVATE;
         }
-        else if( pWin == (ui_win*)m_pSecretsButton[4] )
+        else if( pWin == m_pSecretsButton[4] )
         {
             if( m_pSecretsButton[4]->GetBitmap() == m_SecretsIconID[SECRET_TYPE_UNKNOWN] )
             {
@@ -535,7 +542,7 @@ void dlg_secrets_menu::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_secrets_menu::OnCancel( ui_win* pWin )
 {
@@ -560,14 +567,14 @@ void dlg_secrets_menu::OnCancel( ui_win* pWin )
         case DIALOG_STATE_ACTIVATE:
         {
             // exit sub menu / movie player
-            InitIconScaling( TRUE );            
+            InitIconScaling( TRUE );
         }
         break;
     }
     
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_secrets_menu::OnPointerDown( ui_win* pWin, s32 x, s32 y )
 {
@@ -589,7 +596,7 @@ void dlg_secrets_menu::OnPointerDown( ui_win* pWin, s32 x, s32 y )
     ui_dialog::OnPointerDown( pWin, x, y );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_secrets_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -613,7 +620,7 @@ void dlg_secrets_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             m_pSecretsButton[3] ->SetFlag( ui_win::WF_VISIBLE, TRUE );
             m_pSecretsButton[4] ->SetFlag( ui_win::WF_VISIBLE, TRUE );
 
-            GotoControl( (ui_control*)m_pSecretsSelect );
+            GotoControl( m_pSecretsSelect );
             irect Pos = m_pSecretsSelect->GetPosition();
             Pos.Translate( 0, -8 );
             g_UiMgr->SetScreenHighlight( Pos );
@@ -683,7 +690,9 @@ void dlg_secrets_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         if( highLight != m_CurrHL )
         {
             if( highLight != -1 )
+            {
                 g_AudioMgr.Play("Cusor_Norm");
+            }
 
             m_CurrHL = highLight;
 
@@ -699,7 +708,7 @@ void dlg_secrets_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_secrets_menu::InitIconScaling ( xbool ScaleDown )
 {
@@ -738,7 +747,7 @@ void dlg_secrets_menu::InitIconScaling ( xbool ScaleDown )
         SetNavText( navText );
 
         // goto previous control
-        GotoControl( (ui_control*)m_pSelectedIcon );
+        GotoControl( m_pSelectedIcon );
         s_Scaled = FALSE;
         
         for( s32 i = 0; i < 5; i++ )
@@ -759,10 +768,10 @@ void dlg_secrets_menu::InitIconScaling ( xbool ScaleDown )
 
         s32 const cx = 256;
         s32 const cy = 224;
-        m_RequestedPos = irect( cx - (s32)virtHW,
-                                cy - (s32)(virtHH + virtYO),
-                                cx + (s32)virtHW,
-                                cy + (s32)(virtHH - virtYO) );
+        m_RequestedPos = irect( cx - static_cast<s32>( virtHW ),
+                                cy - static_cast<s32>( virtHH + virtYO ),
+                                cx + static_cast<s32>( virtHW ),
+                                cy + static_cast<s32>( virtHH - virtYO ) );
 
         m_StartPos.Set( 0, 0, 64, 64 );
         m_pSelectedIcon->LocalToScreen( m_StartPos );
@@ -797,10 +806,10 @@ void dlg_secrets_menu::InitIconScaling ( xbool ScaleDown )
     m_scaleCount = 0.3f; // time to scale in seconds
     m_scaleAngle = 180.0f / m_scaleCount;
 
-    m_DiffPos.t = (s32)((m_RequestedPos.t - m_DrawPos.t) / 2.0f);
-    m_DiffPos.l = (s32)((m_RequestedPos.l - m_DrawPos.l) / 2.0f);
-    m_DiffPos.b = (s32)((m_RequestedPos.b - m_DrawPos.b) / 2.0f);
-    m_DiffPos.r = (s32)((m_RequestedPos.r - m_DrawPos.r) / 2.0f);
+    m_DiffPos.t = static_cast<s32>( (m_RequestedPos.t - m_DrawPos.t) / 2.0f );
+    m_DiffPos.l = static_cast<s32>( (m_RequestedPos.l - m_DrawPos.l) / 2.0f );
+    m_DiffPos.b = static_cast<s32>( (m_RequestedPos.b - m_DrawPos.b) / 2.0f );
+    m_DiffPos.r = static_cast<s32>( (m_RequestedPos.r - m_DrawPos.r) / 2.0f );
 
     m_TotalMoved.Set( 0, 0, 0, 0 );
     
@@ -818,7 +827,7 @@ void dlg_secrets_menu::InitIconScaling ( xbool ScaleDown )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_secrets_menu::UpdateIconScaling( f32 DeltaTime )
 {
@@ -873,23 +882,24 @@ xbool dlg_secrets_menu::UpdateIconScaling( f32 DeltaTime )
                 x_strcpy( m_FullDesc, Entry->FullDesc );
                 m_pTextBox->SetLabel( g_StringTableMgr( "lore", m_FullDesc ) );
 
-                GotoControl( (ui_control*)m_pTextBox );
+                GotoControl( m_pTextBox );
             }
         }
         else
         {
             f32 const ScaleCurve = x_cos( DEG_TO_RAD( m_scaleAngle * m_scaleCount ) );
 
-            m_TotalMoved.t = m_DiffPos.t + (s32)( m_DiffPos.t * ScaleCurve );
-            m_TotalMoved.l = m_DiffPos.l + (s32)( m_DiffPos.l * ScaleCurve );
-            m_TotalMoved.r = m_DiffPos.r + (s32)( m_DiffPos.r * ScaleCurve );
-            m_TotalMoved.b = m_DiffPos.b + (s32)( m_DiffPos.b * ScaleCurve );
+            m_TotalMoved.t = m_DiffPos.t + static_cast<s32>(  m_DiffPos.t * ScaleCurve  );
+            m_TotalMoved.l = m_DiffPos.l + static_cast<s32>(  m_DiffPos.l * ScaleCurve  );
+            m_TotalMoved.r = m_DiffPos.r + static_cast<s32>(  m_DiffPos.r * ScaleCurve  );
+            m_TotalMoved.b = m_DiffPos.b + static_cast<s32>(  m_DiffPos.b * ScaleCurve  );
 
             m_DrawPos.t = m_StartPos.t + m_TotalMoved.t;
             m_DrawPos.l = m_StartPos.l + m_TotalMoved.l;
             m_DrawPos.r = m_StartPos.r + m_TotalMoved.r;
             m_DrawPos.b = m_StartPos.b + m_TotalMoved.b;
 
+            // Use the same curve for the preview size and the background fade.
             f32 const FadeProgress = 0.5f * (1.0f + ScaleCurve);
             if( m_bScaleDown)
             {
@@ -908,7 +918,7 @@ xbool dlg_secrets_menu::UpdateIconScaling( f32 DeltaTime )
     // we're done!
     return FALSE;
 }
-//=========================================================================
+//==============================================================================
 
 void dlg_secrets_menu::PopulateSecretsDetails( xbool bVaultDetails )
 {
@@ -1031,4 +1041,4 @@ void dlg_secrets_menu::PopulateSecretsDetails( xbool bVaultDetails )
     }
 }
 
-//=========================================================================
+//==============================================================================

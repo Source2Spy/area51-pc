@@ -4,6 +4,10 @@
 //
 //==============================================================================
 
+//==============================================================================
+//  INCLUDES
+//==============================================================================
+
 #include "Entropy.hpp"
 
 #include "UI/ui_button.hpp"
@@ -20,6 +24,8 @@
 #include "dlg_PopUp.hpp"
 
 //==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum ui_settings_controls
 {
@@ -34,12 +40,14 @@ enum ui_settings_controls
 };
 
 //==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem UISettingsControls[] =
 {
-    { IDC_UI_SETTINGS_UI_SCALE_TEXT,  "IDS_NULL",                 "text",   40,  40, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_UI_SETTINGS_HUD_SCALE_TEXT, "IDS_NULL",                 "text",   40,  75, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_UI_SETTINGS_LETTERBOX_TEXT, "IDS_NULL",                 "text",   40, 110, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_UI_SETTINGS_UI_SCALE_TEXT,  "IDS_DISPLAY_UI_SCALE",     "text",   40,  40, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_UI_SETTINGS_HUD_SCALE_TEXT, "IDS_DISPLAY_HUD_SCALE",    "text",   40,  75, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_UI_SETTINGS_LETTERBOX_TEXT, "IDC_UI_LETTERBOX",         "text",   40, 110, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
 
     { IDC_UI_SETTINGS_UI_SCALE,     "IDS_NULL",                   "combo", 290,  40, 140, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
     { IDC_UI_SETTINGS_HUD_SCALE,    "IDS_NULL",                   "combo", 290,  75, 140, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
@@ -59,6 +67,8 @@ ui_manager::dialog_tem UISettingsDialog =
 };
 
 //==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_ui_settings_register( ui_manager* pManager )
 {
@@ -71,9 +81,11 @@ ui_win* dlg_ui_settings_factory( s32 UserID, ui_manager* pManager, ui_manager::d
 {
     dlg_ui_settings* pDialog = new dlg_ui_settings;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
+//==============================================================================
+//  IMPLEMENTATION
 //==============================================================================
 
 dlg_ui_settings::dlg_ui_settings( void )
@@ -102,14 +114,14 @@ xbool dlg_ui_settings::Create( s32                       UserID,
 
     xbool const Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
-    m_pUIScale      = (ui_combo*) FindChildByID( IDC_UI_SETTINGS_UI_SCALE );
-    m_pHUDScale     = (ui_combo*) FindChildByID( IDC_UI_SETTINGS_HUD_SCALE );
-    m_pLetterbox    = (ui_combo*)FindChildByID( IDC_UI_SETTINGS_LETTERBOX );
-    m_pButtonApply  = (ui_button*)FindChildByID( IDC_UI_SETTINGS_BUTTON_APPLY );
+    m_pUIScale     = static_cast<ui_combo*>( FindChildByID( IDC_UI_SETTINGS_UI_SCALE ) );
+    m_pHUDScale    = static_cast<ui_combo*>( FindChildByID( IDC_UI_SETTINGS_HUD_SCALE ) );
+    m_pLetterbox   = static_cast<ui_combo*>( FindChildByID( IDC_UI_SETTINGS_LETTERBOX ) );
+    m_pButtonApply = static_cast<ui_button*>( FindChildByID( IDC_UI_SETTINGS_BUTTON_APPLY ) );
 
-    m_pUIScaleText   = (ui_text*)FindChildByID( IDC_UI_SETTINGS_UI_SCALE_TEXT );
-    m_pHUDScaleText  = (ui_text*)FindChildByID( IDC_UI_SETTINGS_HUD_SCALE_TEXT );
-    m_pLetterboxText = (ui_text*)FindChildByID( IDC_UI_SETTINGS_LETTERBOX_TEXT );
+    m_pUIScaleText   = static_cast<ui_text*>( FindChildByID( IDC_UI_SETTINGS_UI_SCALE_TEXT ) );
+    m_pHUDScaleText  = static_cast<ui_text*>( FindChildByID( IDC_UI_SETTINGS_HUD_SCALE_TEXT ) );
+    m_pLetterboxText = static_cast<ui_text*>( FindChildByID( IDC_UI_SETTINGS_LETTERBOX_TEXT ) );
 
     global_settings& PendingSettings = g_StateMgr.GetPendingSettings();
     m_OriginalSettings = PendingSettings;
@@ -144,18 +156,15 @@ xbool dlg_ui_settings::Create( s32                       UserID,
     }
     m_pHUDScale->SetSelection( HUDScaleSelection );
 
-    m_pUIScaleText  ->SetLabel( g_StringTableMgr( "ui", "IDS_DISPLAY_UI_SCALE" ) );
-    m_pHUDScaleText ->SetLabel( g_StringTableMgr( "ui", "IDS_DISPLAY_HUD_SCALE" ) );
     m_pUIScaleText  ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
     m_pHUDScaleText ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
-    m_pLetterboxText->SetLabel( xwstring( "Cutscene Letterboxing" ) );
     m_pLetterboxText->SetLabelFlags( ui_font::h_left|ui_font::v_center );
     m_pButtonApply->SetFlag( ui_win::WF_BUTTON_LEFT, TRUE );
 
     s32 const CurrentControl = g_StateMgr.GetCurrentControl();
     if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
     {
-        GotoControl( (ui_control*)m_pUIScale );
+        GotoControl( m_pUIScale );
         m_CurrentControl = IDC_UI_SETTINGS_UI_SCALE;
     }
     else
@@ -190,6 +199,7 @@ xbool dlg_ui_settings::Create( s32                       UserID,
 
 void dlg_ui_settings::Destroy( void )
 {
+    // Cancel outstanding save callbacks before destroying the dialog.
     g_SaveDataMgr.CancelCallbacks( this );
     ui_dialog::Destroy();
     g_UiMgr->ResetScreenWipe();
@@ -199,36 +209,38 @@ void dlg_ui_settings::Destroy( void )
 
 void dlg_ui_settings::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
-    static s32 gap   = 9;
-    static s32 width = 4;
-    irect rb;
+    s32 const Offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
+    static s32 const Gap = 9;
+    static s32 const Width = 4;
+    irect Bounds;
 
+    // Dim the background behind the dialog.
     if( m_bRenderBlackout )
     {
-        rb = g_UiMgr->GetUserBounds( m_UserID );
-        g_UiMgr->RenderGouraudRect( rb,
-                                    xcolor(0,0,0,180), xcolor(0,0,0,180),
-                                    xcolor(0,0,0,180), xcolor(0,0,0,180), FALSE );
+        Bounds = g_UiMgr->GetUserBounds( m_UserID );
+        g_UiMgr->RenderGouraudRect( Bounds,
+                                   xcolor( 0, 0, 0, 180 ), xcolor( 0, 0, 0, 180 ),
+                                   xcolor( 0, 0, 0, 180 ), xcolor( 0, 0, 0, 180 ), FALSE );
     }
 
-    rb.l = m_CurrPos.l + 22;
-    rb.t = m_CurrPos.t;
-    rb.r = m_CurrPos.r - 23;
-    rb.b = m_CurrPos.b;
-    g_UiMgr->RenderGouraudRect( rb,
-                                xcolor(56,115,58,64), xcolor(56,115,58,64),
-                                xcolor(56,115,58,64), xcolor(56,115,58,64), FALSE );
+    // Draw the translucent panel inside the side bars.
+    Bounds.Set( m_CurrPos.l + 22, m_CurrPos.t, m_CurrPos.r - 23, m_CurrPos.b );
+    g_UiMgr->RenderGouraudRect( Bounds,
+                               xcolor( 56, 115, 58, 64 ), xcolor( 56, 115, 58, 64 ),
+                               xcolor( 56, 115, 58, 64 ), xcolor( 56, 115, 58, 64 ), FALSE );
 
-    for( s32 y = rb.t + offset; y < rb.b; y += gap )
+    for( s32 Y = Bounds.t + Offset; Y < Bounds.b; Y += Gap )
     {
-        irect bar( rb.l, y, rb.r, MIN( y + width, rb.b ) );
-        g_UiMgr->RenderGouraudRect( bar,
-                                    xcolor(56,115,58,30), xcolor(56,115,58,30),
-                                    xcolor(56,115,58,30), xcolor(56,115,58,30), FALSE );
+        irect const Bar( Bounds.l, Y, Bounds.r, MIN( Y + Width, Bounds.b ) );
+        g_UiMgr->RenderGouraudRect( Bar,
+                                   xcolor( 56, 115, 58, 30 ), xcolor( 56, 115, 58, 30 ),
+                                   xcolor( 56, 115, 58, 30 ), xcolor( 56, 115, 58, 30 ), FALSE );
     }
 
+    // render the normal dialog stuff
     ui_dialog::Render( ox, oy );
+
+    // render the glow bar
     g_UiMgr->RenderGlowBar();
 }
 
@@ -236,7 +248,7 @@ void dlg_ui_settings::Render( s32 ox, s32 oy )
 
 void dlg_ui_settings::OnAccept( ui_win* pWin )
 {
-    if( (m_State != DIALOG_STATE_ACTIVE) || (pWin != (ui_win*)m_pButtonApply) )
+    if( (m_State != DIALOG_STATE_ACTIVE) || (pWin != m_pButtonApply) )
     {
         return;
     }
@@ -260,20 +272,23 @@ void dlg_ui_settings::OnAccept( ui_win* pWin )
 void dlg_ui_settings::OnCancel( ui_win* pWin )
 {
     (void)pWin;
-    if( m_State == DIALOG_STATE_ACTIVE )
-    {
-        global_settings Settings = m_OriginalSettings;
-        ApplySettings( Settings );
-        if( !Settings.HasChanged() )
-        {
-            g_AudioMgr.Play( "Backup" );
-            m_State = DIALOG_STATE_BACK;
-            return;
-        }
 
-        g_StateMgr.GetPendingSettings() = Settings;
-        OpenSavePopup();
+    if( m_State != DIALOG_STATE_ACTIVE )
+    {
+        return;
     }
+
+    global_settings Settings = m_OriginalSettings;
+    ApplySettings( Settings );
+    if( !Settings.HasChanged() )
+    {
+        g_AudioMgr.Play( "Backup" );
+        m_State = DIALOG_STATE_BACK;
+        return;
+    }
+
+    g_StateMgr.GetPendingSettings() = Settings;
+    OpenSavePopup();
 }
 
 //==============================================================================
@@ -372,6 +387,7 @@ void dlg_ui_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
     (void)pWin;
     s32 highLight = -1;
 
+    // Consume the popup result once before resuming the dialog.
     if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
     {
         s32 const Result = m_PopUpResult;
@@ -391,6 +407,7 @@ void dlg_ui_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         }
     }
 
+    // Show the controls only after the opening animation finishes.
     if( g_UiMgr->IsScreenScaling() && (UpdateScreenScaling( DeltaTime ) == FALSE) )
     {
         m_pUIScale      ->SetFlag( ui_win::WF_VISIBLE, TRUE );
@@ -404,7 +421,7 @@ void dlg_ui_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         s32 const CurrentControl = g_StateMgr.GetCurrentControl();
         if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
         {
-            GotoControl( (ui_control*)m_pUIScale );
+            GotoControl( m_pUIScale );
             m_CurrentControl = IDC_UI_SETTINGS_UI_SCALE;
         }
         else

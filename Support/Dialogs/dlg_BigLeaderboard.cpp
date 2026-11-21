@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_big_leaderboard.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -18,9 +22,9 @@
 #include "NetworkMgr/Game/GameMgr.hpp"
 #include "NetworkMgr/Voice/VoiceMgr.hpp"
 
-//=========================================================================
-//  Team Leaderboard Dialog
-//=========================================================================
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem BigLeaderboardControls[] = 
 {
@@ -35,6 +39,7 @@ ui_manager::control_tem BigLeaderboardControls[] =
     { IDC_BIG_LEADERBOARD_LOADING_PIPS, "IDS_NULL",        "text",      465, 395,  50,  16, 0, 0, 0, 0, ui_win::WF_VISIBLE|ui_win::WF_STATIC },
 };
 
+//==============================================================================
 
 ui_manager::dialog_tem BigLeaderboardDialog =
 {
@@ -45,49 +50,45 @@ ui_manager::dialog_tem BigLeaderboardDialog =
     0
 };
 
-//=========================================================================
-//  Data
-//=========================================================================
+//==============================================================================
 
 extern s32 s_LineSpacing;
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_big_leaderboard_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "big leaderboard", &BigLeaderboardDialog, &dlg_big_leaderboard_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_big_leaderboard_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_big_leaderboard* pDialog = new dlg_big_leaderboard;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_big_leaderboard
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_big_leaderboard::dlg_big_leaderboard( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_big_leaderboard::~dlg_big_leaderboard( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_big_leaderboard::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -106,13 +107,13 @@ xbool dlg_big_leaderboard::Create( s32                        UserID,
     // Do dialog creation
     Success = dlg_mp_score::Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    m_pPlayerOneBox    = (ui_blankbox*)    FindChildByID( IDC_BIG_LEADERBOARD_ONE_DETAILS  );
-    m_pPlayerTwoBox    = (ui_blankbox*)    FindChildByID( IDC_BIG_LEADERBOARD_TWO_DETAILS  );
-    m_pLoadingText  = (ui_text*)        FindChildByID( IDC_BIG_LEADERBOARD_LOADING_TEXT );
-    m_pLoadingPips  = (ui_text*)        FindChildByID( IDC_BIG_LEADERBOARD_LOADING_PIPS );
-    m_pFrameOne     = (ui_frame*)       FindChildByID( IDC_BIG_LEADERBOARD_FRAME_ONE    );
-    m_pFrameTwo     = (ui_frame*)       FindChildByID( IDC_BIG_LEADERBOARD_FRAME_TWO    );
-    m_pFrameMain    = (ui_frame*)       FindChildByID( IDC_BIG_LEADERBOARD_FRAME_MAIN   );
+    m_pPlayerOneBox    = static_cast<ui_blankbox*>( FindChildByID( IDC_BIG_LEADERBOARD_ONE_DETAILS  ) );
+    m_pPlayerTwoBox    = static_cast<ui_blankbox*>( FindChildByID( IDC_BIG_LEADERBOARD_TWO_DETAILS  ) );
+    m_pLoadingText  = static_cast<ui_text*>( FindChildByID( IDC_BIG_LEADERBOARD_LOADING_TEXT ) );
+    m_pLoadingPips  = static_cast<ui_text*>( FindChildByID( IDC_BIG_LEADERBOARD_LOADING_PIPS ) );
+    m_pFrameOne     = static_cast<ui_frame*>( FindChildByID( IDC_BIG_LEADERBOARD_FRAME_ONE    ) );
+    m_pFrameTwo     = static_cast<ui_frame*>( FindChildByID( IDC_BIG_LEADERBOARD_FRAME_TWO    ) );
+    m_pFrameMain    = static_cast<ui_frame*>( FindChildByID( IDC_BIG_LEADERBOARD_FRAME_MAIN   ) );
 
     // intialize frames
     m_pFrameOne->SetBackgroundColor( xcolor(0,0,0,0) );
@@ -240,14 +241,14 @@ xbool dlg_big_leaderboard::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_big_leaderboard::Destroy( void )
 {
     dlg_mp_score::Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_big_leaderboard::Render( s32 ox, s32 oy )
 {
@@ -273,7 +274,7 @@ void dlg_big_leaderboard::Render( s32 ox, s32 oy )
     RenderScoreList( ox, oy );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_big_leaderboard::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
@@ -288,22 +289,29 @@ void dlg_big_leaderboard::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Pres
     switch( Code )
     {
         case ui_navigation::Left:
+        {
             CycleStatDisplay( FALSE );
-            break;
+        }
+        break;
+
         case ui_navigation::Right:
+        {
             CycleStatDisplay( TRUE );
-            break;
+        }
+        break;
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_big_leaderboard::OnDelete( ui_win* pWin )
 {
     (void)pWin;      
     
     if( m_Mode != LEADERBOARD_PAUSE )
+    {
         return;
+    }
 
     if( m_State == DIALOG_STATE_ACTIVE )
     {
@@ -313,7 +321,7 @@ void dlg_big_leaderboard::OnDelete( ui_win* pWin )
 
             // Open a dialog to confirm quitting the online game component
             irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-            m_pPopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+            m_pPopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
 
             // get message text
             xwstring Message;
@@ -336,7 +344,7 @@ void dlg_big_leaderboard::OnDelete( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_big_leaderboard::OnAccept( ui_win* pWin )
 {
@@ -354,7 +362,7 @@ void dlg_big_leaderboard::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_big_leaderboard::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -368,32 +376,57 @@ void dlg_big_leaderboard::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
     switch( m_Mode )
     {
-    case LEADERBOARD_FINAL:
-        NavText = g_StringTableMgr( "ui", "IDS_NAV_OK" );
+        case LEADERBOARD_FINAL:
+        {
+            NavText = g_StringTableMgr( "ui", "IDS_NAV_OK" );
+        }
         break;
 
-    case LEADERBOARD_PAUSE:
-        // initialize nav text
-        NavText  = g_StringTableMgr( "ui", "IDS_NAV_QUIT" );
-        NavText += g_StringTableMgr( "ui", "IDS_NAV_UNPAUSE" );
-        NavText += g_StringTableMgr( "ui", "IDS_NAV_ONLINE_MENU");
+        case LEADERBOARD_PAUSE:
+        {
+            // initialize nav text
+            NavText  = g_StringTableMgr( "ui", "IDS_NAV_QUIT" );
+            NavText += g_StringTableMgr( "ui", "IDS_NAV_UNPAUSE" );
+            NavText += g_StringTableMgr( "ui", "IDS_NAV_ONLINE_MENU");
+        }
         break;
 
-    case LEADERBOARD_OVERLAY:
-        SetNavTextVisible( FALSE );
+        case LEADERBOARD_OVERLAY:
+        {
+            SetNavTextVisible( FALSE );
+        }
         break;
 
-    case LEADERBOARD_INTERLEVEL:
+        case LEADERBOARD_INTERLEVEL:
         {
             NavText = m_StrLevelDesc;
 
             xwstring LoadText("");
-            switch( (s32)(m_LoadTimeElapsed*4.0f) % 4 )
+            switch( static_cast<s32>( m_LoadTimeElapsed*4.0f ) % 4 )
             {
-            case 0: LoadText += "   ";   break;
-            case 1: LoadText += ".  ";   break;
-            case 2: LoadText += ".. ";   break;
-            case 3: LoadText += "...";   break;
+                case 0:
+                {
+                    LoadText += "   ";
+                }
+                break;
+
+                case 1:
+                {
+                    LoadText += ".  ";
+                }
+                break;
+
+                case 2:
+                {
+                    LoadText += ".. ";
+                }
+                break;
+
+                case 3:
+                {
+                    LoadText += "...";
+                }
+                break;
             }
             m_pLoadingText->SetFlag( ui_win::WF_VISIBLE, TRUE );
             m_pLoadingPips->SetFlag( ui_win::WF_VISIBLE, TRUE );
@@ -401,8 +434,10 @@ void dlg_big_leaderboard::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         }
         break;
 
-    default:
-        ASSERT( FALSE );
+        default:
+        {
+            ASSERT( FALSE );
+        }
     }
 
     SetNavText( NavText );
@@ -430,15 +465,15 @@ void dlg_big_leaderboard::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 }
 
 
-//=========================================================================
+//==============================================================================
 // Returns 0 if item 1 == item 2
 // Returns -1 if item 1 > item 2
 // Returns +1 if item 1 < item 2
 //
 static s32 sort_compare(const void* pItem1, const void* pItem2)
 {
-    player_score* pScore1 = (player_score*)pItem1;
-    player_score* pScore2 = (player_score*)pItem2;
+    const player_score* pScore1 = static_cast<const player_score*>( pItem1 );
+    const player_score* pScore2 = static_cast<const player_score*>( pItem2 );
 
     // sort by in game state
     if( pScore1->IsInGame > pScore2->IsInGame )
@@ -467,7 +502,7 @@ static s32 sort_compare(const void* pItem1, const void* pItem2)
         }
     }
 }
-//=========================================================================
+//==============================================================================
 
 void dlg_big_leaderboard::FillScoreList( void )
 {
@@ -535,10 +570,14 @@ void dlg_big_leaderboard::FillScoreList( void )
             if( ScoreData.IsTeamBased )
             {
                 if( (Team == 0) && (TeamCount[0] >= 16) )
+                {
                     continue;
+                }
 
                 if( (Team == 1) && ((TeamCount[1]-16) >= 16) )
+                {
                     continue;
+                }
             }
 
             x_memcpy( &m_PlayerData[TeamCount[Team]], &ScoreData.Player[i], sizeof(player_score) );
@@ -603,7 +642,7 @@ void dlg_big_leaderboard::FillScoreList( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_big_leaderboard::RenderScoreList( s32 ox, s32 oy )
 {
@@ -684,36 +723,50 @@ void dlg_big_leaderboard::RenderScoreList( s32 ox, s32 oy )
     switch( m_SelectedType )
     {
         case TYPE_KILLS:
+        {
             m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_StrIconKills );
             m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, m_StrIconKills );
-            break;
+        }
+        break;
 
         case TYPE_DEATHS:
+        {
             m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_StrIconDeaths );
             m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, m_StrIconDeaths );
-            break;
+        }
+        break;
 
         case TYPE_TKS:
+        {
             m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_StrIconTKs );
             m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, m_StrIconTKs );
-            break;
+        }
+        break;
 
         case TYPE_FLAGS:
+        {
             m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_StrIconFlags );
             m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, m_StrIconFlags );
-            break;
+        }
+        break;
 
         case TYPE_VOTES:
+        {
             m_pManager->RenderText( m_Font, r,  ui_font::h_right|ui_font::v_center, ch, m_StrIconVotes );
             m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, m_StrIconVotes );
-            break;
+        }
+        break;
 
         case TYPE_NONE:
-            break;
+        {
+        }
+        break;
 
         default:
+        {
             ASSERTS(FALSE, "Data type out of range!");
-            break;
+        }
+        break;
     }
 
     // render bars
@@ -791,12 +844,12 @@ void dlg_big_leaderboard::RenderScoreList( s32 ox, s32 oy )
             if( !m_PlayerData[ i ].IsVoiceAllowed )
             {
                 // player is muted
-                m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center, c1, xwstring( xstring( (char)0x87 ) ) );
+                m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center, c1, xwstring( xstring( static_cast<char>( 0x87 ) ) ) );
             }
             else if( m_PlayerData[ i ].Speaking )
             {
                 // player has the mic!
-                m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center, c1, xwstring( xstring( (char)0x86 ) ) );
+                m_pManager->RenderText( m_Font, r, ui_font::h_left|ui_font::v_center, c1, xwstring( xstring( static_cast<char>( 0x86 ) ) ) );
             }
 
             r.l += 16;
@@ -814,31 +867,45 @@ void dlg_big_leaderboard::RenderScoreList( s32 ox, s32 oy )
             switch( m_SelectedType )
             {
                 case TYPE_KILLS:
+                {
                     m_pManager->RenderText( m_Font, r, ui_font::h_right|ui_font::v_center, c1, xfs("%d",m_PlayerData[i].Kills) );
-                    break;
+                }
+                break;
 
                 case TYPE_DEATHS:
+                {
                     m_pManager->RenderText( m_Font, r, ui_font::h_right|ui_font::v_center, c1, xfs("%d",m_PlayerData[i].Deaths) );
-                    break;
+                }
+                break;
 
                 case TYPE_TKS:
+                {
                     m_pManager->RenderText( m_Font, r, ui_font::h_right|ui_font::v_center, c1, xfs("%d",m_PlayerData[i].TKs) );
-                    break;
+                }
+                break;
 
                 case TYPE_FLAGS:
+                {
                     m_pManager->RenderText( m_Font, r, ui_font::h_right|ui_font::v_center, c1, xfs("%d",m_PlayerData[i].Flags) );
-                    break;
+                }
+                break;
 
                 case TYPE_VOTES:
+                {
                     m_pManager->RenderText( m_Font, r, ui_font::h_right|ui_font::v_center, c1, xfs("%d",m_PlayerData[i].Votes) );
-                    break;
+                }
+                break;
 
                 case TYPE_NONE:
-                    break;
+                {
+                }
+                break;
 
                 default:
+                {
                     ASSERTS(FALSE, "Data type out of range!");
-                    break;
+                }
+                break;
             }
 
             r.l -= 171;
@@ -903,41 +970,55 @@ void dlg_big_leaderboard::RenderScoreList( s32 ox, s32 oy )
         switch( m_SelectedType )
         {
             case TYPE_KILLS:
+            {
                 m_pManager->RenderText( m_Font, r, ui_font::h_right|ui_font::v_center, ch, xfs("%d",m_PlayerTotals[0].Kills) );
                 m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, xfs("%d",m_PlayerTotals[1].Kills) );
-                break;
+            }
+            break;
 
             case TYPE_DEATHS:
+            {
                 m_pManager->RenderText( m_Font, r, ui_font::h_right|ui_font::v_center, ch, xfs("%d",m_PlayerTotals[0].Deaths) );
                 m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, xfs("%d",m_PlayerTotals[1].Deaths) );
-                break;
+            }
+            break;
 
             case TYPE_TKS:
+            {
                 m_pManager->RenderText( m_Font, r, ui_font::h_right|ui_font::v_center, ch, xfs("%d",m_PlayerTotals[0].TKs) );
                 m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, xfs("%d",m_PlayerTotals[1].TKs) );
-                break;
+            }
+            break;
 
             case TYPE_FLAGS:
+            {
                 m_pManager->RenderText( m_Font, r, ui_font::h_right|ui_font::v_center, ch, xfs("%d",m_PlayerTotals[0].Flags) );
                 m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, xfs("%d",m_PlayerTotals[1].Flags) );
-                break;
+            }
+            break;
 
             case TYPE_VOTES:
+            {
                 m_pManager->RenderText( m_Font, r, ui_font::h_right|ui_font::v_center, ch, xfs("%d",m_PlayerTotals[0].Votes) );
                 m_pManager->RenderText( m_Font, r2, ui_font::h_right|ui_font::v_center, ch, xfs("%d",m_PlayerTotals[1].Votes) );
-                break;
+            }
+            break;
 
             case TYPE_NONE:
-                break;
+            {
+            }
+            break;
 
             default:
+            {
                 ASSERTS(FALSE, "Data type out of range!");
-                break;
+            }
+            break;
         }
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_big_leaderboard::CycleStatDisplay( xbool bForward )
 {
@@ -980,25 +1061,49 @@ void dlg_big_leaderboard::CycleStatDisplay( xbool bForward )
         switch( m_SelectedType )
         {
             case TYPE_KILLS:
-                if( ScoreData.ScoreFieldMask & SCORE_KILLS )    
-                    Done = TRUE; 
-                break;
+            {
+                if( ScoreData.ScoreFieldMask & SCORE_KILLS )
+                {
+                    Done = TRUE;
+                }
+            }
+            break;
+
             case TYPE_DEATHS:
-                if( ScoreData.ScoreFieldMask & SCORE_DEATHS )    
-                    Done = TRUE; 
-                break;
+            {
+                if( ScoreData.ScoreFieldMask & SCORE_DEATHS )
+                {
+                    Done = TRUE;
+                }
+            }
+            break;
+
             case TYPE_TKS:
-                if( ScoreData.ScoreFieldMask & SCORE_TKS )    
-                    Done = TRUE; 
-                break;
+            {
+                if( ScoreData.ScoreFieldMask & SCORE_TKS )
+                {
+                    Done = TRUE;
+                }
+            }
+            break;
+
             case TYPE_FLAGS:
-                if( ScoreData.ScoreFieldMask & SCORE_FLAGS )    
-                    Done = TRUE; 
-                break;
+            {
+                if( ScoreData.ScoreFieldMask & SCORE_FLAGS )
+                {
+                    Done = TRUE;
+                }
+            }
+            break;
+
             case TYPE_VOTES:
-                if( ScoreData.ScoreFieldMask & SCORE_VOTES )    
-                    Done = TRUE; 
-                break;
+            {
+                if( ScoreData.ScoreFieldMask & SCORE_VOTES )
+                {
+                    Done = TRUE;
+                }
+            }
+            break;
         }
 
         // check if we looped the whole list
@@ -1011,4 +1116,4 @@ void dlg_big_leaderboard::CycleStatDisplay( xbool bForward )
     }
 }
 
-//=========================================================================
+//==============================================================================

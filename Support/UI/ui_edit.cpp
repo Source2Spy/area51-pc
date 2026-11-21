@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  ui_edit.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 #include "ui_edit.hpp"
@@ -10,46 +14,34 @@
 #include "ui_font.hpp"
 #include "ui_dlg_vkeyboard.hpp"
 
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
-
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 ui_win* ui_edit_factory( s32 UserID, ui_manager* pManager, const irect& Position, ui_win* pParent, s32 Flags )
 {
     ui_edit* pedit = new ui_edit;
     pedit->Create( UserID, pManager, Position, pParent, Flags );
 
-    return (ui_win*)pedit;
+    return pedit;
 }
 
-//=========================================================================
-//  ui_edit
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 ui_edit::ui_edit( void )
 {
     m_bName = TRUE;
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_edit::~ui_edit( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_edit::Create( s32 UserID, ui_manager* pManager, const irect& Position, ui_win* pParent, s32 Flags )
 {
@@ -57,6 +49,7 @@ xbool ui_edit::Create( s32 UserID, ui_manager* pManager, const irect& Position, 
 
     Success = ui_control::Create( UserID, pManager, Position, pParent, Flags );
 
+    // Look up the edit field's skin element before setting up the text.
     m_iElement1 = m_pManager->FindElement( "button_edit" );
     ASSERT( m_iElement1 != -1 );
 
@@ -68,7 +61,7 @@ xbool ui_edit::Create( s32 UserID, ui_manager* pManager, const irect& Position, 
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_edit::Render( s32 ox, s32 oy )
 {
@@ -84,6 +77,8 @@ void ui_edit::Render( s32 ox, s32 oy )
         irect    r, r2;
         r.Set( (m_Position.l+ox), (m_Position.t+oy), (m_Position.r+ox), (m_Position.b+oy) );
         r2 = r;
+
+        // Render the edit field before clipping its text to the inset bounds.
         m_pManager->RenderElement( m_iElement1, r2, State );
 
         // Set a clip window to render the text
@@ -108,7 +103,7 @@ void ui_edit::Render( s32 ox, s32 oy )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_edit::OnAccept( ui_win* pWin )
 {
@@ -117,7 +112,7 @@ void ui_edit::OnAccept( ui_win* pWin )
     irect   r = m_pManager->GetUserBounds( m_UserID );
 
     // Open virtual keyboard dialog and connect it to the edit string
-    ui_dlg_vkeyboard* pVKeyboard = (ui_dlg_vkeyboard*)m_pManager->OpenDialog( m_UserID, "ui_vkeyboard", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_INPUTMODAL );
+    ui_dlg_vkeyboard* pVKeyboard = static_cast<ui_dlg_vkeyboard*>( m_pManager->OpenDialog( m_UserID, "ui_vkeyboard", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_INPUTMODAL ) );
     if( !pVKeyboard )
     {
         return;
@@ -128,21 +123,21 @@ void ui_edit::OnAccept( ui_win* pWin )
     pVKeyboard->SetLabel( m_VirtualKeyboardTitle );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_edit::SetLabelWidth( s32 Width )
 {
     m_LabelWidth = Width;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_edit::SetBufferSize( s32 BufferSize )
 {
     m_BufferSize = BufferSize;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_edit::SetVirtualKeyboardTitle( const xwstring& Title )
 {

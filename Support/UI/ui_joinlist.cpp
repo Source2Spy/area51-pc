@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  ui_joinlist.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 #include "ui_joinlist.hpp"
@@ -10,7 +14,9 @@
 #include "UI/ui_font.hpp"
 #include "StringMgr/StringMgr.hpp"
 
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 ui_win* ui_joinlist_factory( s32 UserID, ui_manager* pManager, const irect& Position, ui_win* pParent, s32 Flags )
 {
@@ -23,7 +29,9 @@ ui_win* ui_joinlist_factory( s32 UserID, ui_manager* pManager, const irect& Posi
     return pList;
 }
 
-//=========================================================================
+//==============================================================================
+//  HELPERS
+//==============================================================================
 
 static irect GetColumnRect( const irect& Row, s32 Column )
 {
@@ -34,7 +42,9 @@ static irect GetColumnRect( const irect& Row, s32 Column )
     return Result;
 }
 
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 void ui_joinlist::RenderHeader( irect r )
 {
@@ -53,13 +63,15 @@ void ui_joinlist::RenderHeader( irect r )
     {
         xwstring Label( g_StringTableMgr("ui", Labels[i]) );
         if( i == m_Sort )
+        {
             Label += m_Descending ? " v" : " ^";
+        }
         RenderTitle( GetColumnRect(r, i), ui_font::h_left | ui_font::v_center |
                      ui_font::clip_ellipsis, Label );
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_joinlist::RenderString( irect r, u32 Flags, const xcolor& c1, const xcolor& c2, const char* pString )
 {
@@ -68,7 +80,7 @@ void ui_joinlist::RenderString( irect r, u32 Flags, const xcolor& c1, const xcol
     m_pManager->RenderText( m_Font, r, Flags, c1, pString );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_joinlist::RenderString( irect r, u32 Flags, const xcolor& c1, const xcolor& c2, const xwchar* pString )
 {
@@ -77,7 +89,7 @@ void ui_joinlist::RenderString( irect r, u32 Flags, const xcolor& c1, const xcol
     m_pManager->RenderText( m_Font, r, Flags, c1, pString );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_joinlist::RenderTitle( irect r, u32 Flags, const xwchar* pString )
 {
@@ -86,23 +98,28 @@ void ui_joinlist::RenderTitle( irect r, u32 Flags, const xwchar* pString )
     m_pManager->RenderText( m_Font, r, Flags, m_HeaderColor, pString );
 }
 
-//=========================================================================
+//==============================================================================
 
 const server_info* ui_joinlist::GetServerInfo( s32 Index ) const
 {
     return ((Index >= 0) && (Index < m_Servers.GetCount())) ? &m_Servers[Index] : NULL;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_joinlist::RenderItem( irect r, const item& Item, const xcolor& c1, const xcolor& c2 )
 {
-    const server_info* pServer = GetServerInfo( (s32)Item.Data[0] );
+    // The row stores an index into the server snapshot, not a server pointer.
+    const server_info* pServer = GetServerInfo( static_cast<s32>( Item.Data[0] ) );
     if( !pServer )
+    {
         return;
+    }
 
     if( m_ShowFrame )
+    {
         r.Deflate( 1, 1 );
+    }
     r.Translate( 0, -2 );
 
     u32 Flags = ui_font::h_left | ui_font::v_center | ui_font::clip_ellipsis;
@@ -112,12 +129,12 @@ void ui_joinlist::RenderItem( irect r, const item& Item, const xcolor& c1, const
     RenderString( GetColumnRect(r, 2), Flags, c1, c2, pServer->ShortGameType );
     RenderString( GetColumnRect(r, 3), Flags, c1, c2, pServer->MissionName );
     RenderString( GetColumnRect(r, 4), Flags, c1, c2,
-                  (pServer->PingDelay < 0.0f) ? "--" : xfs("%d", (s32)pServer->PingDelay) );
+                  (pServer->PingDelay < 0.0f) ? "--" : xfs("%d", static_cast<s32>( pServer->PingDelay )) );
     RenderString( GetColumnRect(r, 5), Flags, c1, c2,
                   (pServer->Flags & SERVER_HAS_PASSWORD) ? "+" : "" );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_joinlist::SetSort( match_sort Sort, xbool Descending )
 {
@@ -125,7 +142,7 @@ void ui_joinlist::SetSort( match_sort Sort, xbool Descending )
     m_Descending = Descending;
 }
 
-//=========================================================================
+//==============================================================================
 
 irect ui_joinlist::GetListRect( void ) const
 {
@@ -134,7 +151,7 @@ irect ui_joinlist::GetListRect( void ) const
     return Bounds;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_joinlist::Render( s32 ox, s32 oy )
 {
@@ -149,13 +166,15 @@ void ui_joinlist::Render( s32 ox, s32 oy )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_joinlist::OnPointerDown( ui_win* pWin, s32 x, s32 y )
 {
     s32 LocalX = x;
     s32 LocalY = y;
     ScreenToLocal( LocalX, LocalY );
+
+    // Header clicks change the sort order without changing the selected row.
     if( m_ShowHeaderBar && (LocalY >= 0) && (LocalY < 22) )
     {
         m_LastClickID = -1;
@@ -170,7 +189,7 @@ void ui_joinlist::OnPointerDown( ui_win* pWin, s32 x, s32 y )
             if( (LocalX >= Column.l - 4) && (LocalX < Column.r + 4) )
             {
                 m_Descending = (m_Sort == i) ? !m_Descending : FALSE;
-                m_Sort = (match_sort)i;
+                m_Sort = static_cast<match_sort>( i );
                 Notify( ui_notification_type::ListSortChanged, i );
                 return;
             }
@@ -184,7 +203,9 @@ void ui_joinlist::OnPointerDown( ui_win* pWin, s32 x, s32 y )
         m_HoveredItem = -1;
         SetFirstVisibleItem( m_ScrollBar.GetPosition() );
         if( m_ScrollBar.IsInteracting() )
+        {
             m_pManager->SetCapture( m_UserID, this );
+        }
         return;
     }
     s32 Index = GetItemAt( x, y );
@@ -195,7 +216,7 @@ void ui_joinlist::OnPointerDown( ui_win* pWin, s32 x, s32 y )
     }
 
     xbool const SelectionChanged = SelectUserItem( Index );
-    const server_info* pServer = GetServerInfo( (s32)m_Items[Index].Data[0] );
+    const server_info* pServer = GetServerInfo( static_cast<s32>( m_Items[Index].Data[0] ) );
     if( !pServer )
     {
         m_LastClickID = -1;
@@ -207,7 +228,9 @@ void ui_joinlist::OnPointerDown( ui_win* pWin, s32 x, s32 y )
     m_LastClickID = RepeatClick ? -1 : pServer->ID;
     m_LastClickAddress = pServer->Remote;
     if( RepeatClick )
+    {
         OnAccept( pWin );
+    }
 }
 
 //==============================================================================

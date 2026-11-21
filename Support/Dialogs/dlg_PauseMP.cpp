@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_PauseMP.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -16,9 +20,9 @@
 #include "StateMgr/StateMgr.hpp"
 #include "StringMgr/StringMgr.hpp"
 
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem PauseMPControls[] = 
 {
@@ -29,6 +33,7 @@ ui_manager::control_tem PauseMPControls[] =
     { IDC_PAUSE_MP_SETTINGS,    "IDS_PAUSE_MENU_SETTINGS",  "button",   60, 180, 120, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
 };
 
+//==============================================================================
 
 ui_manager::dialog_tem PauseMPDialog =
 {
@@ -39,43 +44,41 @@ ui_manager::dialog_tem PauseMPDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_pause_mp_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "pause multiplayer", &PauseMPDialog, &dlg_pause_mp_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_pause_mp_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_pause_mp* pDialog = new dlg_pause_mp;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_pause_mp
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_pause_mp::dlg_pause_mp( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_pause_mp::~dlg_pause_mp( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_pause_mp::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -95,15 +98,15 @@ xbool dlg_pause_mp::Create( s32                        UserID,
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
     // get button handles
-    m_pButtonQuit        = (ui_button*)  FindChildByID( IDC_PAUSE_MP_QUIT     );
-    m_pButtonScore         = (ui_button*)  FindChildByID( IDC_PAUSE_MP_SCORE    );
-    m_pButtonOptions    = (ui_button*)  FindChildByID( IDC_PAUSE_MP_OPTIONS  );
-    m_pButtonSettings   = (ui_button*)  FindChildByID( IDC_PAUSE_MP_SETTINGS );
+    m_pButtonQuit        = static_cast<ui_button*>( FindChildByID( IDC_PAUSE_MP_QUIT     ) );
+    m_pButtonScore         = static_cast<ui_button*>( FindChildByID( IDC_PAUSE_MP_SCORE    ) );
+    m_pButtonOptions    = static_cast<ui_button*>( FindChildByID( IDC_PAUSE_MP_OPTIONS  ) );
+    m_pButtonSettings   = static_cast<ui_button*>( FindChildByID( IDC_PAUSE_MP_SETTINGS ) );
 
     s32 iControl = g_StateMgr.GetCurrentControl();
     if( (iControl == -1) || (GotoControl(iControl)==NULL) )
     {
-        GotoControl( (ui_control*)m_pButtonQuit );
+        GotoControl( m_pButtonQuit );
         m_CurrentControl = IDC_PAUSE_MP_QUIT;
     }
     else
@@ -132,7 +135,9 @@ xbool dlg_pause_mp::Create( s32                        UserID,
 
     // set the frame to be disabled (if coming from off screen)
     if (g_UiMgr->IsScreenOn() == FALSE)
+    {
         SetFlag( WF_DISABLED, TRUE );
+    }
 
     // make the dialog active
     m_State = DIALOG_STATE_ACTIVE;
@@ -141,7 +146,7 @@ xbool dlg_pause_mp::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_pause_mp::Destroy( void )
 {
@@ -151,11 +156,11 @@ void dlg_pause_mp::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_pause_mp::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
@@ -217,7 +222,7 @@ void dlg_pause_mp::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_pause_mp::OnAccept( ui_win* pWin )
 {
@@ -225,7 +230,7 @@ void dlg_pause_mp::OnAccept( ui_win* pWin )
 
     if ( m_State == DIALOG_STATE_ACTIVE )
     {
-        if( pWin == (ui_win*)m_pButtonQuit )
+        if( pWin == m_pButtonQuit )
         {
 
 
@@ -233,7 +238,7 @@ void dlg_pause_mp::OnAccept( ui_win* pWin )
             {
                 // Open a dialog to confirm quitting the online game component
                 irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-                m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+                m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
 
                 // get message text
                 xwstring Message( g_StringTableMgr( "ui", "IDS_QUIT_MSG" ));
@@ -246,19 +251,19 @@ void dlg_pause_mp::OnAccept( ui_win* pWin )
                 m_PopUp->Configure( g_StringTableMgr( "ui", "IDS_QUIT_POPUP" ), TRUE, TRUE, FALSE, Message, navText, &m_PopUpResult );
             }
         }
-        else if( pWin == (ui_win*)m_pButtonScore )
+        else if( pWin == m_pButtonScore )
         {
             g_AudioMgr.Play("Select_Norm");
             m_CurrentControl = IDC_PAUSE_MP_SCORE;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin == (ui_win*)m_pButtonOptions )
+        else if( pWin == m_pButtonOptions )
         {
             g_AudioMgr.Play("Select_Norm");
             m_CurrentControl = IDC_PAUSE_MP_OPTIONS;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin == (ui_win*)m_pButtonSettings )
+        else if( pWin == m_pButtonSettings )
         {
             g_AudioMgr.Play("Select_Norm");
             m_CurrentControl = IDC_PAUSE_MP_SETTINGS;
@@ -267,14 +272,14 @@ void dlg_pause_mp::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_pause_mp::OnCancel( ui_win* pWin )
 {
     (void)pWin;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_pause_mp::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -302,7 +307,7 @@ void dlg_pause_mp::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             s32 iControl = g_StateMgr.GetCurrentControl();
             if( (iControl == -1) || (GotoControl( iControl )==NULL) )
             {
-                GotoControl( (ui_control*)m_pButtonQuit );
+                GotoControl( m_pButtonQuit );
                 g_UiMgr->SetScreenHighlight( m_pButtonQuit->GetPosition() );
                 m_CurrentControl =  IDC_PAUSE_MP_QUIT;
             }
@@ -370,10 +375,12 @@ void dlg_pause_mp::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     if( highLight != m_CurrHL )
     {
         if( highLight != -1 )
+        {
             g_AudioMgr.Play("Cusor_Norm");
+        }
 
         m_CurrHL = highLight;
     }
 }
 
-//=========================================================================
+//==============================================================================

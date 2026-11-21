@@ -34,6 +34,8 @@ enum profile_keyboard_bindings
 };
 
 //==============================================================================
+//  TYPES
+//==============================================================================
 
 class keyboard_binding_list : public ui_listbox
 {
@@ -85,10 +87,13 @@ ui_manager::dialog_tem ProfileKeyboardBindingsDialog =
 };
 
 //==============================================================================
+
+static
+
+//==============================================================================
 //  HELPERS
 //==============================================================================
 
-static
 ui_win* KeyboardBindingListFactory( s32 UserID, ui_manager* pManager, const irect& Position, ui_win* pParent, s32 Flags )
 {
     keyboard_binding_list* pList = new keyboard_binding_list;
@@ -102,14 +107,20 @@ static
 xbool BindingInputsReleased( const input_snapshot& Snapshot )
 {
     for( s32 Key = INPUT_KBD_ESCAPE; Key <= INPUT_KBD_MEDIASELECT; Key++ )
-        if( Snapshot.IsPressed( (input_gadget)Key, 0 ) )
+        if( Snapshot.IsPressed( static_cast<input_gadget>( Key ), 0 ) )
+        {
             return FALSE;
+        }
     if( Snapshot.IsPressed( INPUT_MOUSE_BTN_L, 0 ) )
+    {
         return FALSE;
+    }
     for( s32 Pad = 0; Pad < frontend_input::MAX_CONTROLLERS; Pad++ )
         for( s32 Action = 0; Action <= frontend_pad::UI_HELP; Action++ )
             if( g_FrontendInput.GetPad( Pad ).GetFrameLogical( Action ).GetIsValue() != 0.0f )
+            {
                 return FALSE;
+            }
 
     return TRUE;
 }
@@ -121,7 +132,9 @@ irect BindingColumn( irect r, s32 Column )
 {
     s32 Width = r.GetWidth();
     if( Column == 0 )
+    {
         r.r = r.l + Width / 2;
+    }
     else
     {
         r.l += Width / 2 + (Column - 1) * Width / 4;
@@ -147,7 +160,7 @@ ui_win* dlg_profile_keyboard_bindings_factory( s32 UserID, ui_manager* pManager,
 {
     dlg_profile_keyboard_bindings* pDialog = new dlg_profile_keyboard_bindings;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
-    return static_cast<ui_win*>( pDialog );
+    return pDialog;
 }
 
 //==============================================================================
@@ -243,6 +256,7 @@ xbool dlg_profile_keyboard_bindings::Create( s32                       UserID,
 
 void dlg_profile_keyboard_bindings::Destroy( void )
 {
+    // Cancel outstanding save callbacks before destroying the dialog.
     g_SaveDataMgr.CancelCallbacks( this );
     ui_dialog::Destroy();
     g_UiMgr->ResetScreenWipe();
@@ -257,6 +271,7 @@ void dlg_profile_keyboard_bindings::Render( s32 ox, s32 oy )
     static s32 const Width = 4;
     irect Bounds;
 
+    // Dim the background behind the dialog.
     if( m_bRenderBlackout )
     {
         Bounds = g_UiMgr->GetUserBounds( m_UserID );
@@ -265,6 +280,7 @@ void dlg_profile_keyboard_bindings::Render( s32 ox, s32 oy )
                                     xcolor( 0, 0, 0, 180 ), xcolor( 0, 0, 0, 180 ), FALSE );
     }
 
+    // Draw the translucent panel inside the side bars.
     Bounds.l = m_CurrPos.l + 22;
     Bounds.t = m_CurrPos.t + 28;
     Bounds.r = m_CurrPos.r - 23;
@@ -282,7 +298,10 @@ void dlg_profile_keyboard_bindings::Render( s32 ox, s32 oy )
                                     xcolor( 56, 115, 58, 30 ), xcolor( 56, 115, 58, 30 ), FALSE );
     }
 
+    // render the normal dialog stuff
     ui_dialog::Render( ox, oy );
+
+    // render the glow bar
     g_UiMgr->RenderGlowBar();
 }
 
@@ -292,7 +311,9 @@ void dlg_profile_keyboard_bindings::OnAccept( ui_win* pWin )
 {
 
     if( !InputEnabled() )
+    {
         return;
+    }
 
     if( pWin == m_pBindings )
     {
@@ -329,7 +350,9 @@ void dlg_profile_keyboard_bindings::OnCancel( ui_win* pWin )
     (void)pWin;
 
     if( !InputEnabled() )
+    {
         return;
+    }
     if( !m_EditingProfile.HasChanged() )
     {
         g_AudioMgr.Play( "Backup" );
@@ -345,7 +368,9 @@ void dlg_profile_keyboard_bindings::OnCancel( ui_win* pWin )
 void dlg_profile_keyboard_bindings::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
     if( InputEnabled() )
+    {
         ui_dialog::OnNavigate( pWin, Code, Presses, Repeats, WrapX, WrapY );
+    }
 }
 
 //==============================================================================
@@ -483,6 +508,7 @@ void dlg_profile_keyboard_bindings::OnUpdate( ui_win* pWin, f32 DeltaTime )
     s32 Highlight = -1;
     const input_snapshot& Snapshot = g_Input.GetFrameSnapshot();
 
+    // Consume the popup result once before resuming the dialog.
     if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
     {
         s32 const Result = m_PopUpResult;
@@ -492,14 +518,18 @@ void dlg_profile_keyboard_bindings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         if( m_ConflictPopup )
         {
             if( (Result == DLG_POPUP_YES) || (Result == DLG_POPUP_MAYBE) )
+            {
                 ingame_pad::SetKeyboardBinding( m_EditingProfile.GetKeyboardBindings(),
                     m_CaptureAction, m_CaptureSlot, m_CapturedKey, Result == DLG_POPUP_YES );
+            }
             m_ConflictPopup = FALSE;
             m_State = DIALOG_STATE_ACTIVE;
             EndCapture();
         }
         else if( Result == DLG_POPUP_YES )
+        {
             BeginSave();
+        }
         else
         {
             RestoreProfile();
@@ -510,14 +540,20 @@ void dlg_profile_keyboard_bindings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_State == DIALOG_STATE_ACTIVE )
     {
+        // Require release at both ends of capture so the same press isn't
+        // also used to navigate or accept a conflict prompt.
         if( (m_InputState == INPUT_WAIT_CAPTURE) || (m_InputState == INPUT_WAIT_RELEASE) )
         {
             if( BindingInputsReleased( Snapshot ) )
             {
                 if( m_InputState == INPUT_WAIT_CAPTURE )
+                {
                     m_InputState = INPUT_CAPTURE;
+                }
                 else if( m_ConflictPending )
+                {
                     OpenConflictPopup();
+                }
                 else
                 {
                     m_InputState = INPUT_READY;
@@ -528,25 +564,32 @@ void dlg_profile_keyboard_bindings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         else if( m_InputState == INPUT_CAPTURE )
         {
             if( Snapshot.WasPressed( INPUT_KBD_ESCAPE, 0 ) )
+            {
                 EndCapture();
+            }
             else
+            {
                 for( s32 Key = INPUT_KBD_ESCAPE + 1; Key <= INPUT_KBD_MEDIASELECT; Key++ )
                 {
-                    input_gadget Gadget = (input_gadget)Key;
+                    input_gadget Gadget = static_cast<input_gadget>( Key );
                     if( ingame_pad::IsKeyboardKey( Gadget ) && Snapshot.WasPressed( Gadget, 0 ) )
                     {
                         m_CapturedKey = Gadget;
                         m_ConflictPending = ingame_pad::HasKeyboardConflict( m_EditingProfile.GetKeyboardBindings(), m_CaptureAction, Gadget );
                         if( !m_ConflictPending )
+                        {
                             ingame_pad::SetKeyboardBinding( m_EditingProfile.GetKeyboardBindings(), m_CaptureAction, m_CaptureSlot, Gadget, FALSE );
+                        }
 
                         EndCapture();
                         break;
                     }
                 }
+            }
         }
     }
 
+    // Show the controls only after the opening animation finishes.
     if( g_UiMgr->IsScreenScaling() && !UpdateScreenScaling( DeltaTime ) )
     {
         m_pBindings->SetFlag( ui_win::WF_VISIBLE, TRUE );
@@ -574,16 +617,22 @@ void dlg_profile_keyboard_bindings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         {
             Highlight = iControl;
             if( Controls[iControl] == m_pBindings )
+            {
                 g_UiMgr->DisableScreenHighlight();
+            }
             else
+            {
                 g_UiMgr->SetScreenHighlight( Controls[iControl]->GetPosition() );
+            }
         }
     }
 
     if( Highlight != m_CurrHL )
     {
         if( Highlight != -1 )
+        {
             g_AudioMgr.Play( "Cusor_Norm" );
+        }
         m_CurrHL = Highlight;
     }
 }
@@ -643,7 +692,7 @@ void keyboard_binding_list::RenderItem( irect r, const item& Item, const xcolor&
     (void)c2;
 
     const dlg_profile_keyboard_bindings* pDialog = static_cast<dlg_profile_keyboard_bindings*>( m_pParent );
-    s32 Action = (s32)Item.Data[0];
+    s32 Action = static_cast<s32>( Item.Data[0] );
     xbool Selected = (Action == GetSelection()) && IsFocused();
     s32 TextFlags = ui_font::h_left | ui_font::v_center | ui_font::clip_ellipsis | ui_font::clip_l_justify;
 
@@ -653,7 +702,7 @@ void keyboard_binding_list::RenderItem( irect r, const item& Item, const xcolor&
     for( s32 Slot = 0; Slot < ingame_pad::KEYBOARD_SLOT_COUNT; Slot++ )
     {
         irect Bounds = BindingColumn( r, Slot + 1 );
-        input_gadget Key = (input_gadget)pDialog->GetBindings().Keys[Action][Slot];
+        input_gadget Key = static_cast<input_gadget>( pDialog->GetBindings().Keys[Action][Slot] );
         xcolor Color = (Key == INPUT_UNDEFINED) ? xcolor( 126, 166, 126, 255 ) : Item.Color;
 
         if( Selected && (Slot == m_Slot) )
@@ -669,9 +718,13 @@ void keyboard_binding_list::RenderItem( irect r, const item& Item, const xcolor&
 
         xwstring Label;
         if( pDialog->IsCapturing( Action, Slot ) )
+        {
             Label = g_StringTableMgr( "ui", "IDS_BIND_PRESS_KEY" );
+        }
         else
+        {
             Label = ingame_pad::GetKeyboardKeyLabel( Key );
+        }
 
         m_pManager->RenderText( m_Font, Bounds, TextFlags, Color, Label );
     }
@@ -689,16 +742,22 @@ void keyboard_binding_list::RenderSelection( irect r )
 void keyboard_binding_list::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
     if( !static_cast<dlg_profile_keyboard_bindings*>( m_pParent )->InputEnabled() )
+    {
         return;
+    }
     if( (Code == ui_navigation::Left) || (Code == ui_navigation::Right) )
     {
         s32 PreviousSlot = m_Slot;
         m_Slot = (Code == ui_navigation::Left) ? 0 : 1;
         if( m_Slot != PreviousSlot )
+        {
             g_AudioMgr.Play( "Cusor_Norm" );
+        }
     }
     else
+    {
         ui_listbox::OnNavigate( pWin, Code, Presses, Repeats, WrapX, WrapY );
+    }
 }
 
 //==============================================================================
@@ -714,12 +773,16 @@ void keyboard_binding_list::OnAccept( ui_win* pWin )
 void keyboard_binding_list::OnPointerDown( ui_win* pWin, s32 x, s32 y )
 {
     if( !static_cast<dlg_profile_keyboard_bindings*>( m_pParent )->InputEnabled() )
+    {
         return;
+    }
     irect Bounds = GetListRect();
     Bounds.Translate( -m_Position.l, -m_Position.t );
     LocalToScreen( Bounds );
     if( Bounds.PointInRect( x, y ) && (GetItemAt( x, y ) >= 0) )
+    {
         m_Slot = (x >= Bounds.l + Bounds.GetWidth() * 3 / 4) ? 1 : 0;
+    }
     ui_listbox::OnPointerDown( pWin, x, y );
 }
 
@@ -735,7 +798,9 @@ void keyboard_binding_list::OnCancel( ui_win* pWin )
 void keyboard_binding_list::OnPage( ui_win* pWin, s32 Direction )
 {
     if( static_cast<dlg_profile_keyboard_bindings*>( m_pParent )->InputEnabled() )
+    {
         ui_listbox::OnPage( pWin, Direction );
+    }
 }
 
 //==============================================================================
@@ -743,7 +808,9 @@ void keyboard_binding_list::OnPage( ui_win* pWin, s32 Direction )
 void keyboard_binding_list::OnJump( ui_win* pWin, s32 Direction )
 {
     if( static_cast<dlg_profile_keyboard_bindings*>( m_pParent )->InputEnabled() )
+    {
         ui_listbox::OnJump( pWin, Direction );
+    }
 }
 
 //==============================================================================
@@ -751,7 +818,9 @@ void keyboard_binding_list::OnJump( ui_win* pWin, s32 Direction )
 void keyboard_binding_list::OnPointerWheel( ui_win* pWin, s32 Delta )
 {
     if( static_cast<dlg_profile_keyboard_bindings*>( m_pParent )->InputEnabled() )
+    {
         ui_listbox::OnPointerWheel( pWin, Delta );
+    }
 }
 
 //==============================================================================

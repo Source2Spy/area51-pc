@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_extras.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -24,16 +28,25 @@
 #include "../../Apps/GameApp/Config.hpp"    
 
 #include "Configuration/GameConfig.hpp"
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 extern xstring SelectBestClip( const char* pName );
+
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum controls
 {
     IDC_EXTRAS_LISTBOX,
 };
 
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem ExtrasControls[] = 
 {
@@ -41,6 +54,7 @@ ui_manager::control_tem ExtrasControls[] =
     { IDC_EXTRAS_LISTBOX,   "IDS_NULL",           "listbox",  50, 60, 220, 232, 0, 0, 1, 1, ui_win::WF_VISIBLE },
 };
 
+//==============================================================================
 
 ui_manager::dialog_tem ExtrasDialog =
 {
@@ -51,9 +65,10 @@ ui_manager::dialog_tem ExtrasDialog =
     0
 };
 
-//=========================================================================
-//  Defines
-//=========================================================================
+//==============================================================================
+//  DEFINES
+//==============================================================================
+
 // Movie Names
 #define ID_EXTRA_DEMO_NARC_OR_UT    0
 #define ID_EXTRA_VOICES_OF_A51      1
@@ -113,6 +128,10 @@ ui_manager::dialog_tem ExtrasDialog =
 #define ID_EDGAR_STRING             {"CinemaEdgar"}
 #define ID_OUTRO_STRING             {"CinemaOutro"}
 
+//==============================================================================
+//  DATA
+//==============================================================================
+
 char s_MovieNames[30][32] = 
 {    
     ID_DEMO_NARC_OR_UT_STRING,   
@@ -145,43 +164,41 @@ char s_MovieNames[30][32] =
     ID_OUTRO_STRING                 
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_extras_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "extras", &ExtrasDialog, &dlg_extras_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_extras_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_extras* pDialog = new dlg_extras;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_extras
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_extras::dlg_extras( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_extras::~dlg_extras( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_extras::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -200,9 +217,9 @@ xbool dlg_extras::Create( s32                        UserID,
     // Do dialog creation
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
-    m_pExtrasList   = (ui_listbox*) FindChildByID( IDC_EXTRAS_LISTBOX  );
+    m_pExtrasList   = static_cast<ui_listbox*>( FindChildByID( IDC_EXTRAS_LISTBOX  ) );
     
-    GotoControl( (ui_control*)m_pExtrasList );
+    GotoControl( m_pExtrasList );
     m_CurrentControl = IDC_EXTRAS_LISTBOX;
 
     FillExtrasList();
@@ -230,7 +247,7 @@ xbool dlg_extras::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_extras::Destroy( void )
 {
@@ -240,11 +257,11 @@ void dlg_extras::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_extras::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
@@ -294,7 +311,7 @@ void dlg_extras::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_extras::OnNotify( ui_notification const& Event )
 {
@@ -302,7 +319,7 @@ void dlg_extras::OnNotify( ui_notification const& Event )
 
     if( m_State == DIALOG_STATE_ACTIVE )
     {
-        if( Event.m_pSender == (ui_win*)m_pExtrasList )
+        if( Event.m_pSender == m_pExtrasList )
         {
             if( Event.m_Type == ui_notification_type::ListAccepted )
             {
@@ -313,17 +330,19 @@ void dlg_extras::OnNotify( ui_notification const& Event )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_extras::PlaySelectedMovie( void )
 {
     if( !m_pExtrasList )
+    {
         return;
+    }
 
     if( m_pExtrasList->GetSelection() != -1 )
     {
         s32 ItemIndex = m_pExtrasList->GetSelectedItemData( 0 );
-        if( (ItemIndex >= 0) && (ItemIndex < (s32)(sizeof( s_MovieNames ) / sizeof( s_MovieNames[0] ))) )
+        if( (ItemIndex >= 0) && (ItemIndex < static_cast<s32>( sizeof( s_MovieNames ) / sizeof( s_MovieNames[0] ) )) )
         {
             g_StateMgr.RequestSimpleMovie( SelectBestClip( s_MovieNames[ ItemIndex ] ) );
         }
@@ -331,14 +350,14 @@ void dlg_extras::PlaySelectedMovie( void )
 }
 
 
-//=========================================================================
+//==============================================================================
 
 void dlg_extras::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
     ui_dialog::OnNavigate( pWin, Code, Presses, Repeats, WrapX, WrapY );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_extras::OnAccept( ui_win* pWin )
 {
@@ -348,7 +367,7 @@ void dlg_extras::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_extras::OnCancel( ui_win* pWin )
 {
@@ -361,7 +380,7 @@ void dlg_extras::OnCancel( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_extras::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -376,7 +395,7 @@ void dlg_extras::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             // complete!  turn on the elements
             m_pExtrasList ->SetFlag(ui_win::WF_VISIBLE, TRUE);
 
-            GotoControl( (ui_control*)m_pExtrasList );
+            GotoControl( m_pExtrasList );
             g_UiMgr->SetScreenHighlight( m_pExtrasList->GetPosition() );
         }
     }
@@ -385,32 +404,44 @@ void dlg_extras::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     g_UiMgr->UpdateGlowBar(DeltaTime);
 }
 
-//=========================================================================
+//==============================================================================
 
 class checkpoint_sort_compare : public x_compare_functor<const ui_listbox::item&>
 {
 public:
     s32 operator()( const ui_listbox::item& A, const ui_listbox::item& B )
     {
-        const level_check_points& Left = (const level_check_points&)A.Data[0];
-        const level_check_points& Right = (const level_check_points&)B.Data[0];
+        const level_check_points& Left = *reinterpret_cast<const level_check_points*>( A.Data[0] );
+        const level_check_points& Right = *reinterpret_cast<const level_check_points*>( B.Data[0] );
         s32 LeftIndex   = A.Data[1];
         s32 RightIndex  = B.Data[1];
 
         // We want lowest map id at the top
-        if( Left.MapID < Right.MapID )          return -1;
-        if( Left.MapID > Right.MapID )          return 1;
+        if( Left.MapID < Right.MapID )
+        {
+            return -1;
+        }
+        if( Left.MapID > Right.MapID )
+        {
+            return 1;
+        }
 
         // If map ids are the same, we want the lowest index
         // at the top.
-        if( LeftIndex < RightIndex )            return -1;
-        if( LeftIndex > RightIndex )            return 1;
+        if( LeftIndex < RightIndex )
+        {
+            return -1;
+        }
+        if( LeftIndex > RightIndex )
+        {
+            return 1;
+        }
         return 0;
     }
 };
 
 
-//=========================================================================
+//==============================================================================
 
 void dlg_extras::FillExtrasList( void )
 {  
@@ -507,4 +538,4 @@ void dlg_extras::FillExtrasList( void )
     m_pExtrasList->SetSelection(0);
 }
 
-//=========================================================================
+//==============================================================================

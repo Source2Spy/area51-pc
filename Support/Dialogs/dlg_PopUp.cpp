@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_PopUp.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -19,9 +23,10 @@
 #include "NetworkMgr/Voice/VoiceMgr.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
 
-//=========================================================================
-//  Popup Dialog
-//=========================================================================
+//==============================================================================
+//  ENUMS
+//==============================================================================
+
 enum popup_controls
 {
     IDC_POPUP_NAV_TEXT,
@@ -31,6 +36,10 @@ enum popup_controls
     IDC_POPUP_ACTION_3,
     IDC_POPUP_ACTION_4,
 };
+
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem PopUpControls[] = 
 {
@@ -42,6 +51,7 @@ ui_manager::control_tem PopUpControls[] =
     { IDC_POPUP_ACTION_4,        "IDS_NULL", "button", 0,   0,  80, 24, 4, 0, 1, 1, ui_win::WF_BORDER },
 };
 
+//==============================================================================
 
 ui_manager::dialog_tem PopUpDialog =
 {
@@ -52,9 +62,7 @@ ui_manager::dialog_tem PopUpDialog =
     0
 };
 
-//=========================================================================
-//  Defines
-//=========================================================================
+//==============================================================================
 
 static s32 const ACTION_BUTTON_MIN_WIDTH = 72;
 static s32 const ACTION_BUTTON_HEIGHT    = 24;
@@ -62,7 +70,9 @@ static s32 const ACTION_BUTTON_GAP       = 8;
 static s32 const ACTION_BUTTON_MARGIN    = 10;
 static s32 const ACTION_BUTTON_BOTTOM    = 7;
 
-//=========================================================================
+//==============================================================================
+//  HELPERS
+//==============================================================================
 
 static xbool IsPromptWhitespace( xwchar Character )
 {
@@ -72,7 +82,7 @@ static xbool IsPromptWhitespace( xwchar Character )
            (Character == '\n');
 }
 
-//=========================================================================
+//==============================================================================
 
 static void TrimPromptText( xwstring& Text )
 {
@@ -87,7 +97,7 @@ static void TrimPromptText( xwstring& Text )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 static xwstring GetPromptLabel( const xwchar* pPrompt )
 {
@@ -97,7 +107,7 @@ static xwstring GetPromptLabel( const xwchar* pPrompt )
         Label = pPrompt;
     }
 
-    const s32 GlyphEnd = Label.Find( (xwchar)'}' );
+    const s32 GlyphEnd = Label.Find( static_cast<xwchar>( '}' ) );
 
     if( GlyphEnd != -1 )
     {
@@ -108,7 +118,7 @@ static xwstring GetPromptLabel( const xwchar* pPrompt )
     return Label;
 }
 
-//=========================================================================
+//==============================================================================
 
 static s32 SplitActionPrompts( const xwchar* pNavText, xwstring* pPrompts, s32 MaxPrompts )
 {
@@ -145,34 +155,28 @@ static s32 SplitActionPrompts( const xwchar* pNavText, xwstring* pPrompts, s32 M
     return Count;
 }
 
-//=========================================================================
-//  Structs
-//=========================================================================
-//  Data
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_popup_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "popup", &PopUpDialog, &dlg_popup_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_popup_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_popup* pDialog = new dlg_popup;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_popup
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_popup::dlg_popup( void )
 {
@@ -184,13 +188,13 @@ dlg_popup::dlg_popup( void )
     x_memset( m_pActionButtons, 0, sizeof( m_pActionButtons ) );
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_popup::~dlg_popup( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::Configure( const f32 Timeout, const xwchar* Title, const xwchar* Message, const xwchar* Message2, const xwchar* Message3 )
 {
@@ -225,7 +229,7 @@ void dlg_popup::Configure( const f32 Timeout, const xwchar* Title, const xwchar*
     ClearActions();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::Configure( irect& Position, const f32 Timeout, const xwchar* Title, const xwchar* Message, const xwchar* Message2, const xwchar* Message3 )
 {
@@ -283,28 +287,28 @@ void dlg_popup::Configure( irect& Position, const f32 Timeout, const xwchar* Tit
     m_pNavText->SetPosition( NavPos );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::Configure( const xwchar* Title, const xbool Yes, const xbool No, const xbool Maybe, const xwchar* Message, const xwchar* pNavText, s32* pResult )
 {
     Configure(Title, Yes, No, Maybe, FALSE, Message, pNavText, pResult);
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::Configure( irect& Position, const xwchar* Title, const xbool Yes, const xbool No, const xbool Maybe, const xwchar* Message, const xwchar* pNavText, s32* pResult )
 {
     Configure(Position, Title, Yes, No, Maybe, FALSE, Message, pNavText, pResult);
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::Configure( const xwchar* Title, const xbool Yes, const xbool No, const xbool Maybe, const xbool Help, const xwchar* Message, const xwchar* pNavText, s32* pResult )
 {
     Configure( Title, Yes, No, Maybe, Help, FALSE, Message, pNavText, pResult );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::Configure( const xwchar* Title, const xbool Yes, const xbool No, const xbool Maybe, const xbool Help, const xbool Other, const xwchar* Message, const xwchar* pNavText, s32* pResult )
 {
@@ -329,14 +333,14 @@ void dlg_popup::Configure( const xwchar* Title, const xbool Yes, const xbool No,
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::Configure( irect& Position, const xwchar* Title, const xbool Yes, const xbool No, const xbool Maybe, const xbool Help, const xwchar* Message, const xwchar* pNavText, s32* pResult )
 {
     Configure( Position, Title, Yes, No, Maybe, Help, FALSE, Message, pNavText, pResult );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::Configure( irect& Position, const xwchar* Title, const xbool Yes, const xbool No, const xbool Maybe, const xbool Help, const xbool Other, const xwchar* Message, const xwchar* pNavText, s32* pResult )
 {
@@ -386,7 +390,7 @@ void dlg_popup::Configure( irect& Position, const xwchar* Title, const xbool Yes
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::ConfigureAutosaveDialog( irect& Position, const xwchar* Title, const xwchar* Message, const xwchar* pNavText, s32* pResult /* = NULL  */)
 {
@@ -434,7 +438,7 @@ void dlg_popup::ConfigureAutosaveDialog( irect& Position, const xwchar* Title, c
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::ConfigureMessage( const xwchar* Title, const xwchar* Message, s32* pResult )
 {
@@ -443,7 +447,7 @@ void dlg_popup::ConfigureMessage( const xwchar* Title, const xwchar* Message, s3
     m_DismissOnCancel = TRUE;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::ConfigureMessage( irect& Position, const xwchar* Title,
                                   const xwchar* Message, s32* pResult )
@@ -453,7 +457,7 @@ void dlg_popup::ConfigureMessage( irect& Position, const xwchar* Title,
     m_DismissOnCancel = TRUE;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::Close( void )
 {
@@ -469,7 +473,7 @@ void dlg_popup::Close( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 
 xbool dlg_popup::Create( s32                        UserID,
@@ -497,7 +501,7 @@ xbool dlg_popup::Create( s32                        UserID,
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, r, pParent, Flags );
    
     // Initialize nav text
-    m_pNavText = (ui_text*)FindChildByID( IDC_POPUP_NAV_TEXT );
+    m_pNavText = static_cast<ui_text*>( FindChildByID( IDC_POPUP_NAV_TEXT ) );
     m_pNavText->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pNavText->SetLabelFlags( ui_font::h_center|ui_font::v_top|ui_font::input_glyphs );
     m_pNavText->UseSmallText(TRUE);
@@ -506,7 +510,7 @@ xbool dlg_popup::Create( s32                        UserID,
 
     for( s32 i=0; i<MAX_POPUP_ACTIONS; i++ )
     {
-        m_pActionButtons[i] = (ui_button*)FindChildByID( IDC_POPUP_ACTION_0 + i );
+        m_pActionButtons[i] = static_cast<ui_button*>( FindChildByID( IDC_POPUP_ACTION_0 + i ) );
         m_pActionButtons[i]->UseSmallText  ( TRUE );
         m_pActionButtons[i]->SetButtonStyle( ui_button::BUTTON_STYLE_FLAT );
         m_pActionButtons[i]->SetFlag       ( ui_win::WF_VISIBLE, FALSE );
@@ -535,7 +539,7 @@ xbool dlg_popup::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::ApplyInputLayout( ui_input_device Device )
 {
@@ -594,7 +598,7 @@ void dlg_popup::ApplyInputLayout( ui_input_device Device )
     m_LastInputDevice = Device;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::ClearActions( void )
 {
@@ -629,7 +633,7 @@ void dlg_popup::ClearActions( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::ConfigureStandardActions( xbool Yes,
                                           xbool No,
@@ -657,37 +661,52 @@ void dlg_popup::ConfigureStandardActions( xbool Yes,
         m_pNavText->SetLabel( pNavText );
     }
 
-    if( Yes   && (PromptIndex < PromptCount) ) YesPrompt   = PromptIndex++;
-    if( Maybe && (PromptIndex < PromptCount) ) MaybePrompt = PromptIndex++;
-    if( No    && (PromptIndex < PromptCount) ) NoPrompt    = PromptIndex++;
-    if( Help  && (PromptIndex < PromptCount) ) HelpPrompt  = PromptIndex++;
-    if( Other && (PromptIndex < PromptCount) ) OtherPrompt = PromptIndex++;
+    if( Yes   && (PromptIndex < PromptCount) )
+    {
+        YesPrompt   = PromptIndex++;
+    }
+    if( Maybe && (PromptIndex < PromptCount) )
+    {
+        MaybePrompt = PromptIndex++;
+    }
+    if( No    && (PromptIndex < PromptCount) )
+    {
+        NoPrompt    = PromptIndex++;
+    }
+    if( Help  && (PromptIndex < PromptCount) )
+    {
+        HelpPrompt  = PromptIndex++;
+    }
+    if( Other && (PromptIndex < PromptCount) )
+    {
+        OtherPrompt = PromptIndex++;
+    }
 
     if( Yes )
     {
         AddAction( POPUP_ACTION_ACCEPT,
-                   (YesPrompt != -1) ? (const xwchar*)Prompts[YesPrompt] : NULL,
+                   (YesPrompt != -1) ? static_cast<const xwchar*>( Prompts[YesPrompt] ) : NULL,
                    "IDS_YES" );
     }
 
     if( Maybe )
     {
         AddAction( POPUP_ACTION_DELETE,
-                   (MaybePrompt != -1) ? (const xwchar*)Prompts[MaybePrompt] : NULL,
+                   (MaybePrompt != -1) ? static_cast<const xwchar*>( Prompts[MaybePrompt] ) : NULL,
                    NULL );
     }
 
     if( Help )
     {
         AddAction( POPUP_ACTION_HELP,
-                   (HelpPrompt != -1) ? (const xwchar*)Prompts[HelpPrompt] : NULL,
+                   (HelpPrompt != -1) ? static_cast<const xwchar*>( Prompts[HelpPrompt] ) : NULL,
                    NULL );
     }
 
     if( Other )
     {
         AddAction( POPUP_ACTION_ALTERNATE,
-                   (OtherPrompt != -1) ? (const xwchar*)Prompts[OtherPrompt] : NULL,
+                   (OtherPrompt != -1) ? static_cast<const xwchar*>( Prompts[OtherPrompt] ) : NULL,
                    NULL );
     }
 
@@ -695,12 +714,12 @@ void dlg_popup::ConfigureStandardActions( xbool Yes,
     if( No )
     {
         AddAction( POPUP_ACTION_CANCEL,
-                   (NoPrompt != -1) ? (const xwchar*)Prompts[NoPrompt] : NULL,
+                   (NoPrompt != -1) ? static_cast<const xwchar*>( Prompts[NoPrompt] ) : NULL,
                    "IDS_NO" );
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::AddAction( popup_action_type Type,
                            const xwchar*      Prompt,
@@ -734,7 +753,7 @@ void dlg_popup::AddAction( popup_action_type Type,
     m_ActionCount++;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::SetAction( popup_action_type Type, const xwchar* Prompt, xbool Enabled )
 {
@@ -756,7 +775,7 @@ void dlg_popup::SetAction( popup_action_type Type, const xwchar* Prompt, xbool E
     m_pActionButtons[Index]->SetFlag( ui_win::WF_DISABLED, !Enabled );
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 dlg_popup::FindAction( popup_action_type Type ) const
 {
@@ -771,7 +790,7 @@ s32 dlg_popup::FindAction( popup_action_type Type ) const
     return -1;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 dlg_popup::FindAction( const ui_win* pWin ) const
 {
@@ -786,7 +805,7 @@ s32 dlg_popup::FindAction( const ui_win* pWin ) const
     return -1;
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_popup::IsActionEnabled( popup_action_type Type ) const
 {
@@ -794,7 +813,7 @@ xbool dlg_popup::IsActionEnabled( popup_action_type Type ) const
     return (Index != -1) && m_Actions[Index].Enabled;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::LayoutActionButtons( void )
 {
@@ -869,7 +888,7 @@ void dlg_popup::LayoutActionButtons( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::CompleteAction( s32 Result, xbool TrackController )
 {
@@ -887,14 +906,14 @@ void dlg_popup::CompleteAction( s32 Result, xbool TrackController )
     g_UiMgr->EndDialog( m_UserID, TRUE );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::Destroy( void )
 {
     ui_dialog::Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::Render( s32 ox, s32 oy )
 {
@@ -986,7 +1005,7 @@ void dlg_popup::Render( s32 ox, s32 oy )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -1022,13 +1041,15 @@ void dlg_popup::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::OnAccept( ui_win* pWin )
 {
     // no early outs for timed popups
     if( m_bDoTimeout )
+    {
         return;
+    }
 
     // No input if scaling
     if( g_UiMgr->IsScreenScaling() )
@@ -1046,11 +1067,34 @@ void dlg_popup::OnAccept( ui_win* pWin )
 
         switch( m_Actions[ButtonAction].Type )
         {
-            case POPUP_ACTION_CANCEL:    OnCancel   ( NULL ); return;
-            case POPUP_ACTION_DELETE:    OnDelete   ( NULL ); return;
-            case POPUP_ACTION_HELP:      OnHelp     ( NULL ); return;
-            case POPUP_ACTION_ALTERNATE: OnAlternate( NULL ); return;
-            default: break;
+            case POPUP_ACTION_CANCEL:
+            {
+                OnCancel   ( NULL );
+                return;
+            }
+
+            case POPUP_ACTION_DELETE:
+            {
+                OnDelete   ( NULL );
+                return;
+            }
+
+            case POPUP_ACTION_HELP:
+            {
+                OnHelp     ( NULL );
+                return;
+            }
+
+            case POPUP_ACTION_ALTERNATE:
+            {
+                OnAlternate( NULL );
+                return;
+            }
+
+            default:
+            {
+            }
+            break;
         }
     }
 
@@ -1061,7 +1105,7 @@ void dlg_popup::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::OnCancel( ui_win* pWin )
 {
@@ -1069,7 +1113,9 @@ void dlg_popup::OnCancel( ui_win* pWin )
 
     // no early outs for timed popups
     if( m_bDoTimeout )
+    {
         return;
+    }
 
     // No input if scaling
     if( g_UiMgr->IsScreenScaling() )
@@ -1087,7 +1133,7 @@ void dlg_popup::OnCancel( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::OnDelete( ui_win* pWin )
 {
@@ -1095,7 +1141,9 @@ void dlg_popup::OnDelete( ui_win* pWin )
 
     // no early outs for timed popups
     if( m_bDoTimeout )
+    {
         return;
+    }
 
     // No input if scaling
     if( g_UiMgr->IsScreenScaling() )
@@ -1110,7 +1158,7 @@ void dlg_popup::OnDelete( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::OnHelp( ui_win* pWin )
 {
@@ -1118,7 +1166,9 @@ void dlg_popup::OnHelp( ui_win* pWin )
 
     // no early outs for timed popups
     if( m_bDoTimeout )
+    {
         return;
+    }
 
     // No input if scaling
     if( g_UiMgr->IsScreenScaling() )
@@ -1131,7 +1181,7 @@ void dlg_popup::OnHelp( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::OnAlternate( ui_win* pWin )
 {
@@ -1139,7 +1189,9 @@ void dlg_popup::OnAlternate( ui_win* pWin )
     
     // no early outs for timed popups
     if( m_bDoTimeout )
+    {
         return;
+    }
 
     // No input if scaling
     if( g_UiMgr->IsScreenScaling() )
@@ -1154,7 +1206,7 @@ void dlg_popup::OnAlternate( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX /* = FALSE  */, xbool WrapY /* = FALSE */)
 {
@@ -1214,31 +1266,41 @@ void dlg_popup::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 R
             switch( Code )
             {
                 case ui_navigation::Left:
+                {
                     IsCandidate = DeltaX < 0;
                     Primary     = -DeltaX;
                     Secondary   = (DeltaY < 0) ? -DeltaY : DeltaY;
-                    break;
+                }
+                break;
 
                 case ui_navigation::Right:
+                {
                     IsCandidate = DeltaX > 0;
                     Primary     = DeltaX;
                     Secondary   = (DeltaY < 0) ? -DeltaY : DeltaY;
-                    break;
+                }
+                break;
 
                 case ui_navigation::Up:
+                {
                     IsCandidate = DeltaY < 0;
                     Primary     = -DeltaY;
                     Secondary   = (DeltaX < 0) ? -DeltaX : DeltaX;
-                    break;
+                }
+                break;
 
                 case ui_navigation::Down:
+                {
                     IsCandidate = DeltaY > 0;
                     Primary     = DeltaY;
                     Secondary   = (DeltaX < 0) ? -DeltaX : DeltaX;
-                    break;
+                }
+                break;
 
                 default:
+                {
                     return;
+                }
             }
 
             const s32 Score = Primary * 1024 + Secondary;
@@ -1258,7 +1320,7 @@ void dlg_popup::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 R
 
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_popup::OnPage( ui_win* pWin, s32 Direction )
 {
@@ -1266,4 +1328,4 @@ void dlg_popup::OnPage( ui_win* pWin, s32 Direction )
     (void)Direction;
 }
 
-//=========================================================================
+//==============================================================================

@@ -4,6 +4,10 @@
 //
 //==============================================================================
 
+//==============================================================================
+//  INCLUDES
+//==============================================================================
+
 #include "Entropy.hpp"
 
 #include "UI/ui_button.hpp"
@@ -20,6 +24,8 @@
 #include "StringMgr/StringMgr.hpp"
 #include "dlg_PopUp.hpp"
 
+//==============================================================================
+//  ENUMS
 //==============================================================================
 
 enum display_controls
@@ -41,10 +47,14 @@ enum display_controls
 };
 
 //==============================================================================
+//  DATA
+//==============================================================================
 
 static const s32 ResolutionWidthDataIndex  = 0;
 static const s32 ResolutionHeightDataIndex = 1;
 
+//==============================================================================
+//  HELPERS
 //==============================================================================
 
 static s32 AddResolutionItem( ui_combo* pCombo, s32 Width, s32 Height )
@@ -95,24 +105,26 @@ static void AddPresentModeIfSupported( ui_combo*       pCombo,
 }
 
 //==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem DisplaySettingsControls[] =
 {
-    { IDC_DISPLAY_MODE_TEXT,       "IDS_NULL",                   "text",    40,  40, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_DISPLAY_RESOLUTION_TEXT, "IDS_NULL",                   "text",    40,  75, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_DISPLAY_PRESENT_MODE_TEXT,"IDS_NULL",                  "text",    40, 110, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_DISPLAY_FRAME_LIMIT_TEXT, "IDS_NULL",                  "text",    40, 145, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_DISPLAY_BRIGHTNESS_TEXT, "IDS_NULL",                   "text",    40, 198, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_DISPLAY_CONTRAST_TEXT,   "IDS_NULL",                   "text",    40, 233, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_DISPLAY_MODE_TEXT,         "IDS_DISPLAY_MODE",           "text",    40,  40, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_DISPLAY_RESOLUTION_TEXT,   "IDS_DISPLAY_RESOLUTION",     "text",    40,  75, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_DISPLAY_PRESENT_MODE_TEXT, "IDS_DISPLAY_PRESENT_MODE",   "text",    40, 110, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_DISPLAY_FRAME_LIMIT_TEXT,  "IDS_DISPLAY_FRAME_LIMIT",    "text",    40, 145, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_DISPLAY_BRIGHTNESS_TEXT,   "IDS_OPTIONS_BRIGHTNESS",     "text",    40, 198, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_DISPLAY_CONTRAST_TEXT,     "IDS_OPTIONS_CONTRAST",       "text",    40, 233, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
 
-    { IDC_DISPLAY_MODE,            "IDS_NULL",                   "combo",  290,  40, 140, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_DISPLAY_RESOLUTION,      "IDS_NULL",                   "combo",  290,  75, 140, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_DISPLAY_PRESENT_MODE,    "IDS_NULL",                   "combo",  290, 110, 140, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_DISPLAY_FRAME_LIMIT,     "IDS_NULL",                   "combo",  290, 145, 140, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_DISPLAY_BRIGHTNESS,      "IDS_NULL",                   "slider", 300, 198, 120, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_DISPLAY_CONTRAST,        "IDS_NULL",                   "slider", 300, 233, 120, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_DISPLAY_MODE,              "IDS_NULL",                   "combo",  290,  40, 140, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_DISPLAY_RESOLUTION,        "IDS_NULL",                   "combo",  290,  75, 140, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_DISPLAY_PRESENT_MODE,      "IDS_NULL",                   "combo",  290, 110, 140, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_DISPLAY_FRAME_LIMIT,       "IDS_NULL",                   "combo",  290, 145, 140, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_DISPLAY_BRIGHTNESS,        "IDS_NULL",                   "slider", 300, 198, 120, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_DISPLAY_CONTRAST,          "IDS_NULL",                   "slider", 300, 233, 120, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE },
 
-    { IDC_DISPLAY_BUTTON_APPLY,    "IDS_PROFILE_OPTIONS_ACCEPT", "button",  40, 285, 220, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_DISPLAY_BUTTON_APPLY,      "IDS_PROFILE_OPTIONS_ACCEPT", "button",  40, 285, 220, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE },
 };
 
 //==============================================================================
@@ -127,6 +139,8 @@ ui_manager::dialog_tem DisplaySettingsDialog =
 };
 
 //==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_display_settings_register( ui_manager* pManager )
 {
@@ -139,9 +153,11 @@ ui_win* dlg_display_settings_factory( s32 UserID, ui_manager* pManager, ui_manag
 {
     dlg_display_settings* pDialog = new dlg_display_settings;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
+//==============================================================================
+//  IMPLEMENTATION
 //==============================================================================
 
 dlg_display_settings::dlg_display_settings( void )
@@ -170,20 +186,20 @@ xbool dlg_display_settings::Create( s32                       UserID,
 
     xbool const Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
-    m_pDisplayMode       = (ui_combo*) FindChildByID( IDC_DISPLAY_MODE );
-    m_pResolution        = (ui_combo*) FindChildByID( IDC_DISPLAY_RESOLUTION );
-    m_pPresentMode       = (ui_combo*) FindChildByID( IDC_DISPLAY_PRESENT_MODE );
-    m_pFrameLimit        = (ui_combo*) FindChildByID( IDC_DISPLAY_FRAME_LIMIT );
-    m_pBrightness        = (ui_slider*)FindChildByID( IDC_DISPLAY_BRIGHTNESS );
-    m_pContrast          = (ui_slider*)FindChildByID( IDC_DISPLAY_CONTRAST );
-    m_pButtonApply       = (ui_button*)FindChildByID( IDC_DISPLAY_BUTTON_APPLY );
+    m_pDisplayMode       = static_cast<ui_combo*>( FindChildByID( IDC_DISPLAY_MODE ) );
+    m_pResolution        = static_cast<ui_combo*>( FindChildByID( IDC_DISPLAY_RESOLUTION ) );
+    m_pPresentMode       = static_cast<ui_combo*>( FindChildByID( IDC_DISPLAY_PRESENT_MODE ) );
+    m_pFrameLimit        = static_cast<ui_combo*>( FindChildByID( IDC_DISPLAY_FRAME_LIMIT ) );
+    m_pBrightness        = static_cast<ui_slider*>( FindChildByID( IDC_DISPLAY_BRIGHTNESS ) );
+    m_pContrast          = static_cast<ui_slider*>( FindChildByID( IDC_DISPLAY_CONTRAST ) );
+    m_pButtonApply       = static_cast<ui_button*>( FindChildByID( IDC_DISPLAY_BUTTON_APPLY ) );
 
-    m_pDisplayModeText   = (ui_text*)FindChildByID( IDC_DISPLAY_MODE_TEXT );
-    m_pResolutionText    = (ui_text*)FindChildByID( IDC_DISPLAY_RESOLUTION_TEXT );
-    m_pPresentModeText   = (ui_text*)FindChildByID( IDC_DISPLAY_PRESENT_MODE_TEXT );
-    m_pFrameLimitText    = (ui_text*)FindChildByID( IDC_DISPLAY_FRAME_LIMIT_TEXT );
-    m_pBrightnessText    = (ui_text*)FindChildByID( IDC_DISPLAY_BRIGHTNESS_TEXT );
-    m_pContrastText      = (ui_text*)FindChildByID( IDC_DISPLAY_CONTRAST_TEXT );
+    m_pDisplayModeText   = static_cast<ui_text*>( FindChildByID( IDC_DISPLAY_MODE_TEXT ) );
+    m_pResolutionText    = static_cast<ui_text*>( FindChildByID( IDC_DISPLAY_RESOLUTION_TEXT ) );
+    m_pPresentModeText   = static_cast<ui_text*>( FindChildByID( IDC_DISPLAY_PRESENT_MODE_TEXT ) );
+    m_pFrameLimitText    = static_cast<ui_text*>( FindChildByID( IDC_DISPLAY_FRAME_LIMIT_TEXT ) );
+    m_pBrightnessText    = static_cast<ui_text*>( FindChildByID( IDC_DISPLAY_BRIGHTNESS_TEXT ) );
+    m_pContrastText      = static_cast<ui_text*>( FindChildByID( IDC_DISPLAY_CONTRAST_TEXT ) );
 
     global_settings& PendingSettings = g_StateMgr.GetPendingSettings();
     m_OriginalSettings = PendingSettings;
@@ -269,12 +285,6 @@ xbool dlg_display_settings::Create( s32                       UserID,
     }
     m_pFrameLimit->SetSelection( FrameLimitSelection );
 
-    m_pDisplayModeText->SetLabel( g_StringTableMgr( "ui", "IDS_DISPLAY_MODE" ) );
-    m_pResolutionText ->SetLabel( g_StringTableMgr( "ui", "IDS_DISPLAY_RESOLUTION" ) );
-    m_pPresentModeText->SetLabel( g_StringTableMgr( "ui", "IDS_DISPLAY_PRESENT_MODE" ) );
-    m_pFrameLimitText ->SetLabel( g_StringTableMgr( "ui", "IDS_DISPLAY_FRAME_LIMIT" ) );
-    m_pBrightnessText ->SetLabel( g_StringTableMgr( "ui", "IDS_OPTIONS_BRIGHTNESS" ) );
-    m_pContrastText   ->SetLabel( g_StringTableMgr( "ui", "IDS_OPTIONS_CONTRAST" ) );
 
     m_pDisplayModeText->SetLabelFlags( ui_font::h_left|ui_font::v_center );
     m_pResolutionText ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
@@ -287,7 +297,7 @@ xbool dlg_display_settings::Create( s32                       UserID,
     s32 const CurrentControl = g_StateMgr.GetCurrentControl();
     if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
     {
-        GotoControl( (ui_control*)m_pDisplayMode );
+        GotoControl( m_pDisplayMode );
         m_CurrentControl = IDC_DISPLAY_MODE;
     }
     else
@@ -328,6 +338,7 @@ xbool dlg_display_settings::Create( s32                       UserID,
 
 void dlg_display_settings::Destroy( void )
 {
+    // Cancel outstanding save callbacks before destroying the dialog.
     g_SaveDataMgr.CancelCallbacks( this );
     ui_dialog::Destroy();
     g_UiMgr->ResetScreenWipe();
@@ -337,36 +348,38 @@ void dlg_display_settings::Destroy( void )
 
 void dlg_display_settings::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
-    static s32 gap   = 9;
-    static s32 width = 4;
-    irect rb;
+    s32 const Offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
+    static s32 const Gap = 9;
+    static s32 const Width = 4;
+    irect Bounds;
 
+    // Dim the background behind the dialog.
     if( m_bRenderBlackout )
     {
-        rb = g_UiMgr->GetUserBounds( m_UserID );
-        g_UiMgr->RenderGouraudRect( rb,
-                                    xcolor(0,0,0,180), xcolor(0,0,0,180),
-                                    xcolor(0,0,0,180), xcolor(0,0,0,180), FALSE );
+        Bounds = g_UiMgr->GetUserBounds( m_UserID );
+        g_UiMgr->RenderGouraudRect( Bounds,
+                                   xcolor( 0, 0, 0, 180 ), xcolor( 0, 0, 0, 180 ),
+                                   xcolor( 0, 0, 0, 180 ), xcolor( 0, 0, 0, 180 ), FALSE );
     }
 
-    rb.l = m_CurrPos.l + 22;
-    rb.t = m_CurrPos.t;
-    rb.r = m_CurrPos.r - 23;
-    rb.b = m_CurrPos.b;
-    g_UiMgr->RenderGouraudRect( rb,
-                                xcolor(56,115,58,64), xcolor(56,115,58,64),
-                                xcolor(56,115,58,64), xcolor(56,115,58,64), FALSE );
+    // Draw the translucent panel inside the side bars.
+    Bounds.Set( m_CurrPos.l + 22, m_CurrPos.t, m_CurrPos.r - 23, m_CurrPos.b );
+    g_UiMgr->RenderGouraudRect( Bounds,
+                               xcolor( 56, 115, 58, 64 ), xcolor( 56, 115, 58, 64 ),
+                               xcolor( 56, 115, 58, 64 ), xcolor( 56, 115, 58, 64 ), FALSE );
 
-    for( s32 y = rb.t + offset; y < rb.b; y += gap )
+    for( s32 Y = Bounds.t + Offset; Y < Bounds.b; Y += Gap )
     {
-        irect bar( rb.l, y, rb.r, MIN( y + width, rb.b ) );
-        g_UiMgr->RenderGouraudRect( bar,
-                                    xcolor(56,115,58,30), xcolor(56,115,58,30),
-                                    xcolor(56,115,58,30), xcolor(56,115,58,30), FALSE );
+        irect const Bar( Bounds.l, Y, Bounds.r, MIN( Y + Width, Bounds.b ) );
+        g_UiMgr->RenderGouraudRect( Bar,
+                                   xcolor( 56, 115, 58, 30 ), xcolor( 56, 115, 58, 30 ),
+                                   xcolor( 56, 115, 58, 30 ), xcolor( 56, 115, 58, 30 ), FALSE );
     }
 
+    // render the normal dialog stuff
     ui_dialog::Render( ox, oy );
+
+    // render the glow bar
     g_UiMgr->RenderGlowBar();
 }
 
@@ -374,7 +387,7 @@ void dlg_display_settings::Render( s32 ox, s32 oy )
 
 void dlg_display_settings::OnAccept( ui_win* pWin )
 {
-    if( (m_State != DIALOG_STATE_ACTIVE) || (pWin != (ui_win*)m_pButtonApply) )
+    if( (m_State != DIALOG_STATE_ACTIVE) || (pWin != m_pButtonApply) )
     {
         return;
     }
@@ -398,20 +411,23 @@ void dlg_display_settings::OnAccept( ui_win* pWin )
 void dlg_display_settings::OnCancel( ui_win* pWin )
 {
     (void)pWin;
-    if( m_State == DIALOG_STATE_ACTIVE )
-    {
-        global_settings Settings = m_OriginalSettings;
-        ApplySettings( Settings );
-        if( !Settings.HasChanged() )
-        {
-            g_AudioMgr.Play( "Backup" );
-            m_State = DIALOG_STATE_BACK;
-            return;
-        }
 
-        g_StateMgr.GetPendingSettings() = Settings;
-        OpenSavePopup();
+    if( m_State != DIALOG_STATE_ACTIVE )
+    {
+        return;
     }
+
+    global_settings Settings = m_OriginalSettings;
+    ApplySettings( Settings );
+    if( !Settings.HasChanged() )
+    {
+        g_AudioMgr.Play( "Backup" );
+        m_State = DIALOG_STATE_BACK;
+        return;
+    }
+
+    g_StateMgr.GetPendingSettings() = Settings;
+    OpenSavePopup();
 }
 
 //==============================================================================
@@ -543,6 +559,7 @@ void dlg_display_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
     (void)pWin;
     s32 highLight = -1;
 
+    // Consume the popup result once before resuming the dialog.
     if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
     {
         s32 const Result = m_PopUpResult;
@@ -562,6 +579,7 @@ void dlg_display_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         }
     }
 
+    // Show the controls only after the opening animation finishes.
     if( g_UiMgr->IsScreenScaling() && (UpdateScreenScaling( DeltaTime ) == FALSE) )
     {
         m_pDisplayMode    ->SetFlag( ui_win::WF_VISIBLE, TRUE );
@@ -581,7 +599,7 @@ void dlg_display_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         s32 const CurrentControl = g_StateMgr.GetCurrentControl();
         if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
         {
-            GotoControl( (ui_control*)m_pDisplayMode );
+            GotoControl( m_pDisplayMode );
             m_CurrentControl = IDC_DISPLAY_MODE;
         }
         else

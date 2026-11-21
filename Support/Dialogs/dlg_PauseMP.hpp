@@ -19,7 +19,7 @@
 #include "dlg_PopUp.hpp"
 
 //==============================================================================
-//  DEFINES
+//  ENUMS
 //==============================================================================
 
 enum pause_mp_controls
@@ -30,15 +30,22 @@ enum pause_mp_controls
     IDC_PAUSE_MP_SETTINGS,
 };
 
-
 //==============================================================================
-//  dlg_pause_mp
+//  REGISTRATION
 //==============================================================================
 
 extern void     dlg_pause_mp_register  ( ui_manager* pManager );
 extern ui_win*  dlg_pause_mp_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 class ui_button;
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class dlg_pause_mp : public ui_dialog
 {

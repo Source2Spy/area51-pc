@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  ui_manager.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 #include "ui_manager.hpp"
@@ -38,6 +42,10 @@
 
 #include "StringMgr/StringMgr.hpp"
 #include "AudioMgr/AudioMgr.hpp"
+
+//==============================================================================
+//  DATA
+//==============================================================================
 
 static const char*  m_ButtonTexturesNames[] = {
 PRELOAD_XBOX_FILE("CONTROLS/XBOX/UI_BUTTONSXBOX_A.XBMP"),
@@ -112,6 +120,10 @@ static const ui_manager::element_desc s_ElementDescs[] =
 
 static const s32 s_nElementDescs = sizeof(s_ElementDescs) / sizeof(s_ElementDescs[0]);
 
+//==============================================================================
+//  DEFINES
+//==============================================================================
+
 #define NUM_BUTTON_CODES        58
 
 static const f32 SCREEN_WIPE_TRAIL_LENGTH  = 512.0f;
@@ -141,16 +153,16 @@ namespace
 
         if( Element.cx == 1 )
         {
-            const f32 Width = (f32)Element.LayoutRects[BaseIndex].GetWidth();
-            Layout.X[0] = (f32)Position.l + ((f32)Position.GetWidth() - Width) * 0.5f;
+            const f32 Width = static_cast<f32>( Element.LayoutRects[BaseIndex].GetWidth() );
+            Layout.X[0] = static_cast<f32>( Position.l ) + (static_cast<f32>( Position.GetWidth() ) - Width) * 0.5f;
             Layout.X[1] = Layout.X[0] + Width;
         }
         else
         {
             ASSERT( Element.cx == 3 );
-            const f32 AvailableWidth = (f32)MAX( Position.GetWidth(), 0 );
-            f32 LeftWidth  = (f32)Element.LayoutRects[BaseIndex].GetWidth();
-            f32 RightWidth = (f32)Element.LayoutRects[BaseIndex + 2].GetWidth();
+            const f32 AvailableWidth = static_cast<f32>( MAX( Position.GetWidth(), 0 ) );
+            f32 LeftWidth  = static_cast<f32>( Element.LayoutRects[BaseIndex].GetWidth() );
+            f32 RightWidth = static_cast<f32>( Element.LayoutRects[BaseIndex + 2].GetWidth() );
             const f32 FixedWidth = LeftWidth + RightWidth;
             if( FixedWidth > AvailableWidth )
             {
@@ -159,24 +171,24 @@ namespace
                 RightWidth  = AvailableWidth - LeftWidth;
             }
 
-            Layout.X[0] = (f32)Position.l;
+            Layout.X[0] = static_cast<f32>( Position.l );
             Layout.X[1] = Layout.X[0] + LeftWidth;
-            Layout.X[2] = (f32)Position.r - RightWidth;
-            Layout.X[3] = (f32)Position.r;
+            Layout.X[2] = static_cast<f32>( Position.r ) - RightWidth;
+            Layout.X[3] = static_cast<f32>( Position.r );
         }
 
         if( Element.cy == 1 )
         {
-            const f32 Height = (f32)Element.LayoutRects[BaseIndex].GetHeight();
-            Layout.Y[0] = (f32)Position.t + ((f32)Position.GetHeight() - Height) * 0.5f;
+            const f32 Height = static_cast<f32>( Element.LayoutRects[BaseIndex].GetHeight() );
+            Layout.Y[0] = static_cast<f32>( Position.t ) + (static_cast<f32>( Position.GetHeight() ) - Height) * 0.5f;
             Layout.Y[1] = Layout.Y[0] + Height;
         }
         else
         {
             ASSERT( Element.cy == 3 );
-            const f32 AvailableHeight = (f32)MAX( Position.GetHeight(), 0 );
-            f32 TopHeight    = (f32)Element.LayoutRects[BaseIndex].GetHeight();
-            f32 BottomHeight = (f32)Element.LayoutRects[BaseIndex + (Element.cy - 1) * Element.cx].GetHeight();
+            const f32 AvailableHeight = static_cast<f32>( MAX( Position.GetHeight(), 0 ) );
+            f32 TopHeight    = static_cast<f32>( Element.LayoutRects[BaseIndex].GetHeight() );
+            f32 BottomHeight = static_cast<f32>( Element.LayoutRects[BaseIndex + (Element.cy - 1) * Element.cx].GetHeight() );
             const f32 FixedHeight = TopHeight + BottomHeight;
             if( FixedHeight > AvailableHeight )
             {
@@ -185,19 +197,19 @@ namespace
                 BottomHeight = AvailableHeight - TopHeight;
             }
 
-            Layout.Y[0] = (f32)Position.t;
+            Layout.Y[0] = static_cast<f32>( Position.t );
             Layout.Y[1] = Layout.Y[0] + TopHeight;
-            Layout.Y[2] = (f32)Position.b - BottomHeight;
-            Layout.Y[3] = (f32)Position.b;
+            Layout.Y[2] = static_cast<f32>( Position.b ) - BottomHeight;
+            Layout.Y[3] = static_cast<f32>( Position.b );
         }
 
         return TRUE;
     }
 }
 
-//==========================================================================
-//  button code table entry
-//==========================================================================
+//==============================================================================
+//  BUTTON CODE TABLE ENTRY
+//==============================================================================
 
 struct button_code
 {
@@ -205,7 +217,7 @@ struct button_code
     s32             ButtonCode;
 };
 
-//-------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 static 
 const button_code s_PS2ButtonCodeTable[NUM_BUTTON_CODES] = {
@@ -269,7 +281,7 @@ const button_code s_PS2ButtonCodeTable[NUM_BUTTON_CODES] = {
     {   "CREDITEND",    CREDIT_END                  },
 };
 
-//-------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 static 
 const button_code s_XboxButtonCodeTable[NUM_BUTTON_CODES] = {
@@ -333,23 +345,27 @@ const button_code s_XboxButtonCodeTable[NUM_BUTTON_CODES] = {
     {   "CREDITEND",    CREDIT_END                  },
 };
 
-//=========================================================================
+//==============================================================================
 
 static
 const button_code* GetButtonCodeTable( input_platform Platform )
 {
     if( Platform == INPUT_PLATFORM_PS2 )
+    {
         return s_PS2ButtonCodeTable;
+    }
 
     if( Platform == INPUT_PLATFORM_XBOX )
+    {
         return s_XboxButtonCodeTable;
+    }
 
     // Keyboard/mouse do not have embedded controller glyphs. Use the Xbox
     // glyph set as the established fallback for unknown controller layouts.
     return s_XboxButtonCodeTable;
 }
 
-//=========================================================================
+//==============================================================================
 
 static
 xbool IsControllerButtonCode( s32 ButtonCode )
@@ -358,28 +374,37 @@ xbool IsControllerButtonCode( s32 ButtonCode )
             ((ButtonCode >= PS2_BUTTON_CROSS) && (ButtonCode <= PS2_BUTTON_START )) );
 }
 
-//=========================================================================
+//==============================================================================
 
 static
 xbool UseLocalizedXboxButtonTexture( s32 ButtonCode )
 {
     if( (ButtonCode != XBOX_BUTTON_TRIGGER_L) && (ButtonCode != XBOX_BUTTON_TRIGGER_R) )
+    {
         return FALSE;
+    }
 
     if( x_GetTerritory() == XL_TERRITORY_AMERICA )
+    {
         return FALSE;
+    }
 
     switch( x_GetLocale() )
     {
-    case XL_LANG_ENGLISH:
-    case XL_LANG_GERMAN:
-        return FALSE;
-    default:
-        return TRUE;
+        case XL_LANG_ENGLISH:
+        case XL_LANG_GERMAN:
+        {
+            return FALSE;
+        }
+
+        default:
+        {
+            return TRUE;
+        }
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 static
 void SetButtonTextureName( rhandle<texture>& Texture, s32 ButtonCode )
@@ -399,22 +424,16 @@ void SetButtonTextureName( rhandle<texture>& Texture, s32 ButtonCode )
     }
 }
 
-//=========================================================================
-//  Defines
-//=========================================================================
+//==============================================================================
 
 #define ENABLE_SCREENSHOTS  0
 static const f32 s_ProgressBarScale      = 4.0f;
 
 static const f32 s_PercentBetweenUpdates = 5.0f;
 
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager* g_UiMgr    = NULL;
 s32         g_UiUserID = -1;
@@ -422,20 +441,24 @@ s32         g_UiUserID = -1;
 static_assert( ui_manager::MAX_INPUT_CONTROLLERS == frontend_input::MAX_CONTROLLERS,
                "UI and frontend input controller counts must match" );
 
-//=========================================================================
-//  Helpers
-//=========================================================================
+//==============================================================================
+//  HELPERS
+//==============================================================================
 
 #if !defined(X_RETAIL) || defined(X_QA)
 static
 void RenderDebugText( const char* pText, s32 X, s32 Y )
 {
     if( !g_UiMgr || !g_UIRenderer.IsInitialized() )
+    {
         return;
+    }
 
     const s32 Font = g_UiMgr->FindFont( "small" );
     if( Font < 0 )
+    {
         return;
+    }
 
     const irect Bounds = g_UIRenderer.GetViewport().GetLogicalClipBounds();
     const s32 LineHeight = g_UiMgr->GetLineHeight( Font );
@@ -445,7 +468,7 @@ void RenderDebugText( const char* pText, s32 X, s32 Y )
                          pText, TRUE, FALSE );
 }
 
-//=========================================================================
+//==============================================================================
 #endif
 
 static
@@ -459,7 +482,7 @@ xbool IsUILogicalDown( s32 ControllerID, frontend_pad::logical_id LogicalID )
             (Logical.GetWasValue() > 0.25f) );
 }
 
-//=========================================================================
+//==============================================================================
 
 static
 s32 GetButtonCodeForGadget( input_gadget GadgetID )
@@ -502,7 +525,9 @@ s32 GetButtonCodeForGadget( input_gadget GadgetID )
     }
 }
 
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 void ui_manager::UpdateButton( ui_manager::button& Button, xbool State, f32 DeltaTime )
 {
@@ -550,11 +575,7 @@ void ui_manager::UpdateButton( ui_manager::button& Button, xbool State, f32 Delt
     Button.State = State;
 }
 
-//=========================================================================
-
-//=========================================================================
-//  ui_manager
-//=========================================================================
+//==============================================================================
 
 ui_manager::ui_manager( void )
 {
@@ -576,14 +597,14 @@ ui_manager::ui_manager( void )
     m_isInitialized          = FALSE;
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_manager::~ui_manager( void )
 {
     Kill();
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::UpdateViewport( void )
 {
@@ -594,17 +615,19 @@ void ui_manager::UpdateViewport( void )
     {
         user* pUser = m_Users[i];
         pUser->Bounds = Bounds;
-        pUser->MouseX = x_clamp( pUser->MouseX, (f32)Bounds.l, (f32)(Bounds.r - 1) );
-        pUser->MouseY = x_clamp( pUser->MouseY, (f32)Bounds.t, (f32)(Bounds.b - 1) );
+        pUser->MouseX = x_clamp( pUser->MouseX, static_cast<f32>( Bounds.l ), static_cast<f32>( Bounds.r - 1 ) );
+        pUser->MouseY = x_clamp( pUser->MouseY, static_cast<f32>( Bounds.t ), static_cast<f32>( Bounds.b - 1 ) );
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_manager::Init( void )
 {
     if( m_isInitialized )
+    {
         return 0;
+    }
 
     if( !g_UIRenderer.Init() )
     {
@@ -636,8 +659,8 @@ s32 ui_manager::Init( void )
 
 
 //=--  Register the default dialog classes
-    RegisterDialogClass( "ui_vkeyboard",     (dialog_tem*)0, &ui_dlg_vkeyboard_factory );
-    RegisterDialogClass( "ui_tabbed_dialog", (dialog_tem*)0, &ui_tabbed_dialog_factory );
+    RegisterDialogClass( "ui_vkeyboard",     nullptr, &ui_dlg_vkeyboard_factory );
+    RegisterDialogClass( "ui_tabbed_dialog", nullptr, &ui_tabbed_dialog_factory );
     ui_dlg_list_register( this );
 
     // set the button colors to some initial values
@@ -728,13 +751,15 @@ s32 ui_manager::Init( void )
     return( MemoryBudget );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::Kill( void )
 {
 
     if( !m_isInitialized )
+    {
         return;
+    }
 
 #if !defined(X_RETAIL) || defined(X_QA)
     x_SetPrintAtHook( NULL );
@@ -817,7 +842,7 @@ void ui_manager::Kill( void )
     m_isInitialized = FALSE;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_manager::LoadBackground( const char* pName, const char* pPathName )
 {
@@ -825,7 +850,9 @@ s32 ui_manager::LoadBackground( const char* pName, const char* pPathName )
     {
         s32 ID = FindBackground( pName );
         if( ID != -1 )
+        {
             return ID;
+        }
     }
 
     // Create new background
@@ -844,14 +871,16 @@ s32 ui_manager::LoadBackground( const char* pName, const char* pPathName )
     return m_Backgrounds.GetCount()-1;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::UnloadBackground( const char* pName )
 {
     s32 ID = FindBackground( pName );
     
     if( ID == -1 )
+    {
         return;
+    }
 
     g_RscMgr.Unload( m_Backgrounds[ID]->BitmapName );
     m_Backgrounds[ID]->Bitmap.Destroy();
@@ -860,7 +889,7 @@ void ui_manager::UnloadBackground( const char* pName )
 }
 
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_manager::FindBackground( const char* pName ) const
 {
@@ -880,7 +909,7 @@ s32 ui_manager::FindBackground( const char* pName ) const
 }
 
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::RenderBackground( const char* pName ) const
 {
@@ -894,7 +923,9 @@ void ui_manager::RenderBackground( const char* pName ) const
     }
     s32 iBackground = FindBackground( pName );
     if( iBackground == -1 )
+    {
         return;
+    }
 
     background* pBackground = m_Backgrounds[iBackground];
     ASSERT( pBackground );
@@ -911,7 +942,7 @@ void ui_manager::RenderBackground( const char* pName ) const
 }
 
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_manager::LoadBitmap( const char* pName, const char* pPathName )
 {
@@ -919,7 +950,9 @@ s32 ui_manager::LoadBitmap( const char* pName, const char* pPathName )
     {
         s32 ID = FindBitmap( pName );
         if( ID != -1 )
+        {
             return ID;
+        }
     }
 
     // Create new background
@@ -938,14 +971,16 @@ s32 ui_manager::LoadBitmap( const char* pName, const char* pPathName )
     return m_Bitmaps.GetCount()-1;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::UnloadBitmap( const char* pName )
 {
     s32 ID = FindBitmap( pName );
     
     if( ID == -1 )
+    {
         return;
+    }
 
     g_RscMgr.Unload( m_Bitmaps[ID]->BitmapName );
     m_Bitmaps[ID]->Bitmap.Destroy();
@@ -953,7 +988,7 @@ void ui_manager::UnloadBitmap( const char* pName )
     m_Bitmaps.Delete( ID );
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_manager::FindBitmap( const char* pName )
 {
@@ -972,15 +1007,15 @@ s32 ui_manager::FindBitmap( const char* pName )
     return iFound;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::RenderBitmap( s32 iBitmap, const irect& Position, xcolor Color ) const
 {
     bitmap* pBitmap = m_Bitmaps[iBitmap];
     ASSERT( pBitmap );
     texture* pTexture = pBitmap->Bitmap.GetPointer();
-    const vector2 p( (f32)Position.l, (f32)Position.t );
-    vector2     wh( (f32)(Position.r - Position.l), (f32)(Position.b - Position.t));
+    const vector2 p( static_cast<f32>( Position.l ), static_cast<f32>( Position.t ) );
+    vector2     wh( static_cast<f32>( Position.r - Position.l ), static_cast<f32>( Position.b - Position.t ));
 
     // If we have a bitmap, render it. If not, just render a gouraud rect.
     if( pTexture )
@@ -1008,7 +1043,7 @@ void ui_manager::RenderBitmap( s32 iBitmap, const irect& Position, xcolor Color 
     }
 }
 
-//=========================================================================
+//==============================================================================
 void ui_manager::RenderBitmapUV( s32 iBitmap, const irect& Position, const vector2& UV0In, const vector2& UV1In, xcolor Color ) const
 {
     vector2 UV0 = UV0In;
@@ -1018,10 +1053,12 @@ void ui_manager::RenderBitmapUV( s32 iBitmap, const irect& Position, const vecto
     ASSERT( pBitmap );
     texture* pTexture = pBitmap->Bitmap.GetPointer();
     if( !pTexture )
+    {
         return;
+    }
 
-    const vector2 p( (f32)Position.l, (f32)Position.t );
-    vector2 wh( (f32)(Position.r - Position.l), (f32)(Position.b - Position.t));
+    const vector2 p( static_cast<f32>( Position.l ), static_cast<f32>( Position.t ) );
+    vector2 wh( static_cast<f32>( Position.r - Position.l ), static_cast<f32>( Position.b - Position.t ));
 
     g_UIRenderer.DrawImage( *pTexture,
                             p,
@@ -1034,7 +1071,7 @@ void ui_manager::RenderBitmapUV( s32 iBitmap, const irect& Position, const vecto
                             UI_SAMPLER_LINEAR_CLAMP );
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_manager::LoadElement( const element_desc& Desc )
 {
@@ -1057,13 +1094,17 @@ s32 ui_manager::LoadElement( const element_desc& Desc )
                               (Desc.TexelsPerUIUnit > 0.0f);
     ASSERT( IsValidDesc );
     if( !IsValidDesc )
+    {
         return -1;
+    }
 
     // Check if element already exists
     {
         s32 ID = FindElement( Desc.pName );
         if( ID != -1 )
+        {
             return ID;
+        }
     }
 
     // Create new element
@@ -1096,12 +1137,16 @@ s32 ui_manager::LoadElement( const element_desc& Desc )
     for( i=0 ; i<pBitmap->GetWidth() ; i++ )
     {
         if( pBitmap->GetPixelColor( i, 0 ) == RegColor )
+        {
             x.Append() = i;
+        }
     }
     for( i=0 ; i<pBitmap->GetHeight() ; i++ )
     {
         if( pBitmap->GetPixelColor( 0, i ) == RegColor )
+        {
             y.Append() = i;
+        }
     }
 
     const xbool MarkersAreValid = (x.GetCount() == (Desc.cx+1)) &&
@@ -1124,8 +1169,8 @@ s32 ui_manager::LoadElement( const element_desc& Desc )
             irect& TextureRect = pElement->TextureRects.Append();
             TextureRect.Set( x[ix]+1, y[iy]+1, x[ix+1], y[iy+1] );
 
-            s32 const LogicalWidth  = MAX( 1, (s32)x_floor( (f32)TextureRect.GetWidth()  / Desc.TexelsPerUIUnit + 0.5f ) );
-            s32 const LogicalHeight = MAX( 1, (s32)x_floor( (f32)TextureRect.GetHeight() / Desc.TexelsPerUIUnit + 0.5f ) );
+            s32 const LogicalWidth  = MAX( 1, static_cast<s32>( x_floor( static_cast<f32>( TextureRect.GetWidth() )  / Desc.TexelsPerUIUnit + 0.5f ) ) );
+            s32 const LogicalHeight = MAX( 1, static_cast<s32>( x_floor( static_cast<f32>( TextureRect.GetHeight() ) / Desc.TexelsPerUIUnit + 0.5f ) ) );
             pElement->LayoutRects.Append().Set( 0, 0, LogicalWidth, LogicalHeight );
         }
     }
@@ -1136,7 +1181,7 @@ s32 ui_manager::LoadElement( const element_desc& Desc )
     return m_Elements.GetCount()-1;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_manager::FindElement( const char* pName ) const
 {
@@ -1153,7 +1198,7 @@ s32 ui_manager::FindElement( const char* pName ) const
     return -1;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::RenderElement( s32 iElement, const irect& Position, s32 State, const xcolor& Color, xbool IsAdditive ) const
 {
@@ -1177,7 +1222,9 @@ void ui_manager::RenderElement( s32 iElement, const irect& Position, s32 State, 
 
     pTexture = pElement->Bitmap.GetPointer();
     if( !pTexture )
+    {
         return;
+    }
     pBitmap = &pTexture->m_bitmap;
     const ui_blend_mode Blend = IsAdditive ? UI_BLEND_ADDITIVE : UI_BLEND_ALPHA;
 
@@ -1211,7 +1258,7 @@ void ui_manager::RenderElement( s32 iElement, const irect& Position, s32 State, 
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::RenderElementUV( s32 iElement, const irect& Position, const irect& UV, const xcolor& Color, xbool IsAdditive ) const
 {
@@ -1230,14 +1277,16 @@ void ui_manager::RenderElementUV( s32 iElement, const irect& Position, const ire
 
     pTexture = pElement->Bitmap.GetPointer();
     if( !pTexture )
+    {
         return;
+    }
     pBitmap = &pTexture->m_bitmap;
 
     // Calculate Position and Size
-    p.X      = (f32)Position.l;
-    p.Y      = (f32)Position.t;
-    wh.X     = (f32)Position.GetWidth();
-    wh.Y     = (f32)Position.GetHeight();
+    p.X      = static_cast<f32>( Position.l );
+    p.Y      = static_cast<f32>( Position.t );
+    wh.X     = static_cast<f32>( Position.GetWidth() );
+    wh.Y     = static_cast<f32>( Position.GetHeight() );
 
     // Calculate UVs
     ui_GetTextureRectUV( UV,
@@ -1258,7 +1307,7 @@ void ui_manager::RenderElementUV( s32 iElement, const irect& Position, const ire
                             UI_SAMPLER_LINEAR_CLAMP_ATLAS );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::RenderElementUV( s32 iElement, const irect& Position, const vector2& UV0, const vector2& UV1, const xcolor& Color, xbool IsAdditive ) const
 {
@@ -1274,13 +1323,15 @@ void ui_manager::RenderElementUV( s32 iElement, const irect& Position, const vec
 
     pTexture = pElement->Bitmap.GetPointer();
     if( !pTexture )
+    {
         return;
+    }
 
     // Calculate Position and Size
-    p.X      = (f32)Position.l;
-    p.Y      = (f32)Position.t;
-    wh.X     = (f32)Position.GetWidth();
-    wh.Y     = (f32)Position.GetHeight();
+    p.X      = static_cast<f32>( Position.l );
+    p.Y      = static_cast<f32>( Position.t );
+    wh.X     = static_cast<f32>( Position.GetWidth() );
+    wh.Y     = static_cast<f32>( Position.GetHeight() );
 
     // Draw sprite
     g_UIRenderer.DrawImage( *pTexture,
@@ -1294,7 +1345,7 @@ void ui_manager::RenderElementUV( s32 iElement, const irect& Position, const vec
                             UI_SAMPLER_LINEAR_CLAMP_ATLAS );
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_manager::LoadFont( const char* pName, const char* pPathName )
 {
@@ -1302,7 +1353,9 @@ s32 ui_manager::LoadFont( const char* pName, const char* pPathName )
     {
         s32 ID = FindFont( pName );
         if( ID != -1 )
+        {
             return ID;
+        }
     }
 
     // Create font record
@@ -1325,7 +1378,7 @@ s32 ui_manager::LoadFont( const char* pName, const char* pPathName )
     return m_Fonts.GetCount()-1;
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_manager::ReloadFonts( void )
 {
@@ -1344,7 +1397,7 @@ xbool ui_manager::ReloadFonts( void )
     return Result;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_manager::FindFont( const char* pName ) const
 {
@@ -1363,7 +1416,7 @@ s32 ui_manager::FindFont( const char* pName ) const
     return( iFound );
 }
 
-//=========================================================================
+//==============================================================================
 ui_font* ui_manager::GetFont( const char* pName ) const
 {
     s32 iFound = -1;
@@ -1382,7 +1435,7 @@ ui_font* ui_manager::GetFont( const char* pName ) const
 
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::RenderText( s32 iFont, const irect& Position, s32 Flags, const xcolor& Color, const char* pString, xbool IgnoreEmbeddedColor,  xbool UseGradient, f32 FlareAmount ) const
 {
@@ -1393,7 +1446,7 @@ void ui_manager::RenderText( s32 iFont, const irect& Position, s32 Flags, const 
     pFont->RenderText( Position, Flags, Color, pString, IgnoreEmbeddedColor, UseGradient, FlareAmount );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::RenderText( s32 iFont, const irect& Position, s32 Flags, const xcolor& Color, const xwchar* pString, xbool IgnoreEmbeddedColor,  xbool UseGradient, f32 FlareAmount ) const
 {
@@ -1404,7 +1457,7 @@ void ui_manager::RenderText( s32 iFont, const irect& Position, s32 Flags, const 
     pFont->RenderText( Position, Flags, Color, pString, IgnoreEmbeddedColor, UseGradient, FlareAmount );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::RenderInputText( s32 iFont, const irect& Position, s32 Flags, const xcolor& Color, const xwchar* pString, input_platform Platform ) const
 {
@@ -1414,7 +1467,7 @@ void ui_manager::RenderInputText( s32 iFont, const irect& Position, s32 Flags, c
     pFont->RenderInputText( Position, Flags, Color, pString, Platform );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::RenderText_Wrap( s32 iFont, const irect& Position, s32 Flags, const xcolor& Color,  const xwstring& Text, xbool IgnoreEmbeddedColor,  xbool UseGradient, f32 FlareAmount )
 {
@@ -1428,7 +1481,7 @@ void ui_manager::RenderText_Wrap( s32 iFont, const irect& Position, s32 Flags, c
     pFont->RenderText( Position, Flags, Color, wrapped, IgnoreEmbeddedColor, UseGradient, FlareAmount );
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_manager::TextWidth( s32 iFont, const xwchar* pString, s32 Count ) const
 {
@@ -1439,7 +1492,7 @@ s32 ui_manager::TextWidth( s32 iFont, const xwchar* pString, s32 Count ) const
     return( pFont->TextWidth( pString, Count ) );
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_manager::TextHeight( s32 iFont, const xwchar* pString, s32 Count ) const
 {
@@ -1450,7 +1503,7 @@ s32 ui_manager::TextHeight( s32 iFont, const xwchar* pString, s32 Count ) const
     return( pFont->TextHeight( pString, Count ) );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::TextSize( s32 iFont, irect& Rect, const xwchar* pString, s32 Count ) const
 {
@@ -1461,7 +1514,7 @@ void ui_manager::TextSize( s32 iFont, irect& Rect, const xwchar* pString, s32 Co
     pFont->TextSize( Rect, pString, Count );
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_manager::GetLineHeight( s32 iFont ) const
 {
@@ -1472,14 +1525,14 @@ s32 ui_manager::GetLineHeight( s32 iFont ) const
     return pFont->GetLineHeight();
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::RenderRect( const irect& r, const xcolor& Color, xbool IsWire ) const
 {
     g_UIRenderer.DrawRect( r, Color, IsWire );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::RenderGouraudRect( const irect& r, const xcolor& c1, const xcolor& c2, const xcolor& c3, const xcolor& c4, xbool IsWire, xbool IsAdditive ) const
 {
@@ -1492,7 +1545,7 @@ void ui_manager::RenderGouraudRect( const irect& r, const xcolor& c1, const xcol
                                    IsAdditive ? UI_BLEND_ADDITIVE : UI_BLEND_ALPHA );
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_manager::RegisterWinClass ( const char* ClassName, ui_pfn_winfact pFactory )
 {
@@ -1522,7 +1575,7 @@ xbool ui_manager::RegisterWinClass ( const char* ClassName, ui_pfn_winfact pFact
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_win* ui_manager::CreateWin( s32 UserID, const char* ClassName, const irect& Position, ui_win* pParent, s32 Flags )
 {
@@ -1549,7 +1602,7 @@ ui_win* ui_manager::CreateWin( s32 UserID, const char* ClassName, const irect& P
     return pWin;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_manager::CreateUser( s32 ControllerID, const irect& Bounds, s32 Data )
 {
@@ -1604,7 +1657,7 @@ s32 ui_manager::CreateUser( s32 ControllerID, const irect& Bounds, s32 Data )
     return pUser->Id;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::DeleteAllUsers( void )
 {
@@ -1614,7 +1667,7 @@ void ui_manager::DeleteAllUsers( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::DeleteUser( s32 UserID )
 {
@@ -1642,17 +1695,19 @@ void ui_manager::DeleteUser( s32 UserID )
     m_Users.Delete( Index );
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_manager::user* ui_manager::GetUserById( s32 UserID ) const
 {
     for( s32 i=0; i<m_Users.GetCount(); i++ )
         if( m_Users[i]->Id == UserID )
+        {
             return m_Users[i];
+        }
     return NULL;
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_manager::user* ui_manager::GetUser( s32 UserID ) const
 {
@@ -1662,8 +1717,10 @@ ui_manager::user* ui_manager::GetUser( s32 UserID ) const
     return pUser;
 }
 
-//=========================================================================
+//==============================================================================
 
+// A controller ID of -1 accepts input from any controller. A valid ID
+// restricts input for this UI user to that controller.
 void ui_manager::SetUserController( s32 UserID, s32 ControllerID )
 {
     ASSERT( (m_Users.Find( GetUserById( UserID ) )) != -1 );
@@ -1676,7 +1733,7 @@ void ui_manager::SetUserController( s32 UserID, s32 ControllerID )
                         : -1;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_manager::GetUserData( s32 UserID ) const
 {
@@ -1686,7 +1743,7 @@ s32 ui_manager::GetUserData( s32 UserID ) const
     return pUser->Data;
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_win* ui_manager::GetFocusedWindow( s32 UserID ) const
 {
@@ -1696,7 +1753,7 @@ ui_win* ui_manager::GetFocusedWindow( s32 UserID ) const
     return pUser->pFocusedWindow;
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_input_device ui_manager::GetInputDevice( s32 UserID ) const
 {
@@ -1704,7 +1761,7 @@ ui_input_device ui_manager::GetInputDevice( s32 UserID ) const
     return GetUserById( UserID )->InputDevice;
 }
 
-//=========================================================================
+//==============================================================================
 
 input_platform ui_manager::GetInputPlatform( s32 UserID ) const
 {
@@ -1712,7 +1769,7 @@ input_platform ui_manager::GetInputPlatform( s32 UserID ) const
     return GetUserById( UserID )->InputPlatform;
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_manager::DispatchInput( ui_win* pTarget, ui_input_event& Event )
 {
@@ -1734,7 +1791,7 @@ xbool ui_manager::DispatchInput( ui_win* pTarget, ui_input_event& Event )
     return Handled;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::DestroyDeferredDialogs( void )
 {
@@ -1746,7 +1803,7 @@ void ui_manager::DestroyDeferredDialogs( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::SetHoveredWindow( user* pUser, ui_win* pWin )
 {
@@ -1771,23 +1828,23 @@ void ui_manager::SetHoveredWindow( user* pUser, ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::UpdateMousePosition( user* pUser, s32 ScreenDeltaX, s32 ScreenDeltaY )
 {
     vector2 const LogicalDelta = g_UIRenderer.GetViewport().ScreenDeltaToLogical(
-        vector2( (f32)ScreenDeltaX, (f32)ScreenDeltaY ) );
+        vector2( static_cast<f32>( ScreenDeltaX ), static_cast<f32>( ScreenDeltaY ) ) );
     pUser->MouseX += LogicalDelta.X;
     pUser->MouseY += LogicalDelta.Y;
 
     // Clamp to screen bounds
-    pUser->MouseX = MAX( pUser->MouseX, (f32)pUser->Bounds.l );
-    pUser->MouseX = MIN( pUser->MouseX, (f32)(pUser->Bounds.r - 1) );
-    pUser->MouseY = MAX( pUser->MouseY, (f32)pUser->Bounds.t );
-    pUser->MouseY = MIN( pUser->MouseY, (f32)(pUser->Bounds.b - 1) );
+    pUser->MouseX = MAX( pUser->MouseX, static_cast<f32>( pUser->Bounds.l ) );
+    pUser->MouseX = MIN( pUser->MouseX, static_cast<f32>( pUser->Bounds.r - 1 ) );
+    pUser->MouseY = MAX( pUser->MouseY, static_cast<f32>( pUser->Bounds.t ) );
+    pUser->MouseY = MIN( pUser->MouseY, static_cast<f32>( pUser->Bounds.b - 1 ) );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::SetInputMode( user* pUser, ui_input_device Device, input_platform Platform )
 {
@@ -1808,7 +1865,7 @@ void ui_manager::SetInputMode( user* pUser, ui_input_device Device, input_platfo
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::SetMouseVisible( s32 UserID, xbool State )
 {
@@ -1822,7 +1879,7 @@ void ui_manager::SetMouseVisible( s32 UserID, xbool State )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_manager::GetMouseVisible( s32 UserID ) const
 {
@@ -1832,29 +1889,29 @@ xbool ui_manager::GetMouseVisible( s32 UserID ) const
     return pUser->MouseVisible;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::SetMousePos( s32 UserID, s32 x, s32 y )
 {
     ASSERT( (m_Users.Find( GetUserById( UserID ) )) != -1 );
 
     user*   pUser = GetUserById( UserID );
-    pUser->MouseX = (f32)x;
-    pUser->MouseY = (f32)y;
+    pUser->MouseX = static_cast<f32>( x );
+    pUser->MouseY = static_cast<f32>( y );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::GetMousePos( s32 UserID, s32& x, s32& y ) const
 {
     ASSERT( (m_Users.Find( GetUserById( UserID ) )) != -1 );
 
     user*   pUser = GetUserById( UserID );
-    x = (s32)x_floor( pUser->MouseX + 0.5f );
-    y = (s32)x_floor( pUser->MouseY + 0.5f );
+    x = static_cast<s32>( x_floor( pUser->MouseX + 0.5f ) );
+    y = static_cast<s32>( x_floor( pUser->MouseY + 0.5f ) );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::SetFocusWindow( s32 UserID, ui_win* pWin )
 {
@@ -1864,10 +1921,14 @@ void ui_manager::SetFocusWindow( s32 UserID, ui_win* pWin )
 
     // Only fire events when the focused window actually changes
     if( pWin == pUser->pFocusedWindow )
+    {
         return;
+    }
 
     if( pUser->pFocusedWindow )
+    {
         pUser->pFocusedWindow->OnFocusLost( pUser->pFocusedWindow );
+    }
 
     pUser->pFocusedWindow = pWin;
 
@@ -1884,7 +1945,7 @@ void ui_manager::SetFocusWindow( s32 UserID, ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_win* ui_manager::SetCapture( s32 UserID, ui_win* pWin )
 {
@@ -1897,7 +1958,7 @@ ui_win* ui_manager::SetCapture( s32 UserID, ui_win* pWin )
     return pOldCaptureWin;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::ReleaseCapture( s32 UserID )
 {
@@ -1907,7 +1968,7 @@ void ui_manager::ReleaseCapture( s32 UserID )
     pUser->pCaptureWindow = NULL;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::SetUserBackground( s32 UserID, const char* pName )
 {
@@ -1918,7 +1979,7 @@ void ui_manager::SetUserBackground( s32 UserID, const char* pName )
     pUser->Background = pName;
 }
 
-//=========================================================================
+//==============================================================================
 
 const irect& ui_manager::GetUserBounds( s32 UserID ) const
 {
@@ -1928,7 +1989,7 @@ const irect& ui_manager::GetUserBounds( s32 UserID ) const
     return pUser->Bounds;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::SetUserScale( f32 Scale )
 {
@@ -1936,14 +1997,14 @@ void ui_manager::SetUserScale( f32 Scale )
     UpdateViewport();
 }
 
-//=========================================================================
+//==============================================================================
 
 f32 ui_manager::GetUserScale( void ) const
 {
     return g_UIRenderer.GetViewport().GetUserScale();
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::EnableUser( s32 UserID, xbool State )
 {
@@ -1953,7 +2014,7 @@ void ui_manager::EnableUser( s32 UserID, xbool State )
     pUser->Enabled = State;
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_manager::IsUserEnabled( s32 UserID ) const
 {
@@ -1963,7 +2024,7 @@ xbool ui_manager::IsUserEnabled( s32 UserID ) const
     return pUser->Enabled;
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_manager::ProcessInput( f32 DeltaTime )
 {
@@ -1978,12 +2039,16 @@ xbool ui_manager::ProcessInput( f32 DeltaTime )
             const input_gadget Gadget = static_cast<input_gadget>( i );
             const input_control_kind Kind = input_system::GetGadgetControlKind( Gadget );
             if( (Kind != INPUT_CONTROL_KEY) && (Kind != INPUT_CONTROL_BUTTON) )
+            {
                 continue;
+            }
 
             for( s32 j = 0; j < INPUT_MAX_DEVICES; j++ )
             {
                 if( Snapshot.IsPressed( Gadget, j ) || Snapshot.WasPressed( Gadget, j ) )
+                {
                     return TRUE;
+                }
             }
         }
 
@@ -1992,7 +2057,9 @@ xbool ui_manager::ProcessInput( f32 DeltaTime )
             for( s32 j = frontend_pad::UI_UP; j <= frontend_pad::UI_HELP; j++ )
             {
                 if( IsUILogicalDown( i, static_cast<frontend_pad::logical_id>( j ) ) )
+                {
                     return TRUE;
+                }
             }
         }
 
@@ -2013,6 +2080,7 @@ xbool ui_manager::ProcessInput( f32 DeltaTime )
             {
                 user* pUser = m_Users[i];
                 ASSERT( pUser );
+                // Only enabled users track the cursor during scaling.
                 if( pUser->Enabled )
                 {
                     UpdateMousePosition( pUser, ScreenDeltaX, ScreenDeltaY );
@@ -2040,7 +2108,7 @@ xbool ui_manager::ProcessInput( f32 DeltaTime )
     return Continue;
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_win* ui_manager::GetWindowAtXY( user* pUser, s32 x, s32 y )
 {
@@ -2062,13 +2130,17 @@ ui_win* ui_manager::GetWindowAtXY( user* pUser, s32 x, s32 y )
 
             // Don't select a disabled window
             if( pWindow && (pWindow->GetFlags() & ui_win::WF_DISABLED) )
+            {
                 pWindow = pDialog;
+            }
 
             // If modal then exit, otherwise step back to next dialog
             if( pDialog->GetFlags() & ui_win::WF_INPUTMODAL )
             {
                 if( pWindow == NULL )
+                {
                     pWindow = pDialog;
+                }
                 break;
             }
             else
@@ -2080,7 +2152,7 @@ ui_win* ui_manager::GetWindowAtXY( user* pUser, s32 x, s32 y )
     return pWindow;
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_manager::ProcessInput( f32 DeltaTime, s32 UserID )
 {
@@ -2148,8 +2220,8 @@ xbool ui_manager::ProcessInput( f32 DeltaTime, s32 UserID )
             // must never silently change the focused control.
             if( pUser->InputDevice == ui_input_device::Mouse )
             {
-                s32 const MouseX = (s32)x_floor( pUser->MouseX + 0.5f );
-                s32 const MouseY = (s32)x_floor( pUser->MouseY + 0.5f );
+                s32 const MouseX = static_cast<s32>( x_floor( pUser->MouseX + 0.5f ) );
+                s32 const MouseY = static_cast<s32>( x_floor( pUser->MouseY + 0.5f ) );
                 ui_win* const pPreviousHover = pUser->pHoveredWindow;
                 SetHoveredWindow( pUser, GetWindowAtXY( pUser, MouseX, MouseY ) );
                 HoverTargetChanged = (pPreviousHover != pUser->pHoveredWindow);
@@ -2162,7 +2234,9 @@ xbool ui_manager::ProcessInput( f32 DeltaTime, s32 UserID )
             // If nothing has focus (e.g. mouse is over background), fall back to
             // the topmost dialog so pad navigation always has somewhere to go
             if( pUser->DialogStack.GetCount() > 0 )
+            {
                 pWin = pUser->DialogStack[pUser->DialogStack.GetCount()-1];
+            }
         }
 
         auto RefreshInputTarget = [&]() -> xbool
@@ -2211,8 +2285,8 @@ xbool ui_manager::ProcessInput( f32 DeltaTime, s32 UserID )
         ui_win* pPointerWin = pUser->pCaptureWindow
                             ? pUser->pCaptureWindow
                             : pUser->pHoveredWindow;
-        s32 const MouseX = (s32)x_floor( pUser->MouseX + 0.5f );
-        s32 const MouseY = (s32)x_floor( pUser->MouseY + 0.5f );
+        s32 const MouseX = static_cast<s32>( x_floor( pUser->MouseX + 0.5f ) );
+        s32 const MouseY = static_cast<s32>( x_floor( pUser->MouseY + 0.5f ) );
 
         if( pPointerWin )
         {
@@ -2504,14 +2578,14 @@ xbool ui_manager::ProcessInput( f32 DeltaTime, s32 UserID )
     return Continue;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::EnableUserInput( void )
 {
     m_EnableUserInput = TRUE;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::DisableUserInput( void )
 {
@@ -2519,7 +2593,7 @@ void ui_manager::DisableUserInput( void )
     ClearUserInput();
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::SuppressInputUntilRelease( void )
 {
@@ -2527,7 +2601,7 @@ void ui_manager::SuppressInputUntilRelease( void )
     ClearUserInput();
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::ClearUserInput( void )
 {
@@ -2555,7 +2629,7 @@ void ui_manager::ClearUserInput( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::Update( f32 DeltaTime )
 {
@@ -2617,7 +2691,7 @@ void ui_manager::Update( f32 DeltaTime )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::RenderNavText( const user* pUser ) const
 {
@@ -2652,7 +2726,7 @@ void ui_manager::RenderNavText( const user* pUser ) const
                      pUser->InputPlatform );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::Render( void )
 {
@@ -2674,7 +2748,9 @@ void ui_manager::Render( void )
             {
                 // If there are visible dialogs, render the stack
                 if (pUser->DialogStack.GetCount())
+                {
                     RenderCursor = TRUE;
+                }
                 // Render Background
                 RenderBackground( pUser->Background );
 
@@ -2684,7 +2760,10 @@ void ui_manager::Render( void )
                     j--;
 
                 // Make sure we start with a legal dialog
-                if( j < 0 ) j = 0;
+                if( j < 0 )
+                {
+                    j = 0;
+                }
 
                 // Render all Dialogs from the Render Modal one
                 for( ; j<pUser->DialogStack.GetCount() ; j++ )
@@ -2706,8 +2785,8 @@ void ui_manager::Render( void )
 
             if( pUser->MouseVisible )
             {
-                const f32 CursorX = (f32)pUser->MouseX;
-                const f32 CursorY = (f32)pUser->MouseY;
+                const f32 CursorX = static_cast<f32>( pUser->MouseX );
+                const f32 CursorY = static_cast<f32>( pUser->MouseY );
                 g_UIRenderer.DrawLine( vector2( CursorX - 3.0f, CursorY - 3.0f ),
                                        vector2( CursorX + 4.0f, CursorY + 4.0f ),
                                        XCOLOR_WHITE );
@@ -2726,7 +2805,7 @@ void ui_manager::Render( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_manager::RegisterDialogClass( const char* ClassName, dialog_tem* pDialogTem, ui_pfn_dlgfact pFactory )
 {
@@ -2757,7 +2836,7 @@ xbool ui_manager::RegisterDialogClass( const char* ClassName, dialog_tem* pDialo
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_dialog* ui_manager::OpenDialog( s32 UserID, const char* ClassName, irect Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
@@ -2795,7 +2874,7 @@ ui_dialog* ui_manager::OpenDialog( s32 UserID, const char* ClassName, irect Posi
         }
 
         // Create the Dialog Window
-        pDialog = (ui_dialog*)pFactory( UserID, this, pDialogTem, Position, pParent, Flags, pUserData );
+        pDialog = static_cast<ui_dialog*>( pFactory( UserID, this, pDialogTem, Position, pParent, Flags, pUserData ) );
         ASSERT( pDialog );
 
         LOG_MESSAGE( "ui_manager::OpenDialog", "New dialog opened. ID:0x%08x, Name:%s, Position:(%d,%d,%d,%d)", pDialog, ClassName, Position.l, Position.t, Position.r, Position.b );
@@ -2838,7 +2917,7 @@ ui_dialog* ui_manager::OpenDialog( s32 UserID, const char* ClassName, irect Posi
     return pDialog;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::EndDialog( s32 UserID, xbool ResetCursor )
 {
@@ -2857,7 +2936,7 @@ void ui_manager::EndDialog( s32 UserID, xbool ResetCursor )
         // Clear focus if it was owned by this dialog
         if( pUser->pFocusedWindow )
         {
-            if( (pUser->pFocusedWindow == (ui_win*)pDialog) ||
+            if( (pUser->pFocusedWindow == pDialog) ||
                 (pUser->pFocusedWindow->IsChildOf( pDialog )) )
             {
                 SetFocusWindow( UserID, NULL );
@@ -2867,7 +2946,7 @@ void ui_manager::EndDialog( s32 UserID, xbool ResetCursor )
         // Clear hover if it was over this dialog
         if( pUser->pHoveredWindow )
         {
-            if( (pUser->pHoveredWindow == (ui_win*)pDialog) ||
+            if( (pUser->pHoveredWindow == pDialog) ||
                 (pUser->pHoveredWindow->IsChildOf( pDialog )) )
             {
                 SetHoveredWindow( pUser, NULL );
@@ -2932,7 +3011,7 @@ void ui_manager::EndDialog( s32 UserID, xbool ResetCursor )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::EndUsersDialogs( s32 UserID )
 {
@@ -2944,7 +3023,7 @@ void ui_manager::EndUsersDialogs( s32 UserID )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_manager::GetNumUserDialogs( s32 UserID )
 {
@@ -2955,7 +3034,7 @@ s32 ui_manager::GetNumUserDialogs( s32 UserID )
     return pUser->DialogStack.GetCount();
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_dialog* ui_manager::GetTopmostDialog( s32 UserID )
 {
@@ -2963,26 +3042,30 @@ ui_dialog* ui_manager::GetTopmostDialog( s32 UserID )
     user*   pUser = GetUserById( UserID );
 
     if( pUser->DialogStack.GetCount() > 0 )
+    {
         return pUser->DialogStack.GetAt( pUser->DialogStack.GetCount()-1 );
+    }
     else
+    {
         return NULL;
+    }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::PushClipWindow( const irect &r )
 {
     g_UIRenderer.PushClipRect( r );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::PopClipWindow( void )
 {
     g_UIRenderer.PopClipRect();
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::WordWrapString( s32 iFont, const irect& Rect, const char* pString, xwstring& Result )
 {
@@ -2997,23 +3080,21 @@ void ui_manager::WordWrapString( s32 iFont, const irect& Rect, const char* pStri
     m_Fonts[iFont]->pFont->TextWrap( Text, Rect, Result );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::WordWrapString( s32 iFont, const irect& Rect, const xwstring& Text, xwstring& Result )
 {
     m_Fonts[iFont]->pFont->TextWrap( Text, Rect, Result );
 }
 
-//=========================================================================
+//==============================================================================
 
 texture* ui_manager::GetButtonTexture( s32 buttonCode )
 {
     return (m_ButtonTextures[buttonCode].GetPointer());
 }
 
-//=========================================================================
-
-//=========================================================================
+//==============================================================================
 
 
 s32 ui_manager::LookUpButtonCode( const xwchar* pString, s32 iStart, input_device Device, input_platform Platform ) const
@@ -3022,7 +3103,9 @@ s32 ui_manager::LookUpButtonCode( const xwchar* pString, s32 iStart, input_devic
     const xbool IsGamepad = (Device == INPUT_DEVICE_GAMEPAD);
 
     if( !pString )
+    {
         return -1;
+    }
 
  
     if( IsGamepad )
@@ -3032,12 +3115,17 @@ s32 ui_manager::LookUpButtonCode( const xwchar* pString, s32 iStart, input_devic
         {
             s32 ButtonCode = GetButtonCodeForGadget( GadgetID );
             if( ButtonCode != -1 )
+            {
                 return ButtonCode;
+            }
         }
     }
  
     codeString = pString + iStart;
-    if( codeString.GetLength() == 0 ) return -1;
+    if( codeString.GetLength() == 0 )
+    {
+        return -1;
+    }
  
     const button_code* pButtonCodeTable = GetButtonCodeTable( Platform );
  
@@ -3048,7 +3136,9 @@ s32 ui_manager::LookUpButtonCode( const xwchar* pString, s32 iStart, input_devic
             s32 ButtonCode = pButtonCodeTable[i].ButtonCode;
 
             if( !IsGamepad && IsControllerButtonCode( ButtonCode ) )
+            {
                 return -1;
+            }
 
             return ButtonCode;
         }
@@ -3057,7 +3147,7 @@ s32 ui_manager::LookUpButtonCode( const xwchar* pString, s32 iStart, input_devic
     return -1;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::InitScreenWipe( ui_dialog* pOwner )
 {
@@ -3070,46 +3160,52 @@ void ui_manager::InitScreenWipe( ui_dialog* pOwner )
     m_pWipeOwner = pOwner;
     m_wipeRevealY = m_wipeBounds.t;
     m_wipeSpeed  = SCREEN_WIPE_SPEED;
-    m_wipeHeadY  = MIN( (f32)m_wipeBounds.t + SCREEN_WIPE_HEAD_HEIGHT,
-                        (f32)m_wipeBounds.b );
+    m_wipeHeadY  = MIN( static_cast<f32>( m_wipeBounds.t ) + SCREEN_WIPE_HEAD_HEIGHT,
+                        static_cast<f32>( m_wipeBounds.b ) );
     m_wipeFade   = 1.0f;
 
     // play wipe sound effect
     g_AudioMgr.Play( "ScreenWipe" );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::RenderScreenWipe( const ui_dialog* pOwner )
 {
     if( !IsWipeActiveFor( pOwner ) )
+    {
         return;
+    }
 
     const f32 Fade        = x_clamp( m_wipeFade, 0.0f, 1.0f );
     const f32 TrailLength = SCREEN_WIPE_TRAIL_LENGTH * Fade;
     if( TrailLength <= 0.0f )
+    {
         return;
+    }
 
     const f32 GradientTop = m_wipeHeadY - TrailLength;
     irect Gradient = m_wipeBounds;
-    Gradient.t = MAX( Gradient.t, (s32)x_floor( GradientTop ) );
-    Gradient.b = MIN( Gradient.b, (s32)x_floor( m_wipeHeadY + 0.5f ) );
+    Gradient.t = MAX( Gradient.t, static_cast<s32>( x_floor( GradientTop ) ) );
+    Gradient.b = MIN( Gradient.b, static_cast<s32>( x_floor( m_wipeHeadY + 0.5f ) ) );
     if( Gradient.b <= Gradient.t )
+    {
         return;
+    }
 
     // Keep the geometry inside the frame, as the original segmented wipe did.
     // Recalculate the endpoint colors so clipping does not alter the gradient.
-    const f32 TopFactor = x_clamp( ((f32)Gradient.t - GradientTop) / TrailLength, 0.0f, 1.0f );
-    const f32 BottomFactor = x_clamp( ((f32)Gradient.b - GradientTop) / TrailLength, 0.0f, 1.0f );
-    const u8 TopIntensity = (u8)(255.0f * Fade * TopFactor + 0.5f);
-    const u8 BottomIntensity = (u8)(255.0f * Fade * BottomFactor + 0.5f);
-    const xcolor TopColor( (u8)((146 * TopIntensity) / 255),
-                           (u8)((226 * TopIntensity) / 255),
-                           (u8)((100 * TopIntensity) / 255),
+    const f32 TopFactor = x_clamp( (static_cast<f32>( Gradient.t ) - GradientTop) / TrailLength, 0.0f, 1.0f );
+    const f32 BottomFactor = x_clamp( (static_cast<f32>( Gradient.b ) - GradientTop) / TrailLength, 0.0f, 1.0f );
+    const u8 TopIntensity = static_cast<u8>( 255.0f * Fade * TopFactor + 0.5f );
+    const u8 BottomIntensity = static_cast<u8>( 255.0f * Fade * BottomFactor + 0.5f );
+    const xcolor TopColor( static_cast<u8>( (146 * TopIntensity) / 255 ),
+                           static_cast<u8>( (226 * TopIntensity) / 255 ),
+                           static_cast<u8>( (100 * TopIntensity) / 255 ),
                            TopIntensity );
-    const xcolor BottomColor( (u8)((146 * BottomIntensity) / 255),
-                              (u8)((226 * BottomIntensity) / 255),
-                              (u8)((100 * BottomIntensity) / 255),
+    const xcolor BottomColor( static_cast<u8>( (146 * BottomIntensity) / 255 ),
+                              static_cast<u8>( (226 * BottomIntensity) / 255 ),
+                              static_cast<u8>( (100 * BottomIntensity) / 255 ),
                               BottomIntensity );
 
     RenderGouraudRect( Gradient,
@@ -3121,17 +3217,19 @@ void ui_manager::RenderScreenWipe( const ui_dialog* pOwner )
                        TRUE );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::UpdateScreenWipe( f32 DeltaTime )
 {
     if( !m_wipeActive || (DeltaTime <= 0.0f) )
+    {
         return;
+    }
 
     f32 RemainingTime = DeltaTime;
     if( !m_wipeFading )
     {
-        const f32 Distance = (f32)m_wipeBounds.b - m_wipeHeadY;
+        const f32 Distance = static_cast<f32>( m_wipeBounds.b ) - m_wipeHeadY;
         const f32 SweepTime = (m_wipeSpeed > 0.0f) ? MAX( 0.0f, Distance ) / m_wipeSpeed : 0.0f;
         if( RemainingTime < SweepTime )
         {
@@ -3140,7 +3238,7 @@ void ui_manager::UpdateScreenWipe( f32 DeltaTime )
         }
         else
         {
-            m_wipeHeadY  = (f32)m_wipeBounds.b;
+            m_wipeHeadY  = static_cast<f32>( m_wipeBounds.b );
             m_wipeFading = TRUE;
             RemainingTime -= SweepTime;
         }
@@ -3164,18 +3262,18 @@ void ui_manager::UpdateScreenWipe( f32 DeltaTime )
     {
         m_wipeRevealY = MIN( m_wipeBounds.b,
                              MAX( m_wipeBounds.t,
-                                  (s32)(m_wipeHeadY - SCREEN_WIPE_HEAD_HEIGHT + 0.5f) ) );
+                                  static_cast<s32>( m_wipeHeadY - SCREEN_WIPE_HEAD_HEIGHT + 0.5f ) ) );
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_manager::IsWipeActiveFor( const ui_dialog* pOwner ) const
 {
     return m_wipeActive && (m_pWipeOwner == pOwner);
 }
 
-//=========================================================================
+//==============================================================================
 void ui_manager::ResetScreenWipe( void )
 {
     m_wipeActive = FALSE;
@@ -3188,7 +3286,7 @@ void ui_manager::ResetScreenWipe( void )
     m_wipeRevealY = 0;
 }
 
-//=============================================================================
+//==============================================================================
 
 void ui_manager::InitRefreshBar( void )
 {
@@ -3201,14 +3299,14 @@ void ui_manager::InitRefreshBar( void )
     m_RefreshPos.b  = m_CurrScreenSize.b;
 }
 
-//=============================================================================
+//==============================================================================
 
 void ui_manager::RenderRefreshBar( void )
 {
 
 }
 
-//=============================================================================
+//==============================================================================
 
 void ui_manager::UpdateRefreshBar( f32 deltaTime )
 {
@@ -3219,10 +3317,12 @@ void ui_manager::UpdateRefreshBar( f32 deltaTime )
     while( m_RefreshStepAccumulator >= VisualStep )
     {
         m_RefreshStepAccumulator -= VisualStep;
-        m_RefreshPos.t -= (s32)( ( m_RefreshSpeed * VisualStep ) + 0.5f );
+        m_RefreshPos.t -= static_cast<s32>(  ( m_RefreshSpeed * VisualStep ) + 0.5f  );
 
         if( m_RefreshPos.t < m_CurrScreenSize.t )
+        {
             m_RefreshPos.t = m_CurrScreenSize.b - m_RefreshWidth;
+        }
     }
     
     m_RefreshPos.l  = m_CurrScreenSize.l + 22;      
@@ -3231,7 +3331,7 @@ void ui_manager::UpdateRefreshBar( f32 deltaTime )
 }
 
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::SetScreenSize ( const irect& size )
 {    
@@ -3240,7 +3340,7 @@ void ui_manager::SetScreenSize ( const irect& size )
     m_GlowEndX          = m_CurrScreenSize.r - 46 - 16;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::InitScreenHighlight( void )
 {
@@ -3251,7 +3351,7 @@ void ui_manager::InitScreenHighlight( void )
     m_HighlightFadeUp        = TRUE;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::SetScreenHighlight( const irect& pos )
 { 
@@ -3263,28 +3363,32 @@ void ui_manager::SetScreenHighlight( const irect& pos )
     m_ScreenHighlightEnabled = TRUE;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::RenderScreenHighlight( void )
 {
     // check if enabled
     if (!m_ScreenHighlightEnabled)
+    {
         return;
+    }
 
     // don't render if the screen is scaling
     if( m_isScaling )
+    {
         return;
+    }
 
     // render the background highlight
     u32 val = 64 + GetHighlightAlpha();
     RenderElement( m_ScreenHighlightID, m_ScreenHighlightPos, 0, xcolor(val,val,val,val), TRUE );
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_manager::GetHighlightAlpha( s32 cycle )
 {
-    s32 HighlightAlpha = (s32)(m_HighlightAlpha + 0.5f);
+    s32 HighlightAlpha = static_cast<s32>( m_HighlightAlpha + 0.5f );
     s32 Phase;
     s32 Wave;
 
@@ -3307,17 +3411,21 @@ s32 ui_manager::GetHighlightAlpha( s32 cycle )
     return( Wave );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::RenderScreenGlow( void )
 {
     // check if enabled
     if (!m_ScreenHighlightEnabled)
+    {
         return;
+    }
 
     // don't render if the screen is scaling
     if( m_isScaling )
+    {
         return;
+    }
 
     // render the highlight glow
     irect pos  = m_ScreenHighlightPos;
@@ -3327,7 +3435,7 @@ void ui_manager::RenderScreenGlow( void )
     RenderElement( m_ScreenGlowID, pos, 0, xcolor(val,val,val,val), TRUE );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::InitGlowBar ( void )
 {
@@ -3353,14 +3461,16 @@ void ui_manager::InitGlowBar ( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::RenderGlowBar( void )
 {
     u8 val;
 
     if (!m_ScreenIsOn)
+    {
         return;
+    }
 
     for (s32 i=0; i<8; i++)
     {
@@ -3372,20 +3482,22 @@ void ui_manager::RenderGlowBar( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::UpdateGlowBar( f32 deltaTime )
 {
     const f32 VisualStep = 1.0f / 30.0f;
 
     if (!m_ScreenIsOn)
+    {
         return;
+    }
 
     m_GlowStepAccumulator += deltaTime;
 
     while( m_GlowStepAccumulator >= VisualStep )
     {
-        const s32 deltaPos = (s32)((m_GlowSpeed * VisualStep) + 0.5f);
+        const s32 deltaPos = static_cast<s32>( (m_GlowSpeed * VisualStep) + 0.5f );
         m_GlowStepAccumulator -= VisualStep;
 
         if (m_GlowOnTop)
@@ -3409,7 +3521,9 @@ void ui_manager::UpdateGlowBar( f32 deltaTime )
                 for (s32 i=0; i<8; i++)
                 {
                     if (m_GlowTrail[i].l < m_GlowStartX)
+                    {
                         m_GlowTrail[i].l = -1;
+                    }
                 }
             }
         }
@@ -3434,7 +3548,9 @@ void ui_manager::UpdateGlowBar( f32 deltaTime )
                 for (s32 i=0; i<8; i++)
                 {
                     if (m_GlowTrail[i].l > m_GlowEndX)
+                    {
                         m_GlowTrail[i].l = -1;
+                    }
                 }
             }
         }
@@ -3447,7 +3563,7 @@ void ui_manager::UpdateGlowBar( f32 deltaTime )
     }
 }
 
-//=============================================================================
+//==============================================================================
 
 void ui_manager::RenderProgressBar( xbool mustDraw )
 {
@@ -3484,7 +3600,7 @@ void ui_manager::RenderProgressBar( xbool mustDraw )
         rb.l = 58;
         rb.t = 270;
         rb.b = 278;
-        rb.r = rb.l + (s32)(s_ProgressBarScale * m_PercentLoaded);
+        rb.r = rb.l + static_cast<s32>( s_ProgressBarScale * m_PercentLoaded );
 
         RenderRect(rb, xcolor(199,236,249,255), FALSE);
 
@@ -3501,14 +3617,14 @@ void ui_manager::RenderProgressBar( xbool mustDraw )
         rb.b = 400;
 #ifndef X_RETAIL
         RenderText( FindFont( "small" ), rb, ui_font::h_left, TextColor, "Memory used:" );
-        xwstring memString  = (const char *)xfs( "%dk",  (x_MemGetUsed() / 1024) );
+        xwstring memString  = static_cast<const char*>( xfs( "%dk",  (x_MemGetUsed() / 1024) ) );
         RenderText( FindFont( "small" ), rb, ui_font::h_right, TextColor, memString );
 
         rb.t += 20;
         rb.b += 20;
 
         RenderText( FindFont( "small" ), rb, ui_font::h_left, TextColor, "Memory remaining:");
-        xwstring memString2  = (const char *)xfs( "%dk",  (x_MemGetFree() / 1024) );
+        xwstring memString2  = static_cast<const char*>( xfs( "%dk",  (x_MemGetFree() / 1024) ) );
         RenderText( FindFont( "small" ), rb, ui_font::h_right, TextColor, memString2 );
 
         rb.t += 20;
@@ -3527,17 +3643,21 @@ void ui_manager::RenderProgressBar( xbool mustDraw )
     xbool const renderReady = render::EndFrame();
     xbool const engineReady = eng_EndFrame();
     if ( renderReady && !engineReady )
+    {
         x_throw( "UI: failed to submit progress frame" );
+    }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::SetPercentLoaded( f32 percent )
 {
     m_PercentLoaded = percent;
 
     if (m_PercentLoaded > 100.0f)
+    {
         m_PercentLoaded = 100.0f;
+    }
 
     if ( m_PercentLoaded <= 1.0f )
     {
@@ -3554,33 +3674,35 @@ void ui_manager::SetPercentLoaded( f32 percent )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::AddPercentLoaded( f32 percent )
 {
     m_PercentLoaded += percent;
 
     if (m_PercentLoaded > 100.0f)
+    {
         m_PercentLoaded = 100.0f;
+    }
 
     RenderProgressBar(FALSE);
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::EnableSafeArea( void )                
 { 
     m_RenderSafeArea = TRUE; 
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::DisableSafeArea( void )                
 { 
     m_RenderSafeArea = FALSE; 
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_manager::PingToColor( f32 ping, xcolor& responsecolor )
 {
@@ -3600,7 +3722,7 @@ s32 ui_manager::PingToColor( f32 ping, xcolor& responsecolor )
     else                     { responsecolor = S_GREEN; return 0;   }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_manager::BuildTextData( const xwchar* pString,
                                 ui_text_data& Result,
@@ -3663,8 +3785,8 @@ void ui_manager::BuildTextData( const xwchar* pString,
 
             if( Code >= 0 && Code < NUM_BUTTON_TEXTURES )
             {
-                f32 Width = Code == INPUT_KBD_RETURN ? 24.0f : (f32)BUTTON_SPRITE_WIDTH;
-                Result.AppendButton( Code, vector2( Width, (f32)BUTTON_SPRITE_WIDTH ), Spacing );
+                f32 Width = Code == INPUT_KBD_RETURN ? 24.0f : static_cast<f32>( BUTTON_SPRITE_WIDTH );
+                Result.AppendButton( Code, vector2( Width, static_cast<f32>( BUTTON_SPRITE_WIDTH ) ), Spacing );
                 HasInputButton = TRUE;
 
                 if( pSourceOffsets )
@@ -3694,7 +3816,7 @@ void ui_manager::BuildTextData( const xwchar* pString,
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_font* ui_manager::GetFont( s32 Index ) const
 {

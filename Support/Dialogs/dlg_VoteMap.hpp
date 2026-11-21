@@ -20,13 +20,21 @@
 #include "dlg_PopUp.hpp"
 
 //==============================================================================
-//  dlg_vote_map
+//  REGISTRATION
 //==============================================================================
 
 extern void     dlg_vote_map_register  ( ui_manager* pManager );
 extern ui_win*  dlg_vote_map_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 class ui_button;
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class dlg_vote_map : public ui_dialog
 {
@@ -56,6 +64,7 @@ protected:
 
     dlg_popup*          m_PopUp;
     s32                 m_PopUpResult;
+    xbool               m_ExitPending;
 
     s32                 m_CurrHL;
 };

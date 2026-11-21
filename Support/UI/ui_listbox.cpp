@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  ui_listbox.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 #include "../AudioMgr/AudioMgr.hpp"
@@ -12,50 +16,42 @@
 #include "ui_font.hpp"
 #include "StateMgr/StateMgr.hpp"
 
-//=========================================================================
-//  Defines
-//=========================================================================
+//==============================================================================
+//  DEFINES
+//==============================================================================
 
 #define SPACE_TOP       4
 #define SPACE_BOTTOM    4
 #define LINE_HEIGHT     16
 #define HEADER_HEIGHT   22
 
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
-
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 ui_win* ui_listbox_factory( s32 UserID, ui_manager* pManager, const irect& Position, ui_win* pParent, s32 Flags )
 {
     ui_listbox* pcombo = new ui_listbox;
     pcombo->Create( UserID, pManager, Position, pParent, Flags );
 
-    return (ui_win*)pcombo;
+    return pcombo;
 }
 
-//=========================================================================
-//  ui_listbox
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 ui_listbox::ui_listbox( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_listbox::~ui_listbox( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_listbox::Create( s32 UserID, ui_manager* pManager, const irect& Position, ui_win* pParent, s32 Flags )
 {
@@ -94,7 +90,7 @@ xbool ui_listbox::Create( s32 UserID, ui_manager* pManager, const irect& Positio
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::Render( s32 ox, s32 oy )
 {
@@ -118,7 +114,9 @@ void ui_listbox::Render( s32 ox, s32 oy )
         irect   rb = r;
         
         if (m_ShowFrame)
+        {
             rb.Deflate( 1, 1 );
+        }
 
         // render header bar
         if( m_ShowHeaderBar )
@@ -194,6 +192,7 @@ void ui_listbox::Render( s32 ox, s32 oy )
             }
         }
 
+        // Restore the outer clip before drawing the frame and scrollbar.
         m_pManager->PopClipWindow();
 
         if (m_ShowBorders)
@@ -216,7 +215,7 @@ void ui_listbox::Render( s32 ox, s32 oy )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::RenderHeader( irect r )
 {
@@ -227,14 +226,14 @@ void ui_listbox::RenderHeader( irect r )
     m_pManager->RenderText( m_Font, r, ui_font::h_center | ui_font::v_center, m_HeaderColor, m_Label );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::RenderSelection( irect r )
 {
     RenderHighlightRect( r, IsActive() ? HS_ACTIVE : HS_SELECTED );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::RenderItem( irect r, const item& Item, const xcolor& c1, const xcolor& c2 )
 {
@@ -247,7 +246,7 @@ void ui_listbox::RenderItem( irect r, const item& Item, const xcolor& c1, const 
     m_pManager->RenderText( m_Font, r, m_LabelFlags, c1, Item.Label );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::SetPosition( const irect& Position )
 {
@@ -255,7 +254,7 @@ void ui_listbox::SetPosition( const irect& Position )
     UpdateVisibleItemCount();
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
@@ -272,15 +271,21 @@ void ui_listbox::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 
     switch( Code )
     {
         case ui_navigation::Up:
+        {
             Direction = -1;
-            break;
+        }
+        break;
 
         case ui_navigation::Down:
+        {
             Direction = 1;
-            break;
+        }
+        break;
 
         default:
-            break;
+        {
+        }
+        break;
     }
 
     if( IsActive() && (Direction != 0) )
@@ -310,6 +315,8 @@ void ui_listbox::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 
     ui_win::OnNavigate( pWin, Code, Presses, Repeats, WrapX, WrapY );
 }
 
+//==============================================================================
+
 void ui_listbox::OnPage( ui_win* pWin, s32 Direction )
 {
     (void)pWin;
@@ -334,6 +341,8 @@ void ui_listbox::OnPage( ui_win* pWin, s32 Direction )
     }
 }
 
+//==============================================================================
+
 void ui_listbox::OnJump( ui_win* pWin, s32 Direction )
 {
     (void)pWin;
@@ -350,7 +359,7 @@ void ui_listbox::OnJump( ui_win* pWin, s32 Direction )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::OnAccept( ui_win* pWin )
 {
@@ -360,7 +369,9 @@ void ui_listbox::OnAccept( ui_win* pWin )
     if( !m_ExitOnSelect && (IsActive()) )
     {
         if( m_pParent )
+        {
             Notify( ui_notification_type::ListAccepted, static_cast<s32>( m_iSelection  ) );
+        }
     }
     else
     {
@@ -376,16 +387,20 @@ void ui_listbox::OnAccept( ui_win* pWin )
             else
             {
                 if( m_pParent )
+                {
                     Notify( ui_notification_type::ListAccepted, static_cast<s32>( m_iSelection  ) );
+                }
             }
         }
     }
 
     if ( m_pParent )
+    {
         m_pParent->OnAccept( pWin );
+    }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::OnCancel( ui_win* pWin )
 {
@@ -404,16 +419,20 @@ void ui_listbox::OnCancel( ui_win* pWin )
         SetSelection( m_iSelectionBackup );
 
         if( m_pParent )
+        {
             Notify( ui_notification_type::ListCancelled, static_cast<s32>( m_iSelection  ) );
+        }
     }
     else
     {
         if( m_pParent )
+        {
             m_pParent->OnCancel( pWin );
+        }
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::SetLineHeight( s32 Height )
 {
@@ -422,13 +441,13 @@ void ui_listbox::SetLineHeight( s32 Height )
     UpdateVisibleItemCount();
 }
 
-//=========================================================================
+//==============================================================================
 void ui_listbox::SetExitOnSelect( xbool State )
 {
     m_ExitOnSelect = State;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_listbox::AddItem( const xwstring& Label, uaddr Data, uaddr Data2, xbool State, u32 Flags )
 {
@@ -442,7 +461,7 @@ s32 ui_listbox::AddItem( const xwstring& Label, uaddr Data, uaddr Data2, xbool S
     return m_Items.GetCount()-1;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_listbox::AddItem( const xwchar* Label, uaddr Data, uaddr Data2, xbool State, u32 Flags )
 {
@@ -456,7 +475,7 @@ s32 ui_listbox::AddItem( const xwchar* Label, uaddr Data, uaddr Data2, xbool Sta
     return m_Items.GetCount()-1;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::DeleteAllItems( void )
 {
@@ -469,10 +488,12 @@ void ui_listbox::DeleteAllItems( void )
     m_Items.Delete( 0, m_Items.GetCount() );
 
     if( OldSelection != m_iSelection )
+    {
         Notify( ui_notification_type::ListSelectionChanged, m_iSelection );
+    }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::DeleteItem( s32 iItem )
 {
@@ -486,36 +507,46 @@ void ui_listbox::DeleteItem( s32 iItem )
     m_Items.Delete( iItem );
 
     if( m_Items.GetCount() == 0 )
+    {
         m_iSelection = -1;
+    }
     else if( iItem < OldSelection )
+    {
         m_iSelection = OldSelection - 1;
+    }
     else if( DeletedSelection )
     {
         s32 const Candidate = MIN( iItem, m_Items.GetCount() - 1 );
         m_iSelection = FindEnabledItem( Candidate, 1 );
         if( m_iSelection == -1 )
+        {
             m_iSelection = FindEnabledItem( Candidate, -1 );
+        }
     }
 
     EnsureVisible( m_iSelection );
 
     if( (m_iSelection != OldSelection) || DeletedSelection )
+    {
         Notify( ui_notification_type::ListSelectionChanged, m_iSelection );
+    }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::DeleteSelectedItem( void )
 {
     // ensure that we have something to delete!
     if ( m_iSelection < 0 )
+    {
         return;
+    }
 
     DeleteItem( m_iSelection );
 }
 
 
-//=========================================================================
+//==============================================================================
 
 u32 ui_listbox::GetItemFlags( s32 iItem ) const
 {
@@ -523,7 +554,7 @@ u32 ui_listbox::GetItemFlags( s32 iItem ) const
     return m_Items[iItem].Flags;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::EnableItem( s32 iItem, xbool State )
 {
@@ -537,17 +568,21 @@ void ui_listbox::EnableItem( s32 iItem, xbool State )
     {
         s32 iFound = FindEnabledItem( iItem - 1, -1 );
         if( iFound == -1 )
+        {
             iFound = FindEnabledItem( iItem + 1, 1 );
+        }
 
         m_iSelection = iFound;
         EnsureVisible( m_iSelection );
 
         if( m_iSelection != OldSelection )
+        {
             Notify( ui_notification_type::ListSelectionChanged, m_iSelection );
+        }
     }
 }
 
-//=========================================================================
+//==============================================================================
     
 void ui_listbox::EnableHeaderBar( void )
 { 
@@ -555,7 +590,7 @@ void ui_listbox::EnableHeaderBar( void )
     UpdateVisibleItemCount();
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::DisableHeaderBar( void )
 { 
@@ -563,14 +598,14 @@ void ui_listbox::DisableHeaderBar( void )
     UpdateVisibleItemCount();
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_listbox::GetItemCount( void ) const
 {
     return m_Items.GetCount();
 }
 
-//=========================================================================
+//==============================================================================
 
 const xwstring& ui_listbox::GetItemLabel( s32 iItem ) const
 {
@@ -579,7 +614,7 @@ const xwstring& ui_listbox::GetItemLabel( s32 iItem ) const
     return m_Items[iItem].Label;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::SetItemLabel( s32 iItem, const xwstring& Label )
 {
@@ -588,7 +623,7 @@ void ui_listbox::SetItemLabel( s32 iItem, const xwstring& Label )
     m_Items[iItem].Label = Label;
 }
 
-//=========================================================================
+//==============================================================================
 
 uaddr ui_listbox::GetItemData( s32 iItem, s32 Index ) const
 {
@@ -598,7 +633,7 @@ uaddr ui_listbox::GetItemData( s32 iItem, s32 Index ) const
     return m_Items[iItem].Data[Index];
 }
 
-//=========================================================================
+//==============================================================================
 
 const xwstring& ui_listbox::GetSelectedItemLabel( void ) const
 {
@@ -607,7 +642,7 @@ const xwstring& ui_listbox::GetSelectedItemLabel( void ) const
     return m_Items[m_iSelection].Label;
 }
 
-//=========================================================================
+//==============================================================================
 
 uaddr ui_listbox::GetSelectedItemData( s32 Index ) const
 {
@@ -617,7 +652,7 @@ uaddr ui_listbox::GetSelectedItemData( s32 Index ) const
     return m_Items[m_iSelection].Data[Index];
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::SetItemColor( s32 iItem, const xcolor& Color )
 {
@@ -626,7 +661,7 @@ void ui_listbox::SetItemColor( s32 iItem, const xcolor& Color )
     m_Items[iItem].Color = Color;
 }
 
-//=========================================================================
+//==============================================================================
 
 xcolor ui_listbox::GetItemColor( s32 iItem ) const
 {
@@ -635,7 +670,7 @@ xcolor ui_listbox::GetItemColor( s32 iItem ) const
     return m_Items[iItem].Color;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_listbox::FindItemByLabel( const xwstring& Label ) const
 {
@@ -654,7 +689,7 @@ s32 ui_listbox::FindItemByLabel( const xwstring& Label ) const
     return iFound;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_listbox::FindItemByData( uaddr Data, s32 Index ) const
 {
@@ -675,14 +710,14 @@ s32 ui_listbox::FindItemByData( uaddr Data, s32 Index ) const
     return iFound;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_listbox::GetSelection( void ) const
 {
     return m_iSelection;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::SetSelection( s32 iSelection )
 {
@@ -691,14 +726,20 @@ void ui_listbox::SetSelection( s32 iSelection )
     m_LastPointerSelection = -1;
 
     if( iSelection < -1 )
+    {
         iSelection = -1;
+    }
     if( iSelection > (m_Items.GetCount()-1) )
+    {
         iSelection = m_Items.GetCount()-1;
+    }
 
     if( (iSelection == -1) || m_Items[iSelection].Enabled )
     {
         if( iSelection == m_iSelection )
+        {
             return;
+        }
 
         m_iSelection = iSelection;
         EnsureVisible( m_iSelection );
@@ -706,14 +747,14 @@ void ui_listbox::SetSelection( s32 iSelection )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::ClearSelection( void )
 {
     SetSelection( -1 );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::EnsureVisible( s32 iItem )
 {
@@ -732,7 +773,7 @@ void ui_listbox::EnsureVisible( s32 iItem )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_listbox::GetNumEnabledItems( void ) const
 {
@@ -741,12 +782,14 @@ s32 ui_listbox::GetNumEnabledItems( void ) const
     for( i=0 ; i<m_Items.GetCount() ; i++ )
     {
         if( m_Items[i].Enabled )
+        {
             Count++;
+        }
     }
     return Count;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_listbox::GetCursorOffset( void ) const
 {
@@ -754,14 +797,18 @@ s32 ui_listbox::GetCursorOffset( void ) const
 
     Offset = m_iSelection - m_iFirstVisibleItem;
     if( Offset >= m_nVisibleItems )
+    {
         Offset = m_nVisibleItems-1;
+    }
     if( Offset < 0 )
+    {
         Offset = 0;
+    }
 
     return Offset;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::SetSelectionWithOffset( s32 iSelection, s32 Offset )
 {
@@ -781,25 +828,27 @@ void ui_listbox::SetSelectionWithOffset( s32 iSelection, s32 Offset )
         }
 
         if( m_iSelection != OldSelection )
+        {
             Notify( ui_notification_type::ListSelectionChanged, m_iSelection );
+        }
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::SetBackgroundColor( xcolor Color )
 {
     m_BackgroundColor = Color;
 }
 
-//=========================================================================
+//==============================================================================
 
 xcolor ui_listbox::GetBackgroundColor( void ) const
 {
     return m_BackgroundColor;
 }
 
-//=========================================================================
+//==============================================================================
 
 class listbox_sort_compare : public x_compare_functor<const ui_listbox::item&>
 {
@@ -811,7 +860,7 @@ public:
 };
 
 
-//=========================================================================
+//==============================================================================
 void ui_listbox::AlphaSortList( void )
 {
     if( m_Items.GetCount() < 2 )
@@ -852,14 +901,14 @@ void ui_listbox::AlphaSortList( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_listbox::GetMaxFirstVisibleItem( void ) const
 {
     return MAX( 0, m_Items.GetCount() - m_nVisibleItems );
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_listbox::SetFirstVisibleItem( s32 FirstVisibleItem )
 {
@@ -874,14 +923,14 @@ xbool ui_listbox::SetFirstVisibleItem( s32 FirstVisibleItem )
     return TRUE;
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_listbox::ScrollItems( s32 ItemDelta )
 {
     return SetFirstVisibleItem( m_iFirstVisibleItem + ItemDelta );
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_listbox::GetItemAt( s32 x, s32 y ) const
 {
@@ -889,7 +938,9 @@ s32 ui_listbox::GetItemAt( s32 x, s32 y ) const
     irect Bounds = GetListRect();
     Bounds.Translate( -m_Position.l, -m_Position.t );
     if( (x < Bounds.l) || (x >= Bounds.r) )
+    {
         return -1;
+    }
 
     s32 const ContentTop = Bounds.t + SPACE_TOP + (m_ShowHeaderBar ? HEADER_HEIGHT : 0);
     s32 const RelativeY = y - ContentTop;
@@ -902,7 +953,7 @@ s32 ui_listbox::GetItemAt( s32 x, s32 y ) const
     return ((iItem >= 0) && (iItem < m_Items.GetCount())) ? iItem : -1;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_listbox::FindEnabledItem( s32 Start, s32 Direction ) const
 {
@@ -924,7 +975,7 @@ s32 ui_listbox::FindEnabledItem( s32 Start, s32 Direction ) const
     return -1;
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_listbox::SelectUserItem( s32 iItem )
 {
@@ -944,7 +995,7 @@ xbool ui_listbox::SelectUserItem( s32 iItem )
     return TRUE;
 }
 
-//=========================================================================
+//==============================================================================
 
 irect ui_listbox::GetListRect( void ) const
 {
@@ -953,7 +1004,7 @@ irect ui_listbox::GetListRect( void ) const
     return Bounds;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::UpdateScrollBar( void )
 {
@@ -966,7 +1017,7 @@ void ui_listbox::UpdateScrollBar( void )
     m_ScrollBar.SetRange( m_Items.GetCount(), m_nVisibleItems, m_iFirstVisibleItem );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::UpdateVisibleItemCount( void )
 {
@@ -979,7 +1030,7 @@ void ui_listbox::UpdateVisibleItemCount( void )
     SetFirstVisibleItem( m_iFirstVisibleItem );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::OnPointerMove( ui_win* pWin, s32 x, s32 y )
 {
@@ -1004,7 +1055,7 @@ void ui_listbox::OnPointerMove( ui_win* pWin, s32 x, s32 y )
     m_HoveredItem = GetItemAt( x, y );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::OnPointerLeave( ui_win* pWin )
 {
@@ -1013,7 +1064,7 @@ void ui_listbox::OnPointerLeave( ui_win* pWin )
     m_HoveredItem = -1;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::OnPointerWheel( ui_win* pWin, s32 Delta )
 {
@@ -1027,7 +1078,7 @@ void ui_listbox::OnPointerWheel( ui_win* pWin, s32 Delta )
     ui_win::OnPointerWheel( pWin, Delta );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::OnPointerDown( ui_win* pWin, s32 x, s32 y )
 {
@@ -1072,7 +1123,7 @@ void ui_listbox::OnPointerDown( ui_win* pWin, s32 x, s32 y )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::OnPointerUp( ui_win* pWin, s32 x, s32 y )
 {
@@ -1087,7 +1138,7 @@ void ui_listbox::OnPointerUp( ui_win* pWin, s32 x, s32 y )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::OnUpdate( ui_win* pWin, f32 DeltaTime )
 {
@@ -1100,7 +1151,7 @@ void ui_listbox::OnUpdate( ui_win* pWin, f32 DeltaTime )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::OnFocusGained( ui_win* pWin )
 {
@@ -1108,7 +1159,7 @@ void ui_listbox::OnFocusGained( ui_win* pWin )
     ui_win::OnFocusGained( pWin );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_listbox::OnFocusLost ( ui_win* pWin )
 {
@@ -1124,4 +1175,4 @@ void ui_listbox::OnFocusLost ( ui_win* pWin )
     ui_win::OnFocusLost( pWin );
 }
 
-//=========================================================================
+//==============================================================================

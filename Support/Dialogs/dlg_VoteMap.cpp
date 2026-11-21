@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_vote_map.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -20,21 +24,26 @@
 #include "StateMgr/MapList.hpp"
 #include "Objects/Player/Player.hpp"
 
-//=========================================================================
-//  Vote Map Dialog
-//=========================================================================
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum controls
 {
     IDC_VOTE_MAP_LISTBOX,
 };
 
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem VoteMapControls[] = 
 {
     // Frames.
     { IDC_VOTE_MAP_LISTBOX,   "IDS_VOTE_MAP",     "maplist",  45,  60, 260, 238, 0, 0, 1, 1, ui_win::WF_VISIBLE },
 };
+
+//==============================================================================
 
 ui_manager::dialog_tem VoteMapDialog =
 {
@@ -45,43 +54,41 @@ ui_manager::dialog_tem VoteMapDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_vote_map_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "vote map", &VoteMapDialog, &dlg_vote_map_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_vote_map_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_vote_map* pDialog = new dlg_vote_map;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_level_select
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_vote_map::dlg_vote_map( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_vote_map::~dlg_vote_map( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_vote_map::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -101,7 +108,7 @@ xbool dlg_vote_map::Create( s32                        UserID,
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
     // find controls
-    m_pMapList         = (ui_maplist*)    FindChildByID( IDC_VOTE_MAP_LISTBOX  );
+    m_pMapList         = static_cast<ui_maplist*>( FindChildByID( IDC_VOTE_MAP_LISTBOX  ) );
 
     // hide them
     m_pMapList        ->SetFlag(ui_win::WF_VISIBLE, FALSE);
@@ -135,7 +142,7 @@ xbool dlg_vote_map::Create( s32                        UserID,
             xwstring FullMapName;
             if( DecodeFontText( xfs( "%s %s", Entry.GetShortGameTypeName(), Entry.GetDisplayName() ), FullMapName ) )
             {
-                m_pMapList->AddItem( FullMapName, (uaddr)&Entry );
+                m_pMapList->AddItem( FullMapName, reinterpret_cast<uaddr>( &Entry ) );
             }
         }
     }
@@ -146,9 +153,10 @@ xbool dlg_vote_map::Create( s32                        UserID,
 
     // set initial focus
     m_CurrHL = 0;
-    GotoControl( (ui_control*)m_pMapList );
+    GotoControl( m_pMapList );
     m_CurrentControl = IDC_VOTE_MAP_LISTBOX;
     m_PopUp = NULL;
+    m_ExitPending = FALSE;
 
     // initialize screen scaling
     InitScreenScaling( Position );
@@ -160,7 +168,7 @@ xbool dlg_vote_map::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_vote_map::Destroy( void )
 {
@@ -170,11 +178,11 @@ void dlg_vote_map::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_vote_map::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
@@ -231,7 +239,7 @@ void dlg_vote_map::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_vote_map::OnAccept( ui_win* pWin )
 {
@@ -241,7 +249,7 @@ void dlg_vote_map::OnAccept( ui_win* pWin )
     {
         // display confirmation popup
         irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-        m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+        m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
 
         // set nav text
         xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_YES" ));
@@ -260,7 +268,7 @@ void dlg_vote_map::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_vote_map::OnCancel( ui_win* pWin )
 {
@@ -273,80 +281,78 @@ void dlg_vote_map::OnCancel( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
-void dlg_vote_map::OnUpdate ( ui_win* pWin, f32 DeltaTime )
+void dlg_vote_map::OnUpdate( ui_win* pWin, f32 DeltaTime )
 {
     (void)pWin;
-    (void)DeltaTime;
 
     // scale window if necessary
-    if( g_UiMgr->IsScreenScaling() )
+    if( g_UiMgr->IsScreenScaling() && !UpdateScreenScaling( DeltaTime ) )
     {
-        if( UpdateScreenScaling( DeltaTime ) == FALSE )
-        {
-            // turn on the controls
-            m_pMapList  ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            GotoControl( (ui_control*)m_pMapList );
-            g_UiMgr->SetScreenHighlight( m_pMapList->GetPosition() );
-        }
+        // turn on the controls
+        m_pMapList->SetFlag( ui_win::WF_VISIBLE, TRUE );
+        GotoControl( m_pMapList );
+        g_UiMgr->SetScreenHighlight( m_pMapList->GetPosition() );
     }
 
     // update the glow bar
-    g_UiMgr->UpdateGlowBar(DeltaTime);
+    g_UiMgr->UpdateGlowBar( DeltaTime );
 
     // make sure a vote didn't start
     s32     NetSlot = g_NetworkMgr.GetLocalPlayerSlot(0);
-    player* pPlayer = (player*)NetObjMgr.GetObjFromSlot( NetSlot );
+    player* pPlayer = static_cast<player*>( NetObjMgr.GetObjFromSlot( NetSlot ) );
     ASSERT( pPlayer );
-    if ( pPlayer->GetVoteCanStartMap() == FALSE )
+    if( m_ExitPending || !pPlayer->GetVoteCanStartMap() )
     {
+        // Latch the cancellation while another dialog covers the popup.
+        m_ExitPending = TRUE;
+
         // kill any popups
-        if( m_PopUp )
+        if( m_PopUp && (m_PopUpResult == DLG_POPUP_IDLE) )
         {
-            if ( m_PopUpResult != DLG_POPUP_IDLE )
+            if( g_UiMgr->GetTopmostDialog( m_UserID ) != m_PopUp )
             {
-                ASSERT( g_UiMgr->GetTopmostDialog(m_UserID) == m_PopUp );
-                g_UiMgr->EndDialog( m_UserID, TRUE );
-                m_PopUp = NULL;
+                return;
             }
+
+            g_UiMgr->EndDialog( m_UserID, TRUE );
         }
+        m_PopUp = NULL;
+        m_PopUpResult = DLG_POPUP_IDLE;
 
         // exit vote screen
         m_State = DIALOG_STATE_BACK;
         return;
     }
 
-    if ( m_PopUp )
+    if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
     {
-        if ( m_PopUpResult != DLG_POPUP_IDLE )
+        if( m_PopUpResult == DLG_POPUP_YES )
         {
-            if( m_PopUpResult == DLG_POPUP_YES )
-            {
-                // Initiate vote for map here!
-                map_entry* pTableEntry = (map_entry*)m_pMapList->GetSelectedItemData();
-                s32        NetSlot     = g_NetworkMgr.GetLocalPlayerSlot(0);
-                player*    pPlayer     = (player*)NetObjMgr.GetObjFromSlot( NetSlot );
-                s32        Map         = ((pTableEntry->GetGameType()) << 16) | (pTableEntry->GetMapID());
-                ASSERT( pPlayer );
+            // Initiate vote for map here!
+            map_entry* pTableEntry = reinterpret_cast<map_entry*>( m_pMapList->GetSelectedItemData() );
+            s32        NetSlot     = g_NetworkMgr.GetLocalPlayerSlot(0);
+            player*    pPlayer     = static_cast<player*>( NetObjMgr.GetObjFromSlot( NetSlot ) );
+            s32        Map         = ((pTableEntry->GetGameType()) << 16) | (pTableEntry->GetMapID());
+            ASSERT( pPlayer );
 
-                pPlayer->VoteStartMap( Map );
+            pPlayer->VoteStartMap( Map );
 
-                m_State = DIALOG_STATE_SELECT;
-            }
-            else
-            {
-                // re-enable dialog
-                m_State = DIALOG_STATE_ACTIVE;
-            }
-
-            // clear popup 
-            m_PopUp = NULL;
-
-            // turn on nav text
-            SetNavTextVisible( TRUE );
+            m_State = DIALOG_STATE_SELECT;
         }
+        else
+        {
+            // re-enable dialog
+            m_State = DIALOG_STATE_ACTIVE;
+        }
+
+        // clear popup
+        m_PopUp = NULL;
+
+        // turn on nav text
+        SetNavTextVisible( TRUE );
     }
 }
 
-//=========================================================================
+//==============================================================================

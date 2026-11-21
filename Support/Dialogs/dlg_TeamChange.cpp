@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_team_change.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -20,10 +24,9 @@
 #include "StringMgr/StringMgr.hpp"
 #include "NetworkMgr/Game/GameMgr.hpp"
 
-
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum controls
 {
@@ -38,6 +41,10 @@ enum controls
     IDC_OMEGA_TEAM_LISTBOX,
 
 };
+
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem TeamChangeControls[] = 
 {
@@ -54,6 +61,8 @@ ui_manager::control_tem TeamChangeControls[] =
 
 };
 
+//==============================================================================
+
 ui_manager::dialog_tem TeamChangeDialog =
 {
     "IDS_TEAM_CHANGE",
@@ -63,43 +72,41 @@ ui_manager::dialog_tem TeamChangeDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_team_change_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "team change", &TeamChangeDialog, &dlg_team_change_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_team_change_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_team_change* pDialog = new dlg_team_change;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_level_select
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_team_change::dlg_team_change( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_team_change::~dlg_team_change( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_team_change::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -119,15 +126,15 @@ xbool dlg_team_change::Create( s32                        UserID,
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
     // find controls
-    m_pAlphaTeamList    = (ui_playerlist*)  FindChildByID( IDC_ALPHA_TEAM_LISTBOX   );
-    m_pAlphaTeamHeader  = (ui_blankbox*)    FindChildByID( IDC_ALPHA_TEAM_HEADER    );
-    m_pAlphaTeamName    = (ui_text*)        FindChildByID( IDC_ALPHA_TEAM_NAME      );
-    m_pAlphaTeamScore   = (ui_text*)        FindChildByID( IDC_ALPHA_TEAM_SCORE     );
+    m_pAlphaTeamList    = static_cast<ui_playerlist*>( FindChildByID( IDC_ALPHA_TEAM_LISTBOX   ) );
+    m_pAlphaTeamHeader  = static_cast<ui_blankbox*>( FindChildByID( IDC_ALPHA_TEAM_HEADER    ) );
+    m_pAlphaTeamName    = static_cast<ui_text*>( FindChildByID( IDC_ALPHA_TEAM_NAME      ) );
+    m_pAlphaTeamScore   = static_cast<ui_text*>( FindChildByID( IDC_ALPHA_TEAM_SCORE     ) );
 
-    m_pOmegaTeamList    = (ui_playerlist*)  FindChildByID( IDC_OMEGA_TEAM_LISTBOX   );
-    m_pOmegaTeamHeader  = (ui_blankbox*)    FindChildByID( IDC_OMEGA_TEAM_HEADER    );
-    m_pOmegaTeamName    = (ui_text*)        FindChildByID( IDC_OMEGA_TEAM_NAME      );
-    m_pOmegaTeamScore   = (ui_text*)        FindChildByID( IDC_OMEGA_TEAM_SCORE     );
+    m_pOmegaTeamList    = static_cast<ui_playerlist*>( FindChildByID( IDC_OMEGA_TEAM_LISTBOX   ) );
+    m_pOmegaTeamHeader  = static_cast<ui_blankbox*>( FindChildByID( IDC_OMEGA_TEAM_HEADER    ) );
+    m_pOmegaTeamName    = static_cast<ui_text*>( FindChildByID( IDC_OMEGA_TEAM_NAME      ) );
+    m_pOmegaTeamScore   = static_cast<ui_text*>( FindChildByID( IDC_OMEGA_TEAM_SCORE     ) );
 
  
     // set up nav text
@@ -192,7 +199,7 @@ xbool dlg_team_change::Create( s32                        UserID,
 
     // set initial focus
     m_CurrHL = 0;
-    GotoControl( (ui_control*)m_pAlphaTeamList );
+    GotoControl( m_pAlphaTeamList );
     g_UiMgr->SetScreenHighlight( m_pAlphaTeamList->GetPosition() );
     m_PopUp = NULL;
 
@@ -209,7 +216,7 @@ xbool dlg_team_change::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_team_change::Destroy( void )
 {
@@ -219,11 +226,11 @@ void dlg_team_change::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_team_change::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
@@ -280,7 +287,7 @@ void dlg_team_change::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_team_change::OnNotify( ui_notification const& Event )
 {
@@ -293,7 +300,7 @@ void dlg_team_change::OnNotify( ui_notification const& Event )
         if (Event.m_Type == ui_notification_type::ListAccepted)
         {
             // check which listbox
-            if ( Event.m_pSender == (ui_win*)m_pAlphaTeamList )
+            if ( Event.m_pSender == m_pAlphaTeamList )
             {
                 if( m_pAlphaTeamList->GetItemCount() > 0 )
                 {
@@ -315,14 +322,14 @@ void dlg_team_change::OnNotify( ui_notification const& Event )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_team_change::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
     ui_dialog::OnNavigate( pWin, Code, Presses, Repeats, WrapX, WrapY );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_team_change::OnCancel( ui_win* pWin )
 {
@@ -335,7 +342,7 @@ void dlg_team_change::OnCancel( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_team_change::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -359,7 +366,7 @@ void dlg_team_change::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             m_pOmegaTeamScore   ->SetFlag( ui_win::WF_VISIBLE, TRUE );
 
             
-            GotoControl( (ui_control*)m_pAlphaTeamList );
+            GotoControl( m_pAlphaTeamList );
             g_UiMgr->SetScreenHighlight( m_pAlphaTeamList->GetPosition() );
         }
     }
@@ -439,7 +446,7 @@ void dlg_team_change::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                     {
                         m_pOmegaTeamList->SetSelection( count );
                     }
-                    else if ( selection < 0 ) 
+                    else if ( selection < 0 )
                     {
                         m_pOmegaTeamList->SetSelection( 0 );
                     }
@@ -456,12 +463,12 @@ void dlg_team_change::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 static s32 sort_compare(const void* pItem1, const void* pItem2)
 {
-    player_score* pScore1 = (player_score*)pItem1;
-    player_score* pScore2 = (player_score*)pItem2;
+    const player_score* pScore1 = static_cast<const player_score*>( pItem1 );
+    const player_score* pScore2 = static_cast<const player_score*>( pItem2 );
 
     if( pScore1->Score > pScore2->Score )
     {
@@ -478,7 +485,7 @@ static s32 sort_compare(const void* pItem1, const void* pItem2)
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_team_change::FillTeamLists( void )
 {
@@ -534,7 +541,7 @@ void dlg_team_change::FillTeamLists( void )
         // finally add the sorted players to the player list
         for( i=0 ; i<AlphaCount ; i++ )
         {
-            m_pAlphaTeamList->AddItem( m_AlphaPlayerData[i].Name, (uaddr)&m_AlphaPlayerData[i], m_AlphaPlayerData[i].ClientIndex );
+            m_pAlphaTeamList->AddItem( m_AlphaPlayerData[i].Name, reinterpret_cast<uaddr>( &m_AlphaPlayerData[i] ), m_AlphaPlayerData[i].ClientIndex );
         }
     }
 
@@ -546,15 +553,27 @@ void dlg_team_change::FillTeamLists( void )
         // finally add the sorted players to the player list
         for( i=0 ; i<OmegaCount ; i++ )
         {
-            m_pOmegaTeamList->AddItem( m_OmegaPlayerData[i].Name, (uaddr)&m_OmegaPlayerData[i], m_OmegaPlayerData[i].ClientIndex );
+            m_pOmegaTeamList->AddItem( m_OmegaPlayerData[i].Name, reinterpret_cast<uaddr>( &m_OmegaPlayerData[i] ), m_OmegaPlayerData[i].ClientIndex );
         }
     }
 
     // Limit Selection
-    if( iSelAlpha <  0 ) iSelAlpha = 0;
-    if( iSelAlpha >= m_pAlphaTeamList->GetItemCount() ) iSelAlpha = m_pAlphaTeamList->GetItemCount()-1;
-    if( iSelOmega <  0 ) iSelOmega = 0;
-    if( iSelOmega >= m_pOmegaTeamList->GetItemCount() ) iSelOmega = m_pOmegaTeamList->GetItemCount()-1;
+    if( iSelAlpha <  0 )
+    {
+        iSelAlpha = 0;
+    }
+    if( iSelAlpha >= m_pAlphaTeamList->GetItemCount() )
+    {
+        iSelAlpha = m_pAlphaTeamList->GetItemCount()-1;
+    }
+    if( iSelOmega <  0 )
+    {
+        iSelOmega = 0;
+    }
+    if( iSelOmega >= m_pOmegaTeamList->GetItemCount() )
+    {
+        iSelOmega = m_pOmegaTeamList->GetItemCount()-1;
+    }
 
     // Set Selection
     if( m_pAlphaTeamList->GetItemCount() > 0 )
@@ -567,4 +586,4 @@ void dlg_team_change::FillTeamLists( void )
     }
 }
 
-//=========================================================================
+//==============================================================================

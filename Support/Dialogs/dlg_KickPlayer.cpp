@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_kick_player.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -18,21 +22,26 @@
 #include "StringMgr/StringMgr.hpp"
 #include "NetworkMgr/Game/GameMgr.hpp"
 
-//=========================================================================
-//  Vote Map Dialog
-//=========================================================================
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum controls
 {
     IDC_KICK_PLAYER_LISTBOX,
 };
 
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem KickPlayerControls[] = 
 {
     // Frames.
     { IDC_KICK_PLAYER_LISTBOX,   "IDS_KICK_PLAYER",  "playerlist",  45,  60, 320, 238, 0, 0, 1, 1, ui_win::WF_VISIBLE },
 };
+
+//==============================================================================
 
 ui_manager::dialog_tem KickPlayerDialog =
 {
@@ -43,43 +52,41 @@ ui_manager::dialog_tem KickPlayerDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_kick_player_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "kick player", &KickPlayerDialog, &dlg_kick_player_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_kick_player_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_kick_player* pDialog = new dlg_kick_player;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_level_select
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_kick_player::dlg_kick_player( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_kick_player::~dlg_kick_player( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_kick_player::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -99,7 +106,7 @@ xbool dlg_kick_player::Create( s32                        UserID,
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
     // find controls
-    m_pPlayerList      = (ui_playerlist*) FindChildByID( IDC_KICK_PLAYER_LISTBOX  );
+    m_pPlayerList      = static_cast<ui_playerlist*>( FindChildByID( IDC_KICK_PLAYER_LISTBOX  ) );
 
     // hide them
     m_pPlayerList     ->SetFlag(ui_win::WF_VISIBLE, FALSE);
@@ -126,9 +133,10 @@ xbool dlg_kick_player::Create( s32                        UserID,
 
     // set initial focus
     m_CurrHL = 0;
-    GotoControl( (ui_control*)m_pPlayerList );
+    GotoControl( m_pPlayerList );
     m_CurrentControl = IDC_KICK_PLAYER_LISTBOX;
     m_PopUp = NULL;
+    m_ExitPending = FALSE;
     m_SelectedPlayer = -1;
     m_SelectedIdentifier = 0;
 
@@ -142,7 +150,7 @@ xbool dlg_kick_player::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_kick_player::Destroy( void )
 {
@@ -152,11 +160,11 @@ void dlg_kick_player::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_kick_player::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
@@ -213,7 +221,7 @@ void dlg_kick_player::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_kick_player::OnAccept( ui_win* pWin )
 {
@@ -222,18 +230,22 @@ void dlg_kick_player::OnAccept( ui_win* pWin )
     if( m_State == DIALOG_STATE_ACTIVE )
     {
         if( m_pPlayerList->GetSelection() < 0 )
+        {
             return;
+        }
 
-        m_SelectedPlayer = (s32)m_pPlayerList->GetSelectedItemData( 1 );
+        m_SelectedPlayer = static_cast<s32>( m_pPlayerList->GetSelectedItemData( 1 ) );
         const player_score& Player = GameMgr.GetScore().Player[m_SelectedPlayer];
         if( !Player.IsInGame )
+        {
             return;
+        }
 
         m_SelectedIdentifier = Player.Identifier;
 
         // display confirmation popup
         irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-        m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+        m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
 
         // set nav text
         xwstring navText( g_StringTableMgr( "ui", "IDS_NAV_KICK_PLAYER" ) );
@@ -253,7 +265,7 @@ void dlg_kick_player::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_kick_player::OnCancel( ui_win* pWin )
 {
@@ -266,27 +278,23 @@ void dlg_kick_player::OnCancel( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
-void dlg_kick_player::OnUpdate ( ui_win* pWin, f32 DeltaTime )
+void dlg_kick_player::OnUpdate( ui_win* pWin, f32 DeltaTime )
 {
     (void)pWin;
-    (void)DeltaTime;
 
     // scale window if necessary
-    if( g_UiMgr->IsScreenScaling() )
+    if( g_UiMgr->IsScreenScaling() && !UpdateScreenScaling( DeltaTime ) )
     {
-        if( UpdateScreenScaling( DeltaTime ) == FALSE )
-        {
-            // turn on the controls
-            m_pPlayerList ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            GotoControl( (ui_control*)m_pPlayerList );
-            g_UiMgr->SetScreenHighlight( m_pPlayerList->GetPosition() );
-        }
+        // turn on the controls
+        m_pPlayerList->SetFlag( ui_win::WF_VISIBLE, TRUE );
+        GotoControl( m_pPlayerList );
+        g_UiMgr->SetScreenHighlight( m_pPlayerList->GetPosition() );
     }
 
     // update the glow bar
-    g_UiMgr->UpdateGlowBar(DeltaTime);
+    g_UiMgr->UpdateGlowBar( DeltaTime );
 
     // ensure that there are still players to kick
     const game_score& ScoreData = GameMgr.GetScore();
@@ -305,71 +313,77 @@ void dlg_kick_player::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     }
 
     // check count
-    if( Count == 0 )
+    if( m_ExitPending || (Count == 0) )
     {
         // nobody to kick!
-        
+
+        // Latch the cancellation while another dialog covers the popup.
+        m_ExitPending = TRUE;
+
         // kill any popups
-        if( m_PopUp )
+        if( m_PopUp && (m_PopUpResult == DLG_POPUP_IDLE) )
         {
-            if( m_PopUpResult == DLG_POPUP_IDLE )
+            if( g_UiMgr->GetTopmostDialog( m_UserID ) != m_PopUp )
             {
-                ASSERT( g_UiMgr->GetTopmostDialog(m_UserID) == m_PopUp );
-                g_UiMgr->EndDialog( m_UserID, TRUE );
+                return;
             }
-            m_PopUp = NULL;
+
+            g_UiMgr->EndDialog( m_UserID, TRUE );
         }
+        m_PopUp = NULL;
+        m_PopUpResult = DLG_POPUP_IDLE;
 
         // exit vote screen
         m_State = DIALOG_STATE_BACK;
         return;
     }
 
-    if ( m_PopUp )
+    if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
     {
-        if ( m_PopUpResult != DLG_POPUP_IDLE )
+        if( (m_PopUpResult == DLG_POPUP_YES) || (m_PopUpResult == DLG_POPUP_MAYBE) )
         {
-            if( (m_PopUpResult == DLG_POPUP_YES) || (m_PopUpResult == DLG_POPUP_MAYBE) )
+            const player_score& Player = GameMgr.GetScore().Player[m_SelectedPlayer];
+            if( Player.IsInGame && (Player.Identifier == m_SelectedIdentifier) )
             {
-                const player_score& Player = GameMgr.GetScore().Player[m_SelectedPlayer];
-                if( Player.IsInGame && (Player.Identifier == m_SelectedIdentifier) )
+                if( m_PopUpResult == DLG_POPUP_MAYBE )
                 {
-                    if( m_PopUpResult == DLG_POPUP_MAYBE )
-                        g_NetworkMgr.BanPlayer( m_SelectedPlayer );
-                    else
-                        g_NetworkMgr.KickPlayer( m_SelectedPlayer );
-
-                    m_State = DIALOG_STATE_SELECT;
+                    g_NetworkMgr.BanPlayer( m_SelectedPlayer );
                 }
                 else
                 {
-                    m_State = DIALOG_STATE_ACTIVE;
+                    g_NetworkMgr.KickPlayer( m_SelectedPlayer );
                 }
+
+                m_State = DIALOG_STATE_SELECT;
             }
             else
             {
-                // re-enable dialog
                 m_State = DIALOG_STATE_ACTIVE;
             }
-
-            // clear popup 
-            m_PopUp = NULL;
-
-            // turn on nav text
-            SetNavTextVisible( TRUE );
         }
+        else
+        {
+            // re-enable dialog
+            m_State = DIALOG_STATE_ACTIVE;
+        }
+
+        // clear popup
+        m_PopUp = NULL;
+
+        // turn on nav text
+        SetNavTextVisible( TRUE );
     }
 
     // refresh player list
     RefreshPlayerList();
 }
 
-//=========================================================================
+//==============================================================================
 
 static s32 sort_compare(const void* pItem1, const void* pItem2)
 {
-    player_score* pScore1 = (player_score*)pItem1;
-    player_score* pScore2 = (player_score*)pItem2;
+    const player_score* pScore1 = static_cast<const player_score*>( pItem1 );
+    const player_score* pScore2 = static_cast<const player_score*>( pItem2 );
 
     if( pScore1->Score > pScore2->Score )
     {
@@ -386,7 +400,7 @@ static s32 sort_compare(const void* pItem1, const void* pItem2)
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_kick_player::RefreshPlayerList(void)
 {
@@ -442,7 +456,7 @@ void dlg_kick_player::RefreshPlayerList(void)
         for( i=0 ; i<Count ; i++ )
         {
             m_pPlayerList->AddItem( m_PlayerData[i].Name, 
-                (uaddr)&m_PlayerData[i],
+                reinterpret_cast<uaddr>( &m_PlayerData[i] ),
                 m_PlayerData[i].ClientIndex );
         }
 

@@ -7,17 +7,31 @@
 #ifndef DLG_BROWSER_OPTIONS_HPP
 #define DLG_BROWSER_OPTIONS_HPP
 
+//==============================================================================
+//  INCLUDES
+//==============================================================================
+
 #include "UI/ui_dialog.hpp"
 #include "NetworkMgr/Match/MatchBrowser.hpp"
 #include "NetworkMgr/Match/MatchProvider.hpp"
+
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
 
 class ui_check;
 class ui_combo;
 class ui_edit;
 class ui_text;
 
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
+
 void dlg_browser_options_register( ui_manager* pManager );
 
+//==============================================================================
+//  CLASSES
 //==============================================================================
 
 class dlg_browser_options : public ui_dialog

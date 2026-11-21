@@ -20,10 +20,14 @@
 #include "ui_scrollbar.hpp"
 
 //==============================================================================
-//  ui_textbox
+//  REGISTRATION
 //==============================================================================
 
 extern ui_win* ui_textbox_factory( s32 UserID, ui_manager* pManager, const irect& Position, ui_win* pParent, s32 Flags );
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class ui_textbox : public ui_control
 {

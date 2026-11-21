@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_change_map.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -19,21 +23,26 @@
 #include "ResourceMgr/ResourceMgr.hpp"
 #include "StateMgr/MapList.hpp"
 
-//=========================================================================
-//  Vote Map Dialog
-//=========================================================================
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum controls
 {
     IDC_CHANGE_MAP_LISTBOX,
 };
 
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem ChangeMapControls[] = 
 {
     // Frames.
     { IDC_CHANGE_MAP_LISTBOX,   "IDS_CHANGE_MAP",   "maplist",  45,  60, 260, 238, 0, 0, 1, 1, ui_win::WF_VISIBLE },
 };
+
+//==============================================================================
 
 ui_manager::dialog_tem ChangeMapDialog =
 {
@@ -44,43 +53,41 @@ ui_manager::dialog_tem ChangeMapDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_change_map_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "change map", &ChangeMapDialog, &dlg_change_map_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_change_map_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_change_map* pDialog = new dlg_change_map;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_level_select
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_change_map::dlg_change_map( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_change_map::~dlg_change_map( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_change_map::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -100,7 +107,7 @@ xbool dlg_change_map::Create( s32                        UserID,
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
     // find controls
-    m_pMapList         = (ui_maplist*)    FindChildByID( IDC_CHANGE_MAP_LISTBOX  );
+    m_pMapList         = static_cast<ui_maplist*>( FindChildByID( IDC_CHANGE_MAP_LISTBOX  ) );
 
     // hide them
     m_pMapList        ->SetFlag(ui_win::WF_VISIBLE, FALSE);
@@ -132,17 +139,21 @@ xbool dlg_change_map::Create( s32                        UserID,
             switch ( Entry.GetGameType() )
             {
                 case GAME_CAMPAIGN:
-                    // Don't add campaign maps
-                    break;
+                {
+                        // Don't add campaign maps
+                }
+                break;
 
                 default:
+                {
                     // build the full map name (includes the game type)
                     xwstring FullMapName;
                     if( DecodeFontText( xfs( "%s %s", Entry.GetShortGameTypeName(), Entry.GetDisplayName() ), FullMapName ) )
                     {
-                        m_pMapList->AddItem( FullMapName, (uaddr)&Entry );
+                        m_pMapList->AddItem( FullMapName, reinterpret_cast<uaddr>( &Entry ) );
                     }
-                    break;
+                }
+                break;
             }
         }
     }
@@ -155,7 +166,7 @@ xbool dlg_change_map::Create( s32                        UserID,
 
     // set initial focus
     m_CurrHL = 0;
-    GotoControl( (ui_control*)m_pMapList );
+    GotoControl( m_pMapList );
     m_CurrentControl = IDC_CHANGE_MAP_LISTBOX;
     m_PopUp = NULL;
 
@@ -169,7 +180,7 @@ xbool dlg_change_map::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_change_map::Destroy( void )
 {
@@ -179,11 +190,11 @@ void dlg_change_map::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_change_map::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
@@ -240,7 +251,7 @@ void dlg_change_map::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_change_map::OnAccept( ui_win* pWin )
 {
@@ -251,7 +262,7 @@ void dlg_change_map::OnAccept( ui_win* pWin )
     {
         // display confirmation popup
         irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-        m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+        m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
 
         // set nav text
         xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_YES" ));
@@ -270,7 +281,7 @@ void dlg_change_map::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_change_map::OnCancel( ui_win* pWin )
 {
@@ -283,61 +294,56 @@ void dlg_change_map::OnCancel( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
-void dlg_change_map::OnUpdate ( ui_win* pWin, f32 DeltaTime )
+void dlg_change_map::OnUpdate( ui_win* pWin, f32 DeltaTime )
 {
     (void)pWin;
-    (void)DeltaTime;
 
     // scale window if necessary
-    if( g_UiMgr->IsScreenScaling() )
+    if( g_UiMgr->IsScreenScaling() && !UpdateScreenScaling( DeltaTime ) )
     {
-        if( UpdateScreenScaling( DeltaTime ) == FALSE )
-        {
-            // turn on the controls
-            m_pMapList  ->SetFlag(ui_win::WF_VISIBLE, TRUE);
-            GotoControl( (ui_control*)m_pMapList );
-            g_UiMgr->SetScreenHighlight( m_pMapList->GetPosition() );
-        }
+        // turn on the controls
+        m_pMapList->SetFlag( ui_win::WF_VISIBLE, TRUE );
+        GotoControl( m_pMapList );
+        g_UiMgr->SetScreenHighlight( m_pMapList->GetPosition() );
     }
 
     // update the glow bar
-    g_UiMgr->UpdateGlowBar(DeltaTime);
+    g_UiMgr->UpdateGlowBar( DeltaTime );
 
-    if ( m_PopUp )
+    if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
     {
-        if ( m_PopUpResult != DLG_POPUP_IDLE )
+        if( m_PopUpResult == DLG_POPUP_YES )
         {
-            if ( m_PopUpResult == DLG_POPUP_YES )
+            // TODO: Change to the selected map here!
+            // get the map table entry from the list
+            map_entry*  pTableEntry = reinterpret_cast<map_entry*>( m_pMapList->GetSelectedItemData() );
+            ASSERT( pTableEntry );
+            m_State = DIALOG_STATE_SELECT;
+
+            if( g_PendingConfig.GetGameTypeID() != pTableEntry->GetGameType() )
             {
-                // TODO: Change to the selected map here!
-                // get the map table entry from the list
-                map_entry*  pTableEntry = (map_entry*)m_pMapList->GetSelectedItemData();
-                ASSERT( pTableEntry );
-                m_State = DIALOG_STATE_SELECT;
-
-                if( g_PendingConfig.GetGameTypeID() != pTableEntry->GetGameType() )
-                    g_PendingConfig.SetScoreLimit( -1 );
-
-                g_PendingConfig.SetLevelID( pTableEntry->GetMapID() );
-                g_PendingConfig.SetGameTypeID( pTableEntry->GetGameType() );
-
-                g_ActiveConfig.SetExitReason( GAME_EXIT_RELOAD_LEVEL );
-            }
-            else
-            {
-                // re-enable the dialog
-                m_State = DIALOG_STATE_ACTIVE;
+                g_PendingConfig.SetScoreLimit( -1 );
             }
 
-            // clear popup 
-            m_PopUp = NULL;
+            g_PendingConfig.SetLevelID( pTableEntry->GetMapID() );
+            g_PendingConfig.SetGameTypeID( pTableEntry->GetGameType() );
 
-            // turn on nav text
-            SetNavTextVisible( TRUE );
+            g_ActiveConfig.SetExitReason( GAME_EXIT_RELOAD_LEVEL );
         }
+        else
+        {
+            // re-enable the dialog
+            m_State = DIALOG_STATE_ACTIVE;
+        }
+
+        // clear popup
+        m_PopUp = NULL;
+
+        // turn on nav text
+        SetNavTextVisible( TRUE );
     }
 }
 
-//=========================================================================
+//==============================================================================

@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_PauseMain.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -19,6 +23,10 @@
 
 #include "../../Apps/GameApp/Config.hpp"    
 
+//==============================================================================
+//  DEFINES
+//==============================================================================
+
 // display build info
 #define DISPLAY_BUILD_INFO
 
@@ -27,12 +35,16 @@
 #include "StateMgr/MapList.hpp"
 #endif
 
+//==============================================================================
+//  EXTERNAL DECLARATIONS
+//==============================================================================
+
 extern          s32         g_Changelist;
 extern  const   char*       g_pBuildDate;
 
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem PauseMenuControls[] = 
 {
@@ -61,6 +73,7 @@ ui_manager::control_tem PauseMenuControls[] =
 
 };
 
+//==============================================================================
 
 ui_manager::dialog_tem PauseMenuDialog =
 {
@@ -71,43 +84,41 @@ ui_manager::dialog_tem PauseMenuDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_pause_main_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "pause main", &PauseMenuDialog, &dlg_pause_main_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_pause_main_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_pause_main* pDialog = new dlg_pause_main;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_pause_main
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_pause_main::dlg_pause_main( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_pause_main::~dlg_pause_main( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 #if defined( DISPLAY_DEBUG_INFO )
 static xwstring zoneText;
 #endif 
@@ -130,29 +141,29 @@ xbool dlg_pause_main::Create( s32                        UserID,
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
     // get button handles
-    m_pButtonResume     = (ui_button*)  FindChildByID( IDC_PAUSE_MENU_RESUME    );
-    m_pButtonQuit       = (ui_button*)  FindChildByID( IDC_PAUSE_MENU_QUIT      );
+    m_pButtonResume     = static_cast<ui_button*>( FindChildByID( IDC_PAUSE_MENU_RESUME    ) );
+    m_pButtonQuit       = static_cast<ui_button*>( FindChildByID( IDC_PAUSE_MENU_QUIT      ) );
 
 #if defined( DISPLAY_DEBUG_INFO )
-    m_pInvertYText      = (ui_text*)    FindChildByID( IDC_PAUSE_MENU_INVERTY   );
-    m_pZoneText         = (ui_text*)    FindChildByID( IDC_PAUSE_MENU_ZONE      );
-    m_pLevelText        = (ui_text*)    FindChildByID( IDC_PAUSE_MENU_LEVEL     );
+    m_pInvertYText      = static_cast<ui_text*>( FindChildByID( IDC_PAUSE_MENU_INVERTY   ) );
+    m_pZoneText         = static_cast<ui_text*>( FindChildByID( IDC_PAUSE_MENU_ZONE      ) );
+    m_pLevelText        = static_cast<ui_text*>( FindChildByID( IDC_PAUSE_MENU_LEVEL     ) );
 #endif
 #if defined(DISPLAY_BUILD_INFO)
-    m_pChangeText       = (ui_text*)    FindChildByID( IDC_PAUSE_MENU_CHANGE    );
-    m_pBuildText        = (ui_text*)    FindChildByID( IDC_PAUSE_MENU_BUILDDATE );
+    m_pChangeText       = static_cast<ui_text*>( FindChildByID( IDC_PAUSE_MENU_CHANGE    ) );
+    m_pBuildText        = static_cast<ui_text*>( FindChildByID( IDC_PAUSE_MENU_BUILDDATE ) );
 #endif
 
 #if CONFIG_IS_DEMO
-    m_pButtonInvert     = (ui_button*)  FindChildByID( IDC_PAUSE_MENU_INVERTY   );
-    m_pButtonVibration  = (ui_button*)  FindChildByID( IDC_PAUSE_MENU_VIBRATION );
+    m_pButtonInvert     = static_cast<ui_button*>( FindChildByID( IDC_PAUSE_MENU_INVERTY   ) );
+    m_pButtonVibration  = static_cast<ui_button*>( FindChildByID( IDC_PAUSE_MENU_VIBRATION ) );
     ASSERT( m_pButtonInvert );
     ASSERT( m_pButtonVibration );
     m_pButtonInvert   ->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pButtonVibration->SetFlag( ui_win::WF_VISIBLE, FALSE );
 #else
-    m_pButtonOptions    = (ui_button*)  FindChildByID( IDC_PAUSE_MENU_OPTIONS   );
-    m_pButtonSettings   = (ui_button*)  FindChildByID( IDC_PAUSE_MENU_SETTINGS  );
+    m_pButtonOptions    = static_cast<ui_button*>( FindChildByID( IDC_PAUSE_MENU_OPTIONS   ) );
+    m_pButtonSettings   = static_cast<ui_button*>( FindChildByID( IDC_PAUSE_MENU_SETTINGS  ) );
     m_pButtonOptions ->SetFlag(ui_win::WF_VISIBLE, FALSE);    
     m_pButtonSettings->SetFlag(ui_win::WF_VISIBLE, FALSE);    
 #endif
@@ -162,7 +173,7 @@ xbool dlg_pause_main::Create( s32                        UserID,
     //s32 iControl = g_StateMgr.GetCurrentControl();
     //if( (iControl == -1) || (GotoControl(iControl)==NULL) )
     //{
-        GotoControl( (ui_control*)m_pButtonResume );
+        GotoControl( m_pButtonResume );
         m_CurrentControl = IDC_PAUSE_MENU_RESUME;
     //}
     //else
@@ -233,13 +244,13 @@ xbool dlg_pause_main::Create( s32                        UserID,
 
 #if defined(DISPLAY_BUILD_INFO)
     // change list 
-    static xwstring changeText  = (const char *)xfs( "build: %d", g_Changelist );
+    static xwstring changeText  = static_cast<const char*>( xfs( "build: %d", g_Changelist ) );
     m_pChangeText->SetLabel( changeText );
     m_pChangeText->SetLabelFlags( ui_font::h_center|ui_font::v_top );
     m_pChangeText->UseSmallText(TRUE);
 
     // build date
-    static xwstring buildText  = (const char *)xfs( "%s", g_pBuildDate );
+    static xwstring buildText  = static_cast<const char*>( xfs( "%s", g_pBuildDate ) );
     m_pBuildText->SetLabel( buildText );
     m_pBuildText->SetLabelFlags( ui_font::h_center|ui_font::v_top );
     m_pBuildText->UseSmallText(TRUE);
@@ -250,7 +261,9 @@ xbool dlg_pause_main::Create( s32                        UserID,
 
     // set the frame to be disabled (if coming from off screen)
     if (g_UiMgr->IsScreenOn() == FALSE)
+    {
         SetFlag( WF_DISABLED, TRUE );
+    }
 
     // make the dialog active
     m_State = DIALOG_STATE_ACTIVE;
@@ -259,7 +272,7 @@ xbool dlg_pause_main::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_pause_main::Destroy( void )
 {
@@ -269,11 +282,11 @@ void dlg_pause_main::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_pause_main::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
@@ -334,7 +347,7 @@ void dlg_pause_main::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_pause_main::OnAccept( ui_win* pWin )
 {
@@ -342,14 +355,14 @@ void dlg_pause_main::OnAccept( ui_win* pWin )
 
     if ( m_State == DIALOG_STATE_ACTIVE )
     {
-        if( pWin == (ui_win*)m_pButtonResume )
+        if( pWin == m_pButtonResume )
         {
             g_AudioMgr.Play("Select_Norm");
             g_UiMgr->DisableScreenHighlight();
             m_CurrentControl = IDC_PAUSE_MENU_RESUME;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin == (ui_win*)m_pButtonQuit )
+        else if( pWin == m_pButtonQuit )
         {
           
 
@@ -357,7 +370,7 @@ void dlg_pause_main::OnAccept( ui_win* pWin )
             {
                 // Open a dialog to confirm quitting the online game component
                 irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-                m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+                m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
 
                 // get message text
                 xwstring Message( g_StringTableMgr( "ui", "IDS_QUIT_DESTRUCTIVE_MSG" )); 
@@ -386,14 +399,14 @@ void dlg_pause_main::OnAccept( ui_win* pWin )
             g_Input.EnableFeedback( Profile.GetVibration() );
         }
 #else
-        else if( pWin == (ui_win*)m_pButtonOptions )
+        else if( pWin == m_pButtonOptions )
         {
             g_StateMgr.InitPendingProfile( 0 );
             m_CurrentControl = IDC_PAUSE_MENU_OPTIONS;
             m_State = DIALOG_STATE_SELECT;
             g_AudioMgr.Play("Select_Norm");
         }
-        else if( pWin ==(ui_win*)m_pButtonSettings )
+        else if( pWin == m_pButtonSettings )
         {
             m_CurrentControl = IDC_PAUSE_MENU_SETTINGS;
             m_State = DIALOG_STATE_SELECT;
@@ -403,14 +416,14 @@ void dlg_pause_main::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_pause_main::OnCancel( ui_win* pWin )
 {
     (void)pWin;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_pause_main::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -432,8 +445,8 @@ void dlg_pause_main::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                        ? "Enabled"
                        : "Disabled" );
 
-    m_pButtonVibration->SetLabel( (const xwchar*)xwstring( (const char*)Vibration ) );
-    m_pButtonInvert->SetLabel( (const xwchar*)xwstring( (const char*)InvertY ) );
+    m_pButtonVibration->SetLabel( static_cast<const xwchar*>( xwstring( static_cast<const char*>( Vibration ) ) ) );
+    m_pButtonInvert->SetLabel( static_cast<const xwchar*>( xwstring( static_cast<const char*>( InvertY ) ) ) );
 
 #endif
 
@@ -477,7 +490,7 @@ void dlg_pause_main::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             //s32 iControl = g_StateMgr.GetCurrentControl();
             //if( (iControl == -1) || (GotoControl(iControl)==NULL) )
             //{
-                GotoControl( (ui_control*)m_pButtonResume );
+                GotoControl( m_pButtonResume );
                 g_UiMgr->SetScreenHighlight( m_pButtonResume->GetPosition() );
                 m_CurrentControl =  IDC_PAUSE_MENU_RESUME;
             //}
@@ -559,10 +572,12 @@ void dlg_pause_main::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     if( highLight != m_CurrHL )
     {
         if( highLight != -1 )
+        {
             g_AudioMgr.Play("Cusor_Norm");
+        }
 
         m_CurrHL = highLight;
     }
 }
 
-//=========================================================================
+//==============================================================================

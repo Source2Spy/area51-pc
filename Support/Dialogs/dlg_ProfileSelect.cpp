@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_profile_select.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -26,9 +30,9 @@
 #include "../../Apps/GameApp/Config.hpp"    
 #include "SaveData/SaveDataMgr.hpp"
 
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum popup_type
 {
@@ -51,6 +55,9 @@ enum controls
 
 };
 
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem ProfileSelectControls[] = 
 {
@@ -66,6 +73,8 @@ ui_manager::control_tem ProfileSelectControls[] =
 
 };
 
+//==============================================================================
+
 ui_manager::dialog_tem ProfileSelectDialog =
 {
     "IDS_PROFILE_MAIN_MENU",
@@ -75,43 +84,41 @@ ui_manager::dialog_tem ProfileSelectDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_profile_select_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "profile select", &ProfileSelectDialog, &dlg_profile_select_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_profile_select_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_profile_select* pDialog = new dlg_profile_select;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_level_select
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_profile_select::dlg_profile_select( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_profile_select::~dlg_profile_select( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_profile_select::Create( s32                        UserID,
                                   ui_manager*                pManager,
@@ -131,7 +138,7 @@ xbool dlg_profile_select::Create( s32                        UserID,
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
     // find controls
-    m_pProfileList     = (ui_listbox*)    FindChildByID( IDC_PROFILE_SELECT_LISTBOX  );
+    m_pProfileList     = static_cast<ui_listbox*>( FindChildByID( IDC_PROFILE_SELECT_LISTBOX  ) );
 
     // set up nav text
     xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_SELECT" ));
@@ -153,17 +160,17 @@ xbool dlg_profile_select::Create( s32                        UserID,
     m_pProfileList->SetHeaderColor( xcolor(255,252,204,255) );
 
     // get profile details box
-    m_pProfileDetails = (ui_blankbox*)FindChildByID( IDC_PROFILE_SELECT_INFOBOX );
+    m_pProfileDetails = static_cast<ui_blankbox*>( FindChildByID( IDC_PROFILE_SELECT_INFOBOX ) );
     m_pProfileDetails->SetBackgroundColor( xcolor (39,117,28,128) );
     m_pProfileDetails->SetHasTitleBar( TRUE );
     m_pProfileDetails->SetLabelColor( xcolor(255,252,204,255) );
     m_pProfileDetails->SetTitleBarColor( xcolor(19,59,14,196) );
 
     // set up profile info text
-    m_pCreationDate     = (ui_text*)FindChildByID( IDC_PROFILE_CREATE_DATE        );
-    m_pModifiedDate     = (ui_text*)FindChildByID( IDC_PROFILE_MODIFIED_DATE      );
-    m_pInfoCreationDate = (ui_text*)FindChildByID( IDC_PROFILE_INFO_CREATE_DATE   );
-    m_pInfoModifiedDate = (ui_text*)FindChildByID( IDC_PROFILE_INFO_MODIFIED_DATE );
+    m_pCreationDate     = static_cast<ui_text*>( FindChildByID( IDC_PROFILE_CREATE_DATE        ) );
+    m_pModifiedDate     = static_cast<ui_text*>( FindChildByID( IDC_PROFILE_MODIFIED_DATE      ) );
+    m_pInfoCreationDate = static_cast<ui_text*>( FindChildByID( IDC_PROFILE_INFO_CREATE_DATE   ) );
+    m_pInfoModifiedDate = static_cast<ui_text*>( FindChildByID( IDC_PROFILE_INFO_MODIFIED_DATE ) );
 
     m_pCreationDate     ->UseSmallText( TRUE );
     m_pModifiedDate     ->UseSmallText( TRUE );
@@ -196,7 +203,7 @@ xbool dlg_profile_select::Create( s32                        UserID,
 
     // set initial focus
     m_CurrHL = 0;
-    GotoControl( (ui_control*)m_pProfileList );
+    GotoControl( m_pProfileList );
     m_CurrentControl = IDC_PROFILE_SELECT_LISTBOX;
     m_PopUp = NULL;
     m_BlocksRequired = 0;
@@ -231,10 +238,11 @@ xbool dlg_profile_select::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_select::Destroy( void )
 {
+    // Cancel outstanding save callbacks before destroying the dialog.
     g_SaveDataMgr.CancelCallbacks( this );
     ui_dialog::Destroy();
 
@@ -242,7 +250,7 @@ void dlg_profile_select::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_select::Configure( profile_select_type DialogType )
 {
@@ -262,23 +270,28 @@ void dlg_profile_select::Configure( profile_select_type DialogType )
         break;
 
         case PROFILE_SELECT_NORMAL:
-            break;
+        {
+        }
+        break;
 
         case PROFILE_SELECT_OVERWRITE:
-            break;
+        {
+        }
+        break;
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_select::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
     irect rb;
     
+    // Dim the background behind the dialog.
     if( m_bRenderBlackout )
     {
         rb = g_UiMgr->GetUserBounds( m_UserID );
@@ -336,7 +349,7 @@ void dlg_profile_select::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 void dlg_profile_select::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
     // only allow navigation if active
@@ -346,7 +359,7 @@ void dlg_profile_select::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Press
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_select::OnAccept( ui_win* pWin )
 {
@@ -443,7 +456,7 @@ void dlg_profile_select::OnAccept( ui_win* pWin )
 
                 // open a VK to enter the profile name
                 irect   r = m_pManager->GetUserBounds( m_UserID );
-                ui_dlg_vkeyboard* pVKeyboard = (ui_dlg_vkeyboard*)m_pManager->OpenDialog( m_UserID, "ui_vkeyboard", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_INPUTMODAL );
+                ui_dlg_vkeyboard* pVKeyboard = static_cast<ui_dlg_vkeyboard*>( m_pManager->OpenDialog( m_UserID, "ui_vkeyboard", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_INPUTMODAL ) );
                 pVKeyboard->Configure( TRUE );
                 pVKeyboard->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_CREATE" ) );
                 pVKeyboard->ConnectString( &m_ProfileName, SM_PROFILE_NAME_LENGTH );
@@ -459,7 +472,7 @@ void dlg_profile_select::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_select::OnPointerDown( ui_win* pWin, s32 x, s32 y )
 {
@@ -468,7 +481,7 @@ void dlg_profile_select::OnPointerDown( ui_win* pWin, s32 x, s32 y )
     OnAccept( pWin );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_select::OnCancel( ui_win* pWin )
 {
@@ -496,7 +509,7 @@ void dlg_profile_select::OnCancel( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_select::OnDelete( ui_win* pWin )
 {
@@ -519,7 +532,7 @@ void dlg_profile_select::OnDelete( ui_win* pWin )
         {
             // open delete confirmation dialog
             irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-            m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+            m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
             m_PopUpType = POPUP_TYPE_DELETE;
             m_State = DIALOG_STATE_POPUP;
 
@@ -544,7 +557,7 @@ void dlg_profile_select::OnDelete( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_select::OnAlternate( ui_win* pWin )
 {
@@ -566,10 +579,10 @@ void dlg_profile_select::OnAlternate( ui_win* pWin )
                 // Clear the poll callback
                 g_SaveDataMgr.CancelCallbacks( this );
                 // flag the profile as not saved
-                g_StateMgr.SetProfileNotSaved( g_StateMgr.GetPendingProfileIndex(), TRUE ); 
+                g_StateMgr.SetProfileNotSaved( g_StateMgr.GetPendingProfileIndex(), TRUE );
                 // Continue without saving
                 g_StateMgr.ActivatePendingProfile();
-                m_State = DIALOG_STATE_ACTIVATE;            
+                m_State = DIALOG_STATE_ACTIVATE;
             }
             break;
 
@@ -619,14 +632,14 @@ void dlg_profile_select::OnAlternate( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_select::OnPollReturn( void )
 {
     RefreshProfileList();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -646,7 +659,7 @@ void dlg_profile_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             m_pInfoCreationDate  ->SetFlag( ui_win::WF_VISIBLE, TRUE );
             m_pInfoModifiedDate  ->SetFlag( ui_win::WF_VISIBLE, TRUE );
 
-            GotoControl( (ui_control*)m_pProfileList );
+            GotoControl( m_pProfileList );
             g_UiMgr->SetScreenHighlight( m_pProfileList->GetPosition() );
 
             if( g_UiMgr->IsScreenOn() == FALSE )
@@ -677,7 +690,7 @@ void dlg_profile_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                 {
                     // open duplicate name error popup
                     irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-                    m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+                    m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
                     m_PopUpType = POPUP_TYPE_BADNAME;
 
                     // set nav text
@@ -736,19 +749,23 @@ void dlg_profile_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                     {
                         m_State = DIALOG_STATE_ACTIVE;
                     }
-                    break;
                 }
+                break;
 
                 case POPUP_TYPE_BADNAME:
+                {
                     // re-enable dialog
                     m_State = DIALOG_STATE_ACTIVE;
-                    break;
+                }
+                break;
 
                 ///////////////////////////////////////////////////////////////
 
                 default:
+                {
                     ASSERT(0);
-                    break;
+                }
+                break;
             }
 
             // clear popup 
@@ -787,7 +804,7 @@ void dlg_profile_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             index = m_pProfileList->GetSelectedItemData();
 
             // make sure we're not in the vkeyboard before changing the nav text.
-            if( (dlg_profile_select*)m_pManager->GetTopmostDialog( g_UiUserID ) == this )
+            if( m_pManager->GetTopmostDialog( g_UiUserID ) == this )
             {
                 // check if this is a new profile
                 if( index < m_CreateIndex )
@@ -845,7 +862,7 @@ void dlg_profile_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_select::RefreshProfileList( void )
 {
@@ -895,7 +912,9 @@ void dlg_profile_select::RefreshProfileList( void )
             if( ProfileNames[i]->Hash == ProfileHashToSelect )
             {
                 if( CurrentSelection == -1 )
+                {
                     CurrentSelection = i;
+                }
                 Found = TRUE;
             }
         }
@@ -941,17 +960,17 @@ void dlg_profile_select::RefreshProfileList( void )
             m_pProfileDetails->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_INFO" ) );
 
             split_date TimeStamp = eng_SplitDate( ProfileNames[SelIndex]->CreationDate );
-            const xwchar* Month = g_StringTableMgr( "ui", (const char*)xfs("IDS_MONTH%d", TimeStamp.Month));
+            const xwchar* Month = g_StringTableMgr( "ui", static_cast<const char*>( xfs("IDS_MONTH%d", TimeStamp.Month) ));
             xwstring CreateStamp(xfs("%02i:%02i:%02i ",TimeStamp.Hour, TimeStamp.Minute, TimeStamp.Second));
             CreateStamp += Month;
-            CreateStamp += (const char*)xfs("%02i", TimeStamp.Day);
+            CreateStamp += static_cast<const char*>( xfs("%02i", TimeStamp.Day) );
             m_pInfoCreationDate->SetLabel(CreateStamp);
             
             TimeStamp = eng_SplitDate( ProfileNames[SelIndex]->ModifiedDate );
-            Month = g_StringTableMgr( "ui", (const char*)xfs("IDS_MONTH%d", TimeStamp.Month));
+            Month = g_StringTableMgr( "ui", static_cast<const char*>( xfs("IDS_MONTH%d", TimeStamp.Month) ));
             xwstring ModStamp(xfs("%02i:%02i:%02i ",TimeStamp.Hour, TimeStamp.Minute, TimeStamp.Second));
             ModStamp += Month;
-            ModStamp += (const char*)xfs("%02i", TimeStamp.Day);
+            ModStamp += static_cast<const char*>( xfs("%02i", TimeStamp.Day) );
             m_pInfoModifiedDate->SetLabel(ModStamp);
         }
         else
@@ -963,7 +982,7 @@ void dlg_profile_select::RefreshProfileList( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_select::OnLoadProfileCB( void )
 {
@@ -998,7 +1017,7 @@ void dlg_profile_select::OnLoadProfileCB( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_select::OnDeleteProfileCB( void )
 {
@@ -1012,12 +1031,13 @@ void dlg_profile_select::OnDeleteProfileCB( void )
     RefreshProfileList();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_select::OnSaveProfileCB( void )
 {
     if( g_SaveDataMgr.GetLastResult().Succeeded() )
     {
+        // Activate the saved profile before handing control back to the state manager.
         g_StateMgr.SetProfileNotSaved( g_StateMgr.GetPendingProfileIndex(), FALSE );
         g_StateMgr.ActivatePendingProfile();
         g_AudioMgr.Play( "Select_Norm" );
@@ -1042,7 +1062,7 @@ void dlg_profile_select::OnSaveProfileCB( void )
     g_SaveDataMgr.GetProfileNames( ProfileNames );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_select::UpdateBackupPopup(void)
 {
@@ -1065,13 +1085,13 @@ void dlg_profile_select::UpdateBackupPopup(void)
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_profile_select::CreateBackupPopup( void )
 {
     // open duplicate name error popup
     irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-    m_BackupPopup = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+    m_BackupPopup = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
     m_State = DIALOG_STATE_POPUP;
 
     // set nav text
@@ -1081,4 +1101,4 @@ void dlg_profile_select::CreateBackupPopup( void )
     m_BackupPopup->Configure( g_StringTableMgr( "ui", "IDS_NETWORK_POPUP" ), TRUE, TRUE, FALSE, g_StringTableMgr( "ui", "IDS_ONLINE_DISCONNECT" ), navText, &m_BackupPopupResult );
 }
 
-//=========================================================================
+//==============================================================================

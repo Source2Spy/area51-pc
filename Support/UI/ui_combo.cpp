@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  ui_combo.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 #include "../AudioMgr/AudioMgr.hpp"
@@ -10,45 +14,34 @@
 #include "ui_combo.hpp"
 #include "ui_manager.hpp"
 #include "ui_font.hpp"
-//=========================================================================
-//  Defines
-//=========================================================================
 
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
-
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 ui_win* ui_combo_factory( s32 UserID, ui_manager* pManager, const irect& Position, ui_win* pParent, s32 Flags )
 {
     ui_combo* pcombo = new ui_combo;
     pcombo->Create( UserID, pManager, Position, pParent, Flags );
 
-    return (ui_win*)pcombo;
+    return pcombo;
 }
 
-//=========================================================================
-//  ui_combo
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 ui_combo::ui_combo( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_combo::~ui_combo( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_combo::Create( s32 UserID, ui_manager* pManager, const irect& Position, ui_win* pParent, s32 Flags )
 {
@@ -69,7 +62,7 @@ xbool ui_combo::Create( s32 UserID, ui_manager* pManager, const irect& Position,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_combo::Render( s32 ox, s32 oy )
 {
@@ -96,6 +89,7 @@ void ui_combo::Render( s32 ox, s32 oy )
             TextColor1  = xcolor(255,252,204,255);
         }
 
+        // Use the disabled color for either a disabled control or item.
         if( m_Flags & WF_DISABLED )
         {
             TextColor1  = XCOLOR_GREY;
@@ -143,7 +137,7 @@ void ui_combo::Render( s32 ox, s32 oy )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_combo::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
@@ -178,11 +172,13 @@ void ui_combo::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Re
     {
         // Pass up chain
         if( m_pParent )
+        {
             m_pParent->OnNavigate( pWin, Code, Presses, Repeats, WrapX, WrapY );
+        }
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_combo::OnAccept( ui_win* pWin )
 {
@@ -203,11 +199,13 @@ void ui_combo::OnAccept( ui_win* pWin )
     else
     {
         if ( m_pParent )
+        {
             m_pParent->OnAccept ( pWin );
+        }
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_combo::OnPage( ui_win* pWin, s32 Direction )
 {
@@ -229,9 +227,13 @@ void ui_combo::OnPage( ui_win* pWin, s32 Direction )
         {
             iSelection += Direction;
             if( iSelection < 0 )
+            {
                 iSelection = m_Items.GetCount() - 1;
+            }
             else if( iSelection >= m_Items.GetCount() )
+            {
                 iSelection = 0;
+            }
         }
 
         if( m_Items[iSelection].Enabled )
@@ -250,14 +252,14 @@ void ui_combo::OnPage( ui_win* pWin, s32 Direction )
     g_AudioMgr.Play( "InvalidEntry" );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_combo::SetLabelWidth( s32 Width )
 {
     m_LabelWidth = Width;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_combo::AddItem( const xwstring& Label, uaddr Data1, uaddr Data2 )
 {
@@ -272,7 +274,7 @@ s32 ui_combo::AddItem( const xwstring& Label, uaddr Data1, uaddr Data2 )
     return m_Items.GetCount()-1;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_combo::AddItem( const xwchar* Label, uaddr Data1, uaddr Data2 )
 {
@@ -287,7 +289,7 @@ s32 ui_combo::AddItem( const xwchar* Label, uaddr Data1, uaddr Data2 )
     return m_Items.GetCount()-1;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_combo::SetItemEnabled( s32 iItem, xbool State )
 {
@@ -295,7 +297,7 @@ void ui_combo::SetItemEnabled( s32 iItem, xbool State )
     m_Items[iItem].Enabled = State;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_combo::SetItemBitmap( s32 iItem, s32 ID )
 {
@@ -303,7 +305,7 @@ void ui_combo::SetItemBitmap( s32 iItem, s32 ID )
     m_Items[iItem].BitmapID = ID;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_combo::SetItemColor( s32 iItem, xcolor Color )
 {
@@ -311,7 +313,7 @@ void ui_combo::SetItemColor( s32 iItem, xcolor Color )
     m_Items[iItem].Color = Color;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_combo::DeleteAllItems( void )
 {
@@ -320,10 +322,12 @@ void ui_combo::DeleteAllItems( void )
     m_Items.Delete( 0, m_Items.GetCount() );
 
     if( OldSelection != m_iSelection )
+    {
         Notify( ui_notification_type::ComboSelectionChanged, m_iSelection );
+    }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_combo::DeleteItem( s32 iItem )
 {
@@ -332,24 +336,32 @@ void ui_combo::DeleteItem( s32 iItem )
     m_Items.Delete( iItem );
 
     if( m_Items.GetCount() == 0 )
+    {
         m_iSelection = -1;
+    }
     else if( iItem < OldSelection )
+    {
         m_iSelection = OldSelection - 1;
+    }
     else if( iItem == OldSelection )
+    {
         m_iSelection = MIN( iItem, m_Items.GetCount() - 1 );
+    }
 
     if( (m_iSelection != OldSelection) || (iItem == OldSelection) )
+    {
         Notify( ui_notification_type::ComboSelectionChanged, m_iSelection );
+    }
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_combo::GetItemCount( void ) const
 {
     return m_Items.GetCount();
 }
 
-//=========================================================================
+//==============================================================================
 
 const xwstring& ui_combo::GetItemLabel( s32 iItem ) const
 {
@@ -358,7 +370,7 @@ const xwstring& ui_combo::GetItemLabel( s32 iItem ) const
     return m_Items[iItem].Label;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_combo::GetItemBitmap( s32 iItem ) const
 {
@@ -366,7 +378,7 @@ s32 ui_combo::GetItemBitmap( s32 iItem ) const
     return m_Items[iItem].BitmapID;
 }
 
-//=========================================================================
+//==============================================================================
 
 uaddr ui_combo::GetItemData( s32 iItem, s32 Index ) const
 {
@@ -376,7 +388,7 @@ uaddr ui_combo::GetItemData( s32 iItem, s32 Index ) const
     return m_Items[iItem].Data[Index];
 }
 
-//=========================================================================
+//==============================================================================
 
 const xwstring& ui_combo::GetSelectedItemLabel( void ) const
 {
@@ -385,7 +397,7 @@ const xwstring& ui_combo::GetSelectedItemLabel( void ) const
     return m_Items[m_iSelection].Label;
 }
 
-//=========================================================================
+//==============================================================================
 
 uaddr ui_combo::GetSelectedItemData( s32 Index ) const
 {
@@ -395,7 +407,7 @@ uaddr ui_combo::GetSelectedItemData( s32 Index ) const
     return m_Items[m_iSelection].Data[Index];
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_combo::GetItemEnabled( s32 iItem ) const
 {
@@ -403,7 +415,7 @@ xbool ui_combo::GetItemEnabled( s32 iItem ) const
     return (m_Items[iItem].Enabled);
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_combo::GetSelectedItemEnabled( void ) const
 {
@@ -411,7 +423,7 @@ xbool ui_combo::GetSelectedItemEnabled( void ) const
     return (m_Items[m_iSelection].Enabled);
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_combo::FindItemByLabel( const xwstring& Label ) const
 {
@@ -430,7 +442,7 @@ s32 ui_combo::FindItemByLabel( const xwstring& Label ) const
     return iFound;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_combo::FindItemByData( uaddr Data, s32 Index ) const
 {
@@ -451,34 +463,36 @@ s32 ui_combo::FindItemByData( uaddr Data, s32 Index ) const
     return iFound;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_combo::GetSelection( void ) const
 {
     return m_iSelection;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_combo::SetSelection( s32 iSelection )
 {
     ASSERT( (iSelection >= -1) && (iSelection < m_Items.GetCount()) );
 
     if( m_iSelection == iSelection )
+    {
         return;
+    }
 
     m_iSelection = iSelection;
     Notify( ui_notification_type::ComboSelectionChanged, m_iSelection );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_combo::ClearSelection( void )
 {
     SetSelection( -1 );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_combo::OnPointerDown( ui_win* pWin, s32 x, s32 y )
 {
@@ -507,4 +521,4 @@ void ui_combo::OnPointerDown( ui_win* pWin, s32 x, s32 y )
     }
 }
 
-//=========================================================================
+//==============================================================================

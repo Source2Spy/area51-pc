@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_avatar_select.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -20,9 +24,9 @@
 #include "ResourceMgr/ResourceMgr.hpp"
 #include "SaveData/SaveDataMgr.hpp"
 
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum controls
 {
@@ -30,6 +34,9 @@ enum controls
     IDC_AVATAR_SELECT_BUTTON_ACCEPT,    
 };
 
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem AvatarSelectControls[] = 
 {
@@ -37,6 +44,8 @@ ui_manager::control_tem AvatarSelectControls[] =
     { IDC_AVATAR_SELECT_COMBO,          "IDS_NULL",    "combo",  71,  50, 128, 256, 0, 0, 1, 1, ui_win::WF_VISIBLE },
     { IDC_AVATAR_SELECT_BUTTON_ACCEPT,  "IDS_ACCEPT",  "button", 71, 315, 128,  22, 0, 1, 1, 1, ui_win::WF_VISIBLE },
 };
+
+//==============================================================================
 
 ui_manager::dialog_tem AvatarSelectDialog =
 {
@@ -47,43 +56,41 @@ ui_manager::dialog_tem AvatarSelectDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_avatar_select_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "avatar select", &AvatarSelectDialog, &dlg_avatar_select_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_avatar_select_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_avatar_select* pDialog = new dlg_avatar_select;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_level_select
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_avatar_select::dlg_avatar_select( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_avatar_select::~dlg_avatar_select( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_avatar_select::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -104,8 +111,8 @@ xbool dlg_avatar_select::Create( s32                        UserID,
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
     // find controls
-    m_pAvatarSelect  = (ui_combo*)   FindChildByID( IDC_AVATAR_SELECT_COMBO    );
-    m_pButtonAccept  = (ui_button*)  FindChildByID( IDC_AVATAR_SELECT_BUTTON_ACCEPT );
+    m_pAvatarSelect  = static_cast<ui_combo*>( FindChildByID( IDC_AVATAR_SELECT_COMBO    ) );
+    m_pButtonAccept  = static_cast<ui_button*>( FindChildByID( IDC_AVATAR_SELECT_BUTTON_ACCEPT ) );
 
     // hide them
     m_pAvatarSelect ->SetFlag(ui_win::WF_VISIBLE, FALSE);
@@ -202,7 +209,7 @@ xbool dlg_avatar_select::Create( s32                        UserID,
 
     // set initial focus
     m_CurrHL = 0;
-    GotoControl( (ui_control*)m_pAvatarSelect );
+    GotoControl( m_pAvatarSelect );
     m_CurrentControl = IDC_AVATAR_SELECT_COMBO;
     m_OriginalProfile = g_StateMgr.GetPendingProfile();
     m_OriginalProfile.Checksum();
@@ -220,10 +227,11 @@ xbool dlg_avatar_select::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_avatar_select::Destroy( void )
 {
+    // Cancel outstanding save callbacks before destroying the dialog.
     g_SaveDataMgr.CancelCallbacks( this );
     ui_dialog::Destroy();
 
@@ -249,16 +257,17 @@ void dlg_avatar_select::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_avatar_select::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
     irect rb;
 
+    // Dim the background behind the dialog.
     if( m_bRenderBlackout )
     {
         rb = g_UiMgr->GetUserBounds( m_UserID );
@@ -314,7 +323,7 @@ void dlg_avatar_select::Render( s32 ox, s32 oy )
     // render the glow bar
     g_UiMgr->RenderGlowBar();
 }
-//=========================================================================
+//==============================================================================
 
 void dlg_avatar_select::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
@@ -326,16 +335,21 @@ void dlg_avatar_select::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presse
         switch( Code )
         {
             case ui_navigation::Left:
-                // get the previous avatar
-                break;
+            {
+                    // get the previous avatar
+            }
+            break;
+
             case ui_navigation::Right:
-                // get the next avatar
-                break;
+            {
+                    // get the next avatar
+            }
+            break;
         }
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_avatar_select::OnCancel( ui_win* pWin )
 {
@@ -358,7 +372,7 @@ void dlg_avatar_select::OnCancel( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_avatar_select::OnAccept( ui_win* pWin )
 {
@@ -366,7 +380,7 @@ void dlg_avatar_select::OnAccept( ui_win* pWin )
 
     if ( m_State == DIALOG_STATE_ACTIVE )
     {
-        if( pWin == (ui_win*)m_pButtonAccept )
+        if( pWin == m_pButtonAccept )
         {
             player_profile Candidate = g_StateMgr.GetPendingProfile();
             Candidate.SetAvatarID( m_pAvatarSelect->GetSelectedItemData( 0 ) );
@@ -385,7 +399,7 @@ void dlg_avatar_select::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_avatar_select::BeginSave( void )
 {
@@ -416,7 +430,7 @@ void dlg_avatar_select::BeginSave( void )
     m_State = DIALOG_STATE_WAIT_FOR_SAVE_DATA;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_avatar_select::OpenSavePopup( void )
 {
@@ -440,14 +454,14 @@ void dlg_avatar_select::OpenSavePopup( void )
     m_State = DIALOG_STATE_POPUP;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_avatar_select::RestoreProfile( void )
 {
     g_StateMgr.GetPendingProfile() = m_OriginalProfile;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_avatar_select::OnSaveProfileCB( void )
 {
@@ -467,7 +481,7 @@ void dlg_avatar_select::OnSaveProfileCB( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_avatar_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -476,6 +490,7 @@ void dlg_avatar_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
     s32 highLight = -1;
 
+    // Consume the popup result once before resuming the dialog.
     if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
     {
         s32 const Result = m_PopUpResult;
@@ -503,7 +518,7 @@ void dlg_avatar_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             // turn on the controls
             m_pAvatarSelect ->SetFlag(ui_win::WF_VISIBLE, TRUE);
             m_pButtonAccept ->SetFlag(ui_win::WF_VISIBLE, TRUE); 
-            GotoControl( (ui_control*)m_pAvatarSelect );
+            GotoControl( m_pAvatarSelect );
             g_UiMgr->SetScreenHighlight( m_pAvatarSelect->GetPosition() );
         }
     }
@@ -527,10 +542,12 @@ void dlg_avatar_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     if( highLight != m_CurrHL )
     {
         if( highLight != -1 )
+        {
             g_AudioMgr.Play("Cusor_Norm");
+        }
 
         m_CurrHL = highLight;
     }    
 }
 
-//=========================================================================
+//==============================================================================

@@ -19,7 +19,7 @@
 #include "StringMgr/StringMgr.hpp"
 
 //==============================================================================
-//  TYPES
+//  ENUMS
 //==============================================================================
 
 enum
@@ -27,7 +27,9 @@ enum
     POPUP_CONFIRM_SETTINGS,
 };
 
-//------------------------------------------------------------------------------
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem SettingsControls[] =
 {
@@ -66,7 +68,7 @@ ui_win* dlg_settings_factory( s32 UserID, ui_manager* pManager, ui_manager::dial
 {
     dlg_settings* pDialog = new dlg_settings;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
 //==============================================================================
@@ -93,18 +95,18 @@ xbool dlg_settings::Create( s32 UserID, ui_manager* pManager, ui_manager::dialog
 
     xbool const Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
-    m_pAudio    = (ui_button*)FindChildByID( IDC_SETTINGS_AUDIO );
-    m_pHeadset  = (ui_button*)FindChildByID( IDC_SETTINGS_HEADSET );
-    m_pGraphics = (ui_button*)FindChildByID( IDC_SETTINGS_GRAPHICS );
-    m_pDisplay  = (ui_button*)FindChildByID( IDC_SETTINGS_DISPLAY );
-    m_pUI         = (ui_button*)FindChildByID( IDC_SETTINGS_UI );
-    m_pLanguage = (ui_button*)FindChildByID( IDC_SETTINGS_LANGUAGE );
-    m_pAccept   = (ui_button*)FindChildByID( IDC_SETTINGS_ACCEPT );
+    m_pAudio    = static_cast<ui_button*>( FindChildByID( IDC_SETTINGS_AUDIO ) );
+    m_pHeadset  = static_cast<ui_button*>( FindChildByID( IDC_SETTINGS_HEADSET ) );
+    m_pGraphics = static_cast<ui_button*>( FindChildByID( IDC_SETTINGS_GRAPHICS ) );
+    m_pDisplay  = static_cast<ui_button*>( FindChildByID( IDC_SETTINGS_DISPLAY ) );
+    m_pUI       = static_cast<ui_button*>( FindChildByID( IDC_SETTINGS_UI ) );
+    m_pLanguage = static_cast<ui_button*>( FindChildByID( IDC_SETTINGS_LANGUAGE ) );
+    m_pAccept   = static_cast<ui_button*>( FindChildByID( IDC_SETTINGS_ACCEPT ) );
 
     s32 const CurrentControl = g_StateMgr.GetCurrentControl();
     if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
     {
-        GotoControl( (ui_control*)m_pAudio );
+        GotoControl( m_pAudio );
         m_CurrentControl = IDC_SETTINGS_AUDIO;
     }
     else
@@ -139,6 +141,7 @@ xbool dlg_settings::Create( s32 UserID, ui_manager* pManager, ui_manager::dialog
 
 void dlg_settings::Destroy( void )
 {
+    // Cancel outstanding save callbacks before destroying the dialog.
     g_SaveDataMgr.CancelCallbacks( this );
     ui_dialog::Destroy();
     g_UiMgr->ResetScreenWipe();
@@ -148,24 +151,38 @@ void dlg_settings::Destroy( void )
 
 void dlg_settings::Render( s32 ox, s32 oy )
 {
-    s32 const Offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    s32 const Offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
+    static s32 const Gap = 9;
+    static s32 const Width = 4;
     irect Bounds;
 
+    // Dim the background behind the dialog.
     if( m_bRenderBlackout )
     {
         Bounds = g_UiMgr->GetUserBounds( m_UserID );
-        g_UiMgr->RenderGouraudRect( Bounds, xcolor(0,0,0,180), xcolor(0,0,0,180), xcolor(0,0,0,180), xcolor(0,0,0,180), FALSE );
+        g_UiMgr->RenderGouraudRect( Bounds,
+                                   xcolor( 0, 0, 0, 180 ), xcolor( 0, 0, 0, 180 ),
+                                   xcolor( 0, 0, 0, 180 ), xcolor( 0, 0, 0, 180 ), FALSE );
     }
 
+    // Draw the translucent panel inside the side bars.
     Bounds.Set( m_CurrPos.l + 22, m_CurrPos.t, m_CurrPos.r - 23, m_CurrPos.b );
-    g_UiMgr->RenderGouraudRect( Bounds, xcolor(56,115,58,64), xcolor(56,115,58,64), xcolor(56,115,58,64), xcolor(56,115,58,64), FALSE );
-    for( s32 y = Bounds.t + Offset; y < Bounds.b; y += 9 )
+    g_UiMgr->RenderGouraudRect( Bounds,
+                               xcolor( 56, 115, 58, 64 ), xcolor( 56, 115, 58, 64 ),
+                               xcolor( 56, 115, 58, 64 ), xcolor( 56, 115, 58, 64 ), FALSE );
+
+    for( s32 Y = Bounds.t + Offset; Y < Bounds.b; Y += Gap )
     {
-        irect Bar( Bounds.l, y, Bounds.r, MIN( y + 4, Bounds.b ) );
-        g_UiMgr->RenderGouraudRect( Bar, xcolor(56,115,58,30), xcolor(56,115,58,30), xcolor(56,115,58,30), xcolor(56,115,58,30), FALSE );
+        irect const Bar( Bounds.l, Y, Bounds.r, MIN( Y + Width, Bounds.b ) );
+        g_UiMgr->RenderGouraudRect( Bar,
+                                   xcolor( 56, 115, 58, 30 ), xcolor( 56, 115, 58, 30 ),
+                                   xcolor( 56, 115, 58, 30 ), xcolor( 56, 115, 58, 30 ), FALSE );
     }
 
+    // render the normal dialog stuff
     ui_dialog::Render( ox, oy );
+
+    // render the glow bar
     g_UiMgr->RenderGlowBar();
 }
 
@@ -182,7 +199,7 @@ void dlg_settings::OnAccept( ui_win* pWin )
     s32 const Controls[] = { IDC_SETTINGS_AUDIO, IDC_SETTINGS_HEADSET, IDC_SETTINGS_GRAPHICS, IDC_SETTINGS_DISPLAY, IDC_SETTINGS_UI, IDC_SETTINGS_LANGUAGE };
     for( s32 i = 0; i < 6; i++ )
     {
-        if( pWin == (ui_win*)pMenus[i] )
+        if( pWin == pMenus[i] )
         {
             g_AudioMgr.Play( "Select_Norm" );
             m_CurrentControl = Controls[i];
@@ -191,7 +208,7 @@ void dlg_settings::OnAccept( ui_win* pWin )
         }
     }
 
-    if( pWin != (ui_win*)m_pAccept )
+    if( pWin != m_pAccept )
     {
         return;
     }
@@ -292,6 +309,7 @@ void dlg_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
     (void)pWin;
     s32 Highlight = -1;
 
+    // Show the controls only after the opening animation finishes.
     if( g_UiMgr->IsScreenScaling() && (UpdateScreenScaling( DeltaTime ) == FALSE) )
     {
         ui_button* pButtons[] = { m_pAudio, m_pHeadset, m_pGraphics, m_pDisplay, m_pUI, m_pLanguage, m_pAccept };
@@ -302,7 +320,7 @@ void dlg_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         s32 const CurrentControl = g_StateMgr.GetCurrentControl();
         if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
         {
-            GotoControl( (ui_control*)m_pAudio );
+            GotoControl( m_pAudio );
             m_CurrentControl = IDC_SETTINGS_AUDIO;
         }
         else
@@ -311,6 +329,7 @@ void dlg_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         }
     }
 
+    // Consume the popup result once before resuming the dialog.
     if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
     {
         s32 const Result = m_PopUpResult;

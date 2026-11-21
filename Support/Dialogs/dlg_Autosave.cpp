@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_Autosave.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -16,9 +20,9 @@
 #include "Configuration/GameConfig.hpp"
 #include "../../Apps/GameApp/Config.hpp"    
 
-//=========================================================================
-//  Autosave Dialog
-//=========================================================================
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::dialog_tem AutosaveDialog =
 {
@@ -29,43 +33,41 @@ ui_manager::dialog_tem AutosaveDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_autosave_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "autosave", &AutosaveDialog, &dlg_autosave_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_autosave_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_autosave* pDialog = new dlg_autosave;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_autosave
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_autosave::dlg_autosave( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_autosave::~dlg_autosave( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_autosave::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -92,7 +94,9 @@ xbool dlg_autosave::Create( s32                        UserID,
 
     // set the frame to be disabled (if coming from off screen)
     if (g_UiMgr->IsScreenOn() == FALSE)
+    {
         SetFlag( WF_DISABLED, TRUE );
+    }
 
     g_UiMgr->DisableScreenHighlight();
 
@@ -103,7 +107,7 @@ xbool dlg_autosave::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_autosave::Destroy( void )
 {
@@ -113,11 +117,11 @@ void dlg_autosave::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_autosave::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
@@ -179,7 +183,7 @@ void dlg_autosave::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_autosave::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -201,7 +205,7 @@ void dlg_autosave::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
             // open a popup
             irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-            m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+            m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
 
             // set nav text
             xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_RETRY" ));
@@ -267,4 +271,4 @@ void dlg_autosave::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     g_UiMgr->UpdateGlowBar(DeltaTime);
 }
 
-//=========================================================================
+//==============================================================================

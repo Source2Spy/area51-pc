@@ -4,6 +4,10 @@
 //
 //==============================================================================
 
+//==============================================================================
+//  INCLUDES
+//==============================================================================
+
 #include "Entropy.hpp"
 
 #include "UI/ui_button.hpp"
@@ -21,23 +25,25 @@
 #include "dlg_PopUp.hpp"
 
 //==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem GraphicsSettingsControls[] =
 {
-    { IDC_GRAPHICS_FIELD_OF_VIEW_TEXT,       "IDS_NULL",                   "text",    40,  40, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_FILM_GRAIN_TEXT,          "IDS_NULL",                   "text",    40,  75, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_RENDER_SCALE_TEXT,        "IDS_NULL",                   "text",    40, 110, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_ANTI_ALIASING_TEXT,       "IDS_NULL",                   "text",    40, 145, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_TEXTURE_FILTERING_TEXT,   "IDS_NULL",                   "text",    40, 180, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_FIELD_OF_VIEW_TEXT,     "IDS_GRAPHICS_FIELD_OF_VIEW",       "text",    40,  40, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_FILM_GRAIN_TEXT,        "IDS_GRAPHICS_FILM_GRAIN",          "text",    40,  75, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_RENDER_SCALE_TEXT,      "IDS_GRAPHICS_RENDER_SCALE",        "text",    40, 110, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_ANTI_ALIASING_TEXT,     "IDS_GRAPHICS_ANTI_ALIASING",       "text",    40, 145, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_TEXTURE_FILTERING_TEXT, "IDS_GRAPHICS_TEXTURE_FILTERING",   "text",    40, 180, 220, 40, 0, 0, 0, 0, ui_win::WF_VISIBLE },
 
-    { IDC_GRAPHICS_FIELD_OF_VIEW,            "IDS_NULL",                   "slider", 300,  40, 120, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_FILM_GRAIN,               "IDS_NULL",                   "slider", 300,  75, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_RENDER_SCALE,             "IDS_NULL",                   "combo",  290, 110, 140, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_ANTI_ALIASING,            "IDS_NULL",                   "combo",  290, 145, 140, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_TEXTURE_FILTERING,        "IDS_NULL",                   "combo",  290, 180, 140, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_GRAPHICS_ADVANCED,                 "IDS_GRAPHICS_ADVANCED_SETTINGS", "button", 40, 250, 220, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_FIELD_OF_VIEW,          "IDS_NULL",                         "slider", 300,  40, 120, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_FILM_GRAIN,             "IDS_NULL",                         "slider", 300,  75, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_RENDER_SCALE,           "IDS_NULL",                         "combo",  290, 110, 140, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_ANTI_ALIASING,          "IDS_NULL",                         "combo",  290, 145, 140, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_TEXTURE_FILTERING,      "IDS_NULL",                         "combo",  290, 180, 140, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_ADVANCED,               "IDS_GRAPHICS_ADVANCED_SETTINGS",   "button", 40, 250, 220, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE },
 
-    { IDC_GRAPHICS_BUTTON_APPLY,             "IDS_PROFILE_OPTIONS_ACCEPT", "button",  40, 285, 220, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_GRAPHICS_BUTTON_APPLY,           "IDS_PROFILE_OPTIONS_ACCEPT",       "button",  40, 285, 220, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE },
 };
 
 //==============================================================================
@@ -52,6 +58,8 @@ ui_manager::dialog_tem GraphicsSettingsDialog =
 };
 
 //==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_graphics_settings_register( ui_manager* pManager )
 {
@@ -64,9 +72,11 @@ ui_win* dlg_graphics_settings_factory( s32 UserID, ui_manager* pManager, ui_mana
 {
     dlg_graphics_settings* pDialog = new dlg_graphics_settings;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
+//==============================================================================
+//  IMPLEMENTATION
 //==============================================================================
 
 dlg_graphics_settings::dlg_graphics_settings( void )
@@ -95,19 +105,19 @@ xbool dlg_graphics_settings::Create( s32                       UserID,
 
     xbool const Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
-    m_pFieldOfView        = (ui_slider*)FindChildByID( IDC_GRAPHICS_FIELD_OF_VIEW );
-    m_pRenderScale        = (ui_combo*) FindChildByID( IDC_GRAPHICS_RENDER_SCALE );
-    m_pFilmGrain          = (ui_slider*)FindChildByID( IDC_GRAPHICS_FILM_GRAIN );
-    m_pTextureFiltering     = (ui_combo*) FindChildByID( IDC_GRAPHICS_TEXTURE_FILTERING );
-    m_pAntiAliasing       = (ui_combo*) FindChildByID( IDC_GRAPHICS_ANTI_ALIASING );
-    m_pAdvanced           = (ui_button*)FindChildByID( IDC_GRAPHICS_ADVANCED );
-    m_pButtonApply        = (ui_button*)FindChildByID( IDC_GRAPHICS_BUTTON_APPLY );
+    m_pFieldOfView        = static_cast<ui_slider*>( FindChildByID( IDC_GRAPHICS_FIELD_OF_VIEW ) );
+    m_pRenderScale        = static_cast<ui_combo*>( FindChildByID( IDC_GRAPHICS_RENDER_SCALE ) );
+    m_pFilmGrain          = static_cast<ui_slider*>( FindChildByID( IDC_GRAPHICS_FILM_GRAIN ) );
+    m_pTextureFiltering     = static_cast<ui_combo*>( FindChildByID( IDC_GRAPHICS_TEXTURE_FILTERING ) );
+    m_pAntiAliasing       = static_cast<ui_combo*>( FindChildByID( IDC_GRAPHICS_ANTI_ALIASING ) );
+    m_pAdvanced           = static_cast<ui_button*>( FindChildByID( IDC_GRAPHICS_ADVANCED ) );
+    m_pButtonApply        = static_cast<ui_button*>( FindChildByID( IDC_GRAPHICS_BUTTON_APPLY ) );
 
-    m_pFieldOfViewText    = (ui_text*)FindChildByID( IDC_GRAPHICS_FIELD_OF_VIEW_TEXT );
-    m_pRenderScaleText    = (ui_text*)FindChildByID( IDC_GRAPHICS_RENDER_SCALE_TEXT );
-    m_pFilmGrainText      = (ui_text*)FindChildByID( IDC_GRAPHICS_FILM_GRAIN_TEXT );
-    m_pTextureFilteringText = (ui_text*)FindChildByID( IDC_GRAPHICS_TEXTURE_FILTERING_TEXT );
-    m_pAntiAliasingText   = (ui_text*)FindChildByID( IDC_GRAPHICS_ANTI_ALIASING_TEXT );
+    m_pFieldOfViewText    = static_cast<ui_text*>( FindChildByID( IDC_GRAPHICS_FIELD_OF_VIEW_TEXT ) );
+    m_pRenderScaleText    = static_cast<ui_text*>( FindChildByID( IDC_GRAPHICS_RENDER_SCALE_TEXT ) );
+    m_pFilmGrainText      = static_cast<ui_text*>( FindChildByID( IDC_GRAPHICS_FILM_GRAIN_TEXT ) );
+    m_pTextureFilteringText = static_cast<ui_text*>( FindChildByID( IDC_GRAPHICS_TEXTURE_FILTERING_TEXT ) );
+    m_pAntiAliasingText   = static_cast<ui_text*>( FindChildByID( IDC_GRAPHICS_ANTI_ALIASING_TEXT ) );
 
     global_settings& PendingSettings = g_StateMgr.GetPendingSettings();
     m_OriginalSettings = PendingSettings;
@@ -167,11 +177,6 @@ xbool dlg_graphics_settings::Create( s32                       UserID,
     }
     m_pAntiAliasing->SetSelection( AntiAliasingSelection );
 
-    m_pFieldOfViewText   ->SetLabel( g_StringTableMgr( "ui", "IDS_GRAPHICS_FIELD_OF_VIEW" ) );
-    m_pRenderScaleText   ->SetLabel( g_StringTableMgr( "ui", "IDS_GRAPHICS_RENDER_SCALE" ) );
-    m_pFilmGrainText     ->SetLabel( g_StringTableMgr( "ui", "IDS_GRAPHICS_FILM_GRAIN" ) );
-    m_pTextureFilteringText->SetLabel( g_StringTableMgr( "ui", "IDS_GRAPHICS_TEXTURE_FILTERING" ) );
-    m_pAntiAliasingText  ->SetLabel( g_StringTableMgr( "ui", "IDS_GRAPHICS_ANTI_ALIASING" ) );
 
     m_pFieldOfViewText   ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
     m_pRenderScaleText   ->SetLabelFlags( ui_font::h_left|ui_font::v_center );
@@ -184,7 +189,7 @@ xbool dlg_graphics_settings::Create( s32                       UserID,
     s32 const CurrentControl = g_StateMgr.GetCurrentControl();
     if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
     {
-        GotoControl( (ui_control*)m_pFieldOfView );
+        GotoControl( m_pFieldOfView );
         m_CurrentControl = IDC_GRAPHICS_FIELD_OF_VIEW;
     }
     else
@@ -224,6 +229,7 @@ xbool dlg_graphics_settings::Create( s32                       UserID,
 
 void dlg_graphics_settings::Destroy( void )
 {
+    // Cancel outstanding save callbacks before destroying the dialog.
     g_SaveDataMgr.CancelCallbacks( this );
     ui_dialog::Destroy();
     g_UiMgr->ResetScreenWipe();
@@ -233,36 +239,38 @@ void dlg_graphics_settings::Destroy( void )
 
 void dlg_graphics_settings::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
-    static s32 gap   = 9;
-    static s32 width = 4;
-    irect rb;
+    s32 const Offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
+    static s32 const Gap = 9;
+    static s32 const Width = 4;
+    irect Bounds;
 
+    // Dim the background behind the dialog.
     if( m_bRenderBlackout )
     {
-        rb = g_UiMgr->GetUserBounds( m_UserID );
-        g_UiMgr->RenderGouraudRect( rb,
-                                    xcolor(0,0,0,180), xcolor(0,0,0,180),
-                                    xcolor(0,0,0,180), xcolor(0,0,0,180), FALSE );
+        Bounds = g_UiMgr->GetUserBounds( m_UserID );
+        g_UiMgr->RenderGouraudRect( Bounds,
+                                   xcolor( 0, 0, 0, 180 ), xcolor( 0, 0, 0, 180 ),
+                                   xcolor( 0, 0, 0, 180 ), xcolor( 0, 0, 0, 180 ), FALSE );
     }
 
-    rb.l = m_CurrPos.l + 22;
-    rb.t = m_CurrPos.t;
-    rb.r = m_CurrPos.r - 23;
-    rb.b = m_CurrPos.b;
-    g_UiMgr->RenderGouraudRect( rb,
-                                xcolor(56,115,58,64), xcolor(56,115,58,64),
-                                xcolor(56,115,58,64), xcolor(56,115,58,64), FALSE );
+    // Draw the translucent panel inside the side bars.
+    Bounds.Set( m_CurrPos.l + 22, m_CurrPos.t, m_CurrPos.r - 23, m_CurrPos.b );
+    g_UiMgr->RenderGouraudRect( Bounds,
+                               xcolor( 56, 115, 58, 64 ), xcolor( 56, 115, 58, 64 ),
+                               xcolor( 56, 115, 58, 64 ), xcolor( 56, 115, 58, 64 ), FALSE );
 
-    for( s32 y = rb.t + offset; y < rb.b; y += gap )
+    for( s32 Y = Bounds.t + Offset; Y < Bounds.b; Y += Gap )
     {
-        irect bar( rb.l, y, rb.r, MIN( y + width, rb.b ) );
-        g_UiMgr->RenderGouraudRect( bar,
-                                    xcolor(56,115,58,30), xcolor(56,115,58,30),
-                                    xcolor(56,115,58,30), xcolor(56,115,58,30), FALSE );
+        irect const Bar( Bounds.l, Y, Bounds.r, MIN( Y + Width, Bounds.b ) );
+        g_UiMgr->RenderGouraudRect( Bar,
+                                   xcolor( 56, 115, 58, 30 ), xcolor( 56, 115, 58, 30 ),
+                                   xcolor( 56, 115, 58, 30 ), xcolor( 56, 115, 58, 30 ), FALSE );
     }
 
+    // render the normal dialog stuff
     ui_dialog::Render( ox, oy );
+
+    // render the glow bar
     g_UiMgr->RenderGlowBar();
 }
 
@@ -275,7 +283,7 @@ void dlg_graphics_settings::OnAccept( ui_win* pWin )
         return;
     }
 
-    if( pWin == (ui_win*)m_pAdvanced )
+    if( pWin == m_pAdvanced )
     {
         // Keep edits from the basic page when opening Advanced.
         ApplySettings( g_StateMgr.GetPendingSettings() );
@@ -285,7 +293,7 @@ void dlg_graphics_settings::OnAccept( ui_win* pWin )
         return;
     }
 
-    if( pWin != (ui_win*)m_pButtonApply )
+    if( pWin != m_pButtonApply )
     {
         return;
     }
@@ -309,20 +317,23 @@ void dlg_graphics_settings::OnAccept( ui_win* pWin )
 void dlg_graphics_settings::OnCancel( ui_win* pWin )
 {
     (void)pWin;
-    if( m_State == DIALOG_STATE_ACTIVE )
-    {
-        global_settings Settings = m_OriginalSettings;
-        ApplySettings( Settings );
-        if( !Settings.HasChanged() )
-        {
-            g_AudioMgr.Play( "Backup" );
-            m_State = DIALOG_STATE_BACK;
-            return;
-        }
 
-        g_StateMgr.GetPendingSettings() = Settings;
-        OpenSavePopup();
+    if( m_State != DIALOG_STATE_ACTIVE )
+    {
+        return;
     }
+
+    global_settings Settings = m_OriginalSettings;
+    ApplySettings( Settings );
+    if( !Settings.HasChanged() )
+    {
+        g_AudioMgr.Play( "Backup" );
+        m_State = DIALOG_STATE_BACK;
+        return;
+    }
+
+    g_StateMgr.GetPendingSettings() = Settings;
+    OpenSavePopup();
 }
 
 //==============================================================================
@@ -437,6 +448,7 @@ void dlg_graphics_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
     (void)pWin;
     s32 highLight = -1;
 
+    // Consume the popup result once before resuming the dialog.
     if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
     {
         s32 const Result = m_PopUpResult;
@@ -456,6 +468,7 @@ void dlg_graphics_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         }
     }
 
+    // Show the controls only after the opening animation finishes.
     if( g_UiMgr->IsScreenScaling() && (UpdateScreenScaling( DeltaTime ) == FALSE) )
     {
         m_pFieldOfView       ->SetFlag( ui_win::WF_VISIBLE, TRUE );
@@ -474,7 +487,7 @@ void dlg_graphics_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         s32 const CurrentControl = g_StateMgr.GetCurrentControl();
         if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
         {
-            GotoControl( (ui_control*)m_pFieldOfView );
+            GotoControl( m_pFieldOfView );
             m_CurrentControl = IDC_GRAPHICS_FIELD_OF_VIEW;
         }
         else

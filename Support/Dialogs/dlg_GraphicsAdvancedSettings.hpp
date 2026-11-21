@@ -25,7 +25,7 @@ class ui_check;
 class ui_text;
 
 //==============================================================================
-//  dlg_graphics_advanced_settings
+//  REGISTRATION
 //==============================================================================
 
 extern void     dlg_graphics_advanced_settings_register ( ui_manager* pManager );
@@ -36,6 +36,10 @@ extern ui_win*  dlg_graphics_advanced_settings_factory  ( s32 UserID,
                                                            ui_win* pParent,
                                                            s32 Flags,
                                                            void* pUserData );
+
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum graphics_advanced_settings_controls
 {
@@ -54,6 +58,10 @@ enum graphics_advanced_settings_controls
     IDC_GRAPHICS_ADVANCED_AMBIENT_OCCLUSION,
     IDC_GRAPHICS_ADVANCED_BUTTON_APPLY,
 };
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class dlg_graphics_advanced_settings : public ui_dialog
 {

@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_multi_player.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -22,20 +26,21 @@
 
 extern xbool g_bControllerCheck;
 
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem MultiPlayerControls[] = 
 {
-    { IDC_MULTI_PLAYER_ONE_DETAILS,  "IDS_PLAYER_ONE",  "blankbox",   35,  40, 210, 200, 0, 0, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_MULTI_PLAYER_TWO_DETAILS,  "IDS_PLAYER_TWO",  "blankbox",  251,  40, 210, 200, 0, 0, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_MULTI_PLAYER_ONE_COMBO,    "IDS_NULL",        "combo",      42,  80, 196,  40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_MULTI_PLAYER_TWO_COMBO,    "IDS_NULL",        "combo",     258,  80, 196,  40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_MULTI_PLAYER_ONE_TEXT,     "IDS_NULL",        "text",       42, 120, 196,  40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_MULTI_PLAYER_TWO_TEXT,     "IDS_NULL",        "text",      258, 120, 196,  40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_MULTI_PLAYER_ONE_DETAILS, "IDS_PLAYER_ONE",          "blankbox",   35,  40, 210, 200, 0, 0, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_MULTI_PLAYER_TWO_DETAILS, "IDS_PLAYER_TWO",          "blankbox",  251,  40, 210, 200, 0, 0, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_MULTI_PLAYER_ONE_COMBO,   "IDS_NULL",                "combo",      42,  80, 196,  40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_MULTI_PLAYER_TWO_COMBO,   "IDS_NULL",                "combo",     258,  80, 196,  40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_MULTI_PLAYER_ONE_TEXT,    "IDS_MULTI_PLAYER_SELECT", "text",       42, 120, 196,  40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_MULTI_PLAYER_TWO_TEXT,    "IDS_MULTI_PLAYER_SELECT", "text",      258, 120, 196,  40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
 };
 
+//==============================================================================
 
 ui_manager::dialog_tem MultiPlayerDialog =
 {
@@ -46,30 +51,28 @@ ui_manager::dialog_tem MultiPlayerDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_multi_player_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "multiplayer menu", &MultiPlayerDialog, &dlg_multi_player_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_multi_player_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_multi_player* pDialog = new dlg_multi_player;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_multi_player
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_multi_player::dlg_multi_player( void )
 {
@@ -77,14 +80,14 @@ dlg_multi_player::dlg_multi_player( void )
     m_PlayerProfileReady[1] = FALSE;
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_multi_player::~dlg_multi_player( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_multi_player::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -103,25 +106,23 @@ xbool dlg_multi_player::Create( s32                        UserID,
     // Do dialog creation
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
-    m_pPlayerOneBox    = (ui_blankbox*)  FindChildByID( IDC_MULTI_PLAYER_ONE_DETAILS );
-    m_pPlayerTwoBox    = (ui_blankbox*)  FindChildByID( IDC_MULTI_PLAYER_TWO_DETAILS );
+    m_pPlayerOneBox    = static_cast<ui_blankbox*>( FindChildByID( IDC_MULTI_PLAYER_ONE_DETAILS ) );
+    m_pPlayerTwoBox    = static_cast<ui_blankbox*>( FindChildByID( IDC_MULTI_PLAYER_TWO_DETAILS ) );
 
-    m_pPlayerOneCombo = (ui_combo*)  FindChildByID( IDC_MULTI_PLAYER_ONE_COMBO );
-    m_pPlayerTwoCombo = (ui_combo*)  FindChildByID( IDC_MULTI_PLAYER_TWO_COMBO );
+    m_pPlayerOneCombo = static_cast<ui_combo*>( FindChildByID( IDC_MULTI_PLAYER_ONE_COMBO ) );
+    m_pPlayerTwoCombo = static_cast<ui_combo*>( FindChildByID( IDC_MULTI_PLAYER_TWO_COMBO ) );
 
-    m_pPlayerOneText = (ui_text*)  FindChildByID( IDC_MULTI_PLAYER_ONE_TEXT );
-    m_pPlayerTwoText = (ui_text*)  FindChildByID( IDC_MULTI_PLAYER_TWO_TEXT );
+    m_pPlayerOneText = static_cast<ui_text*>( FindChildByID( IDC_MULTI_PLAYER_ONE_TEXT ) );
+    m_pPlayerTwoText = static_cast<ui_text*>( FindChildByID( IDC_MULTI_PLAYER_TWO_TEXT ) );
 
     // initialize text
     m_pPlayerOneText->UseSmallText( TRUE );
     m_pPlayerOneText->SetFlag(ui_win::WF_VISIBLE, FALSE); 
     m_pPlayerOneText->SetLabelColor( xcolor(255,252,204,255) );
-    m_pPlayerOneText->SetLabel( g_StringTableMgr("ui", "IDS_MULTI_PLAYER_SELECT") );
 
     m_pPlayerTwoText->UseSmallText( TRUE );
     m_pPlayerTwoText->SetFlag(ui_win::WF_VISIBLE, FALSE); 
     m_pPlayerTwoText->SetLabelColor( xcolor(255,252,204,255) );
-    m_pPlayerTwoText->SetLabel( g_StringTableMgr("ui", "IDS_MULTI_PLAYER_SELECT") );
 
 
     // initialize boxes
@@ -171,10 +172,11 @@ xbool dlg_multi_player::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_multi_player::Destroy( void )
 {
+    // Cancel outstanding save callbacks before destroying the dialog.
     g_SaveDataMgr.CancelCallbacks( this );
     ui_dialog::Destroy();
 
@@ -182,11 +184,11 @@ void dlg_multi_player::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_multi_player::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
@@ -236,19 +238,21 @@ void dlg_multi_player::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_multi_player::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
     if( m_State != DIALOG_STATE_ACTIVE )
+    {
         return;
+    }
     
     if ( g_UiMgr->GetActiveController() == 0 )
     {
         // make sure the player hasn't chosen a profile yet
         if (!m_PlayerProfileReady[0])
         {
-            if ( pWin != (ui_win*)m_pPlayerOneCombo )
+            if ( pWin != m_pPlayerOneCombo )
             {
                 if ((Code == ui_navigation::Left)||(Code == ui_navigation::Right))
                 {
@@ -263,7 +267,7 @@ void dlg_multi_player::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses
         // make sure the player hasn't chosen a profile yet
         if (!m_PlayerProfileReady[1])
         {
-            if ( pWin != (ui_win*)m_pPlayerTwoCombo )
+            if ( pWin != m_pPlayerTwoCombo )
             {
                 if ((Code == ui_navigation::Left)||(Code == ui_navigation::Right))
                 {
@@ -275,7 +279,7 @@ void dlg_multi_player::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_multi_player::OnAccept( ui_win* pWin )
 {
@@ -348,7 +352,7 @@ void dlg_multi_player::OnAccept( ui_win* pWin )
 
                     // open a VK to enter the profile name
                     irect   r = m_pManager->GetUserBounds( m_UserID );
-                    ui_dlg_vkeyboard* pVKeyboard = (ui_dlg_vkeyboard*)m_pManager->OpenDialog( m_UserID, "ui_vkeyboard", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_INPUTMODAL );
+                    ui_dlg_vkeyboard* pVKeyboard = static_cast<ui_dlg_vkeyboard*>( m_pManager->OpenDialog( m_UserID, "ui_vkeyboard", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_INPUTMODAL ) );
                     pVKeyboard->Configure( TRUE );
                     pVKeyboard->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_CREATE" ) );
                     pVKeyboard->ConnectString( &m_ProfileName, SM_PROFILE_NAME_LENGTH );
@@ -429,7 +433,7 @@ void dlg_multi_player::OnAccept( ui_win* pWin )
 
                     // open a VK to enter the profile name
                     irect   r = m_pManager->GetUserBounds( m_UserID );
-                    ui_dlg_vkeyboard* pVKeyboard = (ui_dlg_vkeyboard*)m_pManager->OpenDialog( m_UserID, "ui_vkeyboard", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_INPUTMODAL );
+                    ui_dlg_vkeyboard* pVKeyboard = static_cast<ui_dlg_vkeyboard*>( m_pManager->OpenDialog( m_UserID, "ui_vkeyboard", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_INPUTMODAL ) );
                     pVKeyboard->SetLabel( g_StringTableMgr( "ui", "IDS_PROFILE_CREATE" ) );
                     pVKeyboard->ConnectString( &m_ProfileName, SM_PROFILE_NAME_LENGTH );
                     pVKeyboard->SetReturn( &m_ProfileEntered, &m_ProfileOK );
@@ -450,7 +454,7 @@ void dlg_multi_player::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_multi_player::OnCancel( ui_win* pWin )
 {
@@ -471,7 +475,7 @@ void dlg_multi_player::OnCancel( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_multi_player::OnDelete( ui_win* pWin )
 {
@@ -532,7 +536,7 @@ void dlg_multi_player::OnDelete( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_multi_player::OnAlternate( ui_win* pWin )
 {
@@ -564,14 +568,14 @@ void dlg_multi_player::OnAlternate( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_multi_player::OnPollReturn( void )
 {
     RefreshProfileList();
 }
 
-//=========================================================================
+//==============================================================================
 void dlg_multi_player::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
     (void)pWin;
@@ -615,7 +619,7 @@ void dlg_multi_player::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                 {
                     // open duplicate name error popup
                     irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-                    m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+                    m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
 
                     // set nav text
                     xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_OK" ));
@@ -660,7 +664,9 @@ void dlg_multi_player::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     {
         // don't update if waiting for another operation
         if( m_State != DIALOG_STATE_ACTIVE )
+        {
             return;
+        }
 
         // check for pulled controllers
         if( g_bControllerCheck )
@@ -673,13 +679,18 @@ void dlg_multi_player::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                     // deselect player profile
                     switch(p)
                     {
-                    case 0:
-                        m_PlayerProfileReady[0] = FALSE;
-                        m_pPlayerOneText->SetLabel( g_StringTableMgr("ui", "IDS_MULTI_PLAYER_SELECT") );
+                        case 0:
+                        {
+                            m_PlayerProfileReady[0] = FALSE;
+                            m_pPlayerOneText->SetLabel( g_StringTableMgr("ui", "IDS_MULTI_PLAYER_SELECT") );
+                        }
                         break;
-                    case 1:
-                        m_PlayerProfileReady[1] = FALSE;
-                        m_pPlayerTwoText->SetLabel( g_StringTableMgr("ui", "IDS_MULTI_PLAYER_SELECT") );
+
+                        case 1:
+                        {
+                            m_PlayerProfileReady[1] = FALSE;
+                            m_pPlayerTwoText->SetLabel( g_StringTableMgr("ui", "IDS_MULTI_PLAYER_SELECT") );
+                        }
                         break;
                     }
 
@@ -726,7 +737,7 @@ void dlg_multi_player::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_multi_player::RefreshProfileList()
 {
@@ -908,7 +919,7 @@ void dlg_multi_player::RefreshProfileList()
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_multi_player::OnLoadProfileCB( void )
 {
@@ -960,4 +971,4 @@ void dlg_multi_player::OnLoadProfileCB( void )
     }
 }
 
-//=========================================================================
+//==============================================================================

@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_Players.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 #include "UI/ui_manager.hpp"
@@ -13,12 +17,16 @@
 #include "NetworkMgr/NetworkMgr.hpp"
 #include "NetworkMgr/Match/MatchMgr.hpp"
 
-//=========================================================================
+//==============================================================================
+//  DATA
+//==============================================================================
 
 static ui_manager::control_tem PlayersControls[] =
 {
     { 0, "IDS_ONLINE_PLAYERS", "listbox", 40, 40, 416, 260, 0, 0, 1, 1, ui_win::WF_VISIBLE },
 };
+
+//==============================================================================
 
 static ui_manager::dialog_tem PlayersDialog =
 {
@@ -27,14 +35,16 @@ static ui_manager::dialog_tem PlayersDialog =
     PlayersControls, 0
 };
 
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_players_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "players list", &PlayersDialog, &dlg_players_factory );
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_players_factory( s32                       UserID,
                              ui_manager*               pManager,
@@ -49,7 +59,9 @@ ui_win* dlg_players_factory( s32                       UserID,
     return pDialog;
 }
 
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 xbool dlg_players::Create( s32                       UserID,
                            ui_manager*               pManager,
@@ -62,9 +74,11 @@ xbool dlg_players::Create( s32                       UserID,
     (void)pUserData;
 
     if( !ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags ) )
+    {
         return FALSE;
+    }
 
-    m_pPlayerList = (ui_listbox*)FindChildByID( 0 );
+    m_pPlayerList = static_cast<ui_listbox*>( FindChildByID( 0 ) );
     m_pPlayerList->SetActive( TRUE );
     m_pPlayerList->SetLineHeight( 24 );
     m_pPlayerList->SetBackgroundColor( xcolor( 39, 117, 28, 128 ) );
@@ -92,16 +106,17 @@ xbool dlg_players::Create( s32                       UserID,
     return TRUE;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_players::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
     irect rb;
 
+    // Dim the background behind the dialog.
     if( m_bRenderBlackout )
     {
         rb = g_UiMgr->GetUserBounds( m_UserID );
@@ -154,7 +169,7 @@ void dlg_players::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_players::OnAccept( ui_win* pWin )
 {
@@ -162,38 +177,47 @@ void dlg_players::OnAccept( ui_win* pWin )
 
     s32 Selection = m_pPlayerList->GetSelection();
     if( (m_State != DIALOG_STATE_ACTIVE) || (Selection < 0) )
+    {
         return;
+    }
 
     s32 Slot = m_pPlayerList->GetSelectedItemData();
     const player_score& Player = GameMgr.GetScore().Player[Slot];
     if( !Player.IsConnected || Player.IsBot ||
         (Slot == g_NetworkMgr.GetLocalPlayerSlot( 0 )) ||
         (Player.Identifier != m_Identifiers[Slot]) )
+    {
         return;
+    }
 
     g_MatchMgr.SetIsPlayerMuted( Player.Identifier, !g_MatchMgr.IsPlayerMuted( Player.Identifier ) );
     FillPlayersList();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_players::OnCancel( ui_win* pWin )
 {
     (void)pWin;
 
     if( m_State == DIALOG_STATE_ACTIVE )
+    {
         m_State = DIALOG_STATE_BACK;
+    }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_players::OnUpdate( ui_win* pWin, f32 DeltaTime )
 {
     (void)pWin;
 
     if( m_State != DIALOG_STATE_ACTIVE )
+    {
         return;
+    }
 
+    // Show the controls only after the opening animation finishes.
     if( g_UiMgr->IsScreenScaling() && !UpdateScreenScaling( DeltaTime ) )
     {
         m_pPlayerList->SetFlag( WF_VISIBLE, TRUE );
@@ -204,7 +228,7 @@ void dlg_players::OnUpdate( ui_win* pWin, f32 DeltaTime )
     FillPlayersList();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_players::FillPlayersList( void )
 {
@@ -212,7 +236,9 @@ void dlg_players::FillPlayersList( void )
 
     u64 Selected = 0;
     if( m_pPlayerList->GetSelection() >= 0 )
+    {
         Selected = m_Identifiers[m_pPlayerList->GetSelectedItemData()];
+    }
 
     s32 Count = 0;
     xbool Changed = FALSE;
@@ -220,12 +246,16 @@ void dlg_players::FillPlayersList( void )
     for( s32 Slot = 0; Slot < NET_MAX_PLAYERS; Slot++ )
     {
         if( !Score.Player[Slot].IsConnected )
+        {
             continue;
+        }
 
         if( (Count >= m_pPlayerList->GetItemCount()) ||
-            (m_pPlayerList->GetItemData( Count ) != (uaddr)Slot) ||
+            (m_pPlayerList->GetItemData( Count ) != static_cast<uaddr>( Slot )) ||
             (m_Identifiers[Slot] != Score.Player[Slot].Identifier) )
+        {
             Changed = TRUE;
+        }
 
         Count++;
     }
@@ -233,14 +263,18 @@ void dlg_players::FillPlayersList( void )
     Changed |= Count != m_pPlayerList->GetItemCount();
 
     if( Changed )
+    {
         m_pPlayerList->DeleteAllItems();
+    }
 
     s32 Row = 0;
     for( s32 Slot = 0; Slot < NET_MAX_PLAYERS; Slot++ )
     {
         const player_score& Player = Score.Player[Slot];
         if( !Player.IsConnected )
+        {
             continue;
+        }
 
         m_Identifiers[Slot] = Player.Identifier;
         xwstring Label( Player.Name );
@@ -255,7 +289,9 @@ void dlg_players::FillPlayersList( void )
         {
             m_pPlayerList->AddItem( Label, Slot, 0, Enabled );
             if( Player.Identifier == Selected )
+            {
                 m_pPlayerList->SetSelection( Row );
+            }
         }
         else
         {

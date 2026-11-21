@@ -19,7 +19,7 @@
 #include "dlg_PopUp.hpp"
 
 //==============================================================================
-//  DEFINES
+//  ENUMS
 //==============================================================================
 
 enum server_config_controls
@@ -33,13 +33,21 @@ enum server_config_controls
 };
 
 //==============================================================================
-//  dlg_server_config
+//  REGISTRATION
 //==============================================================================
 
 extern void     dlg_server_config_register  ( ui_manager* pManager );
 extern ui_win*  dlg_server_config_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 class ui_button;
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class dlg_server_config : public ui_dialog
 {

@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  ui_playerlist.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -17,33 +21,21 @@
 #include "NetworkMgr/NetworkMgr.hpp"
 #include "NetworkMgr/Game/GameMgr.hpp"
 
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
-
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 ui_win* ui_playerlist_factory( s32 UserID, ui_manager* pManager, const irect& Position, ui_win* pParent, s32 Flags )
 {
     ui_playerlist* pList = new ui_playerlist;
     pList->Create( UserID, pManager, Position, pParent, Flags );
 
-    return (ui_win*)pList;
+    return pList;
 }
 
-//=========================================================================
-//  ui_listbox
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 ui_playerlist::ui_playerlist( void )
 {
@@ -51,13 +43,13 @@ ui_playerlist::ui_playerlist( void )
     m_MaxPlayerWidth = 250;
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_playerlist::~ui_playerlist( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_playerlist::RenderHeader( irect r )
 {
@@ -103,7 +95,7 @@ void ui_playerlist::RenderHeader( irect r )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_playerlist::RenderString( irect r, u32 Flags, const xcolor& c1, const xcolor& c2, const char* pString )
 {
@@ -112,7 +104,7 @@ void ui_playerlist::RenderString( irect r, u32 Flags, const xcolor& c1, const xc
     m_pManager->RenderText( m_Font, r, Flags, c1, pString );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_playerlist::RenderString( irect r, u32 Flags, const xcolor& c1, const xcolor& c2, const xwchar* pString )
 {
@@ -121,7 +113,7 @@ void ui_playerlist::RenderString( irect r, u32 Flags, const xcolor& c1, const xc
     m_pManager->RenderText( m_Font, r, Flags, c1, pString );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_playerlist::RenderTitle( irect r, u32 Flags, const xwchar* pString )
 {
@@ -130,14 +122,15 @@ void ui_playerlist::RenderTitle( irect r, u32 Flags, const xwchar* pString )
     m_pManager->RenderText( m_Font, r, Flags, m_HeaderColor, pString );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_playerlist::RenderItem( irect r, const item& Item, const xcolor& c1, const xcolor& c2 )
 {
     r.Deflate( 4, 0 );
     r.Translate( 1, -2 );
 
-    const player_score* pScoreData = ( const player_score*)Item.Data[0];
+    // The row stores a pointer to the score record supplied by the dialog.
+    const player_score* pScoreData = reinterpret_cast<const player_score*>( Item.Data[0] );
 
     r.r = r.l + (m_PlayerWidth - 5);
     RenderString( r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, c1, c2, pScoreData->NName );
@@ -185,4 +178,4 @@ void ui_playerlist::RenderItem( irect r, const item& Item, const xcolor& c1, con
     }
 }
 
-//=========================================================================
+//==============================================================================

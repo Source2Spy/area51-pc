@@ -21,7 +21,7 @@
 #include "StateMgr/StateMgr.hpp"
 
 //==============================================================================
-//  DEFINES
+//  ENUMS
 //==============================================================================
 
 enum multi_player_controls
@@ -35,13 +35,21 @@ enum multi_player_controls
 };
 
 //==============================================================================
-//  dlg_multi_player
+//  REGISTRATION
 //==============================================================================
 
 extern void     dlg_multi_player_register  ( ui_manager* pManager );
 extern ui_win*  dlg_multi_player_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 class ui_button;
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class dlg_multi_player : public ui_dialog
 {

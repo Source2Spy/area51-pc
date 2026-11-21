@@ -14,15 +14,21 @@
 #include "UI/ui_dialog.hpp"
 
 //==============================================================================
-//  dlg_load_game
+//  REGISTRATION
 //==============================================================================
 
 extern void     dlg_load_game_register  ( ui_manager* pManager );
 extern ui_win*  dlg_load_game_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
 
+//==============================================================================
+//  CLASSES
+//==============================================================================
+
 class dlg_load_game : public ui_dialog
 {
 public:
+    // The final fade is tracked separately: it can start in either
+    // STATE_SLIDESHOW or STATE_LOADING.
     enum slideshow_state
     {
         STATE_IDLE = 0,
@@ -47,6 +53,7 @@ public:
     virtual void        OnAccept         ( ui_win* pWin );
     virtual void        OnUpdate            ( ui_win* pWin, f32 DeltaTime );
 
+    // Configure the slides and narration before starting playback.
             void        StartLoadingProcess ( void );
             void        SetTextAnimInfo     ( f32               StartTextAnim );
             void        SetNSlides          ( s32               nSlides );

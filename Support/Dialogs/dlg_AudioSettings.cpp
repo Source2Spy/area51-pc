@@ -23,7 +23,7 @@
 #include "dlg_PopUp.hpp"
 
 //==============================================================================
-//  TYPES
+//  ENUMS
 //==============================================================================
 
 enum audio_settings_controls
@@ -84,7 +84,7 @@ ui_win* dlg_audio_settings_factory( s32 UserID, ui_manager* pManager, ui_manager
 {
     dlg_audio_settings* pDialog = new dlg_audio_settings;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
 //==============================================================================
@@ -111,15 +111,15 @@ xbool dlg_audio_settings::Create( s32 UserID, ui_manager* pManager, ui_manager::
 
     xbool const Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
-    m_pVolumeSFX        = (ui_slider*)FindChildByID( IDC_AUDIO_VOLUME_SFX );
-    m_pVolumeMusic      = (ui_slider*)FindChildByID( IDC_AUDIO_VOLUME_MUSIC );
-    m_pVolumeSpeech     = (ui_slider*)FindChildByID( IDC_AUDIO_VOLUME_SPEECH );
-    m_pVolumeVideo      = (ui_slider*)FindChildByID( IDC_AUDIO_VOLUME_VIDEO );
-    m_pButtonApply      = (ui_button*)FindChildByID( IDC_AUDIO_BUTTON_APPLY );
-    m_pVolumeSFXText    = (ui_text*)FindChildByID( IDC_AUDIO_VOLUME_SFX_TEXT );
-    m_pVolumeMusicText  = (ui_text*)FindChildByID( IDC_AUDIO_VOLUME_MUSIC_TEXT );
-    m_pVolumeSpeechText = (ui_text*)FindChildByID( IDC_AUDIO_VOLUME_SPEECH_TEXT );
-    m_pVolumeVideoText  = (ui_text*)FindChildByID( IDC_AUDIO_VOLUME_VIDEO_TEXT );
+    m_pVolumeSFX        = static_cast<ui_slider*>( FindChildByID( IDC_AUDIO_VOLUME_SFX ) );
+    m_pVolumeMusic      = static_cast<ui_slider*>( FindChildByID( IDC_AUDIO_VOLUME_MUSIC ) );
+    m_pVolumeSpeech     = static_cast<ui_slider*>( FindChildByID( IDC_AUDIO_VOLUME_SPEECH ) );
+    m_pVolumeVideo      = static_cast<ui_slider*>( FindChildByID( IDC_AUDIO_VOLUME_VIDEO ) );
+    m_pButtonApply      = static_cast<ui_button*>( FindChildByID( IDC_AUDIO_BUTTON_APPLY ) );
+    m_pVolumeSFXText    = static_cast<ui_text*>( FindChildByID( IDC_AUDIO_VOLUME_SFX_TEXT ) );
+    m_pVolumeMusicText  = static_cast<ui_text*>( FindChildByID( IDC_AUDIO_VOLUME_MUSIC_TEXT ) );
+    m_pVolumeSpeechText = static_cast<ui_text*>( FindChildByID( IDC_AUDIO_VOLUME_SPEECH_TEXT ) );
+    m_pVolumeVideoText  = static_cast<ui_text*>( FindChildByID( IDC_AUDIO_VOLUME_VIDEO_TEXT ) );
 
     m_Settings = g_StateMgr.GetPendingSettings();
     m_OriginalSettings = m_Settings;
@@ -127,7 +127,7 @@ xbool dlg_audio_settings::Create( s32 UserID, ui_manager* pManager, ui_manager::
     s32 const CurrentControl = g_StateMgr.GetCurrentControl();
     if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
     {
-        GotoControl( (ui_control*)m_pVolumeSFX );
+        GotoControl( m_pVolumeSFX );
         m_CurrentControl = IDC_AUDIO_VOLUME_SFX;
     }
     else
@@ -177,6 +177,7 @@ xbool dlg_audio_settings::Create( s32 UserID, ui_manager* pManager, ui_manager::
 
 void dlg_audio_settings::Destroy( void )
 {
+    // Cancel outstanding save callbacks before destroying the dialog.
     g_SaveDataMgr.CancelCallbacks( this );
     ui_dialog::Destroy();
     g_UiMgr->ResetScreenWipe();
@@ -186,25 +187,38 @@ void dlg_audio_settings::Destroy( void )
 
 void dlg_audio_settings::Render( s32 ox, s32 oy )
 {
-    s32 const Offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    s32 const Offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
+    static s32 const Gap = 9;
+    static s32 const Width = 4;
     irect Bounds;
 
+    // Dim the background behind the dialog.
     if( m_bRenderBlackout )
     {
         Bounds = g_UiMgr->GetUserBounds( m_UserID );
-        g_UiMgr->RenderGouraudRect( Bounds, xcolor(0,0,0,180), xcolor(0,0,0,180), xcolor(0,0,0,180), xcolor(0,0,0,180), FALSE );
+        g_UiMgr->RenderGouraudRect( Bounds,
+                                   xcolor( 0, 0, 0, 180 ), xcolor( 0, 0, 0, 180 ),
+                                   xcolor( 0, 0, 0, 180 ), xcolor( 0, 0, 0, 180 ), FALSE );
     }
 
+    // Draw the translucent panel inside the side bars.
     Bounds.Set( m_CurrPos.l + 22, m_CurrPos.t, m_CurrPos.r - 23, m_CurrPos.b );
-    g_UiMgr->RenderGouraudRect( Bounds, xcolor(56,115,58,64), xcolor(56,115,58,64), xcolor(56,115,58,64), xcolor(56,115,58,64), FALSE );
+    g_UiMgr->RenderGouraudRect( Bounds,
+                               xcolor( 56, 115, 58, 64 ), xcolor( 56, 115, 58, 64 ),
+                               xcolor( 56, 115, 58, 64 ), xcolor( 56, 115, 58, 64 ), FALSE );
 
-    for( s32 y = Bounds.t + Offset; y < Bounds.b; y += 9 )
+    for( s32 Y = Bounds.t + Offset; Y < Bounds.b; Y += Gap )
     {
-        irect Bar( Bounds.l, y, Bounds.r, MIN( y + 4, Bounds.b ) );
-        g_UiMgr->RenderGouraudRect( Bar, xcolor(56,115,58,30), xcolor(56,115,58,30), xcolor(56,115,58,30), xcolor(56,115,58,30), FALSE );
+        irect const Bar( Bounds.l, Y, Bounds.r, MIN( Y + Width, Bounds.b ) );
+        g_UiMgr->RenderGouraudRect( Bar,
+                                   xcolor( 56, 115, 58, 30 ), xcolor( 56, 115, 58, 30 ),
+                                   xcolor( 56, 115, 58, 30 ), xcolor( 56, 115, 58, 30 ), FALSE );
     }
 
+    // render the normal dialog stuff
     ui_dialog::Render( ox, oy );
+
+    // render the glow bar
     g_UiMgr->RenderGlowBar();
 }
 
@@ -212,6 +226,7 @@ void dlg_audio_settings::Render( s32 ox, s32 oy )
 
 void dlg_audio_settings::CommitPreview( void )
 {
+    // Preview the volume changes without updating pending settings.
     m_Settings.CommitAudio();
 }
 
@@ -226,19 +241,19 @@ void dlg_audio_settings::OnNotify( ui_notification const& Event )
 
     static s32 SpeechVoiceID = 0;
 
-    if( Event.m_pSender == (ui_win*)m_pVolumeSFX )
+    if( Event.m_pSender == m_pVolumeSFX )
     {
         m_Settings.SetVolume( VOLUME_SFX, m_pVolumeSFX->GetValue() );
         CommitPreview();
         g_AudioMgr.Play( "Fader_SFX" );
     }
-    else if( Event.m_pSender == (ui_win*)m_pVolumeMusic )
+    else if( Event.m_pSender == m_pVolumeMusic )
     {
         m_Settings.SetVolume( VOLUME_MUSIC, m_pVolumeMusic->GetValue() );
         CommitPreview();
         g_AudioMgr.Play( "Music_Slider" );
     }
-    else if( Event.m_pSender == (ui_win*)m_pVolumeSpeech )
+    else if( Event.m_pSender == m_pVolumeSpeech )
     {
         g_AudioMgr.SetVolume( SpeechVoiceID, static_cast<f32>( m_Settings.GetVolume( VOLUME_SPEECH ) ) / 100.0f );
         m_Settings.SetVolume( VOLUME_SPEECH, m_pVolumeSpeech->GetValue() );
@@ -246,7 +261,7 @@ void dlg_audio_settings::OnNotify( ui_notification const& Event )
         g_AudioMgr.Release( SpeechVoiceID, 1.0f );
         SpeechVoiceID = g_AudioMgr.Play( "Voice_Slider" );
     }
-    else if( Event.m_pSender == (ui_win*)m_pVolumeVideo )
+    else if( Event.m_pSender == m_pVolumeVideo )
     {
         m_Settings.SetVideoVolume( m_pVolumeVideo->GetValue() );
         CommitPreview();
@@ -257,7 +272,7 @@ void dlg_audio_settings::OnNotify( ui_notification const& Event )
 
 void dlg_audio_settings::OnAccept( ui_win* pWin )
 {
-    if( (m_State != DIALOG_STATE_ACTIVE) || (pWin != (ui_win*)m_pButtonApply) )
+    if( (m_State != DIALOG_STATE_ACTIVE) || (pWin != m_pButtonApply) )
     {
         return;
     }
@@ -279,17 +294,20 @@ void dlg_audio_settings::OnAccept( ui_win* pWin )
 void dlg_audio_settings::OnCancel( ui_win* pWin )
 {
     (void)pWin;
-    if( m_State == DIALOG_STATE_ACTIVE )
-    {
-        if( !m_Settings.HasChanged() )
-        {
-            g_AudioMgr.Play( "Backup" );
-            m_State = DIALOG_STATE_BACK;
-            return;
-        }
 
-        OpenSavePopup();
+    if( m_State != DIALOG_STATE_ACTIVE )
+    {
+        return;
     }
+
+    if( !m_Settings.HasChanged() )
+    {
+        g_AudioMgr.Play( "Backup" );
+        m_State = DIALOG_STATE_BACK;
+        return;
+    }
+
+    OpenSavePopup();
 }
 
 //==============================================================================
@@ -387,6 +405,7 @@ void dlg_audio_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
     (void)pWin;
     s32 Highlight = -1;
 
+    // Consume the popup result once before resuming the dialog.
     if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
     {
         s32 const Result = m_PopUpResult;
@@ -427,6 +446,7 @@ void dlg_audio_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         g_UiMgr->SetScreenHighlight( m_pButtonApply->GetPosition() );
     }
 
+    // Show the controls only after the opening animation finishes.
     if( g_UiMgr->IsScreenScaling() && (UpdateScreenScaling( DeltaTime ) == FALSE) )
     {
         ui_win* pControls[] =
@@ -441,7 +461,7 @@ void dlg_audio_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         s32 const CurrentControl = g_StateMgr.GetCurrentControl();
         if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
         {
-            GotoControl( (ui_control*)m_pVolumeSFX );
+            GotoControl( m_pVolumeSFX );
             m_CurrentControl = IDC_AUDIO_VOLUME_SFX;
         }
         else

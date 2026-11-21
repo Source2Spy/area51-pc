@@ -78,7 +78,7 @@ ui_win* dlg_profile_controls_factory( s32 UserID, ui_manager* pManager, ui_manag
 {
     dlg_profile_controls* pDialog = new dlg_profile_controls;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
-    return static_cast<ui_win*>( pDialog );
+    return pDialog;
 }
 
 //==============================================================================
@@ -177,6 +177,7 @@ xbool dlg_profile_controls::Create( s32                       UserID,
 
 void dlg_profile_controls::Destroy( void )
 {
+    // Cancel outstanding save callbacks before destroying the dialog.
     g_SaveDataMgr.CancelCallbacks( this );
     ui_dialog::Destroy();
     g_UiMgr->ResetScreenWipe();
@@ -191,6 +192,7 @@ void dlg_profile_controls::Render( s32 ox, s32 oy )
     static s32 const Width = 4;
     irect Bounds;
 
+    // Dim the background behind the dialog.
     if( m_bRenderBlackout )
     {
         Bounds = g_UiMgr->GetUserBounds( m_UserID );
@@ -199,6 +201,7 @@ void dlg_profile_controls::Render( s32 ox, s32 oy )
                                     xcolor( 0, 0, 0, 180 ), xcolor( 0, 0, 0, 180 ), FALSE );
     }
 
+    // Draw the translucent panel inside the side bars.
     Bounds.l = m_CurrPos.l + 22;
     Bounds.t = m_CurrPos.t;
     Bounds.r = m_CurrPos.r - 23;
@@ -215,7 +218,10 @@ void dlg_profile_controls::Render( s32 ox, s32 oy )
                                     xcolor( 56, 115, 58, 30 ), xcolor( 56, 115, 58, 30 ), FALSE );
     }
 
+    // render the normal dialog stuff
     ui_dialog::Render( ox, oy );
+
+    // render the glow bar
     g_UiMgr->RenderGlowBar();
 }
 
@@ -269,20 +275,22 @@ void dlg_profile_controls::OnCancel( ui_win* pWin )
 {
     (void)pWin;
 
-    if( m_State == DIALOG_STATE_ACTIVE )
+    if( m_State != DIALOG_STATE_ACTIVE )
     {
-        player_profile Profile = m_OriginalProfile;
-        ApplyCommonControls( Profile );
-        if( !Profile.HasChanged() )
-        {
-            g_AudioMgr.Play( "Backup" );
-            m_State = DIALOG_STATE_BACK;
-            return;
-        }
-
-        g_StateMgr.GetPendingProfile() = Profile;
-        OpenSavePopup();
+        return;
     }
+
+    player_profile Profile = m_OriginalProfile;
+    ApplyCommonControls( Profile );
+    if( !Profile.HasChanged() )
+    {
+        g_AudioMgr.Play( "Backup" );
+        m_State = DIALOG_STATE_BACK;
+        return;
+    }
+
+    g_StateMgr.GetPendingProfile() = Profile;
+    OpenSavePopup();
 }
 
 //==============================================================================
@@ -390,6 +398,7 @@ void dlg_profile_controls::OnUpdate( ui_win* pWin, f32 DeltaTime )
     (void)pWin;
     s32 Highlight = -1;
 
+    // Consume the popup result once before resuming the dialog.
     if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
     {
         s32 const Result = m_PopUpResult;
@@ -410,6 +419,8 @@ void dlg_profile_controls::OnUpdate( ui_win* pWin, f32 DeltaTime )
     }
 
     g_UiMgr->UpdateGlowBar( DeltaTime );
+
+    // Show the controls only after the opening animation finishes.
     if( g_UiMgr->IsScreenScaling() && (UpdateScreenScaling( DeltaTime ) == FALSE) )
     {
         m_pMouseMenu       ->SetFlag( ui_win::WF_VISIBLE, TRUE );

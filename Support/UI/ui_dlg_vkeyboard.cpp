@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  ui_dlg_vkeyboard.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 #include "../AudioMgr/AudioMgr.hpp"
@@ -15,14 +19,18 @@
 #include "ui_font.hpp"
 #include "ui_frame.hpp"
 
-//=========================================================================
-//  Defines
-//=========================================================================
+//==============================================================================
+//  DEFINES
+//==============================================================================
 
 #define KEYW    14
 #define KEYH    18
 #define NCOLS   17
 #define NROWS   5
+
+//==============================================================================
+//  DATA
+//==============================================================================
 
 static const s32 VKEYBOARD_WIDTH           = 270;
 static const s32 VKEYBOARD_GAMEPAD_HEIGHT  = 188;
@@ -37,17 +45,9 @@ static u8 Keys[17*5] =
     'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '.', '{', '|', '}',
 };
 
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
-
-//=========================================================================
-//  Virtual Keyboard Dialog
-//=========================================================================
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum controls
 {
@@ -56,6 +56,10 @@ enum controls
     IDC_FRAME
 };
 
+//==============================================================================
+//  DATA
+//==============================================================================
+
 ui_manager::control_tem vkeyboardControls[] =
 {
 //  { IDC_CANCEL,   "IDS_CANCEL", "button",     9, 162+22, 100,  24, 0, 8, 9, 1, ui_win::WF_VISIBLE },
@@ -63,6 +67,8 @@ ui_manager::control_tem vkeyboardControls[] =
 
     { IDC_FRAME,    "IDS_NULL",   "frame",      8,  36+22, 254, 122, 0, 0, 0, 0, ui_win::WF_VISIBLE|ui_win::WF_STATIC },
 };
+
+//==============================================================================
 
 ui_manager::dialog_tem vkeyboardDialog =
 {
@@ -73,9 +79,9 @@ ui_manager::dialog_tem vkeyboardDialog =
     0
 };
 
-//=========================================================================
-//  vkey Window
-//=========================================================================
+//==============================================================================
+//  VKEY WINDOW
+//==============================================================================
 
 class ui_vkey : public ui_control
 {
@@ -85,7 +91,7 @@ public:
     virtual void    OnPointerDown       ( ui_win* pWin, s32 x, s32 y );
 };
 
-//=========================================================================
+//==============================================================================
 
 void ui_vkey::Render( s32 ox, s32 oy )
 {
@@ -104,19 +110,31 @@ void ui_vkey::Render( s32 ox, s32 oy )
         Label = m_Label;
         xwchar Char = Label[0];
 
+        // Special keys store action codes instead of their displayed labels.
         switch( Char )
         {
-        case '\010':
-            Label = g_StringTableMgr( "ui", "IDS_DELETE" );
+            case '\010':
+            {
+                Label = g_StringTableMgr( "ui", "IDS_DELETE" );
+            }
             break;
-        case '\020':
-            Label = g_StringTableMgr( "ui", "IDS_SPACE" );
+
+            case '\020':
+            {
+                Label = g_StringTableMgr( "ui", "IDS_SPACE" );
+            }
             break;
-        case '\030':
-            Label = g_StringTableMgr( "ui", "IDS_CANCEL" );
+
+            case '\030':
+            {
+                Label = g_StringTableMgr( "ui", "IDS_CANCEL" );
+            }
             break;
-        case '\040':
-            Label = g_StringTableMgr( "ui", "IDS_OK" );
+
+            case '\040':
+            {
+                Label = g_StringTableMgr( "ui", "IDS_OK" );
+            }
             break;
         }
 
@@ -152,7 +170,7 @@ void ui_vkey::Render( s32 ox, s32 oy )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_vkey::OnAccept( ui_win* pWin )
 {
@@ -167,7 +185,7 @@ void ui_vkey::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_vkey::OnPointerDown( ui_win* pWin, s32 x, s32 y )
 {
@@ -182,11 +200,9 @@ void ui_vkey::OnPointerDown( ui_win* pWin, s32 x, s32 y )
     }
 }
 
-//=========================================================================
-
-//=========================================================================
-//  vkString Window
-//=========================================================================
+//==============================================================================
+//  VKSTRING WINDOW
+//==============================================================================
 
 class ui_vkString : public ui_control
 {
@@ -207,7 +223,7 @@ protected:
     s32             m_Cursor;
 };
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_vkString::Create( s32 UserID, ui_manager* pManager, const irect& Position, ui_win* pParent, s32 Flags )
 {
@@ -224,7 +240,7 @@ xbool ui_vkString::Create( s32 UserID, ui_manager* pManager, const irect& Positi
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 static const f32 s_CursorBlinkPeriod = 0.5f;
 static       f32 s_CursorBlinkTime   = 0.0f;
@@ -298,18 +314,20 @@ void ui_vkString::Render( s32 ox, s32 oy )
         rb.Deflate( 0, 2 );
 
         if( s_CursorBlinkTime < (s_CursorBlinkPeriod * 0.5f) )
+        {
             m_pManager->RenderRect( rb, TextColor1, TRUE );
+        }
 
         // Clear the clip window
         m_pManager->PopClipWindow();
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_vkString::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
-    ui_dlg_vkeyboard* pKeyboard = (ui_dlg_vkeyboard*)m_pParent;
+    ui_dlg_vkeyboard* pKeyboard = static_cast<ui_dlg_vkeyboard*>( m_pParent );
     ASSERT( pKeyboard );
 
     if( (m_pManager->GetInputDevice( m_UserID ) == ui_input_device::Gamepad) &&
@@ -322,77 +340,96 @@ void ui_vkString::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32
     // Which way are we moving
     switch( Code )
     {
-    case ui_navigation::Left:
-        if( m_Cursor > 0 )
+        case ui_navigation::Left:
         {
-            m_Cursor--;
-            s_CursorBlinkTime = 0.0f;
-            g_AudioMgr.Play( "Cursor_VKB" );
+            if( m_Cursor > 0 )
+            {
+                m_Cursor--;
+                s_CursorBlinkTime = 0.0f;
+                g_AudioMgr.Play( "Cursor_VKB" );
+            }
+            else
+            {
+                g_AudioMgr.Play( "InvalidEntry" );
+            }
         }
-        else
+        break;
+
+        case ui_navigation::Right:
         {
+            if( m_Cursor < m_Label.GetLength() )
+            {
+                m_Cursor++;
+                s_CursorBlinkTime = 0.0f;
+                g_AudioMgr.Play( "Cursor_VKB" );
+            }
+            else
+            {
+                g_AudioMgr.Play( "InvalidEntry" );
+            }
+        }
+        break;
+
+        case ui_navigation::Up:
+        {
+            ui_control::OnNavigate( pWin, Code, Presses, Repeats, WrapX, WrapY );
             g_AudioMgr.Play( "InvalidEntry" );
         }
         break;
-    case ui_navigation::Right:
-        if( m_Cursor < m_Label.GetLength() )
+
+        default:
         {
-            m_Cursor++;
-            s_CursorBlinkTime = 0.0f;
-            g_AudioMgr.Play( "Cursor_VKB" );
+            ui_control::OnNavigate( pWin, Code, Presses, Repeats, WrapX, WrapY );
         }
-        else
-        {
-            g_AudioMgr.Play( "InvalidEntry" );
-        }
-        break;
-    case ui_navigation::Up:
-        ui_control::OnNavigate( pWin, Code, Presses, Repeats, WrapX, WrapY );
-        g_AudioMgr.Play( "InvalidEntry" );
-        break;
-    default:
-        ui_control::OnNavigate( pWin, Code, Presses, Repeats, WrapX, WrapY );
         break;
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_vkString::OnPage( ui_win* pWin, s32 Direction )
 {
     // Which way are we moving
     switch( Direction )
     {
-    case -1:
-        if( m_Cursor > 0 )
+        case -1:
         {
-            m_Cursor--;
-            s_CursorBlinkTime = 0.0f;
-            g_AudioMgr.Play( "Cursor_VKB" );
-        }
-        else
-        {
-            g_AudioMgr.Play( "InvalidEntry" );
-        }
-        break;
-    case 1:
-        if( m_Cursor < m_Label.GetLength() )
-        {
-            m_Cursor++;
-            s_CursorBlinkTime = 0.0f;
-            g_AudioMgr.Play( "Cursor_VKB" );
-        }
-        else
-        {
-            g_AudioMgr.Play( "InvalidEntry" );
+            if( m_Cursor > 0 )
+            {
+                m_Cursor--;
+                s_CursorBlinkTime = 0.0f;
+                g_AudioMgr.Play( "Cursor_VKB" );
+            }
+            else
+            {
+                g_AudioMgr.Play( "InvalidEntry" );
+            }
         }
         break;
-    default:
-        ui_control::OnPage( pWin, Direction );
+
+        case 1:
+        {
+            if( m_Cursor < m_Label.GetLength() )
+            {
+                m_Cursor++;
+                s_CursorBlinkTime = 0.0f;
+                g_AudioMgr.Play( "Cursor_VKB" );
+            }
+            else
+            {
+                g_AudioMgr.Play( "InvalidEntry" );
+            }
+        }
+        break;
+
+        default:
+        {
+            ui_control::OnPage( pWin, Direction );
+        }
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_vkString::OnDelete( ui_win* pWin )
 {
@@ -409,7 +446,7 @@ void ui_vkString::OnDelete( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_vkString::Backspace( void )
 {
@@ -423,6 +460,8 @@ void ui_vkString::Backspace( void )
     s_CursorBlinkTime = 0.0f;
 }
 
+//==============================================================================
+
 void ui_vkString::Character( const xwstring& String )
 {
     xwstring NewString;
@@ -434,35 +473,43 @@ void ui_vkString::Character( const xwstring& String )
     s_CursorBlinkTime = 0.0f;
 }
 
+//==============================================================================
+
 s32 ui_vkString::GetCursorPos( void )
 {
     return m_Cursor;
 }
 
+//==============================================================================
+
 void ui_vkString::SetCursorPos( s32 Pos )
 {
     if( Pos < 0 )
+    {
         Pos = 0;
+    }
     if( Pos > m_Label.GetLength() )
+    {
         Pos = m_Label.GetLength();
+    }
     m_Cursor = Pos;
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 ui_win* ui_dlg_vkeyboard_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     ui_dlg_vkeyboard* pDialog = new ui_dlg_vkeyboard;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  ui_dlg_vkeyboard
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 ui_dlg_vkeyboard::ui_dlg_vkeyboard( void )
 {
@@ -478,13 +525,13 @@ ui_dlg_vkeyboard::ui_dlg_vkeyboard( void )
     m_KeyRepeatTimer = 0.0f;
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_dlg_vkeyboard::~ui_dlg_vkeyboard( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_dlg_vkeyboard::Create( s32                        UserID,
                                 ui_manager*                pManager,
@@ -524,8 +571,8 @@ xbool ui_dlg_vkeyboard::Create( s32                        UserID,
     // Do dialog creation
     Success = ui_dialog::Create( UserID, pManager, &vkeyboardDialog, r, pParent, Flags );
     // Setup Frame
-    ((ui_frame*)m_Children[0])->SetBackgroundColor( xcolor (39,117,28,128) ); //xcolor(25,79,103,255) );
-    ((ui_frame*)m_Children[0])->ChangeElement("frame2");
+    (static_cast<ui_frame*>( m_Children[0] ))->SetBackgroundColor( xcolor (39,117,28,128) ); //xcolor(25,79,103,255) );
+    (static_cast<ui_frame*>( m_Children[0] ))->ChangeElement("frame2");
 
     // Add custom controls to Dialog
     {
@@ -542,7 +589,9 @@ xbool ui_dlg_vkeyboard::Create( s32                        UserID,
                 ASSERT( pVKey );
                 pVKey->Create( m_UserID, m_pManager, Pos, this, ui_win::WF_VISIBLE );
                 if( m_pGamepadDefault == NULL )
+                {
                     m_pGamepadDefault = pVKey;
+                }
 
                 // Configure the control
                 pVKey->SetLabel( xwstring(xfs("%c",Keys[i])) );
@@ -561,20 +610,28 @@ xbool ui_dlg_vkeyboard::Create( s32                        UserID,
     // Make sure the total width remains at 232 (58*4)
     switch( x_GetLocale() )
     {
-    case XL_LANG_FRENCH:
-        ui_button_width[0] = 72;
-        ui_button_width[1] = 56;
-        ui_button_width[3] = 46;
+        case XL_LANG_FRENCH:
+        {
+            ui_button_width[0] = 72;
+            ui_button_width[1] = 56;
+            ui_button_width[3] = 46;
+        }
         break;
-    case XL_LANG_SPANISH:
-        ui_button_width[2] = 66;
-        ui_button_width[3] = 50;
+
+        case XL_LANG_SPANISH:
+        {
+            ui_button_width[2] = 66;
+            ui_button_width[3] = 50;
+        }
         break;
-    case XL_LANG_GERMAN:
-        ui_button_width[0] = 58;
-        ui_button_width[1] = 70;
-        ui_button_width[2] = 74;
-        ui_button_width[3] = 30;
+
+        case XL_LANG_GERMAN:
+        {
+            ui_button_width[0] = 58;
+            ui_button_width[1] = 70;
+            ui_button_width[2] = 74;
+            ui_button_width[3] = 30;
+        }
         break;
     }
         
@@ -667,7 +724,7 @@ xbool ui_dlg_vkeyboard::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_dlg_vkeyboard::ApplyInputLayout( ui_input_device Device )
 {
@@ -676,7 +733,9 @@ void ui_dlg_vkeyboard::ApplyInputLayout( ui_input_device Device )
                                        : ui_input_device::Keyboard;
 
     if( LayoutDevice == m_LayoutDevice )
+    {
         return;
+    }
 
     m_LayoutDevice = LayoutDevice;
 
@@ -696,12 +755,16 @@ void ui_dlg_vkeyboard::ApplyInputLayout( ui_input_device Device )
     }
 
     if( ShowGamepad )
+    {
         GotoControl( m_pGamepadDefault );
+    }
     else
+    {
         GotoControl( m_pStringCtrl );
+    }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_dlg_vkeyboard::Render( s32 ox, s32 oy )
 {
@@ -745,10 +808,9 @@ void ui_dlg_vkeyboard::Render( s32 ox, s32 oy )
     }
 }
 
-//=========================================================================
-//-------------------------------------------------------------------------
-// Physical keyboard key map
-//-------------------------------------------------------------------------
+//==============================================================================
+//  PHYSICAL KEYBOARD KEY MAP
+//==============================================================================
 
 struct pc_key_entry
 {
@@ -757,7 +819,7 @@ struct pc_key_entry
     char            Shifted;
 };
 
-//-------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 static const pc_key_entry s_PCKeyMap[] =
 {
@@ -790,11 +852,11 @@ static const pc_key_entry s_PCKeyMap[] =
     { INPUT_KBD_BACKSLASH,  '\\', '|'  },
 };
 
-//-------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 static const s32 s_PCKeyMapCount = sizeof(s_PCKeyMap) / sizeof(s_PCKeyMap[0]);
 
-//=========================================================================
+//==============================================================================
 
 void ui_dlg_vkeyboard::OnUpdate( ui_win* pWin, f32 DeltaTime )
 {
@@ -804,7 +866,9 @@ void ui_dlg_vkeyboard::OnUpdate( ui_win* pWin, f32 DeltaTime )
     {
         s_CursorBlinkTime += DeltaTime;
         if( s_CursorBlinkTime >= s_CursorBlinkPeriod )
+        {
             s_CursorBlinkTime = x_fmod( s_CursorBlinkTime, s_CursorBlinkPeriod );
+        }
     }
 
     ApplyInputLayout( m_pManager->GetInputDevice( m_UserID ) );
@@ -870,7 +934,9 @@ void ui_dlg_vkeyboard::OnUpdate( ui_win* pWin, f32 DeltaTime )
             {
                 m_pStringCtrl->Character( xwstring( xfs("%c", c) ) );
                 if( m_pString )
+                {
                     *m_pString = m_pStringCtrl->GetLabel();
+                }
                 g_AudioMgr.Play( "Select_VKB" );
             }
             else if( c )
@@ -881,7 +947,7 @@ void ui_dlg_vkeyboard::OnUpdate( ui_win* pWin, f32 DeltaTime )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_dlg_vkeyboard::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
@@ -890,7 +956,9 @@ void ui_dlg_vkeyboard::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses
     if( m_LayoutDevice == ui_input_device::Keyboard )
     {
         if( (Code == ui_navigation::Left) || (Code == ui_navigation::Right) )
+        {
             m_pStringCtrl->OnNavigate( pWin, Code, Presses, Repeats, WrapX, WrapY );
+        }
         return;
     }
 
@@ -900,24 +968,26 @@ void ui_dlg_vkeyboard::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses
     g_AudioMgr.Play( "Cursor_VKB" );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_dlg_vkeyboard::OnPage( ui_win* pWin, s32 Direction )
 {
     m_pStringCtrl->OnPage( pWin, Direction );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_dlg_vkeyboard::OnDelete( ui_win* pWin )
 {
     if( m_pPopUp )
+    {
         return;
+    }
 
     m_pStringCtrl->OnDelete( pWin );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_dlg_vkeyboard::OnAccept( ui_win* pWin )
 {
@@ -928,7 +998,9 @@ void ui_dlg_vkeyboard::OnAccept( ui_win* pWin )
     if( m_pManager->GetInputDevice( m_UserID ) == ui_input_device::Keyboard )
     {
         if( m_pPopUp )
+        {
             return;
+        }
 
         xwstring okLabel( "\040" );
         ui_notification const Event = { ui_notification_type::TextInput, this, 0, &okLabel };
@@ -936,21 +1008,27 @@ void ui_dlg_vkeyboard::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_dlg_vkeyboard::OnCancel( ui_win* pWin )
 {
     (void)pWin;
 
     if( m_pPopUp )
+    {
         return;
+    }
 
     // Undo changes
     if( m_pString )
+    {
         *m_pString = m_BackupString;
+    }
 
     if( m_pResultDone )
+    {
         *m_pResultDone = TRUE;
+    }
 
     // Close dialog
     if ( m_Flags & WF_INPUTMODAL )
@@ -961,7 +1039,7 @@ void ui_dlg_vkeyboard::OnCancel( ui_win* pWin )
     g_AudioMgr.Play( "Backup" );
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_dlg_vkeyboard::IsValid( const xwstring* pString, xbool bIsName )
 {
@@ -981,7 +1059,7 @@ s32 ui_dlg_vkeyboard::IsValid( const xwstring* pString, xbool bIsName )
         xwstring PotentialName = *pString;
         for( s32 i = 0; i < Length; i++ )
         {
-            if( IN_RANGE( (xwchar)'A', PotentialName.GetAt( i ), (xwchar)'Z' ) )
+            if( IN_RANGE( static_cast<xwchar>( 'A' ), PotentialName.GetAt( i ), static_cast<xwchar>( 'Z' ) ) )
             {
                 PotentialName.SetAt( i, PotentialName.GetAt( i ) - ('A' - 'a') );
             }
@@ -998,7 +1076,7 @@ s32 ui_dlg_vkeyboard::IsValid( const xwstring* pString, xbool bIsName )
         {
             const xwstring& Word = g_StringTableMgr( "Obscenities", i );
             if( (Word.GetLength() > 0) &&
-                (x_wstrcmp( (const xwchar*)Word, (const xwchar*)xwstring( "<null>" ) ) != 0) )
+                (x_wstrcmp( static_cast<const xwchar*>( Word ), static_cast<const xwchar*>( xwstring( "<null>" ) ) ) != 0) )
             {
                 Words.Append() = Word;
             }
@@ -1017,17 +1095,17 @@ s32 ui_dlg_vkeyboard::IsValid( const xwstring* pString, xbool bIsName )
             {
                 break;
             }
-            if( IN_RANGE( (xwchar)'a', PotentialName.GetAt( i ), (xwchar)'z' ) )
+            if( IN_RANGE( static_cast<xwchar>( 'a' ), PotentialName.GetAt( i ), static_cast<xwchar>( 'z' ) ) )
             {
                 NameCharacters[ i ] = 2;
             }    
-            else if( IN_RANGE( (xwchar)'0', PotentialName.GetAt( i ), (xwchar)'9' ) )
+            else if( IN_RANGE( static_cast<xwchar>( '0' ), PotentialName.GetAt( i ), static_cast<xwchar>( '9' ) ) )
             {
                 NameCharacters[ i ] = 1;
             }
         }
         
-        const xwchar* pNameStr = (const xwchar*)PotentialName;
+        const xwchar* pNameStr = static_cast<const xwchar*>( PotentialName );
 
         // This probably could be more efficient, but it already runs instantly, 
         // and it's only ever run when the user tries to accept his profile name.
@@ -1037,7 +1115,7 @@ s32 ui_dlg_vkeyboard::IsValid( const xwstring* pString, xbool bIsName )
             xwchar* pObscenePos;
             const xwchar* pLastPos = pNameStr;
 
-            while( (pObscenePos = x_wstrstr( pLastPos, (const xwchar*)Words[ i ]) ) )
+            while( (pObscenePos = x_wstrstr( pLastPos, static_cast<const xwchar*>( Words[ i ] )) ) )
             {
                 // If the word is sufficiently small it has a chance to redeem itself.
                 if( Words[ i ].GetLength() < 4 )
@@ -1112,7 +1190,7 @@ s32 ui_dlg_vkeyboard::IsValid( const xwstring* pString, xbool bIsName )
     return 0;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_dlg_vkeyboard::OnNotify( ui_notification const& Event )
 {
@@ -1120,7 +1198,7 @@ void ui_dlg_vkeyboard::OnNotify( ui_notification const& Event )
 
     switch( Event.m_Type )
     {
-    case ui_notification_type::TextInput:
+        case ui_notification_type::TextInput:
         {
             ASSERT( Event.m_pText );
 
@@ -1154,13 +1232,16 @@ void ui_dlg_vkeyboard::OnNotify( ui_notification const& Event )
             {
                 // cancel
                 if( m_pResultOk )
+                {
                     *m_pResultOk = FALSE;
+                }
                 OnCancel( Event.m_pSender );
                 break;
             }
             else if( Text.GetAt(0) == '\040' )
             {
                 // accept
+                // Validate the text before marking the result as accepted.
                 ASSERT( m_pString );
                 s32 ValidCode = IsValid( m_pString, m_bName );
                 if( ValidCode != 0 )
@@ -1168,11 +1249,11 @@ void ui_dlg_vkeyboard::OnNotify( ui_notification const& Event )
                     g_AudioMgr.Play( "InvalidEntry" );
 
                     irect r = m_pManager->GetUserBounds( m_UserID );
-                    m_pPopUp = (dlg_popup*)m_pManager->OpenDialog( m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+                    m_pPopUp = static_cast<dlg_popup*>( m_pManager->OpenDialog( m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
 
                     // set nav text
                     xwstring navText( g_StringTableMgr( "ui", "IDS_NAV_OK" ) );
-                    const xwchar* pNavtext = (const xwchar*)navText;
+                    const xwchar* pNavtext = static_cast<const xwchar*>( navText );
 
                     if( ValidCode == 1 )
                     {
@@ -1190,12 +1271,19 @@ void ui_dlg_vkeyboard::OnNotify( ui_notification const& Event )
                 else
                 {
                     if( m_pResultOk )
+                    {
                         *m_pResultOk   = TRUE;
+                    }
                     if( m_pResultDone )
+                    {
                         *m_pResultDone = TRUE;
+                    }
 
+                    // Close the dialog only when it was opened as a modal popup.
                     if( m_Flags & WF_INPUTMODAL )
+                    {
                         m_pManager->EndDialog( m_UserID, TRUE );
+                    }
 
                     g_AudioMgr.Play( "Select_Norm" );
                     break;
@@ -1215,19 +1303,24 @@ void ui_dlg_vkeyboard::OnNotify( ui_notification const& Event )
 
             // Update connected string
             if( m_pString )
+            {
                 *m_pString = m_pStringCtrl->GetLabel();
+            }
         }
         break;
-    case ui_notification_type::TextRefresh:
+
+        case ui_notification_type::TextRefresh:
         {
             // Update connected string
             if( m_pString )
+            {
                 *m_pString = m_pStringCtrl->GetLabel();
+            }
         }
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_dlg_vkeyboard::ConnectString( xwstring* pString, s32 BufferSize )
 {
@@ -1241,7 +1334,7 @@ void ui_dlg_vkeyboard::ConnectString( xwstring* pString, s32 BufferSize )
     m_MaxCharacters = BufferSize - 1;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_dlg_vkeyboard::SetReturn( xbool* pDone, xbool* pOk )
 {
@@ -1249,4 +1342,4 @@ void ui_dlg_vkeyboard::SetReturn( xbool* pDone, xbool* pOk )
     m_pResultOk   = pOk;
 }
 
-//=========================================================================
+//==============================================================================

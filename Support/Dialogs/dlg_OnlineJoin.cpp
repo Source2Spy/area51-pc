@@ -4,6 +4,10 @@
 //
 //==============================================================================
 
+//==============================================================================
+//  INCLUDES
+//==============================================================================
+
 #include "Entropy.hpp"
 #include "dlg_OnlineJoin.hpp"
 #include "UI/ui_button.hpp"
@@ -17,10 +21,16 @@
 #include "Configuration/GameConfig.hpp"
 #include "Apps/GameApp/Config.hpp"
 
+//==============================================================================
+//  EXTERNAL DECLARATIONS
+//==============================================================================
+
 #ifndef CONFIG_RETAIL
 extern char g_CmdLineConnectAddress[22];
 #endif
 
+//==============================================================================
+//  ENUMS
 //==============================================================================
 
 enum controls
@@ -40,6 +50,10 @@ enum controls
     IDC_JOIN,
 };
 
+//==============================================================================
+//  DATA
+//==============================================================================
+
 static ui_manager::control_tem OnlineJoinControls[] =
 {
     { IDC_MATCHLIST, "IDS_BROWSER_NO_SERVERS"   , "joinlist",  45,  38, 410, 188, 0, 0, 4, 1, ui_win::WF_VISIBLE },
@@ -57,12 +71,16 @@ static ui_manager::control_tem OnlineJoinControls[] =
     { IDC_JOIN     , "IDS_BROWSER_CONNECT"      , "button"  , 359, 306,  96,  24, 3, 1, 1, 1, ui_win::WF_VISIBLE },
 };
 
+//==============================================================================
+
 static ui_manager::dialog_tem OnlineJoinDialog =
 {
     "IDS_ONLINE_JOIN_TITLE", 4, 2,
     sizeof( OnlineJoinControls ) / sizeof( ui_manager::control_tem ), OnlineJoinControls, 0
 };
 
+//==============================================================================
+//  REGISTRATION
 //==============================================================================
 
 void dlg_online_join_register( ui_manager* pManager )
@@ -93,6 +111,8 @@ ui_win* dlg_online_join_factory( s32                       UserID,
 }
 
 //==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_online_join::dlg_online_join( void )
 {
@@ -121,7 +141,9 @@ xbool dlg_online_join::Create( s32                       UserID,
     (void)pUserData;
 
     if( !ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags ) )
+    {
         return FALSE;
+    }
 
     g_UiMgr->DisableScreenHighlight();
     m_Created        = TRUE;
@@ -135,22 +157,22 @@ xbool dlg_online_join::Create( s32                       UserID,
     m_RefreshTimeout = 0.0f;
     m_Rebuilding     = FALSE;
 
-    m_pFilters       = (ui_button*)FindChildByID( IDC_FILTERS );
-    m_pMatchList     = (ui_joinlist*)FindChildByID( IDC_MATCHLIST );
-    m_pJoin          = (ui_button*)FindChildByID( IDC_JOIN );
-    m_pDetails       = (ui_text*)FindChildByID( IDC_DETAILS );
-    m_pEndpoint      = (ui_text*)FindChildByID( IDC_ENDPOINT );
-    m_pMap           = (ui_text*)FindChildByID( IDC_MAP );
-    m_pMode          = (ui_text*)FindChildByID( IDC_MODE );
-    m_pPlayers       = (ui_text*)FindChildByID( IDC_PLAYERS );
-    m_pPing          = (ui_text*)FindChildByID( IDC_PING );
-    m_pPassword      = (ui_text*)FindChildByID( IDC_PASSWORD );
-    m_pComplete      = (ui_text*)FindChildByID( IDC_COMPLETE );
+    m_pFilters       = static_cast<ui_button*>( FindChildByID( IDC_FILTERS ) );
+    m_pMatchList     = static_cast<ui_joinlist*>( FindChildByID( IDC_MATCHLIST ) );
+    m_pJoin          = static_cast<ui_button*>( FindChildByID( IDC_JOIN ) );
+    m_pDetails       = static_cast<ui_text*>( FindChildByID( IDC_DETAILS ) );
+    m_pEndpoint      = static_cast<ui_text*>( FindChildByID( IDC_ENDPOINT ) );
+    m_pMap           = static_cast<ui_text*>( FindChildByID( IDC_MAP ) );
+    m_pMode          = static_cast<ui_text*>( FindChildByID( IDC_MODE ) );
+    m_pPlayers       = static_cast<ui_text*>( FindChildByID( IDC_PLAYERS ) );
+    m_pPing          = static_cast<ui_text*>( FindChildByID( IDC_PING ) );
+    m_pPassword      = static_cast<ui_text*>( FindChildByID( IDC_PASSWORD ) );
+    m_pComplete      = static_cast<ui_text*>( FindChildByID( IDC_COMPLETE ) );
 
     const s32 Buttons[] = { IDC_ADVANCED, IDC_FILTERS, IDC_REFRESH, IDC_JOIN };
     for( s32 i = 0; i < 4; i++ )
     {
-        ui_button* pButton = (ui_button*)FindChildByID( Buttons[i] );
+        ui_button* pButton = static_cast<ui_button*>( FindChildByID( Buttons[i] ) );
         pButton->UseSmallText( TRUE );
         pButton->SetButtonStyle( ui_button::BUTTON_STYLE_FLAT );
     }
@@ -169,7 +191,7 @@ xbool dlg_online_join::Create( s32                       UserID,
 
     ui_text* Texts[] = { m_pDetails, m_pEndpoint, m_pMap, m_pMode, m_pPlayers,
                         m_pPing, m_pPassword, m_pComplete };
-    for( s32 i = 0; i < (s32)(sizeof( Texts ) / sizeof( Texts[0] )); i++ )
+    for( s32 i = 0; i < static_cast<s32>( sizeof( Texts ) / sizeof( Texts[0] ) ); i++ )
     {
         Texts[i]->UseSmallText( TRUE );
         Texts[i]->UseShadow( TRUE );
@@ -189,7 +211,9 @@ xbool dlg_online_join::Create( s32                       UserID,
                 g_StringTableMgr( "ui", "IDS_NAV_BACK" ) + g_StringTableMgr( "ui", "IDS_NAV_REFRESH" ) );
 
     if( !CONFIG_IS_AUTOCLIENT && x_strcmp( Preferences.Directory, g_MatchMgr.GetDirectoryAddress() ) )
+    {
         g_MatchMgr.ConfigureDirectory( Preferences.Directory );
+    }
 
     Refresh();
     ShowControls( FALSE );
@@ -206,7 +230,9 @@ xbool dlg_online_join::Create( s32                       UserID,
 void dlg_online_join::Destroy( void )
 {
     if( !m_Created )
+    {
         return;
+    }
 
     m_Created    = FALSE;
     SavePreferences();
@@ -223,7 +249,9 @@ void dlg_online_join::Destroy( void )
 void dlg_online_join::SavePreferences( void )
 {
     if( CONFIG_IS_AUTOCLIENT )
+    {
         return;
+    }
 
     multiplayer_preferences& Preferences = g_StateMgr.GetActiveProfile(
         g_StateMgr.GetProfileListIndex(0) ).GetMultiplayerPreferences();
@@ -234,7 +262,9 @@ void dlg_online_join::SavePreferences( void )
     Updated.Descending = m_pMatchList->IsDescending();
 
     if( x_memcmp( &Preferences, &Updated, sizeof(Preferences) ) == 0 )
+    {
         return;
+    }
 
     Preferences = Updated;
     g_StateMgr.SaveMultiplayerPreferences();
@@ -258,12 +288,13 @@ void dlg_online_join::Render( s32 ox, s32 oy )
         r.Translate( ox, oy );
         g_UiMgr->RenderRect( r, xcolor( 56, 115, 58, 64 ), FALSE );
 
-        s32 Offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+        s32 Offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
         for( s32 y = r.t + Offset; y < r.b; y += 9 )
             g_UiMgr->RenderRect( irect( r.l, y, r.r, MIN( y + 4, r.b ) ), xcolor( 56, 115, 58, 30 ), FALSE );
 
         if( !g_UiMgr->IsScreenScaling() )
         {
+            // Keep the custom panels within the part revealed by this dialog's wipe.
             const xbool WipeClipped = g_UiMgr->IsWipeActiveFor( this );
             if( WipeClipped )
             {
@@ -293,11 +324,16 @@ void dlg_online_join::Render( s32 ox, s32 oy )
             }
 
             if( WipeClipped )
+            {
                 g_UiMgr->PopClipWindow();
+            }
         }
     }
 
+    // render the normal dialog stuff
     ui_dialog::Render( ox, oy );
+
+    // render the glow bar
     g_UiMgr->RenderGlowBar();
 }
 
@@ -310,7 +346,7 @@ void dlg_online_join::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses,
     {
         s32 Direction = (Code == ui_navigation::Right) ? 1 : -1;
         s32 Sort = (m_pMatchList->GetSort() + Direction + MATCH_SORT_COUNT) % MATCH_SORT_COUNT;
-        m_pMatchList->SetSort( (match_sort)Sort, FALSE );
+        m_pMatchList->SetSort( static_cast<match_sort>( Sort ), FALSE );
         FillMatchList();
         SavePreferences();
         return;
@@ -324,32 +360,46 @@ void dlg_online_join::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses,
 void dlg_online_join::OnAccept( ui_win* pWin )
 {
     if( (m_State != DIALOG_STATE_ACTIVE) || m_pFiltersDialog || m_pAdvancedDialog )
+    {
         return;
+    }
 
     switch( pWin->GetControlID() )
     {
-    case IDC_MATCHLIST:
-    case IDC_JOIN:
-        JoinSelectedServer();
+        case IDC_MATCHLIST:
+        case IDC_JOIN:
+        {
+            JoinSelectedServer();
+        }
         break;
 
-    case IDC_REFRESH:
-        Refresh();
+        case IDC_REFRESH:
+        {
+            Refresh();
+        }
         break;
 
-    case IDC_FILTERS:
-        m_pFiltersDialog = (dlg_browser_filters*)m_pManager->OpenDialog( m_UserID, "browser filters",
-            irect( 0, 0, 360, 288 ), NULL, WF_VISIBLE | WF_INPUTMODAL | WF_DLG_CENTER );
-        if( m_pFiltersDialog )
-            m_pFiltersDialog->Configure( m_Filter );
+        case IDC_FILTERS:
+        {
+            m_pFiltersDialog = static_cast<dlg_browser_filters*>( m_pManager->OpenDialog( m_UserID, "browser filters",
+                irect( 0, 0, 360, 288 ), NULL, WF_VISIBLE | WF_INPUTMODAL | WF_DLG_CENTER ) );
+            if( m_pFiltersDialog )
+            {
+                m_pFiltersDialog->Configure( m_Filter );
+            }
+        }
         break;
 
-    case IDC_ADVANCED:
-        m_pAdvancedDialog = (dlg_browser_advanced*)m_pManager->OpenDialog( m_UserID, "browser advanced",
-            irect( 0, 0, 360, 288 ), NULL, WF_VISIBLE | WF_INPUTMODAL | WF_DLG_CENTER );
+        case IDC_ADVANCED:
+        {
+            m_pAdvancedDialog = static_cast<dlg_browser_advanced*>( m_pManager->OpenDialog( m_UserID, "browser advanced",
+                irect( 0, 0, 360, 288 ), NULL, WF_VISIBLE | WF_INPUTMODAL | WF_DLG_CENTER ) );
+        }
         break;
 
-    default:
+        default:
+        {
+        }
         break;
     }
 }
@@ -361,7 +411,9 @@ void dlg_online_join::OnCancel( ui_win* pWin )
     (void)pWin;
 
     if( (m_State == DIALOG_STATE_ACTIVE) && !CONFIG_IS_AUTOCLIENT && !m_pFiltersDialog && !m_pAdvancedDialog )
+    {
         m_State = DIALOG_STATE_BACK;
+    }
 }
 
 //==============================================================================
@@ -381,7 +433,9 @@ void dlg_online_join::OnAlternate( ui_win* pWin )
 void dlg_online_join::Refresh( void )
 {
     if( m_RefreshTimeout > 0.0f )
+    {
         return;
+    }
 
     g_MatchMgr.StartAcquisition( ACQUIRE_SERVERS );
     m_RefreshTimeout = 2.0f;
@@ -402,7 +456,9 @@ void dlg_online_join::OnDelete( ui_win* pWin )
 void dlg_online_join::OnNotify( ui_notification const& Event )
 {
     if( m_Rebuilding )
+    {
         return;
+    }
 
     if( (Event.m_pSender == m_pMatchList) && (Event.m_Type == ui_notification_type::ListSortChanged) )
     {
@@ -410,9 +466,13 @@ void dlg_online_join::OnNotify( ui_notification const& Event )
         SavePreferences();
     }
     else if( (Event.m_pSender == m_pMatchList) && (Event.m_Type == ui_notification_type::ListSelectionChanged) )
+    {
         UpdateDetails();
+    }
     else
+    {
         ui_dialog::OnNotify( Event );
+    }
 }
 
 //==============================================================================
@@ -420,9 +480,11 @@ void dlg_online_join::OnNotify( ui_notification const& Event )
 const server_info* dlg_online_join::GetSelectedServer( void ) const
 {
     if( m_pMatchList->GetSelection() < 0 )
+    {
         return NULL;
+    }
 
-    return m_pMatchList->GetServerInfo( (s32)m_pMatchList->GetSelectedItemData() );
+    return m_pMatchList->GetServerInfo( static_cast<s32>( m_pMatchList->GetSelectedItemData() ) );
 }
 
 //==============================================================================
@@ -431,7 +493,9 @@ void dlg_online_join::JoinSelectedServer( void )
 {
     const server_info* pSelected = GetSelectedServer();
     if( !pSelected )
+    {
         return;
+    }
 
     g_MatchMgr.LockLists();
     s32 Index = g_MatchMgr.FindServerInfo( *pSelected );
@@ -462,7 +526,9 @@ void dlg_online_join::FillMatchList( void )
         const server_info* pSelected = GetSelectedServer();
         xbool HadSelection = pSelected != NULL;
         if( HadSelection )
+        {
             Selected = *pSelected;
+        }
 
         s32 Offset = m_pMatchList->GetCursorOffset();
 
@@ -473,7 +539,9 @@ void dlg_online_join::FillMatchList( void )
         {
             const server_info& Info = *g_MatchMgr.GetServerInfo( i );
             if( m_Filter.Matches( Info ) )
+            {
                 Servers.Append( Info );
+            }
         }
         g_MatchMgr.UnlockLists();
 
@@ -499,11 +567,15 @@ void dlg_online_join::FillMatchList( void )
             s32 Item = m_pMatchList->AddItem( Servers[i].Name, i );
             m_pMatchList->SetItemColor( Item, xcolor( 126, 220, 60, 255 ) );
             if( HadSelection && (Servers[i] == Selected) )
+            {
                 Selection = i;
+            }
         }
 
         if( !HadSelection && Servers.GetCount() )
+        {
             Selection = 0;
+        }
 
         m_pMatchList->SetSelectionWithOffset( Selection, Offset );
         m_Rebuilding = FALSE;
@@ -533,7 +605,7 @@ void dlg_online_join::UpdateDetails( void )
     if( !pServer )
     {
         m_pDetails->SetLabel( g_StringTableMgr( "ui", "IDS_BROWSER_SELECT_SERVER" ) );
-        for( s32 i = 0; i < (s32)(sizeof( Values ) / sizeof( Values[0] )); i++ )
+        for( s32 i = 0; i < static_cast<s32>( sizeof( Values ) / sizeof( Values[0] ) ); i++ )
             Values[i]->SetLabel( xwstring( "" ) );
         return;
     }
@@ -545,7 +617,7 @@ void dlg_online_join::UpdateDetails( void )
     m_pPlayers->SetLabel( xwstring( g_StringTableMgr( "ui", "IDS_HEADER_PLAYERS" ) ) +
                          xwstring( xfs( ": %d/%d", pServer->Players, pServer->MaxPlayers ) ) );
     m_pPing->SetLabel( xwstring( g_StringTableMgr( "ui", "IDS_BROWSER_PING" ) ) +
-                      xwstring( (pServer->PingDelay < 0.0f) ? ": --" : xfs( ": %d ms", (s32)pServer->PingDelay ) ) );
+                      xwstring( (pServer->PingDelay < 0.0f) ? ": --" : xfs( ": %d ms", static_cast<s32>( pServer->PingDelay ) ) ) );
     m_pPassword->SetLabel( xwstring( g_StringTableMgr( "ui", "IDS_JOIN_PASSWORD" ) ) + xwstring( " " ) +
                            g_StringTableMgr( "ui", (pServer->Flags & SERVER_HAS_PASSWORD) ? "IDS_YES" : "IDS_NO" ) );
     m_pComplete->SetLabel( xwstring( g_StringTableMgr( "ui", "IDS_BROWSER_COMPLETE" ) ) +
@@ -587,13 +659,18 @@ void dlg_online_join::OnUpdate( ui_win* pWin, f32 DeltaTime )
         }
     }
 
+    // Show the controls only after the opening animation finishes.
     if( g_UiMgr->IsScreenScaling() && !UpdateScreenScaling( DeltaTime ) )
+    {
         ShowControls( TRUE );
+    }
 
     m_RefreshTimeout = MAX( 0.0f, m_RefreshTimeout - DeltaTime );
     FindChildByID( IDC_REFRESH )->SetFlag( WF_DISABLED, m_RefreshTimeout > 0.0f );
 
     g_UiMgr->UpdateGlowBar( DeltaTime );
+
+    // Refresh the displayed servers as the match manager reports changes.
     FillMatchList();
 
     if( CONFIG_IS_AUTOCLIENT && (m_State == DIALOG_STATE_ACTIVE) && !m_pFiltersDialog && !m_pAdvancedDialog )
@@ -602,12 +679,16 @@ void dlg_online_join::OnUpdate( ui_win* pWin, f32 DeltaTime )
         if( g_CmdLineConnectAddress[0] )
         {
             if( g_MatchMgr.PrepareDirectConnection( g_Config.AutoClientAddress ) == MATCH_RESULT_OK )
+            {
                 m_State = DIALOG_STATE_SELECT;
+            }
         }
         else
 #endif
         if( GetSelectedServer() )
+        {
             JoinSelectedServer();
+        }
     }
 
     ui_dialog::OnUpdate( pWin, DeltaTime );

@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_campaign_menu.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -22,9 +26,9 @@
 
 #include "Configuration/GameConfig.hpp"
 
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem CampaignMenuControls[] = 
 {
@@ -48,43 +52,41 @@ ui_manager::dialog_tem CampaignMenuDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_campaign_menu_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "campaign menu", &CampaignMenuDialog, &dlg_campaign_menu_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_campaign_menu_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_campaign_menu* pDialog = new dlg_campaign_menu;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_campaign_menu
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_campaign_menu::dlg_campaign_menu( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_campaign_menu::~dlg_campaign_menu( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_campaign_menu::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -103,14 +105,14 @@ xbool dlg_campaign_menu::Create( s32                        UserID,
     // Do dialog creation
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
-    m_pButtonNewCampaign    = (ui_button*)  FindChildByID( IDC_CAMPAIGN_MENU_NEW_CAMPAIGN  );
-    m_pButtonResumeCampaign = (ui_button*)  FindChildByID( IDC_CAMPAIGN_MENU_RESUME_CAMPAIGN );
-    m_pButtonEditProfile    = (ui_button*)  FindChildByID( IDC_CAMPAIGN_MENU_EDIT_PROFILE  );
-    m_pButtonLore           = (ui_button*)  FindChildByID( IDC_CAMPAIGN_MENU_LORE          );
-    m_pButtonSecrets        = (ui_button*)  FindChildByID( IDC_CAMPAIGN_MENU_SECRETS       );
-    m_pButtonExtras         = (ui_button*)  FindChildByID( IDC_CAMPAIGN_MENU_EXTRAS        );
+    m_pButtonNewCampaign    = static_cast<ui_button*>( FindChildByID( IDC_CAMPAIGN_MENU_NEW_CAMPAIGN  ) );
+    m_pButtonResumeCampaign = static_cast<ui_button*>( FindChildByID( IDC_CAMPAIGN_MENU_RESUME_CAMPAIGN ) );
+    m_pButtonEditProfile    = static_cast<ui_button*>( FindChildByID( IDC_CAMPAIGN_MENU_EDIT_PROFILE  ) );
+    m_pButtonLore           = static_cast<ui_button*>( FindChildByID( IDC_CAMPAIGN_MENU_LORE          ) );
+    m_pButtonSecrets        = static_cast<ui_button*>( FindChildByID( IDC_CAMPAIGN_MENU_SECRETS       ) );
+    m_pButtonExtras         = static_cast<ui_button*>( FindChildByID( IDC_CAMPAIGN_MENU_EXTRAS        ) );
 #ifndef CONFIG_RETAIL
-    m_pButtonLevelSelect    = (ui_button*)  FindChildByID( IDC_CAMPAIGN_MENU_LEVEL_SELECT  );
+    m_pButtonLevelSelect    = static_cast<ui_button*>( FindChildByID( IDC_CAMPAIGN_MENU_LEVEL_SELECT  ) );
 #endif
 
     m_CurrHL            = 0;
@@ -217,12 +219,12 @@ xbool dlg_campaign_menu::Create( s32                        UserID,
     {
         if( DisableCheckpoints )
         {
-            GotoControl( (ui_control*)m_pButtonNewCampaign );
+            GotoControl( m_pButtonNewCampaign );
             m_CurrentControl =  IDC_CAMPAIGN_MENU_NEW_CAMPAIGN;
         }
         else
         {
-            GotoControl( (ui_control*)m_pButtonResumeCampaign );
+            GotoControl( m_pButtonResumeCampaign );
             m_CurrentControl =  IDC_CAMPAIGN_MENU_RESUME_CAMPAIGN;
         }
     }
@@ -260,7 +262,7 @@ xbool dlg_campaign_menu::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_campaign_menu::Destroy( void )
 {
@@ -270,11 +272,11 @@ void dlg_campaign_menu::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_campaign_menu::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
@@ -325,16 +327,18 @@ void dlg_campaign_menu::Render( s32 ox, s32 oy )
 
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_campaign_menu::OnAccept( ui_win* pWin )
 {
     if( g_UiMgr->IsScreenScaling() )
+    {
         return;
+    }
 
     if ( m_State == DIALOG_STATE_ACTIVE )
     {
-        if( pWin == (ui_win*)m_pButtonNewCampaign )
+        if( pWin == m_pButtonNewCampaign )
         {
             g_StateMgr.SetActiveControllerID( g_UiMgr->GetActiveController() );
             g_StateMgr.SetControllerRequested( g_UiMgr->GetActiveController(), TRUE );
@@ -351,7 +355,7 @@ void dlg_campaign_menu::OnAccept( ui_win* pWin )
             {
                 // warn the player that their checkpoint are about to be reset!
                 irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-                m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+                m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
 
                 // set nav text
                 xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_YES" ));
@@ -370,29 +374,29 @@ void dlg_campaign_menu::OnAccept( ui_win* pWin )
                 return;
             }
         }
-        else if( pWin == (ui_win*)m_pButtonResumeCampaign )
+        else if( pWin == m_pButtonResumeCampaign )
         {
             m_CurrentControl = IDC_CAMPAIGN_MENU_RESUME_CAMPAIGN;
         }
-        else if( pWin == (ui_win*)m_pButtonEditProfile )
+        else if( pWin == m_pButtonEditProfile )
         {
             g_StateMgr.InitPendingProfile( 0 );
             m_CurrentControl = IDC_CAMPAIGN_MENU_EDIT_PROFILE;
         }
-        else if( pWin == (ui_win*)m_pButtonLore )
+        else if( pWin == m_pButtonLore )
         {
             m_CurrentControl = IDC_CAMPAIGN_MENU_LORE;
         }
-        else if( pWin == (ui_win*)m_pButtonSecrets )
+        else if( pWin == m_pButtonSecrets )
         {
             m_CurrentControl = IDC_CAMPAIGN_MENU_SECRETS;
         }
-        else if( pWin == (ui_win*)m_pButtonExtras )
+        else if( pWin == m_pButtonExtras )
         {
             m_CurrentControl = IDC_CAMPAIGN_MENU_EXTRAS;
         }
 #ifndef CONFIG_RETAIL
-        else if( pWin == (ui_win*)m_pButtonLevelSelect )
+        else if( pWin == m_pButtonLevelSelect )
         {
             m_CurrentControl = IDC_CAMPAIGN_MENU_LEVEL_SELECT;
         }
@@ -402,14 +406,16 @@ void dlg_campaign_menu::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_campaign_menu::OnCancel( ui_win* pWin )
 {
     (void)pWin;
 
     if( g_UiMgr->IsScreenScaling() )
+    {
         return;
+    }
 
     if( m_State == DIALOG_STATE_ACTIVE )
     {
@@ -418,7 +424,7 @@ void dlg_campaign_menu::OnCancel( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_campaign_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -449,13 +455,13 @@ void dlg_campaign_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             {
                 if( m_pButtonResumeCampaign->GetFlags() & ui_win::WF_DISABLED )
                 {
-                    GotoControl( (ui_control*)m_pButtonNewCampaign );
+                    GotoControl( m_pButtonNewCampaign );
                     g_UiMgr->SetScreenHighlight( m_pButtonNewCampaign->GetPosition() );
                     m_CurrentControl = IDC_CAMPAIGN_MENU_NEW_CAMPAIGN;
                 }
                 else
                 {
-                    GotoControl( (ui_control*)m_pButtonResumeCampaign );
+                    GotoControl( m_pButtonResumeCampaign );
                     g_UiMgr->SetScreenHighlight( m_pButtonResumeCampaign->GetPosition() );
                     m_CurrentControl = IDC_CAMPAIGN_MENU_RESUME_CAMPAIGN;
                 }
@@ -475,7 +481,9 @@ void dlg_campaign_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         switch( m_PopUpResult )
         {
             case DLG_POPUP_IDLE:
-                break;
+            {
+            }
+            break;
 
             case DLG_POPUP_YES:
             {
@@ -493,17 +501,18 @@ void dlg_campaign_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             }
 
             default:
+            {
                 // Abort new campaign
                 m_PopUp = NULL;
-               
+
                 // set controllers back to all
                 if( g_StateMgr.GetActiveControllerID() != -1 )
                 {
                     g_StateMgr.SetControllerRequested( g_StateMgr.GetActiveControllerID(), FALSE );
                     g_StateMgr.SetActiveControllerID( -1 );
                 }
-
-                break;
+            }
+            break;
         }
     }
 
@@ -555,10 +564,12 @@ void dlg_campaign_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     if( highLight != m_CurrHL )
     {
         if( highLight != -1 )
+        {
             g_AudioMgr.Play("Cusor_Norm");
+        }
 
         m_CurrHL = highLight;
     }
 }
 
-//=========================================================================
+//==============================================================================

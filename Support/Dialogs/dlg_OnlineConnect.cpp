@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_OnlineConnect.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 #include "UI/ui_manager.hpp"
@@ -12,12 +16,16 @@
 #include "NetworkMgr/Match/MatchMgr.hpp"
 #include "StringMgr/StringMgr.hpp"
 
-//=========================================================================
+//==============================================================================
+//  DATA
+//==============================================================================
 
 static ui_manager::control_tem OnlineConnectControls[] =
 {
     { 0, "IDS_ONLINE_PLEASE_WAIT", "text", 30, 100, 300, 80, 0, 0, 1, 1, ui_win::WF_VISIBLE | ui_win::WF_STATIC },
 };
+
+//==============================================================================
 
 static ui_manager::dialog_tem OnlineConnectDialog =
 {
@@ -26,14 +34,16 @@ static ui_manager::dialog_tem OnlineConnectDialog =
     OnlineConnectControls, 0
 };
 
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_online_connect_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "connect info", &OnlineConnectDialog, &dlg_online_connect_factory );
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_online_connect_factory( s32                       UserID,
                                     ui_manager*               pManager,
@@ -49,7 +59,9 @@ ui_win* dlg_online_connect_factory( s32                       UserID,
     return pDialog;
 }
 
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 xbool dlg_online_connect::Create( s32                       UserID,
                                   ui_manager*               pManager,
@@ -62,7 +74,9 @@ xbool dlg_online_connect::Create( s32                       UserID,
     (void)pUserData;
 
     if( !ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags ) )
+    {
         return FALSE;
+    }
 
     m_Cancelled = FALSE;
     m_Failed    = FALSE;
@@ -74,19 +88,22 @@ xbool dlg_online_connect::Create( s32                       UserID,
     g_UiMgr->DisableScreenHighlight();
 
     if( !g_NetworkMgr.BeginOnlineStateChange( TRUE ) )
+    {
         Failed();
+    }
 
     return TRUE;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_connect::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
+    // Dim the background behind the dialog.
     irect rb = g_UiMgr->GetUserBounds( m_UserID );
 
     g_UiMgr->RenderGouraudRect( rb, xcolor( 0, 0, 0, 180 ),
@@ -137,21 +154,25 @@ void dlg_online_connect::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_connect::OnCancel( ui_win* pWin )
 {
     (void)pWin;
 
     if( m_State != DIALOG_STATE_ACTIVE )
+    {
         return;
+    }
 
     m_Cancelled = TRUE;
     if( !g_NetworkMgr.IsOnlineStateChanging() )
+    {
         m_State = DIALOG_STATE_BACK;
+    }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_connect::Failed( void )
 {
@@ -159,24 +180,30 @@ void dlg_online_connect::Failed( void )
     FindChildByID( 0 )->SetLabel( g_StringTableMgr( "ui", "IDS_ONLINE_NETWORK_DOWN" ) );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_connect::OnUpdate( ui_win* pWin, f32 DeltaTime )
 {
     (void)pWin;
 
     if( m_State != DIALOG_STATE_ACTIVE )
+    {
         return;
+    }
 
     if( g_UiMgr->IsScreenScaling() )
+    {
         UpdateScreenScaling( DeltaTime );
+    }
 
     g_UiMgr->UpdateGlowBar( DeltaTime );
 
     if( g_NetworkMgr.IsOnlineStateChanging() )
     {
         if( !g_NetworkMgr.IsOnlineStateChangeDone() )
+        {
             return;
+        }
 
         g_NetworkMgr.FinishOnlineStateChange();
     }
@@ -188,7 +215,9 @@ void dlg_online_connect::OnUpdate( ui_win* pWin, f32 DeltaTime )
     }
 
     if( m_Failed )
+    {
         return;
+    }
 
     interface_info Info;
     net_GetInterfaceInfo( -1, Info );
@@ -196,7 +225,9 @@ void dlg_online_connect::OnUpdate( ui_win* pWin, f32 DeltaTime )
     {
         m_Timeout += DeltaTime;
         if( m_Timeout >= 10.0f )
+        {
             Failed();
+        }
         return;
     }
 

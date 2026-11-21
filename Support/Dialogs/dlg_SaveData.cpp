@@ -4,6 +4,10 @@
 //
 //==============================================================================
 
+//==============================================================================
+//  INCLUDES
+//==============================================================================
+
 #include "Entropy.hpp"
 
 #include "dlg_SaveData.hpp"
@@ -13,6 +17,8 @@
 #include "StringMgr/StringMgr.hpp"
 #include "UI/ui_manager.hpp"
 
+//==============================================================================
+//  DATA
 //==============================================================================
 
 static ui_manager::dialog_tem SaveDataDialog =
@@ -24,6 +30,8 @@ static ui_manager::dialog_tem SaveDataDialog =
     0
 };
 
+//==============================================================================
+//  REGISTRATION
 //==============================================================================
 
 void dlg_save_data_register( ui_manager* pManager )
@@ -46,6 +54,8 @@ ui_win* dlg_save_data_factory( s32 UserID,
     return pDialog;
 }
 
+//==============================================================================
+//  IMPLEMENTATION
 //==============================================================================
 
 dlg_save_data::dlg_save_data( void ) :
@@ -88,6 +98,7 @@ xbool dlg_save_data::Create( s32 UserID,
 
 void dlg_save_data::Destroy( void )
 {
+    // Cancel outstanding save callbacks before destroying the dialog.
     g_SaveDataMgr.CancelCallbacks( this );
     ui_dialog::Destroy();
 }
@@ -125,6 +136,7 @@ void dlg_save_data::OnRequestDone( void )
 {
     if( g_SaveDataMgr.GetLastResult().Succeeded() )
     {
+        // Activate pending data only after the save succeeds.
         if( m_Operation == SAVE_DATA_DIALOG_CREATE_PROFILE )
         {
             g_StateMgr.SetProfileNotSaved( g_StateMgr.GetPendingProfileIndex(), FALSE );
@@ -148,13 +160,13 @@ void dlg_save_data::OnRequestDone( void )
 void dlg_save_data::ShowError( void )
 {
     irect Bounds = g_UiMgr->GetUserBounds( m_UserID );
-    m_pPopup = (dlg_popup*)g_UiMgr->OpenDialog(
+    m_pPopup = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(
         m_UserID,
         "popup",
         Bounds,
         NULL,
         ui_win::WF_VISIBLE | ui_win::WF_BORDER |
-        ui_win::WF_DLG_CENTER | ui_win::WF_INPUTMODAL );
+        ui_win::WF_DLG_CENTER | ui_win::WF_INPUTMODAL ) );
 
     xwstring Navigation( g_StringTableMgr( "ui", "IDS_NAV_RETRY" ) );
     Navigation += g_StringTableMgr( "ui", "IDS_NAV_CANCEL" );
@@ -180,6 +192,7 @@ void dlg_save_data::OnUpdate( ui_win* pWin, f32 DeltaTime )
         return;
     }
 
+    // Clear the old popup state before a retry can open another one.
     const s32 Result = m_PopupResult;
     m_pPopup      = NULL;
     m_PopupResult = DLG_POPUP_IDLE;

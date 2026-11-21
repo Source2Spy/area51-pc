@@ -8,9 +8,10 @@
 //
 //==============================================================================
 
-//==========================================================================
-// INCLUDE
-//=========================================================================
+//==============================================================================
+//  INCLUDES
+//==============================================================================
+
 #include "Entropy.hpp"
 
 #include "UI/ui_manager.hpp"
@@ -26,41 +27,67 @@
 
 #include "UI/ui_manager.hpp"
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 extern xstring SelectBestClip( const char* pName );
+
+//==============================================================================
+//  TYPES
+//==============================================================================
 
 typedef struct _Sweep
 {
     f32 StartTime,EndTime,StartValue,EndValue;
 }Sweep;
 
+//==============================================================================
+//  DEFINES
+//==============================================================================
+
 #define SWEEP_FRAME_MAX     30.0f
 #define SWEEP_FRAME_RATE    30.0f
 #define FINAL_PIXEL_COLOR   140.0f
+
+//==============================================================================
+//  DATA
+//==============================================================================
+
 Sweep Sweeps[2] = 
 {
     {5.0f,SWEEP_FRAME_MAX,     255.0f,FINAL_PIXEL_COLOR},
     {0.0f  ,5.0f            ,    0.0f,255.0f}
 };
 
-//=========================================================================
-// DEFINES
-//=========================================================================
+//==============================================================================
+//  DEFINES
+//==============================================================================
+
 #define DEFAULT_LINE_TIME       (8.0f)
 #define FADE_BOUNDS_OFFSETS     (80)
 #define FADE_MIN_START          (0.5f)
 #define FADE_MAX_START          (2.5f)
-//=========================================================================
-// GLOBAL
-//=========================================================================
+
+//==============================================================================
+//  ENUMS
+//==============================================================================
+
 enum controls
 {
     IDC_CREDIT_STRING_1,
 };
 
+//==============================================================================
+//  DATA
+//==============================================================================
+
 ui_manager::control_tem CreditsControls[] =
 {
     { IDC_CREDIT_STRING_1, "IDS_PRESS_START_TEXT", "text",     0, 308, 480,  30, 0, 0, 1, 1, 0 },
 };
+
+//==============================================================================
 
 ui_manager::dialog_tem CreditsDialog =
 {
@@ -71,44 +98,40 @@ ui_manager::dialog_tem CreditsDialog =
         0
 };
 
-//=========================================================================
-// FUNTIONS
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_credits_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "credits screen", &CreditsDialog, &dlg_credits_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_credits_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_credits* pDialog = new dlg_credits;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_credits
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_credits::dlg_credits( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_credits::~dlg_credits( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_credits::Create( s32                        UserID,
                               ui_manager*                pManager,
@@ -155,7 +178,7 @@ xbool dlg_credits::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_credits::Destroy( void )
 {
@@ -168,7 +191,7 @@ void dlg_credits::Destroy( void )
     ui_dialog::Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_credits::Render( s32 ox, s32 oy )
 {
@@ -186,14 +209,14 @@ void dlg_credits::Render( s32 ox, s32 oy )
     ui_dialog::Render( ox, oy );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_credits::OnAccept( ui_win* pWin )
 {
     (void)pWin;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_credits::OnCancel( ui_win* pWin )
 {
@@ -210,7 +233,7 @@ void dlg_credits::OnCancel( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 
 void dlg_credits::OnUpdate ( ui_win* pWin, f32 DeltaTime )
@@ -235,7 +258,9 @@ void dlg_credits::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                 {
                     m_CreditLines[index].m_CustomRenderStruct[i].m_Value -= (FadeOutRate * DeltaTime);
                     if( m_CreditLines[index].m_CustomRenderStruct[i].m_Value < 0.0f )
+                    {
                         m_CreditLines[index].m_CustomRenderStruct[i].m_Value = 0.0f;
+                    }
 
                     TurnPage = FALSE;
                 }
@@ -276,7 +301,7 @@ void dlg_credits::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                 else if( m_CreditLines[index].m_CustomRenderStruct[i].m_State == ui_font::s_render )
                 {
                     m_CreditLines[index].m_SweepTime[i] += DeltaTime * SWEEP_FRAME_RATE;
-                    m_CreditLines[index].m_CustomRenderStruct[i].m_Frame = (s32)m_CreditLines[index].m_SweepTime[i];
+                    m_CreditLines[index].m_CustomRenderStruct[i].m_Frame = static_cast<s32>( m_CreditLines[index].m_SweepTime[i] );
 
                     // Find what alpha we are in.
                     {
@@ -301,7 +326,7 @@ void dlg_credits::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_credits::InitCreditLines( void )
 {
@@ -321,7 +346,7 @@ void dlg_credits::InitCreditLines( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_credits::BuildPage( void )
 {
@@ -431,12 +456,14 @@ xbool dlg_credits::BuildPage( void )
     return( FALSE );
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 dlg_credits::CheckLine( xwstring& String )
 {
     const xwchar* pString = String;
 
+    // Credits interpret these markers as page breaks, title styling or the end
+    // of the roll. Strip the title marker so it isn't rendered as text.
     while( *pString )
     {
         const xwchar* pStart = pString;
@@ -465,7 +492,7 @@ s32 dlg_credits::CheckLine( xwstring& String )
 
             if( x_wstrcmp( Token, xwstring( "TITLE" ) ) == 0 )
             {
-                String.Delete( (s32)(pStart - (const xwchar*)String), (s32)(pString - pStart + 1) );
+                String.Delete( static_cast<s32>( pStart - static_cast<const xwchar*>( String ) ), static_cast<s32>( pString - pStart + 1 ) );
                 return CREDITS_TITLE_CODE;
             }
 

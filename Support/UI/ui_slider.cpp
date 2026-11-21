@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  ui_slider.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 #include "../AudioMgr/AudioMgr.hpp"
@@ -11,45 +15,33 @@
 #include "ui_manager.hpp"
 #include "ui_font.hpp"
 
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
-
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 ui_win* ui_slider_factory( s32 UserID, ui_manager* pManager, const irect& Position, ui_win* pParent, s32 Flags )
 {
     ui_slider* pButton = new ui_slider;
     pButton->Create( UserID, pManager, Position, pParent, Flags );
 
-    return (ui_win*)pButton;
+    return pButton;
 }
 
-//=========================================================================
-//  ui_slider
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 ui_slider::ui_slider( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_slider::~ui_slider( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_slider::Create( s32 UserID, ui_manager* pManager, const irect& Position, ui_win* pParent, s32 Flags )
 {
@@ -78,7 +70,7 @@ xbool ui_slider::Create( s32 UserID, ui_manager* pManager, const irect& Position
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_slider::Render( s32 ox, s32 oy )
 {
@@ -95,7 +87,9 @@ void ui_slider::Render( s32 ox, s32 oy )
         irect r2 = r;
 
         if( m_Max > m_Min )
+        {
             r.l += (r.r-r.l-5) * (m_Value-m_Min) / (m_Max-m_Min);
+        }
         r.r = r.l + 6;
         m_pManager->RenderElement( m_iElementBar,   r2, 0     );
         m_pManager->RenderElement( m_iElementThumb, r , State );
@@ -108,7 +102,7 @@ void ui_slider::Render( s32 ox, s32 oy )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_slider::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
@@ -118,15 +112,21 @@ void ui_slider::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 R
     switch( Code )
     {
         case ui_navigation::Left:
+        {
             Direction = -1;
-            break;
+        }
+        break;
 
         case ui_navigation::Right:
+        {
             Direction = 1;
-            break;
+        }
+        break;
 
         default:
-            break;
+        {
+        }
+        break;
     }
 
     if( Direction == 0 )
@@ -162,16 +162,18 @@ void ui_slider::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 R
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_slider::OnAccept( ui_win* pWin )
 {
     // Pass up to parent
     if( m_pParent )
+    {
         m_pParent->OnAccept( pWin );
+    }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_slider::SetRange( s32 Min, s32 Max )
 {
@@ -181,16 +183,22 @@ void ui_slider::SetRange( s32 Min, s32 Max )
 
     if( m_IsParametric )
     {
-        m_Value = m_Min + (s32)((m_Max-m_Min) * m_ValueParametric + 0.25f);
+        m_Value = m_Min + static_cast<s32>( (m_Max-m_Min) * m_ValueParametric + 0.25f );
     }
     else
     {
-        if( m_Value < m_Min ) m_Value = m_Min;
-        if( m_Value > m_Max ) m_Value = m_Max;
+        if( m_Value < m_Min )
+        {
+            m_Value = m_Min;
+        }
+        if( m_Value > m_Max )
+        {
+            m_Value = m_Max;
+        }
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_slider::GetRange( s32& Min, s32& Max ) const
 {
@@ -198,7 +206,7 @@ void ui_slider::GetRange( s32& Min, s32& Max ) const
     Max = m_Max;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_slider::SetStep( s32 Step, s32 StepScalerMax )
 {
@@ -210,39 +218,49 @@ void ui_slider::SetStep( s32 Step, s32 StepScalerMax )
     m_RepeatCount   = 0;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_slider::GetStep( void ) const
 {
     return m_Step;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_slider::SetValue( s32 Value )
 {
-    if( Value < m_Min ) Value = m_Min;
-    if( Value > m_Max ) Value = m_Max;
+    if( Value < m_Min )
+    {
+        Value = m_Min;
+    }
+    if( Value > m_Max )
+    {
+        Value = m_Max;
+    }
 
     if( Value != m_Value )
     {
         m_Value = Value;
         if( m_Max > m_Min )
-            m_ValueParametric = (f32)(Value - m_Min) / (m_Max-m_Min);
+        {
+            m_ValueParametric = static_cast<f32>( Value - m_Min ) / (m_Max-m_Min);
+        }
         else
+        {
             m_ValueParametric = 0.0f;
+        }
         Notify( ui_notification_type::SliderChanged, static_cast<s32>( m_Value  ) );
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_slider::GetValue( void ) const
 {
     return m_Value;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_slider::OnPointerDown( ui_win* pWin, s32 x, s32 y )
 {
@@ -255,7 +273,7 @@ void ui_slider::OnPointerDown( ui_win* pWin, s32 x, s32 y )
     SetValueFromPointer( x );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_slider::OnPointerMove( ui_win* pWin, s32 x, s32 y )
 {
@@ -269,7 +287,7 @@ void ui_slider::OnPointerMove( ui_win* pWin, s32 x, s32 y )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_slider::OnPointerUp( ui_win* pWin, s32 x, s32 y )
 {
@@ -285,7 +303,7 @@ void ui_slider::OnPointerUp( ui_win* pWin, s32 x, s32 y )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_slider::OnFocusLost ( ui_win* pWin )
 {
@@ -299,7 +317,7 @@ void ui_slider::OnFocusLost ( ui_win* pWin )
     ui_win::OnFocusLost( pWin );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_slider::SetValueFromPointer( s32 x )
 {
@@ -313,11 +331,11 @@ void ui_slider::SetValueFromPointer( s32 x )
     SetValue( Value );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_slider::SetParametric( xbool State )
 {
     m_IsParametric = State;
 }
 
-//=========================================================================
+//==============================================================================

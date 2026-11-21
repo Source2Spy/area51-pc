@@ -1,9 +1,14 @@
-#include "a51_shader_catalog.hpp"
 //==============================================================================
 //
 //  ui_renderer.cpp
 //
 //==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
+
+#include "a51_shader_catalog.hpp"
 
 #include "ui_renderer.hpp"
 
@@ -18,13 +23,17 @@
 
 #include <stddef.h>
 
+//==============================================================================
+//  LAYOUT CHECKS
+//==============================================================================
+
 static_assert( sizeof(ui_vertex)             == 20, "UI vertex layout must match HLSL" );
 static_assert( offsetof(ui_vertex, Position) == 0,  "UI position offset must match PSO" );
 static_assert( offsetof(ui_vertex, Color)    == 8,  "UI color offset must match PSO" );
 static_assert( offsetof(ui_vertex, UV)       == 12, "UI UV offset must match PSO" );
 
 //==============================================================================
-//  GLOBALS
+//  DATA
 //==============================================================================
 
 ui_renderer g_UIRenderer;
@@ -36,10 +45,10 @@ ui_renderer g_UIRenderer;
 static
 u32 ui_PackColor( const xcolor& Color )
 {
-    return ((u32)Color.A << 24) |
-           ((u32)Color.R << 16) |
-           ((u32)Color.G <<  8) |
-           ((u32)Color.B      );
+    return (static_cast<u32>( Color.A ) << 24) |
+           (static_cast<u32>( Color.R ) << 16) |
+           (static_cast<u32>( Color.G ) <<  8) |
+           (static_cast<u32>( Color.B )      );
 }
 
 //==============================================================================
@@ -51,7 +60,9 @@ s32 ui_NextCapacity( s32 Current, s32 Required )
     while( Capacity < Required )
     {
         if( Capacity > (0x7fffffff / 2) )
+        {
             return Required;
+        }
         Capacity *= 2;
     }
     return Capacity;
@@ -64,13 +75,40 @@ rstate_blend_preset ui_GetBlendPreset( ui_blend_mode Blend )
 {
     switch( Blend )
     {
-    case UI_BLEND_OPAQUE:       return RSTATE_BLEND_PRESET_NONE;
-    case UI_BLEND_ALPHA:        return RSTATE_BLEND_PRESET_ALPHA;
-    case UI_BLEND_ADDITIVE:     return RSTATE_BLEND_PRESET_ADD;
-    case UI_BLEND_SUBTRACTIVE:  return RSTATE_BLEND_PRESET_SUB;
-    case UI_BLEND_MULTIPLY:     return RSTATE_BLEND_PRESET_MULTIPLY;
-    case UI_BLEND_INTENSITY:    return RSTATE_BLEND_PRESET_INTENSITY;
-    default:                    return RSTATE_BLEND_PRESET_ALPHA;
+        case UI_BLEND_OPAQUE:
+        {
+            return RSTATE_BLEND_PRESET_NONE;
+        }
+
+        case UI_BLEND_ALPHA:
+        {
+            return RSTATE_BLEND_PRESET_ALPHA;
+        }
+
+        case UI_BLEND_ADDITIVE:
+        {
+            return RSTATE_BLEND_PRESET_ADD;
+        }
+
+        case UI_BLEND_SUBTRACTIVE:
+        {
+            return RSTATE_BLEND_PRESET_SUB;
+        }
+
+        case UI_BLEND_MULTIPLY:
+        {
+            return RSTATE_BLEND_PRESET_MULTIPLY;
+        }
+
+        case UI_BLEND_INTENSITY:
+        {
+            return RSTATE_BLEND_PRESET_INTENSITY;
+        }
+
+        default:
+        {
+            return RSTATE_BLEND_PRESET_ALPHA;
+        }
     }
 }
 
@@ -81,12 +119,35 @@ rstate_sampler_preset ui_GetSamplerPreset( ui_sampler_mode Sampler )
 {
     switch( Sampler )
     {
-    case UI_SAMPLER_LINEAR_CLAMP:       return RSTATE_SAMPLER_PRESET_LINEAR_CLAMP;
-    case UI_SAMPLER_LINEAR_CLAMP_ATLAS: return RSTATE_SAMPLER_PRESET_LINEAR_CLAMP;
-    case UI_SAMPLER_LINEAR_WRAP:        return RSTATE_SAMPLER_PRESET_LINEAR_WRAP;
-    case UI_SAMPLER_POINT_CLAMP:        return RSTATE_SAMPLER_PRESET_POINT_CLAMP;
-    case UI_SAMPLER_POINT_WRAP:         return RSTATE_SAMPLER_PRESET_POINT_WRAP;
-    default:                            return RSTATE_SAMPLER_PRESET_LINEAR_CLAMP;
+        case UI_SAMPLER_LINEAR_CLAMP:
+        {
+            return RSTATE_SAMPLER_PRESET_LINEAR_CLAMP;
+        }
+
+        case UI_SAMPLER_LINEAR_CLAMP_ATLAS:
+        {
+            return RSTATE_SAMPLER_PRESET_LINEAR_CLAMP;
+        }
+
+        case UI_SAMPLER_LINEAR_WRAP:
+        {
+            return RSTATE_SAMPLER_PRESET_LINEAR_WRAP;
+        }
+
+        case UI_SAMPLER_POINT_CLAMP:
+        {
+            return RSTATE_SAMPLER_PRESET_POINT_CLAMP;
+        }
+
+        case UI_SAMPLER_POINT_WRAP:
+        {
+            return RSTATE_SAMPLER_PRESET_POINT_WRAP;
+        }
+
+        default:
+        {
+            return RSTATE_SAMPLER_PRESET_LINEAR_CLAMP;
+        }
     }
 }
 
@@ -100,10 +161,10 @@ ui_viewport::ui_viewport( void ) :
     m_Scale       ( 1.0f ),
     m_UserScale   ( 1.0f ),
     m_HudUserScale( 1.0f ),
-    m_LogicalBounds( (f32)(CONTENT_WIDTH  - CANVAS_WIDTH ) * 0.5f,
-                     (f32)(CONTENT_HEIGHT - CANVAS_HEIGHT) * 0.5f,
-                     (f32)(CONTENT_WIDTH  + CANVAS_WIDTH ) * 0.5f,
-                     (f32)(CONTENT_HEIGHT + CANVAS_HEIGHT) * 0.5f )
+    m_LogicalBounds( static_cast<f32>( CONTENT_WIDTH  - CANVAS_WIDTH  ) * 0.5f,
+                     static_cast<f32>( CONTENT_HEIGHT - CANVAS_HEIGHT ) * 0.5f,
+                     static_cast<f32>( CONTENT_WIDTH  + CANVAS_WIDTH  ) * 0.5f,
+                     static_cast<f32>( CONTENT_HEIGHT + CANVAS_HEIGHT ) * 0.5f )
 {
 }
 
@@ -121,7 +182,9 @@ void ui_viewport::SetOutputSize( s32 Width, s32 Height )
 void ui_viewport::SetUserScale( f32 Scale )
 {
     if( !x_isvalid( Scale ) )
+    {
         Scale = 1.0f;
+    }
 
     m_UserScale = x_clamp( Scale, 0.6f, 1.4f );
     Recalculate();
@@ -132,7 +195,9 @@ void ui_viewport::SetUserScale( f32 Scale )
 void ui_viewport::SetHudUserScale( f32 Scale )
 {
     if( !x_isvalid( Scale ) )
+    {
         Scale = 1.0f;
+    }
 
     m_HudUserScale = x_clamp( Scale, 0.6f, 1.4f );
 }
@@ -141,25 +206,25 @@ void ui_viewport::SetHudUserScale( f32 Scale )
 
 void ui_viewport::Recalculate( void )
 {
-    f32 const ContentCenterX = (f32)CONTENT_WIDTH  * 0.5f;
-    f32 const ContentCenterY = (f32)CONTENT_HEIGHT * 0.5f;
+    f32 const ContentCenterX = static_cast<f32>( CONTENT_WIDTH )  * 0.5f;
+    f32 const ContentCenterY = static_cast<f32>( CONTENT_HEIGHT ) * 0.5f;
 
     if( (m_OutputWidth == 0) || (m_OutputHeight == 0) )
     {
         m_Scale = 1.0f;
-        m_LogicalBounds.Set( ContentCenterX - (f32)CANVAS_WIDTH  * 0.5f,
-                             ContentCenterY - (f32)CANVAS_HEIGHT * 0.5f,
-                             ContentCenterX + (f32)CANVAS_WIDTH  * 0.5f,
-                             ContentCenterY + (f32)CANVAS_HEIGHT * 0.5f );
+        m_LogicalBounds.Set( ContentCenterX - static_cast<f32>( CANVAS_WIDTH )  * 0.5f,
+                             ContentCenterY - static_cast<f32>( CANVAS_HEIGHT ) * 0.5f,
+                             ContentCenterX + static_cast<f32>( CANVAS_WIDTH )  * 0.5f,
+                             ContentCenterY + static_cast<f32>( CANVAS_HEIGHT ) * 0.5f );
         return;
     }
 
-    f32 const ScaleX = (f32)m_OutputWidth  / (f32)CANVAS_WIDTH;
-    f32 const ScaleY = (f32)m_OutputHeight / (f32)CANVAS_HEIGHT;
+    f32 const ScaleX = static_cast<f32>( m_OutputWidth )  / static_cast<f32>( CANVAS_WIDTH );
+    f32 const ScaleY = static_cast<f32>( m_OutputHeight ) / static_cast<f32>( CANVAS_HEIGHT );
     m_Scale = MIN( ScaleX, ScaleY ) * m_UserScale;
 
-    f32 const LogicalWidth  = (f32)m_OutputWidth  / m_Scale;
-    f32 const LogicalHeight = (f32)m_OutputHeight / m_Scale;
+    f32 const LogicalWidth  = static_cast<f32>( m_OutputWidth )  / m_Scale;
+    f32 const LogicalHeight = static_cast<f32>( m_OutputHeight ) / m_Scale;
     f32 const LogicalLeft   = ContentCenterX - LogicalWidth  * 0.5f;
     f32 const LogicalTop    = ContentCenterY - LogicalHeight * 0.5f;
     m_LogicalBounds.Set( LogicalLeft,
@@ -208,9 +273,11 @@ f32 ui_viewport::GetHudUserScale( void ) const
 f32 ui_viewport::GetHudScale( const irect& ScreenViewport ) const
 {
     if( ScreenViewport.GetHeight() <= 0 )
+    {
         return 1.0f;
+    }
 
-    return ((f32)ScreenViewport.GetHeight() / (f32)CONTENT_HEIGHT) * m_HudUserScale;
+    return (static_cast<f32>( ScreenViewport.GetHeight() ) / static_cast<f32>( CONTENT_HEIGHT )) * m_HudUserScale;
 }
 
 //==============================================================================
@@ -224,10 +291,10 @@ rect const& ui_viewport::GetLogicalBounds( void ) const
 
 irect ui_viewport::GetLogicalClipBounds( void ) const
 {
-    return irect( (s32)x_floor( m_LogicalBounds.Min.X ),
-                  (s32)x_floor( m_LogicalBounds.Min.Y ),
-                  (s32)x_ceil ( m_LogicalBounds.Max.X ),
-                  (s32)x_ceil ( m_LogicalBounds.Max.Y ) );
+    return irect( static_cast<s32>( x_floor( m_LogicalBounds.Min.X ) ),
+                  static_cast<s32>( x_floor( m_LogicalBounds.Min.Y ) ),
+                  static_cast<s32>( x_ceil ( m_LogicalBounds.Max.X ) ),
+                  static_cast<s32>( x_ceil ( m_LogicalBounds.Max.Y ) ) );
 }
 
 //==============================================================================
@@ -242,10 +309,10 @@ vector2 ui_viewport::ScreenDeltaToLogical( vector2 const& Delta ) const
 irect ui_viewport::LogicalToScreen( irect const& Rect ) const
 {
     irect ScreenRect;
-    ScreenRect.l = (s32)x_floor( ((f32)Rect.l - m_LogicalBounds.Min.X) * m_Scale );
-    ScreenRect.t = (s32)x_floor( ((f32)Rect.t - m_LogicalBounds.Min.Y) * m_Scale );
-    ScreenRect.r = (s32)x_ceil ( ((f32)Rect.r - m_LogicalBounds.Min.X) * m_Scale );
-    ScreenRect.b = (s32)x_ceil ( ((f32)Rect.b - m_LogicalBounds.Min.Y) * m_Scale );
+    ScreenRect.l = static_cast<s32>( x_floor( (static_cast<f32>( Rect.l ) - m_LogicalBounds.Min.X) * m_Scale ) );
+    ScreenRect.t = static_cast<s32>( x_floor( (static_cast<f32>( Rect.t ) - m_LogicalBounds.Min.Y) * m_Scale ) );
+    ScreenRect.r = static_cast<s32>( x_ceil ( (static_cast<f32>( Rect.r ) - m_LogicalBounds.Min.X) * m_Scale ) );
+    ScreenRect.b = static_cast<s32>( x_ceil ( (static_cast<f32>( Rect.b ) - m_LogicalBounds.Min.Y) * m_Scale ) );
 
     ScreenRect.l = MAX( ScreenRect.l, 0 );
     ScreenRect.t = MAX( ScreenRect.t, 0 );
@@ -259,13 +326,15 @@ irect ui_viewport::LogicalToScreen( irect const& Rect ) const
 rect ui_viewport::GetHudBounds( const irect& ScreenViewport ) const
 {
     if( (ScreenViewport.GetWidth() <= 0) || (ScreenViewport.GetHeight() <= 0) )
-        return rect( 0.0f, 0.0f, (f32)CONTENT_WIDTH, (f32)CONTENT_HEIGHT );
+    {
+        return rect( 0.0f, 0.0f, static_cast<f32>( CONTENT_WIDTH ), static_cast<f32>( CONTENT_HEIGHT ) );
+    }
 
     const f32 Scale  = GetHudScale( ScreenViewport );
-    const f32 Width  = (f32)ScreenViewport.GetWidth()  / Scale;
-    const f32 Height = (f32)ScreenViewport.GetHeight() / Scale;
-    const f32 Left   = ((f32)CONTENT_WIDTH  - Width ) * 0.5f;
-    const f32 Top    = ((f32)CONTENT_HEIGHT - Height) * 0.5f;
+    const f32 Width  = static_cast<f32>( ScreenViewport.GetWidth() )  / Scale;
+    const f32 Height = static_cast<f32>( ScreenViewport.GetHeight() ) / Scale;
+    const f32 Left   = (static_cast<f32>( CONTENT_WIDTH )  - Width ) * 0.5f;
+    const f32 Top    = (static_cast<f32>( CONTENT_HEIGHT ) - Height) * 0.5f;
     return rect( Left, Top, Left + Width, Top + Height );
 }
 
@@ -276,11 +345,13 @@ vector2 ui_viewport::ScreenToHud( const vector2& Position,
 {
     const rect HudBounds = GetHudBounds( ScreenViewport );
     if( ScreenViewport.GetHeight() <= 0 )
+    {
         return Position;
+    }
 
     const f32 Scale = GetHudScale( ScreenViewport );
-    return vector2( HudBounds.Min.X + (Position.X - (f32)ScreenViewport.l) / Scale,
-                    HudBounds.Min.Y + (Position.Y - (f32)ScreenViewport.t) / Scale );
+    return vector2( HudBounds.Min.X + (Position.X - static_cast<f32>( ScreenViewport.l )) / Scale,
+                    HudBounds.Min.Y + (Position.Y - static_cast<f32>( ScreenViewport.t )) / Scale );
 }
 
 //==============================================================================
@@ -290,11 +361,13 @@ vector2 ui_viewport::HudToScreen( const vector2& Position,
 {
     const rect HudBounds = GetHudBounds( ScreenViewport );
     if( ScreenViewport.GetHeight() <= 0 )
+    {
         return Position;
+    }
 
     const f32 Scale = GetHudScale( ScreenViewport );
-    return vector2( (f32)ScreenViewport.l + (Position.X - HudBounds.Min.X) * Scale,
-                    (f32)ScreenViewport.t + (Position.Y - HudBounds.Min.Y) * Scale );
+    return vector2( static_cast<f32>( ScreenViewport.l ) + (Position.X - HudBounds.Min.X) * Scale,
+                    static_cast<f32>( ScreenViewport.t ) + (Position.Y - HudBounds.Min.Y) * Scale );
 }
 
 //==============================================================================
@@ -303,16 +376,18 @@ irect ui_viewport::HudToScreen( const irect& Rect,
                                 const irect& ScreenViewport ) const
 {
     if( ScreenViewport.GetHeight() <= 0 )
+    {
         return Rect;
+    }
 
-    const vector2 TopLeft = HudToScreen( vector2( (f32)Rect.l, (f32)Rect.t ),
+    const vector2 TopLeft = HudToScreen( vector2( static_cast<f32>( Rect.l ), static_cast<f32>( Rect.t ) ),
                                          ScreenViewport );
-    const vector2 BottomRight = HudToScreen( vector2( (f32)Rect.r, (f32)Rect.b ),
+    const vector2 BottomRight = HudToScreen( vector2( static_cast<f32>( Rect.r ), static_cast<f32>( Rect.b ) ),
                                              ScreenViewport );
-    return irect( (s32)x_floor( TopLeft.X ),
-                  (s32)x_floor( TopLeft.Y ),
-                  (s32)x_ceil ( BottomRight.X ),
-                  (s32)x_ceil ( BottomRight.Y ) );
+    return irect( static_cast<s32>( x_floor( TopLeft.X ) ),
+                  static_cast<s32>( x_floor( TopLeft.Y ) ),
+                  static_cast<s32>( x_ceil ( BottomRight.X ) ),
+                  static_cast<s32>( x_ceil ( BottomRight.Y ) ) );
 }
 
 //==============================================================================
@@ -359,7 +434,9 @@ ui_material::ui_material( const texture& InTexture,
 {
     const shader_resource* pResource = InTexture.GetShaderResource();
     if( pResource )
+    {
         Texture = *pResource;
+    }
 }
 
 //==============================================================================
@@ -444,14 +521,14 @@ void ui_draw_list::Clear( void )
 
 //==============================================================================
 
-//==============================================================================
-
 void ui_draw_list::PushClipRect( const irect& Rect )
 {
     ASSERTS( (m_CoordinateStack.GetCount() > 0) && (m_ClipStack.GetCount() > 0),
              "Cannot push a UI clip rect without an active coordinate space" );
     if( (m_CoordinateStack.GetCount() == 0) || (m_ClipStack.GetCount() == 0) )
+    {
         return;
+    }
 
     irect Clipped = Rect;
     if( m_ClipStack.GetCount() > 0 )
@@ -463,8 +540,14 @@ void ui_draw_list::PushClipRect( const irect& Rect )
         Clipped.b = iMin( Clipped.b, Parent.b );
     }
 
-    if( Clipped.r < Clipped.l ) Clipped.r = Clipped.l;
-    if( Clipped.b < Clipped.t ) Clipped.b = Clipped.t;
+    if( Clipped.r < Clipped.l )
+    {
+        Clipped.r = Clipped.l;
+    }
+    if( Clipped.b < Clipped.t )
+    {
+        Clipped.b = Clipped.t;
+    }
     m_ClipStack.Append() = Clipped;
 }
 
@@ -475,13 +558,17 @@ void ui_draw_list::PopClipRect( void )
     ASSERTS( (m_CoordinateStack.GetCount() > 0) && (m_ClipStack.GetCount() > 0),
              "Cannot pop a UI clip rect without an active coordinate space" );
     if( (m_CoordinateStack.GetCount() == 0) || (m_ClipStack.GetCount() == 0) )
+    {
         return;
+    }
 
     const s32 CoordinateClipDepth = GetCoordinateClipDepth();
     ASSERTS( m_ClipStack.GetCount() > CoordinateClipDepth,
              "Cannot pop the root clip rect for the current UI coordinate space" );
     if( m_ClipStack.GetCount() > CoordinateClipDepth )
+    {
         m_ClipStack.Delete( m_ClipStack.GetCount() - 1 );
+    }
 }
 
 //==============================================================================
@@ -505,7 +592,9 @@ void ui_draw_list::PushCoordinateSpace( ui_coordinate_space CoordinateSpace,
         (Bounds.GetWidth() > 0) && (Bounds.GetHeight() > 0);
     ASSERTS( IsValid, "Cannot push an invalid UI coordinate space" );
     if( !IsValid )
+    {
         return;
+    }
 
     m_ClipStack.Append() = Bounds;
     coordinate_state& State = m_CoordinateStack.Append();
@@ -521,7 +610,9 @@ void ui_draw_list::PopCoordinateSpace( void )
     ASSERTS( m_CoordinateStack.GetCount() > 1,
              "Cannot pop the default UI coordinate space" );
     if( m_CoordinateStack.GetCount() <= 1 )
+    {
         return;
+    }
 
     const s32 CoordinateClipDepth = GetCoordinateClipDepth();
     ASSERTS( m_ClipStack.GetCount() == CoordinateClipDepth,
@@ -621,10 +712,14 @@ xbool ui_draw_list::AddTriangles( const ui_material& Material,
                                   s32                IndexCount )
 {
     if( render::GetActiveRenderScopeDesc().Purpose == render::RENDER_VIEW_SCENE_CAPTURE )
+    {
         return TRUE;
+    }
 
     if( !pVertices || !pIndices || (VertexCount <= 0) || (IndexCount <= 0) )
+    {
         return FALSE;
+    }
 
     if( (Material.Blend < 0) || (Material.Blend >= UI_BLEND_COUNT) ||
         (Material.Sampler < 0) || (Material.Sampler >= UI_SAMPLER_COUNT) ||
@@ -636,19 +731,23 @@ xbool ui_draw_list::AddTriangles( const ui_material& Material,
 
     const irect& Clip = GetClipRect();
     if( (Clip.r <= Clip.l) || (Clip.b <= Clip.t) )
+    {
         return TRUE;
+    }
 
     for( s32 i = 0; i < IndexCount; i++ )
     {
-        if( pIndices[i] >= (u32)VertexCount )
+        if( pIndices[i] >= static_cast<u32>( VertexCount ) )
+        {
             return FALSE;
+        }
     }
 
-    const u32 BaseVertex = (u32)m_vertices.GetCount();
-    const u32 StartIndex = (u32)m_indices.GetCount();
+    const u32 BaseVertex = static_cast<u32>( m_vertices.GetCount() );
+    const u32 StartIndex = static_cast<u32>( m_indices.GetCount() );
 
-    if( (BaseVertex > (0xffffffffu - (u32)VertexCount)) ||
-        (StartIndex > (0xffffffffu - (u32)IndexCount)) )
+    if( (BaseVertex > (0xffffffffu - static_cast<u32>( VertexCount ))) ||
+        (StartIndex > (0xffffffffu - static_cast<u32>( IndexCount ))) )
     {
         return FALSE;
     }
@@ -659,7 +758,7 @@ xbool ui_draw_list::AddTriangles( const ui_material& Material,
     for( s32 i = 0; i < IndexCount; i++ )
         m_indices.Append() = BaseVertex + pIndices[i];
 
-    AppendCommand( Material, StartIndex, (u32)IndexCount );
+    AppendCommand( Material, StartIndex, static_cast<u32>( IndexCount ) );
     return TRUE;
 }
 
@@ -674,7 +773,9 @@ xbool ui_draw_list::AddImage( const ui_material& Material,
                               radian             Rotation )
 {
     if( (Size.X == 0.0f) || (Size.Y == 0.0f) )
+    {
         return TRUE;
+    }
 
     vector2 Positions[4] =
     {
@@ -732,10 +833,10 @@ xbool ui_draw_list::AddGradientRect( const irect& Rect,
 {
     const ui_vertex Vertices[4] =
     {
-        ui_vertex( vector2( (f32)Rect.l, (f32)Rect.t ), vector2( 0.0f, 0.0f ), TopLeft     ),
-        ui_vertex( vector2( (f32)Rect.r, (f32)Rect.t ), vector2( 1.0f, 0.0f ), TopRight    ),
-        ui_vertex( vector2( (f32)Rect.r, (f32)Rect.b ), vector2( 1.0f, 1.0f ), BottomRight ),
-        ui_vertex( vector2( (f32)Rect.l, (f32)Rect.b ), vector2( 0.0f, 1.0f ), BottomLeft  )
+        ui_vertex( vector2( static_cast<f32>( Rect.l ), static_cast<f32>( Rect.t ) ), vector2( 0.0f, 0.0f ), TopLeft     ),
+        ui_vertex( vector2( static_cast<f32>( Rect.r ), static_cast<f32>( Rect.t ) ), vector2( 1.0f, 0.0f ), TopRight    ),
+        ui_vertex( vector2( static_cast<f32>( Rect.r ), static_cast<f32>( Rect.b ) ), vector2( 1.0f, 1.0f ), BottomRight ),
+        ui_vertex( vector2( static_cast<f32>( Rect.l ), static_cast<f32>( Rect.b ) ), vector2( 0.0f, 1.0f ), BottomLeft  )
     };
 
     static const u32 Indices[6] = { 0, 1, 2, 2, 3, 0 };
@@ -755,7 +856,9 @@ xbool ui_draw_list::AddRectOutline( const rect& Rect,
                                     ui_blend_mode Blend )
 {
     if( (Rect.GetWidth() <= 0.0f) || (Rect.GetHeight() <= 0.0f) || (Width <= 0.0f) )
+    {
         return TRUE;
+    }
 
     const ui_vertex Vertices[8] =
     {
@@ -795,7 +898,9 @@ xbool ui_draw_list::AddLine( const vector2& Start,
     const vector2 Direction = End - Start;
     const f32 Length = Direction.Length();
     if( (Length <= 0.0001f) || (Width <= 0.0f) )
+    {
         return TRUE;
+    }
 
     const f32 Scale = (Width * 0.5f) / Length;
     const vector2 Normal( -Direction.Y * Scale, Direction.X * Scale );
@@ -822,10 +927,10 @@ xbool ui_draw_list::AddPoint( const vector2& Position,
                               ui_blend_mode Blend )
 {
     const f32 Half = Size * 0.5f;
-    const irect Rect( (s32)(Position.X - Half),
-                      (s32)(Position.Y - Half),
-                      (s32)(Position.X + Half + 1.0f),
-                      (s32)(Position.Y + Half + 1.0f) );
+    const irect Rect( static_cast<s32>( Position.X - Half ),
+                      static_cast<s32>( Position.Y - Half ),
+                      static_cast<s32>( Position.X + Half + 1.0f ),
+                      static_cast<s32>( Position.Y + Half + 1.0f ) );
     return AddRect( Rect, Color, Blend );
 }
 
@@ -866,7 +971,9 @@ ui_renderer::ui_renderer( void ) :
 xbool ui_renderer::Init( void )
 {
     if( m_isInitialized )
+    {
         return TRUE;
+    }
 
     if( !LoadShaders() ||
         !CreateSamplers() ||
@@ -983,14 +1090,14 @@ void ui_renderer::PopScreenSpace( void )
 void ui_renderer::PushHudSpace( const irect& ScreenViewport )
 {
     const rect HudBounds = m_Viewport.GetHudBounds( ScreenViewport );
-    const irect HudClip( (s32)x_floor( HudBounds.Min.X ),
-                         (s32)x_floor( HudBounds.Min.Y ),
-                         (s32)x_ceil ( HudBounds.Max.X ),
-                         (s32)x_ceil ( HudBounds.Max.Y ) );
+    const irect HudClip( static_cast<s32>( x_floor( HudBounds.Min.X ) ),
+                         static_cast<s32>( x_floor( HudBounds.Min.Y ) ),
+                         static_cast<s32>( x_ceil ( HudBounds.Max.X ) ),
+                         static_cast<s32>( x_ceil ( HudBounds.Max.Y ) ) );
 
     #ifndef X_RETAIL
-    const vector2 ScreenCenter( ((f32)ScreenViewport.l + (f32)ScreenViewport.r) * 0.5f,
-                                ((f32)ScreenViewport.t + (f32)ScreenViewport.b) * 0.5f );
+    const vector2 ScreenCenter( (static_cast<f32>( ScreenViewport.l ) + static_cast<f32>( ScreenViewport.r )) * 0.5f,
+                                (static_cast<f32>( ScreenViewport.t ) + static_cast<f32>( ScreenViewport.b )) * 0.5f );
     const vector2 RoundTrip = m_Viewport.HudToScreen(
         m_Viewport.ScreenToHud( ScreenCenter, ScreenViewport ),
         ScreenViewport );
@@ -1049,7 +1156,9 @@ xbool ui_renderer::DrawRect( const irect& Rect,
                              ui_blend_mode Blend )
 {
     if( !Wire )
+    {
         return m_DrawList.AddRect( Rect, Color, Blend );
+    }
 
     return DrawRectOutline( Rect, Color, Color, Color, Color, Blend );
 }
@@ -1061,10 +1170,10 @@ xbool ui_renderer::DrawRect( const rect& Rect,
                              xbool Wire,
                              ui_blend_mode Blend )
 {
-    return DrawRect( irect( (s32)Rect.Min.X,
-                            (s32)Rect.Min.Y,
-                            (s32)Rect.Max.X,
-                            (s32)Rect.Max.Y ),
+    return DrawRect( irect( static_cast<s32>( Rect.Min.X ),
+                            static_cast<s32>( Rect.Min.Y ),
+                            static_cast<s32>( Rect.Max.X ),
+                            static_cast<s32>( Rect.Max.Y ) ),
                      Color,
                      Wire,
                      Blend );
@@ -1081,7 +1190,9 @@ xbool ui_renderer::DrawGradientRect( const irect& Rect,
                                      ui_blend_mode Blend )
 {
     if( !Wire )
+    {
         return m_DrawList.AddGradientRect( Rect, TopLeft, TopRight, BottomRight, BottomLeft, Blend );
+    }
 
     return DrawRectOutline( Rect, TopLeft, TopRight, BottomRight, BottomLeft, Blend );
 }
@@ -1096,7 +1207,9 @@ xbool ui_renderer::DrawRectOutline( const irect& Rect,
                                     ui_blend_mode Blend )
 {
     if( (Rect.GetWidth() <= 0) || (Rect.GetHeight() <= 0) )
+    {
         return TRUE;
+    }
 
     f32 Scale = 1.0f;
     vector2 Origin( 0.0f, 0.0f );
@@ -1109,14 +1222,14 @@ xbool ui_renderer::DrawRectOutline( const irect& Rect,
     {
         const irect& Viewport = m_DrawList.GetCoordinateViewport();
         Scale = m_Viewport.GetHudScale( Viewport );
-        Origin = m_Viewport.GetHudBounds(Viewport).Min - vector2((f32)Viewport.l, (f32)Viewport.t) / Scale;
+        Origin = m_Viewport.GetHudBounds(Viewport).Min - vector2(static_cast<f32>( Viewport.l ), static_cast<f32>( Viewport.t )) / Scale;
     }
 
     rect Aligned;
-    Aligned.Set( Origin.X + x_floor(((f32)Rect.l - Origin.X) * Scale + 0.5f) / Scale,
-                 Origin.Y + x_floor(((f32)Rect.t - Origin.Y) * Scale + 0.5f) / Scale,
-                 Origin.X + x_floor(((f32)Rect.r - Origin.X) * Scale + 0.5f) / Scale,
-                 Origin.Y + x_floor(((f32)Rect.b - Origin.Y) * Scale + 0.5f) / Scale );
+    Aligned.Set( Origin.X + x_floor((static_cast<f32>( Rect.l ) - Origin.X) * Scale + 0.5f) / Scale,
+                 Origin.Y + x_floor((static_cast<f32>( Rect.t ) - Origin.Y) * Scale + 0.5f) / Scale,
+                 Origin.X + x_floor((static_cast<f32>( Rect.r ) - Origin.X) * Scale + 0.5f) / Scale,
+                 Origin.Y + x_floor((static_cast<f32>( Rect.b ) - Origin.Y) * Scale + 0.5f) / Scale );
     const f32 Width = MAX( 1.0f, x_floor(Scale + 0.5f) ) / Scale;
     return m_DrawList.AddRectOutline( Aligned, Width, TopLeft, TopRight, BottomRight, BottomLeft, Blend );
 }
@@ -1147,7 +1260,9 @@ xbool ui_renderer::DrawPoint( const vector2& Position,
 void ui_renderer::BeginFrame( void )
 {
     if( !m_isInitialized )
+    {
         return;
+    }
 
     ASSERTS( !m_bPrepared, "Prepared UI data survived the previous frame" );
     RefreshViewport();
@@ -1164,7 +1279,9 @@ xbool ui_renderer::Prepare( void )
     X_PROFILE_SCOPE_CATEGORY( "UI", "UI/Prepare" );
 
     if( !m_isInitialized )
+    {
         return TRUE;
+    }
 
     if( !g_FontMgr.Prepare() )
     {
@@ -1181,7 +1298,9 @@ xbool ui_renderer::Prepare( void )
     }
 
     if( m_DrawList.GetCommandCount() == 0 )
+    {
         return TRUE;
+    }
 
     const s32 VertexCount = m_DrawList.GetVertexCount();
     const s32 IndexCount  = m_DrawList.GetIndexCount();
@@ -1197,8 +1316,8 @@ xbool ui_renderer::Prepare( void )
         return FALSE;
     }
 
-    const u32 VertexBytes = (u32)VertexCount * (u32)sizeof(ui_vertex);
-    const u32 IndexBytes  = (u32)IndexCount  * (u32)sizeof(u32);
+    const u32 VertexBytes = static_cast<u32>( VertexCount ) * static_cast<u32>( sizeof(ui_vertex) );
+    const u32 IndexBytes  = static_cast<u32>( IndexCount )  * static_cast<u32>( sizeof(u32) );
 
     rbuffer_upload_batch_item Uploads[2];
     Uploads[0].pBuffer       = &m_vertexBuffer;
@@ -1233,7 +1352,9 @@ xbool ui_renderer::HasPendingCommands( void ) const
 xbool ui_renderer::DeclarePass( render::FrameGraphBuilder& Graph, render::RenderFrameContext const& Frame )
 {
     if( !m_isInitialized || !m_bPrepared )
+    {
         return TRUE;
+    }
     render::RenderPassDesc desc;
     desc.pDebugName = "UI";
     desc.Color = Frame.FinalColor;
@@ -1255,7 +1376,7 @@ xbool ui_renderer::ExecuteGraphPassThunk( render::RenderPassContext& Context, ui
     return pRenderer->ExecuteGraphPass( Context );
 }
 
-//=============================================================================
+//==============================================================================
 
 xbool ui_renderer::ExecuteGraphPass( render::RenderPassContext& Context )
 {
@@ -1295,7 +1416,7 @@ xbool ui_renderer::ExecuteGraphPass( render::RenderPassContext& Context )
     {
         const ui_draw_list::command& Command = m_DrawList.m_Commands[i];
         if( (Command.IndexCount == 0) ||
-            (Command.StartIndex + Command.IndexCount > (u32)m_PreparedIndices) )
+            (Command.StartIndex + Command.IndexCount > static_cast<u32>( m_PreparedIndices )) )
         {
             RENDER_THROW( "UIRenderer", "invalid draw command index=%d start=%u count=%u prepared=%d",
                           i, Command.StartIndex, Command.IndexCount, m_PreparedIndices );
@@ -1304,7 +1425,7 @@ xbool ui_renderer::ExecuteGraphPass( render::RenderPassContext& Context )
 
         if( (Command.CoordinateSpace != ActiveCoordinateSpace) ||
             (Command.CoordinateViewport != ActiveCoordinateViewport) ||
-            ((s32)Command.Material.Coverage != ActiveCoverage) )
+            (static_cast<s32>( Command.Material.Coverage ) != ActiveCoverage) )
         {
             UIDrawConstants Constants = {};
             Constants.Coverage = Command.Material.Coverage ? 1 : 0;
@@ -1313,17 +1434,17 @@ xbool ui_renderer::ExecuteGraphPass( render::RenderPassContext& Context )
                 const irect& ScreenViewport = Command.CoordinateViewport;
                 const rect HudBounds = m_Viewport.GetHudBounds( ScreenViewport );
                 const f32 Scale = m_Viewport.GetHudScale( ScreenViewport );
-                Constants.LogicalOrigin[0] = HudBounds.Min.X - (f32)ScreenViewport.l / Scale;
-                Constants.LogicalOrigin[1] = HudBounds.Min.Y - (f32)ScreenViewport.t / Scale;
-                Constants.InverseLogicalSize[0] = Scale / (f32)m_Viewport.GetOutputWidth();
-                Constants.InverseLogicalSize[1] = Scale / (f32)m_Viewport.GetOutputHeight();
+                Constants.LogicalOrigin[0] = HudBounds.Min.X - static_cast<f32>( ScreenViewport.l ) / Scale;
+                Constants.LogicalOrigin[1] = HudBounds.Min.Y - static_cast<f32>( ScreenViewport.t ) / Scale;
+                Constants.InverseLogicalSize[0] = Scale / static_cast<f32>( m_Viewport.GetOutputWidth() );
+                Constants.InverseLogicalSize[1] = Scale / static_cast<f32>( m_Viewport.GetOutputHeight() );
             }
             else if( Command.CoordinateSpace == UI_COORDINATE_SPACE_SCREEN )
             {
                 Constants.LogicalOrigin[0]      = 0.0f;
                 Constants.LogicalOrigin[1]      = 0.0f;
-                Constants.InverseLogicalSize[0] = 1.0f / (f32)m_Viewport.GetOutputWidth();
-                Constants.InverseLogicalSize[1] = 1.0f / (f32)m_Viewport.GetOutputHeight();
+                Constants.InverseLogicalSize[0] = 1.0f / static_cast<f32>( m_Viewport.GetOutputWidth() );
+                Constants.InverseLogicalSize[1] = 1.0f / static_cast<f32>( m_Viewport.GetOutputHeight() );
             }
             else
             {
@@ -1372,7 +1493,9 @@ xbool ui_renderer::ExecuteGraphPass( render::RenderPassContext& Context )
         }
 
         if( (Clip.r <= Clip.l) || (Clip.b <= Clip.t) )
+        {
             continue;
+        }
 
         if( Command.Material.Blend != ActiveBlend )
         {
@@ -1389,7 +1512,9 @@ xbool ui_renderer::ExecuteGraphPass( render::RenderPassContext& Context )
 
         const shader_resource* pTexture = &Command.Material.Texture;
         if( !*pTexture )
+        {
             pTexture = vram_GetShaderResource( m_whiteTexture );
+        }
 
         const rstate_sampler* pSampler = GetSampler( Command.Material.Sampler );
         if( !pTexture || !pSampler )
@@ -1427,14 +1552,14 @@ xbool ui_renderer::ExecuteGraphPass( render::RenderPassContext& Context )
             bHaveScissor = TRUE;
         }
 
-        rdraw_DrawIndexed( (s32)Command.IndexCount, (s32)Command.StartIndex, 0 );
+        rdraw_DrawIndexed( static_cast<s32>( Command.IndexCount ), static_cast<s32>( Command.StartIndex ), 0 );
     }
 
     rdraw_scissor FullScissor;
     FullScissor.X      = 0;
     FullScissor.Y      = 0;
-    FullScissor.Width  = (s32)pBackBuffer->Desc.Width;
-    FullScissor.Height = (s32)pBackBuffer->Desc.Height;
+    FullScissor.Width  = static_cast<s32>( pBackBuffer->Desc.Width );
+    FullScissor.Height = static_cast<s32>( pBackBuffer->Desc.Height );
     if ( !rdraw_SetScissor( FullScissor ) )
     {
         RENDER_THROW( "UIRenderer", "failed to restore full scissor" );
@@ -1453,7 +1578,9 @@ xbool ui_renderer::LoadShaders( void )
     shader_LoadComboStage( m_pixelShader, A51FixedPrograms[A51FixedProgram_ui].PackageFile, SHADER_COMBO_FIXED, A51FixedPrograms[A51FixedProgram_ui].Key, SHADER_STAGE_PIXEL );
 
     if( !m_vertexShader || !m_pixelShader )
+    {
         return FALSE;
+    }
 
     if( !shader_GetResourceSlot( m_vertexShader, A51Resource_cbUIDraw, m_DrawUniformSlot ) )
     {
@@ -1470,7 +1597,7 @@ xbool ui_renderer::CreateSamplers( void )
 {
     for( s32 i = 0; i < UI_SAMPLER_COUNT; i++ )
     {
-        const ui_sampler_mode Sampler = (ui_sampler_mode)i;
+        const ui_sampler_mode Sampler = static_cast<ui_sampler_mode>( i );
         rstate_sampler_desc Desc = rstate_GetSamplerDesc( ui_GetSamplerPreset( Sampler ) );
         Desc.pDebugName = (Sampler == UI_SAMPLER_LINEAR_CLAMP_ATLAS)
                         ? "UIAtlasSampler"
@@ -1504,7 +1631,9 @@ xbool ui_renderer::CreateWhiteTexture( void )
     Desc.pDebugName = "UIWhiteTexture";
 
     if( !vram_CreateTexture( m_whiteTexture, Desc ) )
+    {
         return FALSE;
+    }
 
     const u32 WhitePixel = 0xffffffffu;
     vram_texture_upload_desc Upload;
@@ -1531,17 +1660,23 @@ void ui_renderer::DestroyPipelines( void )
 xbool ui_renderer::PrewarmPipelinesForFormat( rtarget_format Format )
 {
     if( Format == RTARGET_FORMAT_COUNT )
+    {
         return FALSE;
+    }
 
     if( m_prewarmedFormat == Format )
+    {
         return TRUE;
+    }
 
     for( s32 Blend = 0; Blend < UI_BLEND_COUNT; ++Blend )
     {
         if( !GetOrCreatePipeline( Format,
-                                  (ui_blend_mode)Blend,
+                                  static_cast<ui_blend_mode>( Blend ),
                                   TRUE ) )
+        {
             return FALSE;
+        }
     }
 
     m_prewarmedFormat = Format;
@@ -1569,7 +1704,9 @@ void ui_renderer::DestroyBuffers( void )
 xbool ui_renderer::EnsureBufferCapacity( s32 VertexCount, s32 IndexCount )
 {
     if( (VertexCount <= m_VertexCapacity) && (IndexCount <= m_IndexCapacity) )
+    {
         return TRUE;
+    }
 
     return CreateBuffers( ui_NextCapacity( m_VertexCapacity, VertexCount ),
                           ui_NextCapacity( m_IndexCapacity,  IndexCount  ) );
@@ -1580,8 +1717,8 @@ xbool ui_renderer::EnsureBufferCapacity( s32 VertexCount, s32 IndexCount )
 xbool ui_renderer::CreateBuffers( s32 VertexCapacity, s32 IndexCapacity )
 {
     if( (VertexCapacity <= 0) || (IndexCapacity <= 0) ||
-        ((u32)VertexCapacity > (0xffffffffu / (u32)sizeof(ui_vertex))) ||
-        ((u32)IndexCapacity  > (0xffffffffu / (u32)sizeof(u32))) )
+        (static_cast<u32>( VertexCapacity ) > (0xffffffffu / static_cast<u32>( sizeof(ui_vertex) ))) ||
+        (static_cast<u32>( IndexCapacity )  > (0xffffffffu / static_cast<u32>( sizeof(u32) ))) )
     {
         return FALSE;
     }
@@ -1589,13 +1726,13 @@ xbool ui_renderer::CreateBuffers( s32 VertexCapacity, s32 IndexCapacity )
     DestroyBuffers();
 
     rbuffer_desc VertexDesc;
-    VertexDesc.Size       = (u32)VertexCapacity * (u32)sizeof(ui_vertex);
+    VertexDesc.Size       = static_cast<u32>( VertexCapacity ) * static_cast<u32>( sizeof(ui_vertex) );
     VertexDesc.Stride     = sizeof(ui_vertex);
     VertexDesc.UsageFlags = RBUFFER_USAGE_VERTEX;
     VertexDesc.pDebugName = "UIVertexBuffer";
 
     rbuffer_desc IndexDesc;
-    IndexDesc.Size       = (u32)IndexCapacity * (u32)sizeof(u32);
+    IndexDesc.Size       = static_cast<u32>( IndexCapacity ) * static_cast<u32>( sizeof(u32) );
     IndexDesc.Stride     = sizeof(u32);
     IndexDesc.UsageFlags = RBUFFER_USAGE_INDEX;
     IndexDesc.pDebugName = "UIIndexBuffer";
@@ -1620,7 +1757,9 @@ render_pipeline* ui_renderer::GetOrCreatePipeline( rtarget_format Format,
 {
     render_pipeline_desc Desc;
     if( !BuildPipelineDesc( Desc, Format, Blend ) )
+    {
         return NULL;
+    }
 
     return isPrewarm
          ? m_pipelines.Prewarm( Desc )
@@ -1686,6 +1825,8 @@ xbool ui_renderer::BuildPipelineDesc( render_pipeline_desc& Desc,
 const rstate_sampler* ui_renderer::GetSampler( ui_sampler_mode Sampler ) const
 {
     if( (Sampler < 0) || (Sampler >= UI_SAMPLER_COUNT) || !m_samplers[Sampler] )
+    {
         return NULL;
+    }
     return &m_samplers[Sampler];
 }

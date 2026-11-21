@@ -1,10 +1,14 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_level_select.cpp
 //
-//=========================================================================
+//==============================================================================
 
 #ifndef CONFIG_RETAIL
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -26,15 +30,18 @@
 
 #include "../../Apps/GameApp/Config.hpp"    
 
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum controls
 {
     IDC_LEVEL_SELECT_LISTBOX,
 };
 
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem LevelSelectControls[] = 
 {
@@ -42,6 +49,7 @@ ui_manager::control_tem LevelSelectControls[] =
     { IDC_LEVEL_SELECT_LISTBOX,   "IDS_NULL",           "listbox",  40, 60, 200, 232, 0, 0, 1, 1, ui_win::WF_VISIBLE },
 };
 
+//==============================================================================
 
 ui_manager::dialog_tem LevelSelectDialog =
 {
@@ -52,43 +60,41 @@ ui_manager::dialog_tem LevelSelectDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_level_select_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "level select", &LevelSelectDialog, &dlg_level_select_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_level_select_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_level_select* pDialog = new dlg_level_select;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_level_select
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_level_select::dlg_level_select( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_level_select::~dlg_level_select( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_level_select::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -107,9 +113,9 @@ xbool dlg_level_select::Create( s32                        UserID,
     // Do dialog creation
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
-    m_pLevelList    = (ui_listbox*) FindChildByID( IDC_LEVEL_SELECT_LISTBOX  );
+    m_pLevelList    = static_cast<ui_listbox*>( FindChildByID( IDC_LEVEL_SELECT_LISTBOX  ) );
     
-    GotoControl( (ui_control*)m_pLevelList );
+    GotoControl( m_pLevelList );
     m_CurrentControl = IDC_LEVEL_SELECT_LISTBOX;
 
     FillLevelList();
@@ -146,7 +152,7 @@ xbool dlg_level_select::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_level_select::Destroy( void )
 {
@@ -156,11 +162,11 @@ void dlg_level_select::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_level_select::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
@@ -210,7 +216,7 @@ void dlg_level_select::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_level_select::OnNotify( ui_notification const& Event )
 {
@@ -223,7 +229,7 @@ void dlg_level_select::OnNotify( ui_notification const& Event )
         if (Event.m_Type == ui_notification_type::ListAccepted)
         {
             // Set the level name
-            map_entry*  pTableEntry = (map_entry*)m_pLevelList->GetItemData(m_pLevelList->GetSelection());
+            map_entry*  pTableEntry = reinterpret_cast<map_entry*>( m_pLevelList->GetItemData(m_pLevelList->GetSelection()) );
             ASSERT( pTableEntry->GetMapID() );
             s32 Index = 0;
             // We need to translate from our index to the index within the maplist.
@@ -244,14 +250,14 @@ void dlg_level_select::OnNotify( ui_notification const& Event )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_level_select::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
     ui_dialog::OnNavigate( pWin, Code, Presses, Repeats, WrapX, WrapY );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_level_select::OnAccept( ui_win* pWin )
 {
@@ -262,7 +268,7 @@ void dlg_level_select::OnAccept( ui_win* pWin )
     m_pLevelList->OnAlternate( pWin );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_level_select::OnCancel( ui_win* pWin )
 {
@@ -275,7 +281,7 @@ void dlg_level_select::OnCancel( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_level_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -290,7 +296,7 @@ void dlg_level_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             // complete!  turn on the elements
             m_pLevelList ->SetFlag(ui_win::WF_VISIBLE, TRUE);
 
-            GotoControl( (ui_control*)m_pLevelList );
+            GotoControl( m_pLevelList );
             g_UiMgr->SetScreenHighlight( m_pLevelList->GetPosition() );
         }
     }
@@ -314,7 +320,7 @@ void dlg_level_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_level_select::FillLevelList( void )
 {
@@ -340,16 +346,21 @@ void dlg_level_select::FillLevelList( void )
                     x_DebugMsg( "Level select: skipping map ID %d with invalid UTF-8 name.\n", Entry.GetMapID() );
                     continue;
                 }
-                m_pLevelList->AddItem( DisplayName, (uaddr)&Entry );
+                m_pLevelList->AddItem( DisplayName, reinterpret_cast<uaddr>( &Entry ) );
             }
         }
     }
 
     ASSERTS( m_pLevelList->GetItemCount() > 0, "No maps are present!" );
     // Limit Selection
-    if( iSel <  0 ) iSel = 0;
+    if( iSel <  0 )
+    {
+        iSel = 0;
+    }
     if( iSel >= m_pLevelList->GetItemCount() ) 
+    {
         iSel  = m_pLevelList->GetItemCount()-1;
+    }
 
     // Set Selection
     m_pLevelList->SetSelection( iSel );
@@ -357,4 +368,4 @@ void dlg_level_select::FillLevelList( void )
 
 #endif // CONFIG_RETAIL
 
-//=========================================================================
+//==============================================================================

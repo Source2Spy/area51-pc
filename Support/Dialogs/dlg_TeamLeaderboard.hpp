@@ -22,7 +22,7 @@
 #include "dlg_Leaderboard.hpp"
 
 //==============================================================================
-//  DEFINES
+//  ENUMS
 //==============================================================================
 
 enum team_leaderboard_controls
@@ -38,6 +38,8 @@ enum team_leaderboard_controls
     IDC_TEAM_LEADERBOARD_LOADING_PIPS,
 };
 
+//------------------------------------------------------------------------------
+
 enum team_score_render_types
 {
     RENDER_TEAM_TWO_LINES,
@@ -47,13 +49,21 @@ enum team_score_render_types
 };
 
 //==============================================================================
-//  dlg_team_leaderboard
+//  REGISTRATION
 //==============================================================================
 
 extern void     dlg_team_leaderboard_register  ( ui_manager* pManager );
 extern ui_win*  dlg_team_leaderboard_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 class ui_button;
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class dlg_team_leaderboard : public dlg_mp_score
 {

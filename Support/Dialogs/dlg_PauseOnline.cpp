@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_PauseOnline.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -18,9 +22,9 @@
 #include "NetworkMgr/Game/GameMgr.hpp"
 #include "Objects/Player/Player.hpp"
 
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem PauseOnlineControls[] = 
 {
@@ -36,6 +40,7 @@ ui_manager::control_tem PauseOnlineControls[] =
     { IDC_PAUSE_ONLINE_QUIT,        "IDS_PAUSE_MENU_QUIT",              "button",  110, 280, 120, 30, 0, 8, 1, 1, ui_win::WF_VISIBLE },
 };
 
+//==============================================================================
 
 ui_manager::dialog_tem PauseOnlineDialog =
 {
@@ -46,43 +51,41 @@ ui_manager::dialog_tem PauseOnlineDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_pause_online_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "pause online", &PauseOnlineDialog, &dlg_pause_online_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_pause_online_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_pause_online* pDialog = new dlg_pause_online;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_pause_online
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_pause_online::dlg_pause_online( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_pause_online::~dlg_pause_online( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_pause_online::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -102,24 +105,26 @@ xbool dlg_pause_online::Create( s32                        UserID,
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
     // get button handles
-    m_pButtonSuicide    = (ui_button*)  FindChildByID( IDC_PAUSE_ONLINE_SUICIDE     );
-    m_pButtonSwitchTeam = (ui_button*)  FindChildByID( IDC_PAUSE_ONLINE_SWITCH_TEAM );     
-    m_pButtonVoteMap    = (ui_button*)  FindChildByID( IDC_PAUSE_ONLINE_VOTE_MAP    );     
-    m_pButtonVoteKick   = (ui_button*)  FindChildByID( IDC_PAUSE_ONLINE_VOTE_KICK   );     
-    m_pButtonPlayers    = (ui_button*)  FindChildByID( IDC_PAUSE_ONLINE_PLAYERS     );     
-    m_pButtonOptions    = (ui_button*)  FindChildByID( IDC_PAUSE_ONLINE_OPTIONS     );     
-    m_pButtonSettings   = (ui_button*)  FindChildByID( IDC_PAUSE_ONLINE_SETTINGS    );
-    m_pButtonConfig     = (ui_button*)  FindChildByID( IDC_PAUSE_ONLINE_CONFIG      );     
-    m_pButtonQuit       = (ui_button*)  FindChildByID( IDC_PAUSE_ONLINE_QUIT        );
+    m_pButtonSuicide    = static_cast<ui_button*>( FindChildByID( IDC_PAUSE_ONLINE_SUICIDE     ) );
+    m_pButtonSwitchTeam = static_cast<ui_button*>( FindChildByID( IDC_PAUSE_ONLINE_SWITCH_TEAM ) );
+    m_pButtonVoteMap    = static_cast<ui_button*>( FindChildByID( IDC_PAUSE_ONLINE_VOTE_MAP    ) );
+    m_pButtonVoteKick   = static_cast<ui_button*>( FindChildByID( IDC_PAUSE_ONLINE_VOTE_KICK   ) );
+    m_pButtonPlayers    = static_cast<ui_button*>( FindChildByID( IDC_PAUSE_ONLINE_PLAYERS     ) );
+    m_pButtonOptions    = static_cast<ui_button*>( FindChildByID( IDC_PAUSE_ONLINE_OPTIONS     ) );
+    m_pButtonSettings   = static_cast<ui_button*>( FindChildByID( IDC_PAUSE_ONLINE_SETTINGS    ) );
+    m_pButtonConfig     = static_cast<ui_button*>( FindChildByID( IDC_PAUSE_ONLINE_CONFIG      ) );
+    m_pButtonQuit       = static_cast<ui_button*>( FindChildByID( IDC_PAUSE_ONLINE_QUIT        ) );
  
     s32 iControl = g_StateMgr.GetCurrentControl();
 
     if( iControl > IDC_PAUSE_ONLINE_QUIT )
+    {
         iControl = 0;
+    }
 
     if( (iControl == -1) || (GotoControl( iControl )==NULL) )
     {
-        GotoControl( (ui_control*)m_pButtonSuicide );
+        GotoControl( m_pButtonSuicide );
         m_CurrentControl = IDC_PAUSE_ONLINE_SUICIDE;
     }
     else
@@ -149,11 +154,16 @@ xbool dlg_pause_online::Create( s32                        UserID,
 
 
     // check for team based game
+#ifdef X_EDITOR
+    // The editor has no network team-change request.
+    m_pButtonSwitchTeam->SetFlag( ui_win::WF_DISABLED, TRUE );
+#else
     const game_score& ScoreData = GameMgr.GetScore();
     if( !ScoreData.IsTeamBased )
     {
         m_pButtonSwitchTeam->SetFlag(ui_win::WF_DISABLED, TRUE);
     }
+#endif
 
     // check if we have admin rights
     if( !g_NetworkMgr.IsServer() )
@@ -167,7 +177,9 @@ xbool dlg_pause_online::Create( s32                        UserID,
 
     // set the frame to be disabled (if coming from off screen)
     if (g_UiMgr->IsScreenOn() == FALSE)
+    {
         SetFlag( WF_DISABLED, TRUE );
+    }
 
     // make the dialog active
     m_State = DIALOG_STATE_ACTIVE;
@@ -176,7 +188,7 @@ xbool dlg_pause_online::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_pause_online::Destroy( void )
 {
@@ -186,11 +198,11 @@ void dlg_pause_online::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_pause_online::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
@@ -252,7 +264,7 @@ void dlg_pause_online::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_pause_online::OnAccept( ui_win* pWin )
 {
@@ -260,14 +272,14 @@ void dlg_pause_online::OnAccept( ui_win* pWin )
 
     if ( m_State == DIALOG_STATE_ACTIVE )
     {
-        if( pWin == (ui_win*)m_pButtonSwitchTeam )
+        if( pWin == m_pButtonSwitchTeam )
         {
             // switch team?
             m_CurrentControl = IDC_PAUSE_ONLINE_SWITCH_TEAM;
 
             // open confirmation dialog
             irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-            m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+            m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
 
             // set nav text
             xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_YES" ));
@@ -283,14 +295,14 @@ void dlg_pause_online::OnAccept( ui_win* pWin )
                                 navText,
                                 &m_PopUpResult );
         }
-        else if( pWin == (ui_win*)m_pButtonSuicide )
+        else if( pWin == m_pButtonSuicide )
         {
             // suicide?
             m_CurrentControl = IDC_PAUSE_ONLINE_SUICIDE;
 
             // open confirmation dialog
             irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-            m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+            m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
 
             // set nav text
             xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_YES" ));
@@ -306,58 +318,58 @@ void dlg_pause_online::OnAccept( ui_win* pWin )
                                 navText,
                                 &m_PopUpResult );
         }
-        else if( pWin == (ui_win*)m_pButtonVoteMap )
+        else if( pWin == m_pButtonVoteMap )
         {
             g_AudioMgr.Play("Select_Norm");
             m_CurrentControl = IDC_PAUSE_ONLINE_VOTE_MAP;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin == (ui_win*)m_pButtonVoteKick )
+        else if( pWin == m_pButtonVoteKick )
         {
             g_AudioMgr.Play("Select_Norm");
             m_CurrentControl = IDC_PAUSE_ONLINE_VOTE_KICK;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin == (ui_win*)m_pButtonPlayers )
+        else if( pWin == m_pButtonPlayers )
         {
             g_AudioMgr.Play("Select_Norm");
             m_CurrentControl = IDC_PAUSE_ONLINE_PLAYERS;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin == (ui_win*)m_pButtonOptions )
+        else if( pWin == m_pButtonOptions )
         {
             g_AudioMgr.Play("Select_Norm");
             g_StateMgr.InitPendingProfile( 0 );
             m_CurrentControl = IDC_PAUSE_ONLINE_OPTIONS;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin == (ui_win*)m_pButtonSettings )
+        else if( pWin == m_pButtonSettings )
         {            
             g_AudioMgr.Play("Select_Norm");
             m_CurrentControl = IDC_PAUSE_ONLINE_SETTINGS;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin == (ui_win*)m_pButtonConfig )
+        else if( pWin == m_pButtonConfig )
         {
             g_AudioMgr.Play("Select_Norm");
             m_CurrentControl = IDC_PAUSE_ONLINE_CONFIG;
             m_State = DIALOG_STATE_SELECT;
         }
-        else if( pWin == (ui_win*)m_pButtonQuit )
+        else if( pWin == m_pButtonQuit )
         {
             OnDelete( pWin );
         }
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_pause_online::OnCancel( ui_win* pWin )
 {
     (void)pWin;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_pause_online::OnDelete( ui_win* pWin )
 {
@@ -371,7 +383,7 @@ void dlg_pause_online::OnDelete( ui_win* pWin )
 
             // Open a dialog to confirm quitting the online game component
             irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-            m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+            m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
 
             // get message text
             xwstring Message;
@@ -396,7 +408,7 @@ void dlg_pause_online::OnDelete( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_pause_online::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -433,11 +445,13 @@ void dlg_pause_online::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             s32 iControl = g_StateMgr.GetCurrentControl();
 
             if( iControl > IDC_PAUSE_ONLINE_QUIT )
+            {
                 iControl = 0;
+            }
 
             if( (iControl == -1) || (GotoControl(iControl)==NULL) )
             {
-                GotoControl( (ui_control*)m_pButtonSuicide );
+                GotoControl( m_pButtonSuicide );
                 g_UiMgr->SetScreenHighlight( m_pButtonSuicide->GetPosition() );
                 m_CurrentControl = IDC_PAUSE_ONLINE_SUICIDE;
             }
@@ -464,11 +478,13 @@ void dlg_pause_online::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             switch( m_CurrentControl )
             {
                 case IDC_PAUSE_ONLINE_SWITCH_TEAM:
+                {
+#ifndef X_EDITOR
                     if ( m_PopUpResult == DLG_POPUP_YES )
                     {
                         // switch teams here
                         s32     NetSlot = g_NetworkMgr.GetLocalPlayerSlot(0);
-                        player* pPlayer = (player*)NetObjMgr.GetObjFromSlot( NetSlot );
+                        player* pPlayer = static_cast<player*>( NetObjMgr.GetObjFromSlot( NetSlot ) );
                         ASSERT( pPlayer );
                         s32     Team = GameMgr.GetScore().Player[NetSlot].Team;
                         pPlayer->net_RequestTeam( 1 - Team );
@@ -476,9 +492,12 @@ void dlg_pause_online::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                         // exit pause menu
                         m_State = DIALOG_STATE_SELECT;
                     }
-                    break;
+#endif
+                }
+                break;
 
                 case IDC_PAUSE_ONLINE_SUICIDE:
+                {
                     if ( m_PopUpResult == DLG_POPUP_YES )
                     {
                         // suicide player here
@@ -487,15 +506,18 @@ void dlg_pause_online::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                         // exit pause menu
                         m_State = DIALOG_STATE_SELECT;
                     }
-                    break;
+                }
+                break;
 
                 case IDC_PAUSE_ONLINE_QUIT:
+                {
                     if ( m_PopUpResult == DLG_POPUP_YES )
                     {
                         // quit game
                         m_State = DIALOG_STATE_DELETE;
                         m_CurrentControl = IDC_PAUSE_ONLINE_SUICIDE;
                     }
+                }
             }
 
             // clear popup 
@@ -509,7 +531,7 @@ void dlg_pause_online::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     // Update the state of the two vote items.
     {
         s32     NetSlot = g_NetworkMgr.GetLocalPlayerSlot(0);
-        player* pPlayer = (player*)NetObjMgr.GetObjFromSlot( NetSlot );
+        player* pPlayer = static_cast<player*>( NetObjMgr.GetObjFromSlot( NetSlot ) );
         ASSERT( pPlayer );
         u32     KickMask     = pPlayer->GetVoteCanStartKick();
         xbool   CanStartMap  = pPlayer->GetVoteCanStartMap();
@@ -581,10 +603,12 @@ void dlg_pause_online::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     if( highLight != m_CurrHL )
     {
         if( highLight != -1 )
+        {
             g_AudioMgr.Play("Cusor_Norm");
+        }
 
         m_CurrHL = highLight;
     }
 }
 
-//=========================================================================
+//==============================================================================

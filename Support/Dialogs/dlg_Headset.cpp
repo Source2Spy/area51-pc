@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_headset.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -18,9 +22,9 @@
 #include "StateMgr/StateMgr.hpp"
 #include "dlg_PopUp.hpp"
 
-//=========================================================================
-//  Main Options Dialog
-//=========================================================================
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum controls
 {
@@ -35,7 +39,9 @@ enum controls
 
 };
 
-//-------------------------------------------------------------------------
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem HeadsetControls[] =
 {
@@ -52,7 +58,7 @@ ui_manager::control_tem HeadsetControls[] =
 
 };
 
-//-------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 ui_manager::dialog_tem HeadsetDialog =
 {
@@ -63,43 +69,41 @@ ui_manager::dialog_tem HeadsetDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_headset_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "headset", &HeadsetDialog, &dlg_headset_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_headset_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_headset* pDialog = new dlg_headset;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_headset
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_headset::dlg_headset( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_headset::~dlg_headset( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_headset::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -118,19 +122,19 @@ xbool dlg_headset::Create( s32                        UserID,
     // Do dialog creation
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
-    m_pToggleHeadsetAudio        = (ui_combo*)   FindChildByID( IDC_HEADSET_TOGGLE_HEADSET       );  
-    m_pVolumeSpeaker            = (ui_slider*)  FindChildByID( IDC_HEADSET_VOLUME_SPEAKER       );    
-    m_pVolumeMic                = (ui_slider*)  FindChildByID( IDC_HEADSET_VOLUME_MIC           );
-    m_pButtonAccept             = (ui_button*)  FindChildByID( IDC_HEADSET_BUTTON_ACCEPT        );
+    m_pToggleHeadsetAudio        = static_cast<ui_combo*>( FindChildByID( IDC_HEADSET_TOGGLE_HEADSET       ) );
+    m_pVolumeSpeaker            = static_cast<ui_slider*>( FindChildByID( IDC_HEADSET_VOLUME_SPEAKER       ) );
+    m_pVolumeMic                = static_cast<ui_slider*>( FindChildByID( IDC_HEADSET_VOLUME_MIC           ) );
+    m_pButtonAccept             = static_cast<ui_button*>( FindChildByID( IDC_HEADSET_BUTTON_ACCEPT        ) );
 
-    m_pToggleHeadsetAudioText    = (ui_text*)    FindChildByID( IDC_HEADSET_TOGGLE_HEADSET_TEXT  );
-    m_pVolumeSpeakerText        = (ui_text*)    FindChildByID( IDC_HEADSET_VOLUME_SPEAKER_TEXT  );
-    m_pVolumeMicText            = (ui_text*)    FindChildByID( IDC_HEADSET_VOLUME_MIC_TEXT      );
+    m_pToggleHeadsetAudioText    = static_cast<ui_text*>( FindChildByID( IDC_HEADSET_TOGGLE_HEADSET_TEXT  ) );
+    m_pVolumeSpeakerText        = static_cast<ui_text*>( FindChildByID( IDC_HEADSET_VOLUME_SPEAKER_TEXT  ) );
+    m_pVolumeMicText            = static_cast<ui_text*>( FindChildByID( IDC_HEADSET_VOLUME_MIC_TEXT      ) );
 
     s32 const CurrentControl = g_StateMgr.GetCurrentControl();
     if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
     {
-        GotoControl( (ui_control*)m_pToggleHeadsetAudio );
+        GotoControl( m_pToggleHeadsetAudio );
         m_CurrentControl = IDC_HEADSET_TOGGLE_HEADSET;
     }
     else
@@ -211,10 +215,11 @@ xbool dlg_headset::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_headset::Destroy( void )
 {
+    // Cancel outstanding save callbacks before destroying the dialog.
     g_SaveDataMgr.CancelCallbacks( this );
     ui_dialog::Destroy();
 
@@ -222,16 +227,17 @@ void dlg_headset::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_headset::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
     irect rb;
     
+    // Dim the background behind the dialog.
     if( m_bRenderBlackout )
     {
         rb = g_UiMgr->GetUserBounds( m_UserID );
@@ -285,14 +291,14 @@ void dlg_headset::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_headset::OnAccept( ui_win* pWin )
 {
     // accept changes
     if ( m_State == DIALOG_STATE_ACTIVE )
     {
-        if( pWin == (ui_win*)m_pButtonAccept )
+        if( pWin == m_pButtonAccept )
         {
             global_settings Settings = m_OriginalSettings;
             ApplySettings( Settings );
@@ -310,7 +316,7 @@ void dlg_headset::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_headset::OnCancel( ui_win* pWin )
 {
@@ -333,7 +339,7 @@ void dlg_headset::OnCancel( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_headset::ApplySettings( global_settings& Settings )
 {
@@ -342,7 +348,7 @@ void dlg_headset::ApplySettings( global_settings& Settings )
     Settings.SetHeadsetMode( static_cast<headset_mode>( m_pToggleHeadsetAudio->GetSelectedItemData() ) );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_headset::BeginSave( void )
 {
@@ -350,7 +356,7 @@ void dlg_headset::BeginSave( void )
     m_State = DIALOG_STATE_WAIT_FOR_SAVE_DATA;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_headset::OpenSavePopup( void )
 {
@@ -374,7 +380,7 @@ void dlg_headset::OpenSavePopup( void )
     m_State = DIALOG_STATE_POPUP;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_headset::RestoreSettings( void )
 {
@@ -384,7 +390,7 @@ void dlg_headset::RestoreSettings( void )
     PendingSettings.UpdateHeadsetMode( PendingSettings.GetHeadsetMode() );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_headset::OnSaveSettingsCB( void )
 {
@@ -401,7 +407,7 @@ void dlg_headset::OnSaveSettingsCB( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_headset::OnDelete( ui_win* pWin )
 {
@@ -438,7 +444,7 @@ void dlg_headset::OnDelete( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_headset::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -447,6 +453,7 @@ void dlg_headset::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
     s32 highLight = -1;
 
+    // Consume the popup result once before resuming the dialog.
     if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
     {
         s32 const Result = m_PopUpResult;
@@ -484,7 +491,7 @@ void dlg_headset::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             s32 const CurrentControl = g_StateMgr.GetCurrentControl();
             if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
             {
-                GotoControl( (ui_control*)m_pToggleHeadsetAudio );
+                GotoControl( m_pToggleHeadsetAudio );
                 m_CurrentControl = IDC_HEADSET_TOGGLE_HEADSET;
             }
             else
@@ -506,7 +513,9 @@ void dlg_headset::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         g_UiMgr->SetScreenHighlight( m_pToggleHeadsetAudioText->GetPosition() );
     }
     else
+    {
         m_pToggleHeadsetAudioText->SetLabelColor( xcolor(126,220,60,255) );
+    }
 
     if( m_pVolumeSpeaker->IsFocused() )
     {
@@ -515,7 +524,9 @@ void dlg_headset::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         g_UiMgr->SetScreenHighlight( m_pVolumeSpeakerText->GetPosition() );
     }
     else
+    {
         m_pVolumeSpeakerText->SetLabelColor( xcolor(126,220,60,255) );
+    }
 
     if( m_pVolumeMic->IsFocused() )
     {
@@ -524,7 +535,9 @@ void dlg_headset::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         g_UiMgr->SetScreenHighlight( m_pVolumeMicText->GetPosition() );
     }
     else
+    {
         m_pVolumeMicText->SetLabelColor( xcolor(126,220,60,255) );
+    }
     
     if( m_pButtonAccept->IsFocused() )
     {
@@ -535,10 +548,12 @@ void dlg_headset::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     if( highLight != m_CurrHL )
     {
         if( highLight != -1 )
+        {
             g_AudioMgr.Play("Cusor_Norm");
+        }
 
         m_CurrHL = highLight;
     }
 }
 
-//=========================================================================
+//==============================================================================

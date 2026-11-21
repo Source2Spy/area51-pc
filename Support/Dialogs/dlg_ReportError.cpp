@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_ReportError.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -19,9 +23,10 @@
 #include "NetworkMgr/Match/MatchMgr.hpp"
 #include "AudioMgr/AudioMgr.hpp"
 
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
+//  DATA
+//==============================================================================
+
 ui_manager::dialog_tem ReportErrorDialog =
 {
     "IDS_NULL",
@@ -31,43 +36,41 @@ ui_manager::dialog_tem ReportErrorDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_report_error_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "report error", &ReportErrorDialog, &dlg_report_error_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_report_error_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_report_error* pDialog = new dlg_report_error;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_report_error
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_report_error::dlg_report_error( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_report_error::~dlg_report_error( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_report_error::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -113,7 +116,7 @@ xbool dlg_report_error::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_report_error::Destroy( void )
 {
@@ -123,15 +126,16 @@ void dlg_report_error::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_report_error::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
     irect   rb;
+    // Dim the background behind the dialog.
     rb = g_UiMgr->GetUserBounds( m_UserID );
     g_UiMgr->RenderGouraudRect( rb, xcolor(0,0,0,180),
                                     xcolor(0,0,0,180),
@@ -183,7 +187,7 @@ void dlg_report_error::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_report_error::OnAccept( ui_win* pWin )
 {
@@ -195,7 +199,7 @@ void dlg_report_error::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_report_error::OnCancel( ui_win* pWin )
 {
@@ -203,7 +207,7 @@ void dlg_report_error::OnCancel( ui_win* pWin )
 
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_report_error::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -219,8 +223,8 @@ void dlg_report_error::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
             irect r = g_UiMgr->GetUserBounds( g_UiUserID );
 
-            m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  g_UiUserID, "popup", r, NULL, 
-                ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+            m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  g_UiUserID, "popup", r, NULL,
+                ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
 
             r.Set( 0, 0, 300, 200 );
 
@@ -229,40 +233,111 @@ void dlg_report_error::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
             switch( g_ActiveConfig.GetExitReason() )
             {
-            case GAME_EXIT_NETWORK_DOWN:
-            {
-                interface_info Info;
-                net_GetInterfaceInfo( -1, Info );
-                if( Info.IsAvailable )
+                case GAME_EXIT_NETWORK_DOWN:
                 {
-                    pLabel = "IDS_ONLINE_NETWORK_DOWN";
-                }
-                else
-                {
-                    pLabel = "IDS_ONLINE_CHECK_CABLE";
+                    interface_info Info;
+                    net_GetInterfaceInfo( -1, Info );
+                    if( Info.IsAvailable )
+                    {
+                        pLabel = "IDS_ONLINE_NETWORK_DOWN";
+                    }
+                    else
+                    {
+                        pLabel = "IDS_ONLINE_CHECK_CABLE";
+                    }
                 }
                 break;
-            }
-            case GAME_EXIT_DUPLICATE_LOGIN:     pLabel = "IDS_ONLINE_DUPLICATE_LOGIN";          break;
-            case GAME_EXIT_PLAYER_KICKED:       pLabel = "IDS_ONLINE_KICKED";                   break;
-            case GAME_EXIT_PLAYER_DROPPED:      pLabel = "IDS_ONLINE_DROPPED";                  break;
-            case GAME_EXIT_SERVER_SHUTDOWN:     pLabel = "IDS_ONLINE_SERVER_SHUTDOWN";          break;
-            case GAME_EXIT_SERVER_BUSY:         pLabel = "IDS_ONLINE_DROPPED";                  break;
-            case GAME_EXIT_CONNECTION_LOST:     pLabel = "IDS_ONLINE_CONNECTION_LOST";          break;
-            case GAME_EXIT_INVALID_MISSION:     pLabel = "IDS_ONLINE_INVALID_MISSION";          break;
-            case GAME_EXIT_INVALID_CAMPAIGN_MISSION:
-            {
-                pTitle = "IDS_LOAD_CAMPAIGN_MENU";
-                pLabel = "IDS_CAMPAIGN_INVALID_MISSION";
-            }
-            break;
-            case GAME_EXIT_SERVER_FULL:         pLabel = "IDS_ONLINE_LOGIN_SERVER_FULL";        break;
-            case GAME_EXIT_BAD_PASSWORD:        pLabel = "IDS_ONLINE_LOGIN_BAD_PASSWORD";       break;
-            case GAME_EXIT_CANNOT_CONNECT:      pLabel = "IDS_ONLINE_LOGIN_CANNOT_CONNECT";     break;
-            case GAME_EXIT_LOGIN_REFUSED:       pLabel = "IDS_ONLINE_LOGIN_REFUSED";            break;
-            case GAME_EXIT_CLIENT_BANNED:       pLabel = "IDS_ONLINE_LOGIN_BANNED";             break;
-            case GAME_EXIT_SESSION_ENDED:       pLabel = "IDS_ONLINE_SESSION_ENDED";            break;
-            default:                            ASSERT( FALSE );                                break;
+
+                case GAME_EXIT_DUPLICATE_LOGIN:
+                {
+                    pLabel = "IDS_ONLINE_DUPLICATE_LOGIN";
+                }
+                break;
+
+                case GAME_EXIT_PLAYER_KICKED:
+                {
+                    pLabel = "IDS_ONLINE_KICKED";
+                }
+                break;
+
+                case GAME_EXIT_PLAYER_DROPPED:
+                {
+                    pLabel = "IDS_ONLINE_DROPPED";
+                }
+                break;
+
+                case GAME_EXIT_SERVER_SHUTDOWN:
+                {
+                    pLabel = "IDS_ONLINE_SERVER_SHUTDOWN";
+                }
+                break;
+
+                case GAME_EXIT_SERVER_BUSY:
+                {
+                    pLabel = "IDS_ONLINE_DROPPED";
+                }
+                break;
+
+                case GAME_EXIT_CONNECTION_LOST:
+                {
+                    pLabel = "IDS_ONLINE_CONNECTION_LOST";
+                }
+                break;
+
+                case GAME_EXIT_INVALID_MISSION:
+                {
+                    pLabel = "IDS_ONLINE_INVALID_MISSION";
+                }
+                break;
+
+                case GAME_EXIT_INVALID_CAMPAIGN_MISSION:
+                {
+                    pTitle = "IDS_LOAD_CAMPAIGN_MENU";
+                    pLabel = "IDS_CAMPAIGN_INVALID_MISSION";
+                }
+                break;
+
+                case GAME_EXIT_SERVER_FULL:
+                {
+                    pLabel = "IDS_ONLINE_LOGIN_SERVER_FULL";
+                }
+                break;
+
+                case GAME_EXIT_BAD_PASSWORD:
+                {
+                    pLabel = "IDS_ONLINE_LOGIN_BAD_PASSWORD";
+                }
+                break;
+
+                case GAME_EXIT_CANNOT_CONNECT:
+                {
+                    pLabel = "IDS_ONLINE_LOGIN_CANNOT_CONNECT";
+                }
+                break;
+
+                case GAME_EXIT_LOGIN_REFUSED:
+                {
+                    pLabel = "IDS_ONLINE_LOGIN_REFUSED";
+                }
+                break;
+
+                case GAME_EXIT_CLIENT_BANNED:
+                {
+                    pLabel = "IDS_ONLINE_LOGIN_BANNED";
+                }
+                break;
+
+                case GAME_EXIT_SESSION_ENDED:
+                {
+                    pLabel = "IDS_ONLINE_SESSION_ENDED";
+                }
+                break;
+
+                default:
+                {
+                    ASSERT( FALSE );
+                }
+                break;
             }
             m_PopUp->ConfigureMessage( r,
                                        g_StringTableMgr( "ui", pTitle ),

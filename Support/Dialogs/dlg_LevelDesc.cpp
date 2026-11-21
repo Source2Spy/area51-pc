@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_level_desc.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 #include "dlg_LevelDesc.hpp"
@@ -13,6 +17,10 @@
 #include "UI/ui_font.hpp"
 #include "UI/ui_renderer.hpp"
 
+//==============================================================================
+//  HELPERS
+//==============================================================================
+
 static void SetUTF8Label( ui_win* pControl, const char* pText )
 {
     xwstring Text;
@@ -22,11 +30,15 @@ static void SetUTF8Label( ui_win* pControl, const char* pText )
     }
 }
 
+//==============================================================================
+//  DATA
+//==============================================================================
+
 xcolor g_TextRectLoadScreen( 0, 0, 0, 128);
 
-//=========================================================================
-//  Level Desc Dialog
-//=========================================================================
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum controls
 {
@@ -40,6 +52,10 @@ enum controls
     IDC_LEVEL_DESC_NAV_TEXT
 };
 
+//==============================================================================
+//  DATA
+//==============================================================================
+
 ui_manager::control_tem LevelDescControls[] =
 {
     { IDC_LEVEL_DESC,               "IDS_NULL",        "text",        0, 308, 480,  30,  0, 0, 1, 1, 0 },
@@ -52,6 +68,8 @@ ui_manager::control_tem LevelDescControls[] =
     { IDC_LEVEL_DESC_NAV_TEXT,      "IDS_NULL",        "text",       25, 395, 200,  16, 0, 0, 0, 0, ui_win::WF_VISIBLE },
 };
 
+//==============================================================================
+
 ui_manager::dialog_tem LevelDescDialog =
 {
     "IDS_LEVEL_DESC",
@@ -61,43 +79,41 @@ ui_manager::dialog_tem LevelDescDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_level_desc_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "level desc", &LevelDescDialog, &dlg_level_desc_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_level_desc_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_level_desc* pDialog = new dlg_level_desc;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_level_desc
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_level_desc::dlg_level_desc( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_level_desc::~dlg_level_desc( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_level_desc::Create( s32                        UserID,
                               ui_manager*                pManager,
@@ -116,13 +132,13 @@ xbool dlg_level_desc::Create( s32                        UserID,
     // Do dialog creation
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
-    m_MapTitleText      = (ui_text*) FindChildByID( IDC_MAP_TITLE_TEXT          );
-    m_MapDescText       = (ui_text*) FindChildByID( IDC_MAP_DESC_TEXT           );
-    m_GameTypeText      = (ui_text*) FindChildByID( IDC_GAME_TYPE_TEXT          );
-    m_GameDescText      = (ui_text*) FindChildByID( IDC_GAME_DESC_TEXT          );
-    m_pLoadingText      = (ui_text*) FindChildByID( IDC_LEVEL_DESC_LOADING_TEXT );
-    m_pLoadingPips      = (ui_text*) FindChildByID( IDC_LEVEL_DESC_LOADING_PIPS );
-    m_pNavText          = (ui_text*) FindChildByID( IDC_LEVEL_DESC_NAV_TEXT     );
+    m_MapTitleText      = static_cast<ui_text*>( FindChildByID( IDC_MAP_TITLE_TEXT          ) );
+    m_MapDescText       = static_cast<ui_text*>( FindChildByID( IDC_MAP_DESC_TEXT           ) );
+    m_GameTypeText      = static_cast<ui_text*>( FindChildByID( IDC_GAME_TYPE_TEXT          ) );
+    m_GameDescText      = static_cast<ui_text*>( FindChildByID( IDC_GAME_DESC_TEXT          ) );
+    m_pLoadingText      = static_cast<ui_text*>( FindChildByID( IDC_LEVEL_DESC_LOADING_TEXT ) );
+    m_pLoadingPips      = static_cast<ui_text*>( FindChildByID( IDC_LEVEL_DESC_LOADING_PIPS ) );
+    m_pNavText          = static_cast<ui_text*>( FindChildByID( IDC_LEVEL_DESC_NAV_TEXT     ) );
 
     // initialize text strings    
     m_MapTitleText->SetFlag( ui_win::WF_VISIBLE, TRUE );
@@ -181,7 +197,6 @@ xbool dlg_level_desc::Create( s32                        UserID,
     m_pLoadingPips->SetLabelFlags( ui_font::h_left|ui_font::v_top );
     m_pLoadingPips->UseSmallText(TRUE);
 
-    m_pNavText->SetLabel( g_StringTableMgr( "ui", "IDS_NULL") );
     m_pNavText->SetFlag( ui_win::WF_VISIBLE, TRUE );
     m_pNavText->SetLabelFlags( ui_font::h_left|ui_font::v_top );
     m_pNavText->UseSmallText(TRUE);
@@ -191,7 +206,7 @@ xbool dlg_level_desc::Create( s32                        UserID,
 
     if( IN_RANGE( 2000, g_ActiveConfig.GetLevelID(), 2999 ) )
     {
-        LoadName += (const char*)xfs("%d", g_ActiveConfig.GetLevelID());
+        LoadName += static_cast<const char*>( xfs("%d", g_ActiveConfig.GetLevelID()) );
     }
     LoadName += ".xbmp";
     g_UiMgr->LoadBackground ( "mp_load", xstring(LoadName) );
@@ -212,7 +227,7 @@ xbool dlg_level_desc::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_level_desc::Destroy( void )
 {
@@ -225,7 +240,7 @@ void dlg_level_desc::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_level_desc::Render( s32 ox, s32 oy )
 {
@@ -245,7 +260,7 @@ void dlg_level_desc::Render( s32 ox, s32 oy )
         const view* pView = eng_GetView();
         rect r;
         pView->GetViewport( r );
-        irect ir( (s32)r.Min.X, (s32)r.Min.Y, (s32)r.Max.X, (s32)r.Max.Y );
+        irect ir( static_cast<s32>( r.Min.X ), static_cast<s32>( r.Min.Y ), static_cast<s32>( r.Max.X ), static_cast<s32>( r.Max.Y ) );
         g_UIRenderer.DrawRect( ir, g_TextRectLoadScreen );
     }
 
@@ -255,24 +270,45 @@ void dlg_level_desc::Render( s32 ox, s32 oy )
     // render loading text
     xwstring LoadText("");
 
-    switch( (s32)(m_LoadTimeElapsed*4.0f) % 4 )
+    switch( static_cast<s32>( m_LoadTimeElapsed*4.0f ) % 4 )
     {
-    case 0: LoadText += "   ";   break;
-    case 1: LoadText += ".  ";   break;
-    case 2: LoadText += ".. ";   break;
-    case 3: LoadText += "...";   break;
+        case 0:
+        {
+            LoadText += "   ";
+        }
+        break;
+
+        case 1:
+        {
+            LoadText += ".  ";
+        }
+        break;
+
+        case 2:
+        {
+            LoadText += ".. ";
+        }
+        break;
+
+        case 3:
+        {
+            LoadText += "...";
+        }
+        break;
     }
     m_pLoadingPips->SetLabel( LoadText );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_level_desc::OnAccept( ui_win* pWin )
 {
     (void)pWin;
 
     if( m_Mode != LEVEL_DESC_INTERLEVEL )
+    {
         return;
+    }
 
     if( m_State == DIALOG_STATE_ACTIVE )
     {
@@ -280,7 +316,7 @@ void dlg_level_desc::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_level_desc::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -311,14 +347,14 @@ void dlg_level_desc::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_level_desc::LoadingComplete( void )
 {
     m_LoadingComplete = TRUE;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_level_desc::Configure( level_desc_mode Mode )
 {

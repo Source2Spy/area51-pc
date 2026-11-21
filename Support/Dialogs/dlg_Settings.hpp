@@ -16,7 +16,7 @@
 #include "StateMgr/GlobalSettings.hpp"
 
 //==============================================================================
-//  CONTROLS
+//  ENUMS
 //==============================================================================
 
 enum settings_controls
@@ -31,14 +31,22 @@ enum settings_controls
 };
 
 //==============================================================================
-//  dlg_settings
+//  REGISTRATION
 //==============================================================================
 
 extern void     dlg_settings_register ( ui_manager* pManager );
 extern ui_win*  dlg_settings_factory  ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 class ui_button;
 class dlg_popup;
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class dlg_settings : public ui_dialog
 {

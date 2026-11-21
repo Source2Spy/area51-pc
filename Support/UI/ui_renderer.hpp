@@ -129,13 +129,13 @@ inline void ui_GetTextureRectUV( const irect& TextureRect,
 {
     // Sample the edge texel centers so bilinear filtering cannot reach an
     // adjacent atlas cell. Right and bottom are exclusive irect edges.
-    const f32 InvWidth  = 1.0f / (f32)TextureWidth;
-    const f32 InvHeight = 1.0f / (f32)TextureHeight;
+    const f32 InvWidth  = 1.0f / static_cast<f32>( TextureWidth );
+    const f32 InvHeight = 1.0f / static_cast<f32>( TextureHeight );
 
-    UV0.Set( ((f32)TextureRect.l + 0.5f) * InvWidth,
-             ((f32)TextureRect.t + 0.5f) * InvHeight );
-    UV1.Set( ((f32)TextureRect.r - 0.5f) * InvWidth,
-             ((f32)TextureRect.b - 0.5f) * InvHeight );
+    UV0.Set( (static_cast<f32>( TextureRect.l ) + 0.5f) * InvWidth,
+             (static_cast<f32>( TextureRect.t ) + 0.5f) * InvHeight );
+    UV1.Set( (static_cast<f32>( TextureRect.r ) - 0.5f) * InvWidth,
+             (static_cast<f32>( TextureRect.b ) - 0.5f) * InvHeight );
 }
 
 //------------------------------------------------------------------------------

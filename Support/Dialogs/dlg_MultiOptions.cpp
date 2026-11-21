@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_multi_options.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -26,13 +30,17 @@
 #include "StateMgr/MapList.hpp"
 #include "Configuration/GameConfig.hpp"
 
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
+//  DEFINES
+//==============================================================================
 
 #if defined(CONFIG_DEBUG) || defined(CONFIG_OPTDEBUG)
 #define ALLOW_EXTENDED_OPTIONS
 #endif
+
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum controls
 {
@@ -52,7 +60,9 @@ enum controls
 
 };
 
-//-------------------------------------------------------------------------
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem MultiOptionsControls[] = 
 {
@@ -75,7 +85,7 @@ ui_manager::control_tem MultiOptionsControls[] =
 
 };
 
-//-------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 ui_manager::dialog_tem MultiOptionsDialog =
 {
@@ -86,43 +96,41 @@ ui_manager::dialog_tem MultiOptionsDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_multi_options_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "multi options", &MultiOptionsDialog, &dlg_multi_options_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_multi_options_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_multi_options* pDialog = new dlg_multi_options;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_multi_options
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_multi_options::dlg_multi_options( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_multi_options::~dlg_multi_options( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_multi_options::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -141,22 +149,22 @@ xbool dlg_multi_options::Create( s32                        UserID,
     // Do dialog creation
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
-    m_pTimeLimitText    = (ui_text*)FindChildByID( IDC_MULTI_OPTIONS_TIME_LIMIT );
-    m_pScoreText        = (ui_text*)FindChildByID( IDC_MULTI_OPTIONS_SCORE      );
+    m_pTimeLimitText    = static_cast<ui_text*>( FindChildByID( IDC_MULTI_OPTIONS_TIME_LIMIT ) );
+    m_pScoreText        = static_cast<ui_text*>( FindChildByID( IDC_MULTI_OPTIONS_SCORE      ) );
 #if defined (ALLOW_EXTENDED_OPTIONS)
-    m_pMutationText     = (ui_text*)FindChildByID( IDC_MULTI_OPTIONS_MUTATION   );
-    m_pGameTypeText     = (ui_text*)FindChildByID( IDC_MULTI_OPTIONS_GAME_TYPE  );
+    m_pMutationText     = static_cast<ui_text*>( FindChildByID( IDC_MULTI_OPTIONS_MUTATION   ) );
+    m_pGameTypeText     = static_cast<ui_text*>( FindChildByID( IDC_MULTI_OPTIONS_GAME_TYPE  ) );
 #endif
 
-    m_pTimeSelect       = (ui_combo*)FindChildByID( IDC_MULTI_OPTIONS_TIME_SELECTOR     );
-    m_pScoreSelect      = (ui_combo*)FindChildByID( IDC_MULTI_OPTIONS_SCORE_SELECTOR    );
+    m_pTimeSelect       = static_cast<ui_combo*>( FindChildByID( IDC_MULTI_OPTIONS_TIME_SELECTOR     ) );
+    m_pScoreSelect      = static_cast<ui_combo*>( FindChildByID( IDC_MULTI_OPTIONS_SCORE_SELECTOR    ) );
 #if defined (ALLOW_EXTENDED_OPTIONS)
-    m_pMutationSelect   = (ui_combo*)FindChildByID( IDC_MULTI_OPTIONS_MUTATION_SELECTOR );
-    m_pGameTypeSelect   = (ui_combo*)FindChildByID( IDC_MULTI_OPTIONS_TYPE_SELECTOR     );
+    m_pMutationSelect   = static_cast<ui_combo*>( FindChildByID( IDC_MULTI_OPTIONS_MUTATION_SELECTOR ) );
+    m_pGameTypeSelect   = static_cast<ui_combo*>( FindChildByID( IDC_MULTI_OPTIONS_TYPE_SELECTOR     ) );
 #endif
 
     // set up continue button 
-    m_pContinueButton   = (ui_button*)FindChildByID( IDC_MULTI_OPTIONS_CONTINUE );
+    m_pContinueButton   = static_cast<ui_button*>( FindChildByID( IDC_MULTI_OPTIONS_CONTINUE ) );
     m_pContinueButton   ->SetFlag( ui_win::WF_BUTTON_LEFT, TRUE );
 
     // set some text flags
@@ -249,7 +257,7 @@ xbool dlg_multi_options::Create( s32                        UserID,
     // set initial highlight/control
     m_CurrHL = 4;
     m_pContinueButton->SetActive( TRUE );
-    GotoControl( (ui_control*)m_pContinueButton );
+    GotoControl( m_pContinueButton );
 
     // get pending settings 
     multi_settings& Settings = g_StateMgr.GetPendingSettings().GetMultiplayerSettings();
@@ -324,7 +332,7 @@ xbool dlg_multi_options::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_multi_options::Destroy( void )
 {
@@ -334,11 +342,11 @@ void dlg_multi_options::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_multi_options::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
@@ -388,27 +396,32 @@ void dlg_multi_options::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_multi_options::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
     if ( m_State == DIALOG_STATE_ACTIVE )
     {
 #if defined (ALLOW_EXTENDED_OPTIONS)
-        if( pWin == (ui_win*)m_pGameTypeSelect )
+        if( pWin == m_pGameTypeSelect )
         {
             switch( Code )
             {
                 case ui_navigation::Left:
                 case ui_navigation::Right:
+                {
                     // new game type selected - clear the map cycle
                     ResetMapCycle();
                     // reinitialize available mutation modes
                     InitializeMutationModes();
-                    break;
+                }
+                break;
+
                 default:
+                {
                     ui_dialog::OnNavigate( pWin, Code, Presses, Repeats, WrapX, WrapY );
-                    break;
+                }
+                break;
             }
         }
         else
@@ -419,7 +432,7 @@ void dlg_multi_options::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presse
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_multi_options::OnCancel( ui_win* pWin )
 {
@@ -432,13 +445,13 @@ void dlg_multi_options::OnCancel( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_multi_options::OnAccept( ui_win* pWin )
 {
     if ( m_State == DIALOG_STATE_ACTIVE )
     {
-        if ( pWin == (ui_win*)m_pContinueButton )
+        if ( pWin == m_pContinueButton )
         {
             // get the pending settings
             multi_settings& Settings = g_StateMgr.GetPendingSettings().GetMultiplayerSettings();
@@ -446,7 +459,7 @@ void dlg_multi_options::OnAccept( ui_win* pWin )
             // update pending game settings
 #if defined (ALLOW_EXTENDED_OPTIONS)
             Settings.m_GameTypeID   = m_pGameTypeSelect ->GetSelectedItemData();
-            Settings.m_MutationMode = (mutation_mode)m_pMutationSelect ->GetSelectedItemData();
+            Settings.m_MutationMode = static_cast<mutation_mode>( m_pMutationSelect ->GetSelectedItemData() );
 #else
             Settings.m_GameTypeID   = GAME_DM;
             Settings.m_MutationMode = MUTATE_CHANGE_AT_WILL;
@@ -464,18 +477,51 @@ void dlg_multi_options::OnAccept( ui_win* pWin )
             // set short game type
             switch( m_pGameTypeSelect->GetSelection() )
             {
-            case 0:     g_PendingConfig.SetShortGameType( g_StringTableMgr( "ui", "IDS_SHORT_GAMETYPE_DM"  ) );     break;
-            case 1:     g_PendingConfig.SetShortGameType( g_StringTableMgr( "ui", "IDS_SHORT_GAMETYPE_TDM" ) );     break;
-            case 2:     g_PendingConfig.SetShortGameType( g_StringTableMgr( "ui", "IDS_SHORT_GAMETYPE_CTF" ) );     break;
-            case 3:     g_PendingConfig.SetShortGameType( g_StringTableMgr( "ui", "IDS_SHORT_GAMETYPE_TAG" ) );     break;
-            case 4:     g_PendingConfig.SetShortGameType( g_StringTableMgr( "ui", "IDS_SHORT_GAMETYPE_INF" ) );     break;
-            case 5:     g_PendingConfig.SetShortGameType( g_StringTableMgr( "ui", "IDS_SHORT_GAMETYPE_CNH" ) );     break;
-            default:    ASSERTS(FALSE, "Unknown gametype");
+                case 0:
+                {
+                    g_PendingConfig.SetShortGameType( g_StringTableMgr( "ui", "IDS_SHORT_GAMETYPE_DM"  ) );
+                }
+                break;
+
+                case 1:
+                {
+                    g_PendingConfig.SetShortGameType( g_StringTableMgr( "ui", "IDS_SHORT_GAMETYPE_TDM" ) );
+                }
+                break;
+
+                case 2:
+                {
+                    g_PendingConfig.SetShortGameType( g_StringTableMgr( "ui", "IDS_SHORT_GAMETYPE_CTF" ) );
+                }
+                break;
+
+                case 3:
+                {
+                    g_PendingConfig.SetShortGameType( g_StringTableMgr( "ui", "IDS_SHORT_GAMETYPE_TAG" ) );
+                }
+                break;
+
+                case 4:
+                {
+                    g_PendingConfig.SetShortGameType( g_StringTableMgr( "ui", "IDS_SHORT_GAMETYPE_INF" ) );
+                }
+                break;
+
+                case 5:
+                {
+                    g_PendingConfig.SetShortGameType( g_StringTableMgr( "ui", "IDS_SHORT_GAMETYPE_CNH" ) );
+                }
+                break;
+
+                default:
+                {
+                    ASSERTS(FALSE, "Unknown gametype");
+                }
             }
-            g_PendingConfig.SetGameTypeID( (game_type)m_pGameTypeSelect->GetSelectedItemData( 0 ) );
+            g_PendingConfig.SetGameTypeID( static_cast<game_type>( m_pGameTypeSelect->GetSelectedItemData( 0 ) ) );
 
             // mutation
-            g_PendingConfig.SetMutationMode( (mutation_mode)m_pMutationSelect->GetSelectedItemData() );
+            g_PendingConfig.SetMutationMode( static_cast<mutation_mode>( m_pMutationSelect->GetSelectedItemData() ) );
 #else
             // always DM!
             g_PendingConfig.SetGameType( g_StringTableMgr( "ui", "IDS_GAMETYPE_DM" ) ); 
@@ -497,7 +543,7 @@ void dlg_multi_options::OnAccept( ui_win* pWin )
             m_State = DIALOG_STATE_SELECT;
         }
 #if defined (ALLOW_EXTENDED_OPTIONS)
-        else if( pWin == (ui_win*)m_pGameTypeSelect )
+        else if( pWin == m_pGameTypeSelect )
         {
             // new game type selected - clear the map cycle
             ResetMapCycle();
@@ -508,7 +554,7 @@ void dlg_multi_options::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_multi_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -539,7 +585,7 @@ void dlg_multi_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             m_pContinueButton   ->SetFlag(ui_win::WF_VISIBLE, TRUE);
 
 
-            GotoControl( (ui_control*)m_pContinueButton );
+            GotoControl( m_pContinueButton );
             g_UiMgr->SetScreenHighlight( m_pContinueButton->GetPosition() );
         }
     }
@@ -555,7 +601,9 @@ void dlg_multi_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         g_UiMgr->SetScreenHighlight( m_pTimeLimitText->GetPosition() );
     }
     else
+    {
         m_pTimeLimitText->SetLabelColor( xcolor(126,220,60,255) );
+    }
 
     if( m_pScoreSelect->IsFocused() )
     {
@@ -564,7 +612,9 @@ void dlg_multi_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         g_UiMgr->SetScreenHighlight( m_pScoreText->GetPosition() );
     }
     else
+    {
         m_pScoreText->SetLabelColor( xcolor(126,220,60,255) );
+    }
 
 #if defined (ALLOW_EXTENDED_OPTIONS)
     if( m_pMutationSelect->IsFocused() )
@@ -574,7 +624,9 @@ void dlg_multi_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         g_UiMgr->SetScreenHighlight( m_pMutationText->GetPosition() );
     }
     else
+    {
         m_pMutationText->SetLabelColor( xcolor(126,220,60,255) );
+    }
 
     if( m_pGameTypeSelect->IsFocused() )
     {
@@ -583,7 +635,9 @@ void dlg_multi_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
         g_UiMgr->SetScreenHighlight( m_pGameTypeText->GetPosition() );
     }
     else
+    {
         m_pGameTypeText->SetLabelColor( xcolor(126,220,60,255) );
+    }
 #endif
 
     if( m_pContinueButton->IsFocused() )
@@ -595,13 +649,15 @@ void dlg_multi_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     if( highLight != m_CurrHL )
     {
         if( highLight != -1 )
+        {
             g_AudioMgr.Play("Cusor_Norm");
+        }
 
         m_CurrHL = highLight;
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_multi_options::ResetMapCycle( void )
 {
@@ -620,7 +676,7 @@ void dlg_multi_options::ResetMapCycle( void )
 
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_multi_options::InitializeMutationModes( void )
 {
@@ -628,68 +684,82 @@ void dlg_multi_options::InitializeMutationModes( void )
    // update the available mutation modes based on the game type
     switch( m_pGameTypeSelect->GetSelectedItemData() )
     {
-    case GAME_DM:
-        m_pMutationSelect->DeleteAllItems();
-        m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_CHANGE_AT_WILL"  ), MUTATE_CHANGE_AT_WILL  );
-        m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_LOCK"      ), MUTATE_HUMAN_LOCK      );
-        m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_LOCK"     ), MUTATE_MUTANT_LOCK     );
-    //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_VS_MUTANT" ), MUTATE_HUMAN_VS_MUTANT );
-    //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MAN_HUNT"        ), MUTATE_MAN_HUNT        );
-    //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_HUNT"     ), MUTATE_MUTANT_HUNT     );
+        case GAME_DM:
+        {
+            m_pMutationSelect->DeleteAllItems();
+            m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_CHANGE_AT_WILL"  ), MUTATE_CHANGE_AT_WILL  );
+            m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_LOCK"      ), MUTATE_HUMAN_LOCK      );
+            m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_LOCK"     ), MUTATE_MUTANT_LOCK     );
+            //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_VS_MUTANT" ), MUTATE_HUMAN_VS_MUTANT );
+            //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MAN_HUNT"        ), MUTATE_MAN_HUNT        );
+            //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_HUNT"     ), MUTATE_MUTANT_HUNT     );
+        }
         break;
 
-    case GAME_TDM:
-        m_pMutationSelect->DeleteAllItems();
-        m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_CHANGE_AT_WILL"  ), MUTATE_CHANGE_AT_WILL  );
-        m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_LOCK"      ), MUTATE_HUMAN_LOCK      );
-        m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_LOCK"     ), MUTATE_MUTANT_LOCK     );
-        m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_VS_MUTANT" ), MUTATE_HUMAN_VS_MUTANT );
-    //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MAN_HUNT"        ), MUTATE_MAN_HUNT        );
-    //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_HUNT"     ), MUTATE_MUTANT_HUNT     );
+        case GAME_TDM:
+        {
+            m_pMutationSelect->DeleteAllItems();
+            m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_CHANGE_AT_WILL"  ), MUTATE_CHANGE_AT_WILL  );
+            m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_LOCK"      ), MUTATE_HUMAN_LOCK      );
+            m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_LOCK"     ), MUTATE_MUTANT_LOCK     );
+            m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_VS_MUTANT" ), MUTATE_HUMAN_VS_MUTANT );
+            //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MAN_HUNT"        ), MUTATE_MAN_HUNT        );
+            //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_HUNT"     ), MUTATE_MUTANT_HUNT     );
+        }
         break;
 
-    case GAME_CTF:
-        m_pMutationSelect->DeleteAllItems();
-        m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_CHANGE_AT_WILL"  ), MUTATE_CHANGE_AT_WILL  );
-        m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_LOCK"      ), MUTATE_HUMAN_LOCK      );
-        m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_LOCK"     ), MUTATE_MUTANT_LOCK     );
-        m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_VS_MUTANT" ), MUTATE_HUMAN_VS_MUTANT );
-    //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MAN_HUNT"        ), MUTATE_MAN_HUNT        );
-    //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_HUNT"     ), MUTATE_MUTANT_HUNT     );
+        case GAME_CTF:
+        {
+            m_pMutationSelect->DeleteAllItems();
+            m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_CHANGE_AT_WILL"  ), MUTATE_CHANGE_AT_WILL  );
+            m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_LOCK"      ), MUTATE_HUMAN_LOCK      );
+            m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_LOCK"     ), MUTATE_MUTANT_LOCK     );
+            m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_VS_MUTANT" ), MUTATE_HUMAN_VS_MUTANT );
+            //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MAN_HUNT"        ), MUTATE_MAN_HUNT        );
+            //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_HUNT"     ), MUTATE_MUTANT_HUNT     );
+        }
         break;
 
-    case GAME_TAG:
-        m_pMutationSelect->DeleteAllItems();
-        m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_CHANGE_AT_WILL"  ), MUTATE_CHANGE_AT_WILL  );
-        m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_LOCK"      ), MUTATE_HUMAN_LOCK      );
-        m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_LOCK"     ), MUTATE_MUTANT_LOCK     );
-    //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_VS_MUTANT" ), MUTATE_HUMAN_VS_MUTANT );
-        m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MAN_HUNT"        ), MUTATE_MAN_HUNT        );
-        m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_HUNT"     ), MUTATE_MUTANT_HUNT     );
+        case GAME_TAG:
+        {
+            m_pMutationSelect->DeleteAllItems();
+            m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_CHANGE_AT_WILL"  ), MUTATE_CHANGE_AT_WILL  );
+            m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_LOCK"      ), MUTATE_HUMAN_LOCK      );
+            m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_LOCK"     ), MUTATE_MUTANT_LOCK     );
+            //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_VS_MUTANT" ), MUTATE_HUMAN_VS_MUTANT );
+            m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MAN_HUNT"        ), MUTATE_MAN_HUNT        );
+            m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_HUNT"     ), MUTATE_MUTANT_HUNT     );
+        }
         break;
 
-    case GAME_INF:
-        m_pMutationSelect->DeleteAllItems();
-    //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_CHANGE_AT_WILL"  ), MUTATE_CHANGE_AT_WILL  );
-    //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_LOCK"      ), MUTATE_HUMAN_LOCK      );
-    //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_LOCK"     ), MUTATE_MUTANT_LOCK     );
-        m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_VS_MUTANT" ), MUTATE_HUMAN_VS_MUTANT );
-    //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MAN_HUNT"        ), MUTATE_MAN_HUNT        );
-    //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_HUNT"     ), MUTATE_MUTANT_HUNT     );            
+        case GAME_INF:
+        {
+            m_pMutationSelect->DeleteAllItems();
+            //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_CHANGE_AT_WILL"  ), MUTATE_CHANGE_AT_WILL  );
+            //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_LOCK"      ), MUTATE_HUMAN_LOCK      );
+            //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_LOCK"     ), MUTATE_MUTANT_LOCK     );
+            m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_VS_MUTANT" ), MUTATE_HUMAN_VS_MUTANT );
+            //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MAN_HUNT"        ), MUTATE_MAN_HUNT        );
+            //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_HUNT"     ), MUTATE_MUTANT_HUNT     );
+        }
         break;
 
-    case GAME_CNH:
-        m_pMutationSelect->DeleteAllItems();
-        m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_CHANGE_AT_WILL"  ), MUTATE_CHANGE_AT_WILL  );
-        m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_LOCK"      ), MUTATE_HUMAN_LOCK      );
-        m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_LOCK"     ), MUTATE_MUTANT_LOCK     );
-        m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_VS_MUTANT" ), MUTATE_HUMAN_VS_MUTANT );
-    //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MAN_HUNT"        ), MUTATE_MAN_HUNT        );
-    //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_HUNT"     ), MUTATE_MUTANT_HUNT     );
+        case GAME_CNH:
+        {
+            m_pMutationSelect->DeleteAllItems();
+            m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_CHANGE_AT_WILL"  ), MUTATE_CHANGE_AT_WILL  );
+            m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_LOCK"      ), MUTATE_HUMAN_LOCK      );
+            m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_LOCK"     ), MUTATE_MUTANT_LOCK     );
+            m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_HUMAN_VS_MUTANT" ), MUTATE_HUMAN_VS_MUTANT );
+            //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MAN_HUNT"        ), MUTATE_MAN_HUNT        );
+            //  m_pMutationSelect->AddItem  ( g_StringTableMgr( "ui", "IDS_MUTATION_MODE_MUTANT_HUNT"     ), MUTATE_MUTANT_HUNT     );
+        }
         break;
 
-    default:    
-        ASSERTS( FALSE, "Unknown gametype" );
+        default:
+        {
+            ASSERTS( FALSE, "Unknown gametype" );
+        }
     }
 
     // set default selection
@@ -697,4 +767,4 @@ void dlg_multi_options::InitializeMutationModes( void )
 #endif
 }
 
-//=========================================================================
+//==============================================================================

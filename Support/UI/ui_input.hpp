@@ -31,6 +31,8 @@ enum class ui_input_device
     Gamepad,
 };
 
+//------------------------------------------------------------------------------
+
 enum class ui_input_event_type
 {
     None = 0,
@@ -46,6 +48,8 @@ enum class ui_input_event_type
     PointerWheel,
 };
 
+//------------------------------------------------------------------------------
+
 enum class ui_navigation
 {
     None = 0,
@@ -59,6 +63,8 @@ enum class ui_navigation
     Last,
 };
 
+//------------------------------------------------------------------------------
+
 enum class ui_pointer_button
 {
     None = 0,
@@ -66,7 +72,7 @@ enum class ui_pointer_button
 };
 
 //==============================================================================
-//  ui_input_event
+//  TYPES
 //==============================================================================
 
 struct ui_input_event

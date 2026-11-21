@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  ui_maplist.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -18,45 +22,33 @@
 #include "NetworkMgr/NetworkMgr.hpp"
 #include "NetworkMgr/Game/GameMgr.hpp"
 
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
-
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 ui_win* ui_maplist_factory( s32 UserID, ui_manager* pManager, const irect& Position, ui_win* pParent, s32 Flags )
 {
     ui_maplist* pList = new ui_maplist;
     pList->Create( UserID, pManager, Position, pParent, Flags );
 
-    return (ui_win*)pList;
+    return pList;
 }
 
-//=========================================================================
-//  ui_maplist
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 ui_maplist::ui_maplist( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_maplist::~ui_maplist( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_maplist::RenderString( irect r, u32 Flags, const xcolor& c1, const xcolor& c2, const char* pString )
 {
@@ -65,7 +57,7 @@ void ui_maplist::RenderString( irect r, u32 Flags, const xcolor& c1, const xcolo
     m_pManager->RenderText( m_Font, r, Flags, c1, pString );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_maplist::RenderString( irect r, u32 Flags, const xcolor& c1, const xcolor& c2, const xwchar* pString )
 {
@@ -74,7 +66,7 @@ void ui_maplist::RenderString( irect r, u32 Flags, const xcolor& c1, const xcolo
     m_pManager->RenderText( m_Font, r, Flags, c1, pString );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_maplist::RenderItem( irect r, const item& Item, const xcolor& c1, const xcolor& c2 )
 {
@@ -82,7 +74,8 @@ void ui_maplist::RenderItem( irect r, const item& Item, const xcolor& c1, const 
     r.Translate( 1, -2 );
     irect rt = r;
 
-    map_entry* pEntry = (map_entry*)Item.Data[0];
+    // The row stores a pointer to a map catalog entry, not a map ID.
+    map_entry* pEntry = reinterpret_cast<map_entry*>( Item.Data[0] );
 
     rt.r = rt.l + 50;
     RenderString( rt, ui_font::h_right|ui_font::v_center, c1, c2, pEntry->GetShortGameTypeName() );
@@ -91,4 +84,4 @@ void ui_maplist::RenderItem( irect r, const item& Item, const xcolor& c1, const 
     RenderString( r, ui_font::h_left|ui_font::v_center|ui_font::clip_ellipsis, c1, c2, pEntry->GetDisplayName() );
 }
 
-//=========================================================================
+//==============================================================================

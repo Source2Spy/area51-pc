@@ -16,7 +16,7 @@
 #include "Font/FontMgr.hpp"
 
 //==============================================================================
-//  HELPER FUNCTIONS
+//  HELPERS
 //==============================================================================
 
 static xwstring CopyFontText( const xwchar* pString, s32 Count )
@@ -44,8 +44,8 @@ static xwstring CopyFontText( const xwchar* pString, s32 Count )
 
 static xcolor MultiplyColor( const xcolor& A, const xcolor& B )
 {
-    return xcolor( (u8)( (u32)A.R * B.R / 255 ), (u8)( (u32)A.G * B.G / 255 ), (u8)( (u32)A.B * B.B / 255 ),
-                   (u8)( (u32)A.A * B.A / 255 ) );
+    return xcolor( static_cast<u8>(  static_cast<u32>( A.R ) * B.R / 255  ), static_cast<u8>(  static_cast<u32>( A.G ) * B.G / 255  ), static_cast<u8>(  static_cast<u32>( A.B ) * B.B / 255  ),
+                   static_cast<u8>(  static_cast<u32>( A.A ) * B.A / 255  ) );
 }
 
 //==============================================================================
@@ -118,7 +118,7 @@ void ui_font::TextSize( irect& Rect, const char* pString, s32 Count ) const
         Rect.Clear();
         return;
     }
-    TextSize( Rect, (const xwchar*)Text, Count );
+    TextSize( Rect, static_cast<const xwchar*>( Text ), Count );
 }
 
 //==============================================================================
@@ -147,7 +147,7 @@ void ui_font::TextSize( irect& Rect, const xwchar* pString, s32 Count ) const
         return;
     }
 
-    Rect.Set( 0, 0, (s32)x_ceil( Layout.Size.X ), (s32)x_ceil( Layout.Size.Y ) );
+    Rect.Set( 0, 0, static_cast<s32>( x_ceil( Layout.Size.X ) ), static_cast<s32>( x_ceil( Layout.Size.Y ) ) );
 }
 
 //==============================================================================
@@ -177,7 +177,7 @@ s32 ui_font::GetLineHeight( void ) const
         return 0;
     }
 
-    return (s32)x_ceil( m_Font->GetMetrics().LineHeight );
+    return static_cast<s32>( x_ceil( m_Font->GetMetrics().LineHeight ) );
 }
 
 //==============================================================================
@@ -192,13 +192,13 @@ f32 ui_font::GetGlyphAdvance( u32 Codepoint ) const
 
     if( Codepoint < 0x10000 )
     {
-        Text[0] = (xwchar)Codepoint;
+        Text[0] = static_cast<xwchar>( Codepoint );
     }
     else
     {
         Codepoint -= 0x10000;
-        Text[0] = (xwchar)( 0xd800 + ( Codepoint >> 10 ) );
-        Text[1] = (xwchar)( 0xdc00 + ( Codepoint & 1023 ) );
+        Text[0] = static_cast<xwchar>(  0xd800 + ( Codepoint >> 10 )  );
+        Text[1] = static_cast<xwchar>(  0xdc00 + ( Codepoint & 1023 )  );
     }
 
     TextLayout Layout;
@@ -215,7 +215,7 @@ const xwchar* ui_font::ClipEllipsis( const xwchar* pString, const irect& Rect ) 
 
     TextLayoutOptions Options;
     Options.Language = x_GetLocaleString( XL_LOCALE_CODE_ISO_639_1 );
-    Options.Width    = (f32)Rect.GetWidth();
+    Options.Width    = static_cast<f32>( Rect.GetWidth() );
     Options.Ellipsis = TRUE;
     Options.Runs     = Text.Runs;
 
@@ -236,7 +236,7 @@ const xwchar* ui_font::ClipEllipsis( const xwchar* pString, const irect& Rect ) 
         {
             s32 Cut = MAX( 0, Layout.Text.GetLength() - 1 );
             m_ClippedText = xwstring( pString ).Left( SourceOffsets[Cut] );
-            m_ClippedText += (xwchar)0x2026;
+            m_ClippedText += static_cast<xwchar>( 0x2026 );
         }
     }
 
@@ -255,7 +255,7 @@ void ui_font::TextWrap( const xwchar* pString, const irect& Rect, xwstring& Wrap
 
     TextLayoutOptions Options;
     Options.Language = x_GetLocaleString( XL_LOCALE_CODE_ISO_639_1 );
-    Options.Width    = (f32)Rect.GetWidth();
+    Options.Width    = static_cast<f32>( Rect.GetWidth() );
     Options.Wrap     = TRUE;
     Options.Runs     = Text.Runs;
 
@@ -295,7 +295,7 @@ void ui_font::TextWrap( const ui_text_data& Text, const irect& Rect, ui_text_dat
 
     TextLayoutOptions Options;
     Options.Language = x_GetLocaleString( XL_LOCALE_CODE_ISO_639_1 );
-    Options.Width    = (f32)Rect.GetWidth();
+    Options.Width    = static_cast<f32>( Rect.GetWidth() );
     Options.Wrap     = TRUE;
     Options.Runs     = Text.Runs;
 
@@ -370,7 +370,7 @@ void ui_font::RenderLayout( const irect& Rect,
         return;
     }
 
-    f32 Y = (f32)Rect.t;
+    f32 Y = static_cast<f32>( Rect.t );
     if( Flags & v_center )
     {
         Y += ( Rect.GetHeight() - Layout.Size.Y ) * 0.5f;
@@ -398,7 +398,7 @@ void ui_font::RenderLayout( const irect& Rect,
             }
         }
 
-        f32 X = (f32)Rect.l;
+        f32 X = static_cast<f32>( Rect.l );
         if( Flags & h_center )
         {
             X += ( Rect.GetWidth() - Layout.Lines[LineIndex].Width ) * 0.5f;
@@ -415,7 +415,7 @@ void ui_font::RenderLayout( const irect& Rect,
         }
         else
         {
-            Top.A = (u8)( (u32)Top.A * Color.A / 255 );
+            Top.A = static_cast<u8>(  static_cast<u32>( Top.A ) * Color.A / 255  );
         }
 
         if( pStateData )
@@ -427,7 +427,7 @@ void ui_font::RenderLayout( const irect& Rect,
                 continue;
             }
 
-            Top.A = (u8)( Top.A * x_clamp( State.m_Value, 0.0f, 255.0f ) / 255.0f );
+            Top.A = static_cast<u8>(  Top.A * x_clamp( State.m_Value, 0.0f, 255.0f ) / 255.0f  );
         }
 
         vector2 Position( X + Glyph.Position.X, Y + Glyph.Position.Y );
@@ -488,7 +488,7 @@ void ui_font::RenderLayout( const irect& Rect,
             for( s32 j = 0; j < 4; j++ )
             {
                 xcolor Flare = Top;
-                Flare.A      = (u8)( Flare.A * MIN( 1.0f, FlareAmount ) );
+                Flare.A      = static_cast<u8>(  Flare.A * MIN( 1.0f, FlareAmount )  );
                 Vertices[j]  = ui_vertex( Vertices[j].Position, Vertices[j].UV, Flare );
             }
 
@@ -517,7 +517,7 @@ void ui_font::RenderText( const irect& Rect, u32 Flags, const xcolor& Color, con
 
     TextLayoutOptions Options;
     Options.Language = x_GetLocaleString( XL_LOCALE_CODE_ISO_639_1 );
-    Options.Width    = (f32)Rect.GetWidth();
+    Options.Width    = static_cast<f32>( Rect.GetWidth() );
     Options.Ellipsis = ( Flags & clip_ellipsis ) != 0;
     Options.Runs     = Text.Runs;
 
@@ -561,7 +561,7 @@ void ui_font::RenderText( const irect& Rect, u32 Flags, const xcolor& Color, con
         x_throw( "Invalid UTF-8 text" );
         return;
     }
-    RenderText( Rect, Flags, Color, (const xwchar*)Text, IgnoreRunColors, UseGradient, FlareAmount );
+    RenderText( Rect, Flags, Color, static_cast<const xwchar*>( Text ), IgnoreRunColors, UseGradient, FlareAmount );
 }
 
 //==============================================================================
@@ -569,7 +569,7 @@ void ui_font::RenderText( const irect& Rect, u32 Flags, const xcolor& Color, con
 void ui_font::RenderText( const irect& Rect, u32 Flags, s32 Alpha, const xwchar* pString, xbool IgnoreRunColors,
                           xbool UseGradient, f32 FlareAmount ) const
 {
-    RenderText( Rect, Flags, xcolor( 255, 255, 255, (u8)Alpha ), pString, IgnoreRunColors, UseGradient, FlareAmount );
+    RenderText( Rect, Flags, xcolor( 255, 255, 255, static_cast<u8>( Alpha ) ), pString, IgnoreRunColors, UseGradient, FlareAmount );
 }
 
 //==============================================================================
@@ -591,5 +591,5 @@ void ui_font::RenderStateControlledText( const irect& Rect, u32 Flags, const xco
         x_throw( "Font layout failed" );
         return;
     }
-    RenderLayout( Rect, Flags, Color, Layout, FALSE, 0.0f, (CustomRenderStruct const*)StateData );
+    RenderLayout( Rect, Flags, Color, Layout, FALSE, 0.0f, static_cast<CustomRenderStruct const*>( StateData ) );
 }

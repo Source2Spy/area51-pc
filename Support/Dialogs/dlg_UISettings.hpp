@@ -24,11 +24,15 @@ class ui_combo;
 class ui_text;
 
 //==============================================================================
-//  dlg_ui_settings
+//  REGISTRATION
 //==============================================================================
 
 extern void     dlg_ui_settings_register  ( ui_manager* pManager );
 extern ui_win*  dlg_ui_settings_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class dlg_ui_settings : public ui_dialog
 {

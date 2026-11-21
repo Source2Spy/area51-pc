@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_lore_menu.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -21,9 +25,9 @@
 #include "StateMgr/LoreList.hpp"
 #include "MoviePlayer/MoviePlayer.hpp"
 
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum controls
 {   
@@ -41,31 +45,33 @@ enum controls
     IDC_LORE_TEXTBOX,
 };
 
-//-------------------------------------------------------------------------
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem LoreMenuControls[] = 
 {
     // Frames.
 
-    { IDC_LORE_SELECT,      "IDS_NULL",    "combo",      108,  40, 280,  40, 0, 0, 5, 1, ui_win::WF_VISIBLE },
+    { IDC_LORE_SELECT,   "IDS_NULL",         "combo",      108,  40, 280,  40, 0, 0, 5, 1, ui_win::WF_VISIBLE },
 
-    { IDC_LORE_MAIN,        "IDS_NULL",    "blankbox",    40,  80, 416, 144, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_LORE_BUTTON_1,    "IDS_NULL",    "button",      56, 130,  64,  64, 0, 1, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_LORE_BUTTON_2,    "IDS_NULL",    "button",     136, 130,  64,  64, 1, 1, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_LORE_BUTTON_3,    "IDS_NULL",    "button",     216, 130,  64,  64, 2, 1, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_LORE_BUTTON_4,    "IDS_NULL",    "button",     296, 130,  64,  64, 3, 1, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_LORE_BUTTON_5,    "IDS_NULL",    "button",     376, 130,  64,  64, 4, 1, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_LORE_MAIN,     "IDS_LORE_VAULT",   "blankbox",    40,  80, 416, 144, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_LORE_BUTTON_1, "IDS_NULL",         "button",      56, 130,  64,  64, 0, 1, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_LORE_BUTTON_2, "IDS_NULL",         "button",     136, 130,  64,  64, 1, 1, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_LORE_BUTTON_3, "IDS_NULL",         "button",     216, 130,  64,  64, 2, 1, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_LORE_BUTTON_4, "IDS_NULL",         "button",     296, 130,  64,  64, 3, 1, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_LORE_BUTTON_5, "IDS_NULL",         "button",     376, 130,  64,  64, 4, 1, 1, 1, ui_win::WF_VISIBLE },
 
-    { IDC_LORE_DETAILS,     "IDS_NULL",    "blankbox",    40, 240, 416,  94, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_LORE_TEXT_1,      "IDS_NULL",    "text",        48, 262, 400,  94, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_LORE_TEXT_2,      "IDS_NULL",    "text",        48, 278,  90,  16, 0, 0, 0, 0, ui_win::WF_VISIBLE },
-    { IDC_LORE_TEXT_3,      "IDS_NULL",    "text",        48, 294,  90,  16, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_LORE_DETAILS,  "IDS_LORE_DETAILS", "blankbox",    40, 240, 416,  94, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_LORE_TEXT_1,   "IDS_NULL",         "text",        48, 262, 400,  94, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_LORE_TEXT_2,   "IDS_NULL",         "text",        48, 278,  90,  16, 0, 0, 0, 0, ui_win::WF_VISIBLE },
+    { IDC_LORE_TEXT_3,   "IDS_NULL",         "text",        48, 294,  90,  16, 0, 0, 0, 0, ui_win::WF_VISIBLE },
 
-    { IDC_LORE_TEXTBOX,     "IDS_NULL",    "textbox",     60, 240, 376,  93, 0, 2, 5, 1, ui_win::WF_VISIBLE },
+    { IDC_LORE_TEXTBOX,  "IDS_NULL",         "textbox",     60, 240, 376,  93, 0, 2, 5, 1, ui_win::WF_VISIBLE },
 
 };
 
-//-------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 ui_manager::dialog_tem LoreMenuDialog =
 {
@@ -76,49 +82,45 @@ ui_manager::dialog_tem LoreMenuDialog =
     0
 };
 
-//=========================================================================
-//  Data
-//=========================================================================
+//==============================================================================
 
 static xbool s_Scaled = FALSE;
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_lore_menu_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "lore main", &LoreMenuDialog, &dlg_lore_menu_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_lore_menu_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_lore_menu* pDialog = new dlg_lore_menu;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_lore_menu
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_lore_menu::dlg_lore_menu( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_lore_menu::~dlg_lore_menu( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_lore_menu::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -152,27 +154,25 @@ xbool dlg_lore_menu::Create( s32                        UserID,
     //navText += g_StringTableMgr( "ui", "IDS_NAV_CYCLE_VAULT" );
     SetNavText( navText );
     // setup lore main box
-    m_pLoreMain = (ui_blankbox*)FindChildByID( IDC_LORE_MAIN );
+    m_pLoreMain = static_cast<ui_blankbox*>( FindChildByID( IDC_LORE_MAIN ) );
     m_pLoreMain->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pLoreMain->SetFlag(ui_win::WF_STATIC, TRUE);
     m_pLoreMain->SetBackgroundColor( xcolor (39,117,28,128) );
     m_pLoreMain->SetHasTitleBar( TRUE );
-    m_pLoreMain->SetLabel( g_StringTableMgr( "ui", "IDS_LORE_VAULT" ) );
     m_pLoreMain->SetLabelColor( xcolor(255,252,204,255) );
     m_pLoreMain->SetTitleBarColor( xcolor(19,59,14,196) );
 
     // setup lore details box
-    m_pLoreDetails = (ui_blankbox*)FindChildByID( IDC_LORE_DETAILS );
+    m_pLoreDetails = static_cast<ui_blankbox*>( FindChildByID( IDC_LORE_DETAILS ) );
     m_pLoreDetails->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pLoreDetails->SetBackgroundColor( xcolor (39,117,28,128) );
     m_pLoreDetails->SetFlag(ui_win::WF_STATIC, TRUE);
     m_pLoreDetails->SetHasTitleBar( TRUE );
-    m_pLoreDetails->SetLabel( g_StringTableMgr( "ui", "IDS_LORE_DETAILS" ) );
     m_pLoreDetails->SetLabelColor( xcolor(255,252,204,255) );
     m_pLoreDetails->SetTitleBarColor( xcolor(19,59,14,196) );
 
     // set up textbox
-    m_pTextBox = (ui_textbox*)FindChildByID( IDC_LORE_TEXTBOX );
+    m_pTextBox = static_cast<ui_textbox*>( FindChildByID( IDC_LORE_TEXTBOX ) );
     
     m_pTextBox->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pTextBox->SetFlag( ui_win::WF_DISABLED, TRUE );
@@ -183,7 +183,7 @@ xbool dlg_lore_menu::Create( s32                        UserID,
     m_pTextBox->SetLabelFlags( ui_font::h_left|ui_font::v_top );
     
     // set up lore combo
-    m_pLoreSelect   = (ui_combo*)FindChildByID( IDC_LORE_SELECT );
+    m_pLoreSelect   = static_cast<ui_combo*>( FindChildByID( IDC_LORE_SELECT ) );
     m_pLoreSelect   ->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV | ui_combo::CB_CHANGE_ON_SELECT | ui_combo::CB_NOTIFY_PARENT );
     m_pLoreSelect   ->SetFlag(ui_win::WF_VISIBLE, FALSE);
 
@@ -220,7 +220,7 @@ xbool dlg_lore_menu::Create( s32                        UserID,
                         x_DebugMsg( "Lore menu: skipping map ID %d with invalid UTF-8 name.\n", Entry.GetMapID() );
                         continue;
                     }
-                    m_pLoreSelect->AddItem( DisplayName, (uaddr)&Entry );
+                    m_pLoreSelect->AddItem( DisplayName, reinterpret_cast<uaddr>( &Entry ) );
                     // increment count
                     Count++;
                 }
@@ -236,11 +236,11 @@ xbool dlg_lore_menu::Create( s32                        UserID,
     Profile.Checksum();
 
     // set up buttons
-    m_pLoreButton[0]  = (ui_button*) FindChildByID( IDC_LORE_BUTTON_1 );
-    m_pLoreButton[1]  = (ui_button*) FindChildByID( IDC_LORE_BUTTON_2 );
-    m_pLoreButton[2]  = (ui_button*) FindChildByID( IDC_LORE_BUTTON_3 );
-    m_pLoreButton[3]  = (ui_button*) FindChildByID( IDC_LORE_BUTTON_4 );
-    m_pLoreButton[4]  = (ui_button*) FindChildByID( IDC_LORE_BUTTON_5 );
+    m_pLoreButton[0]  = static_cast<ui_button*>( FindChildByID( IDC_LORE_BUTTON_1 ) );
+    m_pLoreButton[1]  = static_cast<ui_button*>( FindChildByID( IDC_LORE_BUTTON_2 ) );
+    m_pLoreButton[2]  = static_cast<ui_button*>( FindChildByID( IDC_LORE_BUTTON_3 ) );
+    m_pLoreButton[3]  = static_cast<ui_button*>( FindChildByID( IDC_LORE_BUTTON_4 ) );
+    m_pLoreButton[4]  = static_cast<ui_button*>( FindChildByID( IDC_LORE_BUTTON_5 ) );
 
     m_pLoreButton[0]  ->SetFlag(ui_win::WF_VISIBLE, FALSE);
     m_pLoreButton[1]  ->SetFlag(ui_win::WF_VISIBLE, FALSE);
@@ -250,9 +250,9 @@ xbool dlg_lore_menu::Create( s32                        UserID,
 
 
     // set up server info text
-    m_pLoreLine1    = (ui_text*)FindChildByID( IDC_LORE_TEXT_1 );
-    m_pLoreLine2    = (ui_text*)FindChildByID( IDC_LORE_TEXT_2 );
-    m_pLoreLine3    = (ui_text*)FindChildByID( IDC_LORE_TEXT_3 );
+    m_pLoreLine1    = static_cast<ui_text*>( FindChildByID( IDC_LORE_TEXT_1 ) );
+    m_pLoreLine2    = static_cast<ui_text*>( FindChildByID( IDC_LORE_TEXT_2 ) );
+    m_pLoreLine3    = static_cast<ui_text*>( FindChildByID( IDC_LORE_TEXT_3 ) );
     
     m_pLoreLine1    ->UseSmallText( TRUE );
     m_pLoreLine2    ->UseSmallText( TRUE );
@@ -279,7 +279,7 @@ xbool dlg_lore_menu::Create( s32                        UserID,
     PopulateLoreDetails( TRUE );
 
     // set focus
-    GotoControl( (ui_control*)m_pLoreSelect );
+    GotoControl( m_pLoreSelect );
 
     // Initialize popup
     m_PopUp = NULL;
@@ -303,7 +303,7 @@ xbool dlg_lore_menu::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_lore_menu::Destroy( void )
 {
@@ -321,11 +321,11 @@ void dlg_lore_menu::Destroy( void )
     g_UiMgr->UnloadBitmap( "Still" );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_lore_menu::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
@@ -385,6 +385,7 @@ void dlg_lore_menu::Render( s32 ox, s32 oy )
     // render the glow bar
     g_UiMgr->RenderGlowBar();
 
+    // Dim the menu behind the item preview.
     if( m_bScreenIsOn )
     {
         irect const UserBounds = g_UiMgr->GetUserBounds( m_UserID );
@@ -422,13 +423,16 @@ void dlg_lore_menu::Render( s32 ox, s32 oy )
             {
                 case LORE_TYPE_VIDEO:
                 case LORE_TYPE_AUDIO:
+                {
                     if( Movie.IsPlaying() )
-                    {               
+                    {
                         Movie.Render( TRUE );
                     }
-                    break;
+                }
+                break;
 
                 default:
+                {
                     irect r = m_DrawPos;
                     r.t += 2;
                     r.l += 2;
@@ -450,6 +454,7 @@ void dlg_lore_menu::Render( s32 ox, s32 oy )
                         }
                     }
                     m_pManager->RenderBitmap( m_StillBitmapID, r, XCOLOR_WHITE );
+                }
             }
         }
 
@@ -461,21 +466,23 @@ void dlg_lore_menu::Render( s32 ox, s32 oy )
 }
 
 
-//=========================================================================
+//==============================================================================
 
 void dlg_lore_menu::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
     // only allow navigation if active
     if( m_State == DIALOG_STATE_ACTIVE )
     {
-        if( pWin == (ui_win*)m_pLoreSelect )
+        if( pWin == m_pLoreSelect )
         {
             switch( Code )
             {
                 case ui_navigation::Left:
                 case ui_navigation::Right:
+                {
                     PopulateLoreDetails( TRUE );
                     return;
+                }
             }
         }
         ui_dialog::OnNavigate( pWin, Code, Presses, Repeats, WrapX, WrapY );
@@ -490,14 +497,22 @@ void dlg_lore_menu::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s
                 switch( Code )
                 {
                     case ui_navigation::Left:
+                    {
                         if( --m_CurrItem < 0 )
+                        {
                             m_CurrItem = m_NumItems-1;
-                        break;
+                        }
+                    }
+                    break;
 
                     case ui_navigation::Right:
+                    {
                         if( ++m_CurrItem == m_NumItems )
+                        {
                             m_CurrItem = 0;
-                        break;
+                        }
+                    }
+                    break;
                 }
 
                 // change the bitmap
@@ -510,13 +525,13 @@ void dlg_lore_menu::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_lore_menu::OnNotify( ui_notification const& Event )
 {
     (void)Event.m_pText;
 
-    if( Event.m_pSender == (ui_win*)m_pLoreSelect )
+    if( Event.m_pSender == m_pLoreSelect )
     {
         if( Event.m_Type == ui_notification_type::ComboSelectionChanged )
         {
@@ -528,7 +543,7 @@ void dlg_lore_menu::OnNotify( ui_notification const& Event )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_lore_menu::OnAccept( ui_win* pWin )
 {
@@ -547,7 +562,7 @@ void dlg_lore_menu::OnAccept( ui_win* pWin )
 
     if ( m_State == DIALOG_STATE_ACTIVE )
     {
-        if( pWin == (ui_win*)m_pLoreSelect )
+        if( pWin == m_pLoreSelect )
         {
             // change selected vault
             PopulateLoreDetails( TRUE );
@@ -555,7 +570,7 @@ void dlg_lore_menu::OnAccept( ui_win* pWin )
         }
 
         // handle lore item selection here!
-        if( pWin == (ui_win*)m_pLoreButton[0] )
+        if( pWin == m_pLoreButton[0] )
         {
             if( m_pLoreButton[0]->GetBitmap() == m_LoreIconID[LORE_TYPE_UNKNOWN] )
             {
@@ -569,7 +584,7 @@ void dlg_lore_menu::OnAccept( ui_win* pWin )
             InitIconScaling( FALSE );
             m_State = DIALOG_STATE_ACTIVATE;
         }
-        else if( pWin == (ui_win*)m_pLoreButton[1] )
+        else if( pWin == m_pLoreButton[1] )
         {
             if( m_pLoreButton[1]->GetBitmap() == m_LoreIconID[LORE_TYPE_UNKNOWN] )
             {
@@ -583,7 +598,7 @@ void dlg_lore_menu::OnAccept( ui_win* pWin )
             InitIconScaling( FALSE );
             m_State = DIALOG_STATE_ACTIVATE;
         }
-        else if( pWin == (ui_win*)m_pLoreButton[2] )
+        else if( pWin == m_pLoreButton[2] )
         {
             if( m_pLoreButton[2]->GetBitmap() == m_LoreIconID[LORE_TYPE_UNKNOWN] )
             {
@@ -597,7 +612,7 @@ void dlg_lore_menu::OnAccept( ui_win* pWin )
             InitIconScaling( FALSE );
             m_State = DIALOG_STATE_ACTIVATE;
         }
-        else if( pWin == (ui_win*)m_pLoreButton[3] )
+        else if( pWin == m_pLoreButton[3] )
         {
             if( m_pLoreButton[3]->GetBitmap() == m_LoreIconID[LORE_TYPE_UNKNOWN] )
             {
@@ -611,7 +626,7 @@ void dlg_lore_menu::OnAccept( ui_win* pWin )
             InitIconScaling( FALSE );
             m_State = DIALOG_STATE_ACTIVATE;
         }
-        else if( pWin == (ui_win*)m_pLoreButton[4] )
+        else if( pWin == m_pLoreButton[4] )
         {
             if( m_pLoreButton[4]->GetBitmap() == m_LoreIconID[LORE_TYPE_UNKNOWN] )
             {
@@ -628,7 +643,7 @@ void dlg_lore_menu::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_lore_menu::OnCancel( ui_win* pWin )
 {
@@ -663,7 +678,7 @@ void dlg_lore_menu::OnCancel( ui_win* pWin )
             else
             {
                 // exit sub menu / movie player
-                InitIconScaling( TRUE );            
+                InitIconScaling( TRUE );
             }
             g_AudioMgr.Play("Backup");
         }
@@ -672,7 +687,7 @@ void dlg_lore_menu::OnCancel( ui_win* pWin )
     
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_lore_menu::OnPointerDown( ui_win* pWin, s32 x, s32 y )
 {
@@ -706,7 +721,7 @@ void dlg_lore_menu::OnPointerDown( ui_win* pWin, s32 x, s32 y )
     ui_dialog::OnPointerDown( pWin, x, y );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_lore_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -730,7 +745,7 @@ void dlg_lore_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             m_pLoreButton[3] ->SetFlag( ui_win::WF_VISIBLE, TRUE );
             m_pLoreButton[4] ->SetFlag( ui_win::WF_VISIBLE, TRUE );
 
-            GotoControl( (ui_control*)m_pLoreSelect );
+            GotoControl( m_pLoreSelect );
             irect Pos = m_pLoreSelect->GetPosition();
             Pos.Translate( 0, -8 );
             g_UiMgr->SetScreenHighlight( Pos );
@@ -799,7 +814,9 @@ void dlg_lore_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     if( highLight != m_CurrHL )
     {
         if( highLight != -1 )
+        {
             g_AudioMgr.Play("Cusor_Norm");
+        }
 
         m_CurrHL = highLight;
 
@@ -814,7 +831,7 @@ void dlg_lore_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_lore_menu::InitIconScaling ( xbool ScaleDown )
 {
@@ -865,7 +882,7 @@ void dlg_lore_menu::InitIconScaling ( xbool ScaleDown )
         m_pLoreLine3   ->SetFlag(ui_win::WF_VISIBLE, TRUE);
 
         // goto previous control
-        GotoControl( (ui_control*)m_pSelectedIcon );
+        GotoControl( m_pSelectedIcon );
         s_Scaled = FALSE;
 
         for( s32 i = 0; i < 5; i++ )
@@ -886,10 +903,10 @@ void dlg_lore_menu::InitIconScaling ( xbool ScaleDown )
 
         s32 const cx = 256;
         s32 const cy = 224;
-        m_RequestedPos = irect( cx - (s32)virtHW,
-                                cy - (s32)(virtHH + virtYO),
-                                cx + (s32)virtHW,
-                                cy + (s32)(virtHH - virtYO) );
+        m_RequestedPos = irect( cx - static_cast<s32>( virtHW ),
+                                cy - static_cast<s32>( virtHH + virtYO ),
+                                cx + static_cast<s32>( virtHW ),
+                                cy + static_cast<s32>( virtHH - virtYO ) );
 
         m_StartPos.Set( 0, 0, 64, 64 );
         m_pSelectedIcon->LocalToScreen( m_StartPos );
@@ -915,9 +932,13 @@ void dlg_lore_menu::InitIconScaling ( xbool ScaleDown )
             m_CurrItem = 0;
             x_strcpy( m_FileName, pSelectedEntry->FileName );
             if( m_NumItems > 1 )
+            {
                 m_StillBitmapID = g_UiMgr->LoadBitmap( "Still", xfs( "LORE/GALLERY/%s%d.xbmp", m_FileName, m_CurrItem+1 ) );
+            }
             else
+            {
                 m_StillBitmapID = g_UiMgr->LoadBitmap( "Still", xfs( "LORE/IMAGES/%s.xbmp", m_FileName ) );
+            }
         }
     }
 
@@ -926,10 +947,10 @@ void dlg_lore_menu::InitIconScaling ( xbool ScaleDown )
     m_scaleCount = 0.3f; // time to scale in seconds
     m_scaleAngle = 180.0f / m_scaleCount;
 
-    m_DiffPos.t = (s32)((m_RequestedPos.t - m_DrawPos.t) / 2.0f);
-    m_DiffPos.l = (s32)((m_RequestedPos.l - m_DrawPos.l) / 2.0f);
-    m_DiffPos.b = (s32)((m_RequestedPos.b - m_DrawPos.b) / 2.0f);
-    m_DiffPos.r = (s32)((m_RequestedPos.r - m_DrawPos.r) / 2.0f);
+    m_DiffPos.t = static_cast<s32>( (m_RequestedPos.t - m_DrawPos.t) / 2.0f );
+    m_DiffPos.l = static_cast<s32>( (m_RequestedPos.l - m_DrawPos.l) / 2.0f );
+    m_DiffPos.b = static_cast<s32>( (m_RequestedPos.b - m_DrawPos.b) / 2.0f );
+    m_DiffPos.r = static_cast<s32>( (m_RequestedPos.r - m_DrawPos.r) / 2.0f );
 
     m_TotalMoved.Set( 0, 0, 0, 0 );
     
@@ -947,7 +968,7 @@ void dlg_lore_menu::InitIconScaling ( xbool ScaleDown )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_lore_menu::UpdateIconScaling( f32 DeltaTime )
 {
@@ -986,14 +1007,17 @@ xbool dlg_lore_menu::UpdateIconScaling( f32 DeltaTime )
                 {
                     case LORE_TYPE_VIDEO:
                     case LORE_TYPE_AUDIO:
+                    {
                         // set filename
                         x_strcpy( m_FileName, Entry->FileName );
                         // set timeout
                         m_TimeOut = 0.5f;
-                        break;
+                    }
+                    break;
+
                     case LORE_TYPE_STILL:
                     case LORE_TYPE_TEXT:
-
+                    {
                         // turn off lore details
                         m_pLoreDetails ->SetFlag(ui_win::WF_VISIBLE, FALSE);
                         m_pLoreLine1   ->SetFlag(ui_win::WF_VISIBLE, FALSE);
@@ -1013,8 +1037,9 @@ xbool dlg_lore_menu::UpdateIconScaling( f32 DeltaTime )
                         {
                             m_pTextBox->SetLabel( g_StringTableMgr( "lore", m_FullDesc ) );
                         }
-                        GotoControl( (ui_control*)m_pTextBox );
-                        break;
+                        GotoControl( m_pTextBox );
+                    }
+                    break;
                 }
             }
         }
@@ -1022,16 +1047,17 @@ xbool dlg_lore_menu::UpdateIconScaling( f32 DeltaTime )
         {
             f32 const ScaleCurve = x_cos( DEG_TO_RAD( m_scaleAngle * m_scaleCount ) );
 
-            m_TotalMoved.t = m_DiffPos.t + (s32)( m_DiffPos.t * ScaleCurve );
-            m_TotalMoved.l = m_DiffPos.l + (s32)( m_DiffPos.l * ScaleCurve );
-            m_TotalMoved.r = m_DiffPos.r + (s32)( m_DiffPos.r * ScaleCurve );
-            m_TotalMoved.b = m_DiffPos.b + (s32)( m_DiffPos.b * ScaleCurve );
+            m_TotalMoved.t = m_DiffPos.t + static_cast<s32>(  m_DiffPos.t * ScaleCurve  );
+            m_TotalMoved.l = m_DiffPos.l + static_cast<s32>(  m_DiffPos.l * ScaleCurve  );
+            m_TotalMoved.r = m_DiffPos.r + static_cast<s32>(  m_DiffPos.r * ScaleCurve  );
+            m_TotalMoved.b = m_DiffPos.b + static_cast<s32>(  m_DiffPos.b * ScaleCurve  );
 
             m_DrawPos.t = m_StartPos.t + m_TotalMoved.t;
             m_DrawPos.l = m_StartPos.l + m_TotalMoved.l;
             m_DrawPos.r = m_StartPos.r + m_TotalMoved.r;
             m_DrawPos.b = m_StartPos.b + m_TotalMoved.b;
 
+            // Use the same curve for the preview size and the background fade.
             f32 const FadeProgress = 0.5f * (1.0f + ScaleCurve);
             if( m_bScaleDown)
             {
@@ -1068,14 +1094,14 @@ xbool dlg_lore_menu::UpdateIconScaling( f32 DeltaTime )
     // we're done!
     return FALSE;
 }
-//=========================================================================
+//==============================================================================
 
 void dlg_lore_menu::PopulateLoreDetails( xbool bVaultDetails )
 {
     if( bVaultDetails )
     {
         player_profile& Profile = g_StateMgr.GetActiveProfile( 0 );
-        map_entry* pEntry = (map_entry*)m_pLoreSelect->GetSelectedItemData();
+        map_entry* pEntry = reinterpret_cast<map_entry*>( m_pLoreSelect->GetSelectedItemData() );
 
         lore_vault* m_pSelectedVault = g_LoreList.GetVaultByMapID( pEntry->GetMapID(), m_VaultIndex );
 
@@ -1164,4 +1190,4 @@ void dlg_lore_menu::PopulateLoreDetails( xbool bVaultDetails )
     }
 }
 
-//=========================================================================
+//==============================================================================

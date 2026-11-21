@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_online_level_select.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -25,9 +29,9 @@
 #include "../../Apps/GameApp/Config.hpp"    
 #include "SaveData/SaveDataMgr.hpp"
 
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum controls
 {
@@ -36,7 +40,7 @@ enum controls
     IDC_ONLINE_LEVEL_SELECT_LAUNCH,
 };
 
-//-------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 enum popup_message
 {
@@ -45,7 +49,9 @@ enum popup_message
     POPUP_SAVE_SETTINGS,
 };
 
-//-------------------------------------------------------------------------
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem OnlineLevelSelectControls[] = 
 {
@@ -57,7 +63,7 @@ ui_manager::control_tem OnlineLevelSelectControls[] =
     
 };
 
-//-------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 ui_manager::dialog_tem OnlineLevelSelectDialog =
 {
@@ -68,42 +74,40 @@ ui_manager::dialog_tem OnlineLevelSelectDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_online_level_select_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "online level select", &OnlineLevelSelectDialog, &dlg_online_level_select_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_online_level_select_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_online_level_select* pDialog = new dlg_online_level_select;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_level_select
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_online_level_select::dlg_online_level_select( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_online_level_select::~dlg_online_level_select( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_online_level_select::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -123,9 +127,9 @@ xbool dlg_online_level_select::Create( s32                        UserID,
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
     // find controls
-    m_pLevelList     = (ui_listbox*)    FindChildByID( IDC_ONLINE_LEVEL_SELECT_LISTBOX  );
-    m_pLevelCycle    = (ui_listbox*)    FindChildByID( IDC_ONLINE_LEVEL_SELECT_CYCLE    );
-    m_pLaunchButton  = (ui_button*)     FindChildByID( IDC_ONLINE_LEVEL_SELECT_LAUNCH   );
+    m_pLevelList     = static_cast<ui_listbox*>( FindChildByID( IDC_ONLINE_LEVEL_SELECT_LISTBOX  ) );
+    m_pLevelCycle    = static_cast<ui_listbox*>( FindChildByID( IDC_ONLINE_LEVEL_SELECT_CYCLE    ) );
+    m_pLaunchButton  = static_cast<ui_button*>( FindChildByID( IDC_ONLINE_LEVEL_SELECT_LAUNCH   ) );
 
     // initialize type
     m_Type = MAP_SELECT_ONLINE;
@@ -226,7 +230,7 @@ xbool dlg_online_level_select::Create( s32                        UserID,
 
     // set initial focus
     m_CurrHL = 2;
-    GotoControl( (ui_control*)m_pLaunchButton );
+    GotoControl( m_pLaunchButton );
     g_UiMgr->SetScreenHighlight( m_pLaunchButton->GetPosition() );
     m_PopUp = NULL;
     
@@ -260,17 +264,18 @@ xbool dlg_online_level_select::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_level_select::Destroy( void )
 {
+    // Cancel outstanding save callbacks before destroying the dialog.
     g_SaveDataMgr.CancelCallbacks( this );
     ui_dialog::Destroy();
     // kill screen wipe
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_level_select::Configure( map_select_type Type)
 {
@@ -343,16 +348,17 @@ void dlg_online_level_select::Configure( map_select_type Type)
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_level_select::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
     irect rb;
 
+    // Dim the background behind the dialog.
     if( m_bRenderBlackout )
     {
         rb = g_UiMgr->GetUserBounds( m_UserID );
@@ -406,7 +412,7 @@ void dlg_online_level_select::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_level_select::OnNotify( ui_notification const& Event )
 {
@@ -419,7 +425,7 @@ void dlg_online_level_select::OnNotify( ui_notification const& Event )
         if (Event.m_Type == ui_notification_type::ListAccepted)
         {
             // check which listbox
-            if ( Event.m_pSender == (ui_win*)m_pLevelList )
+            if ( Event.m_pSender == m_pLevelList )
             {
                 // level selection listbox
 
@@ -427,7 +433,7 @@ void dlg_online_level_select::OnNotify( ui_notification const& Event )
                 if( g_StateMgr.GetMapCycleCount() < MAP_CYCLE_SIZE )
                 {
                     // insert the map ID
-                    map_entry* pEntry = (map_entry*)m_pLevelList->GetSelectedItemData();
+                    map_entry* pEntry = reinterpret_cast<map_entry*>( m_pLevelList->GetSelectedItemData() );
                     g_StateMgr.InsertMapInCycle( pEntry->GetMapID() );
 
                     // flag that we modified the list
@@ -442,74 +448,61 @@ void dlg_online_level_select::OnNotify( ui_notification const& Event )
                     // pop up error dialog?
                 }
             }
-            else
+            else if( Event.m_pSender == m_pLevelCycle )
             {
                 // level cycle listbox
-
-                // check we have something to delete
-                if( g_StateMgr.GetMapCycleCount() > 0 )
+                const s32 Row = m_pLevelCycle->GetSelection();
+                if( (Row < 0) || (Row >= m_pLevelCycle->GetItemCount()) )
                 {
-                    // store current selection
-                    s32 Sel = m_pLevelCycle->GetSelection();
-
-                    // remove the selected map from the cycle
-                    g_StateMgr.DeleteMapFromCycle( Sel );
-
-                    // flag that we modified the list
-                    g_StateMgr.SetUseDefaultMapCycle( FALSE );
-
-                    // refresh the map cycle list
-                    FillMapCycleList();
-
-                    // set the cursor position
-                    s32 Count = m_pLevelCycle->GetItemCount();
-                    if( Count > 0 )
-                    {
-                        if( Sel > 0 )
-                        {
-                            if ( Sel < Count )
-                            {
-                                m_pLevelCycle->SetSelection( Sel );
-                            }
-                            else
-                            {
-                                m_pLevelCycle->SetSelection( Count-1 );
-                            }
-                        }
-                    }
+                    return;
                 }
-                else
+
+                const s32 CycleOffset = static_cast<s32>( m_pLevelCycle->GetItemData( Row ) );
+                if( (CycleOffset < 0) || (CycleOffset >= g_StateMgr.GetMapCycleCount()) )
                 {
-                    // play error sound
-                    // pop-up error dialog?
+                    return;
+                }
+
+                // remove the selected map from the cycle
+                g_StateMgr.DeleteMapFromCycle( CycleOffset );
+                // flag that we modified the list
+                g_StateMgr.SetUseDefaultMapCycle( FALSE );
+                // refresh the map cycle list
+                FillMapCycleList();
+
+                // set the cursor position
+                const s32 Count = m_pLevelCycle->GetItemCount();
+                if( Count > 0 )
+                {
+                    m_pLevelCycle->SetSelection( MIN( Row, Count - 1 ) );
                 }
             }
         }
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_level_select::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
     ui_dialog::OnNavigate( pWin, Code, Presses, Repeats, WrapX, WrapY );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_level_select::OnAccept( ui_win* pWin )
 {
     if( m_State == DIALOG_STATE_ACTIVE )
     {
 
-        if( pWin == (ui_win*)m_pLaunchButton )
+        if( pWin == m_pLaunchButton )
         {
             LaunchServer();
         }
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_level_select::OnCancel( ui_win* pWin )
 {
@@ -522,7 +515,7 @@ void dlg_online_level_select::OnCancel( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_level_select::OnAlternate( ui_win* pWin )
 {
@@ -541,7 +534,7 @@ void dlg_online_level_select::OnAlternate( ui_win* pWin )
     FillMapCycleList();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_level_select::OnDelete( ui_win* pWin )
 {
@@ -554,7 +547,7 @@ void dlg_online_level_select::OnDelete( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_level_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -571,7 +564,7 @@ void dlg_online_level_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             m_pLevelCycle   ->SetFlag( ui_win::WF_VISIBLE, TRUE );
             m_pLaunchButton ->SetFlag( ui_win::WF_VISIBLE, TRUE );
             
-            GotoControl( (ui_control*)m_pLaunchButton );
+            GotoControl( m_pLaunchButton );
             g_UiMgr->SetScreenHighlight( m_pLaunchButton->GetPosition() );
         }
     }
@@ -600,24 +593,29 @@ void dlg_online_level_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
                 case POPUP_RECONFIGURE:
                 {
-                    switch( m_PopUpResult ) 
+                    switch( m_PopUpResult )
                     {
                         case DLG_POPUP_YES:
+                        {
                             // apply changes NOW
                             m_State = DIALOG_STATE_SELECT;
-                            break;
+                        }
+                        break;
 
                         case DLG_POPUP_NO:
-                            // cancel
-                            break;
+                        {
+                                // cancel
+                        }
+                        break;
 
                         case DLG_POPUP_MAYBE:
-                            // apply changes AFTER current map 
+                        {
+                            // apply changes AFTER current map
                             g_StateMgr.ActivatePendingSettings( TRUE ); // mark dirty
                             m_State = DIALOG_STATE_ACTIVATE;
-
-                            break;
-                    }                    
+                        }
+                        break;
+                    }
                 }
                 break;
 
@@ -728,7 +726,7 @@ void dlg_online_level_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
                     {
                         m_pLevelCycle->SetSelection( count );
                     }
-                    else if ( selection < 0 ) 
+                    else if ( selection < 0 )
                     {
                         m_pLevelCycle->SetSelection( 0 );
                     }
@@ -755,7 +753,7 @@ void dlg_online_level_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_level_select::FillLevelList( void )
 {
@@ -780,7 +778,7 @@ void dlg_online_level_select::FillLevelList( void )
                     xwstring DisplayName;
                     if( DecodeFontText( Entry.GetDisplayName(), DisplayName ) )
                     {
-                        m_pLevelList->AddItem( DisplayName, (uaddr)&Entry );
+                        m_pLevelList->AddItem( DisplayName, reinterpret_cast<uaddr>( &Entry ) );
                     }
                 }
             }
@@ -788,14 +786,20 @@ void dlg_online_level_select::FillLevelList( void )
     }
 
     // Limit Selection
-    if( iSel <  0 ) iSel = 0;
-    if( iSel >= m_pLevelList->GetItemCount() ) iSel = m_pLevelList->GetItemCount()-1;
+    if( iSel <  0 )
+    {
+        iSel = 0;
+    }
+    if( iSel >= m_pLevelList->GetItemCount() )
+    {
+        iSel = m_pLevelList->GetItemCount()-1;
+    }
 
     // Set Selection
     m_pLevelList->SetSelection( iSel );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_level_select::FillMapCycleList( void )
 {
@@ -803,12 +807,11 @@ void dlg_online_level_select::FillMapCycleList( void )
     m_pLevelCycle->DeleteAllItems();
 
     // populate the listbox using the map cycle data
-    s32 Count = g_StateMgr.GetMapCycleCount();
-    s32 Total = Count;
+    const s32 Count = g_StateMgr.GetMapCycleCount();
     s32 Index = g_StateMgr.GetMapCycleIndex();
 
-    // loop through map cycle filling the list
-    while( Count > 0 )
+    // Store the offset from the cycle start, including entries hidden from the list.
+    for( s32 CycleOffset = 0; CycleOffset < Count; CycleOffset++ )
     {
         // get the map ID for this entry
         s32 MapID = g_StateMgr.GetMapCycleMapID( Index );
@@ -816,12 +819,13 @@ void dlg_online_level_select::FillMapCycleList( void )
         const map_entry* pMapEntry = g_MapList.Find( MapID );
         // **NOTE** map entry may be null as the user downloaded maps may not yet be
         // available if the memory card has not completed scanning.
+        // The same applies when a map is missing from the current PC catalog.
         if( pMapEntry )
         {
             xwstring DisplayName;
             if( DecodeFontText( pMapEntry->GetDisplayName(), DisplayName ) )
             {
-                m_pLevelCycle->AddItem( DisplayName, m_pLevelList->GetSelection() );
+                m_pLevelCycle->AddItem( DisplayName, CycleOffset );
             }
         }
 
@@ -829,11 +833,10 @@ void dlg_online_level_select::FillMapCycleList( void )
         Index++;
 
         // check for wrapping
-        if( Index >= Total )
+        if( Index >= Count )
+        {
             Index = 0;
-
-        // Decrement count
-        Count--;
+        }
     }
 
     // set selection
@@ -843,7 +846,7 @@ void dlg_online_level_select::FillMapCycleList( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_level_select::OnSaveSettingsCB( void )
 {
@@ -866,7 +869,7 @@ void dlg_online_level_select::OnSaveSettingsCB( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 map_settings& dlg_online_level_select::GetMapSettings( void )
 {
@@ -880,7 +883,7 @@ map_settings& dlg_online_level_select::GetMapSettings( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_level_select::LaunchServer( void )
 {
@@ -890,7 +893,7 @@ void dlg_online_level_select::LaunchServer( void )
     if( g_StateMgr.GetMapCycleCount() == 0 )
     {
         irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-        m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+        m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
 
         // set nav text
         xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_OK" ));
@@ -909,7 +912,7 @@ void dlg_online_level_select::LaunchServer( void )
     {
         // confirm reconfigure server
         irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-        m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+        m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
 
         // set nav text
         xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_APPLY_NOW" ));
@@ -982,7 +985,7 @@ void dlg_online_level_select::LaunchServer( void )
 
         // Set the level name
         s32 Index = 0;
-        map_entry* pEntry = (map_entry*)m_pLevelList->GetItemData( 0, 0 );
+        map_entry* pEntry = reinterpret_cast<map_entry*>( m_pLevelList->GetItemData( 0, 0 ) );
 
         // We need to translate from our index to the index within the maplist.
         while( TRUE )
@@ -1006,7 +1009,7 @@ void dlg_online_level_select::LaunchServer( void )
         {
             // settings have changed - save changes?
             irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-            m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+            m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
 
             // set nav text
             xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_YES" ));
@@ -1032,4 +1035,4 @@ void dlg_online_level_select::LaunchServer( void )
     }
 }
 
-//=========================================================================
+//==============================================================================

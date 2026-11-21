@@ -1,10 +1,14 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_LoadGame.cpp
 //
-//=========================================================================
+//==============================================================================
 
 // TODO: GS: Make better text effects.
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 #include "dlg_LoadGame.hpp"
@@ -14,9 +18,9 @@
 #include "UI/ui_font.hpp"
 #include "UI/ui_renderer.hpp"
 
-//=========================================================================
-//  Layout
-//=========================================================================
+//==============================================================================
+//  DEFINES
+//==============================================================================
 
 #define FINAL_FADE_OUT_TIME         1.0f
 #define SLIDESHOW_MAX_AUDIO_ERROR_TIME (2.5f / 30.0f)
@@ -27,6 +31,7 @@
 #define LEVEL_NAME_RIGHT           462
 #define LEVEL_NAME_BOTTOM          377
 
+// Timing and offsets for the level-name animation.
 #define SHADOW_SCALE_BEGIN_TIME     0.0f
 #define SHADOW_SCALE_END_TIME       1.3333333f
 #define SHADOW_SLIDE_BEGIN_TIME     1.3333333f
@@ -38,11 +43,13 @@
 #define SHADOW_FADEIN_BEGIN_TIME    5.8f
 #define SHADOW_FADEIN_END_TIME      6.8f
 
+//==============================================================================
+//  DATA
+//==============================================================================
+
 static xcolor s_LoadNameGlow( 187, 255, 187, 255 );
 
-//=========================================================================
-//  Load Game Dialog
-//=========================================================================
+//==============================================================================
 
 ui_manager::dialog_tem LoadGameDialog =
 {
@@ -53,43 +60,41 @@ ui_manager::dialog_tem LoadGameDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_load_game_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "load game", &LoadGameDialog, &dlg_load_game_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_load_game_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_load_game* pDialog = new dlg_load_game;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_load_game
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_load_game::dlg_load_game( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_load_game::~dlg_load_game( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_load_game::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -124,19 +129,21 @@ xbool dlg_load_game::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_load_game::Destroy( void )
 {
     ReleaseSlides();
 
     if( g_UiMgr )
+    {
         g_UiMgr->ResetScreenWipe();
+    }
 
     ui_dialog::Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_load_game::ResetSlides( void )
 {
@@ -151,20 +158,22 @@ void dlg_load_game::ResetSlides( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_load_game::ReleaseSlide( slide_info& Slide )
 {
     if( Slide.BitmapName.GetLength() > 0 )
     {
         if( g_UiMgr )
+        {
             g_UiMgr->UnloadBitmap( Slide.BitmapName );
+        }
 
         Slide.BitmapName = "";
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_load_game::ReleaseSlides( void )
 {
@@ -172,7 +181,7 @@ void dlg_load_game::ReleaseSlides( void )
         ReleaseSlide( m_Slides[i] );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_load_game::ResetSlideshowClock( void )
 {
@@ -181,12 +190,14 @@ void dlg_load_game::ResetSlideshowClock( void )
     m_AudioPredictedTime = 0.0f;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_load_game::AdvanceSlideshowClock( f32 DeltaTime )
 {
     if( DeltaTime <= 0.0f )
+    {
         return;
+    }
 
     if( g_AudioMgr.IsValidVoiceIdCached( m_VoiceID ) )
     {
@@ -195,7 +206,9 @@ void dlg_load_game::AdvanceSlideshowClock( f32 DeltaTime )
         if( AudioTime <= 0.0f )
         {
             if( m_AudioPrevTime <= 0.0f )
+            {
                 return;
+            }
 
             AudioTime = m_AudioPrevTime;
         }
@@ -210,14 +223,22 @@ void dlg_load_game::AdvanceSlideshowClock( f32 DeltaTime )
         m_AudioPrevTime = AudioTime;
 
         if( AudioDeltaTime > 0.0f )
+        {
             m_AudioPredictedTime = AudioTime;
+        }
         else
+        {
             m_AudioPredictedTime += DeltaTime;
+        }
 
         if( m_ElapsedTime <= 0.0f )
+        {
             m_ElapsedTime = AudioTime;
+        }
         else
+        {
             m_ElapsedTime += DeltaTime;
+        }
 
         f32 Error = m_AudioPredictedTime - m_ElapsedTime;
         if( x_abs( Error ) > SLIDESHOW_MAX_AUDIO_ERROR_TIME )
@@ -232,61 +253,69 @@ void dlg_load_game::AdvanceSlideshowClock( f32 DeltaTime )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 irect dlg_load_game::ScaleBaseRect( s32 L, s32 T, s32 R, s32 B ) const
 {
     const irect& Bounds = g_UiMgr->GetUserBounds( g_UiUserID );
 
-    f32 ScaleX = (f32)Bounds.GetWidth()  / (f32)ui_viewport::CONTENT_WIDTH;
-    f32 ScaleY = (f32)Bounds.GetHeight() / (f32)ui_viewport::CONTENT_HEIGHT;
+    f32 ScaleX = static_cast<f32>( Bounds.GetWidth() )  / static_cast<f32>( ui_viewport::CONTENT_WIDTH );
+    f32 ScaleY = static_cast<f32>( Bounds.GetHeight() ) / static_cast<f32>( ui_viewport::CONTENT_HEIGHT );
 
     irect Result;
-    Result.l = Bounds.l + (s32)((f32)L * ScaleX);
-    Result.t = Bounds.t + (s32)((f32)T * ScaleY);
-    Result.r = Bounds.l + (s32)((f32)R * ScaleX);
-    Result.b = Bounds.t + (s32)((f32)B * ScaleY);
+    Result.l = Bounds.l + static_cast<s32>( static_cast<f32>( L ) * ScaleX );
+    Result.t = Bounds.t + static_cast<s32>( static_cast<f32>( T ) * ScaleY );
+    Result.r = Bounds.l + static_cast<s32>( static_cast<f32>( R ) * ScaleX );
+    Result.b = Bounds.t + static_cast<s32>( static_cast<f32>( B ) * ScaleY );
     return Result;
 }
 
-//=========================================================================
+//==============================================================================
 
 irect dlg_load_game::GetScreenRect( void ) const
 {
     return g_UiMgr->GetUserBounds( g_UiUserID );
 }
 
-//=========================================================================
+//==============================================================================
 
 irect dlg_load_game::GetLevelNameRect( void ) const
 {
     return ScaleBaseRect( LEVEL_NAME_LEFT, LEVEL_NAME_TOP, LEVEL_NAME_RIGHT, LEVEL_NAME_BOTTOM );
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 dlg_load_game::GetSlideAlpha( const slide_info& Slide, f32 Time ) const
 {
     if( Time < Slide.StartFadeIn )
+    {
         return 0;
+    }
 
     if( Time < Slide.EndFadeIn )
     {
         f32 Duration = Slide.EndFadeIn - Slide.StartFadeIn;
         if( Duration > 0.0f )
-            return MINMAX( 0, (s32)(255.0f * (Time - Slide.StartFadeIn) / Duration), 255 );
+        {
+            return MINMAX( 0, static_cast<s32>( 255.0f * (Time - Slide.StartFadeIn) / Duration ), 255 );
+        }
 
         return 255;
     }
 
     if( Time < Slide.StartFadeOut )
+    {
         return 255;
+    }
 
     if( Time < Slide.EndFadeOut )
     {
         f32 Duration = Slide.EndFadeOut - Slide.StartFadeOut;
         if( Duration > 0.0f )
-            return MINMAX( 0, 255 - (s32)(255.0f * (Time - Slide.StartFadeOut) / Duration), 255 );
+        {
+            return MINMAX( 0, 255 - static_cast<s32>( 255.0f * (Time - Slide.StartFadeOut) / Duration ), 255 );
+        }
 
         return 0;
     }
@@ -294,19 +323,21 @@ s32 dlg_load_game::GetSlideAlpha( const slide_info& Slide, f32 Time ) const
     return 0;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_load_game::RenderFullscreen( xcolor Color )
 {
     g_UIRenderer.DrawRect( GetScreenRect(), Color );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_load_game::RenderSlideImage( const slide_info& Slide, xcolor Color )
 {
     if( !g_UiMgr )
+    {
         return;
+    }
 
     const s32 BitmapID = g_UiMgr->FindBitmap( Slide.BitmapName );
     if( BitmapID >= 0 )
@@ -319,19 +350,21 @@ void dlg_load_game::RenderSlideImage( const slide_info& Slide, xcolor Color )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_load_game::RenderLevelName( s32 NameAlpha, f32 ShadowOffsetX, f32 ShadowOffsetY, f32 ShadowAlpha )
 {
     s32 FontIndex = g_UiMgr->FindFont( "loadscr" );
     if( FontIndex < 0 )
+    {
         return;
+    }
 
     irect TextRect = GetLevelNameRect();
     u32   TextFlags = ui_font::h_right | ui_font::v_bottom;
 
-    f32 ScaleX = (f32)GetScreenRect().GetWidth()  / (f32)ui_viewport::CONTENT_WIDTH;
-    f32 ScaleY = (f32)GetScreenRect().GetHeight() / (f32)ui_viewport::CONTENT_HEIGHT;
+    f32 ScaleX = static_cast<f32>( GetScreenRect().GetWidth() )  / static_cast<f32>( ui_viewport::CONTENT_WIDTH );
+    f32 ScaleY = static_cast<f32>( GetScreenRect().GetHeight() ) / static_cast<f32>( ui_viewport::CONTENT_HEIGHT );
 
     //irect ShadowRect = TextRect;
     //ShadowRect.Translate( (s32)(2.0f * ScaleX), (s32)(2.0f * ScaleY) );
@@ -357,11 +390,11 @@ void dlg_load_game::RenderLevelName( s32 NameAlpha, f32 ShadowOffsetX, f32 Shado
     g_UiMgr->RenderText( FontIndex,
                          TextRect,
                          TextFlags,
-                         xcolor( 255, 255, 255, (u8)NameAlpha ),
+                         xcolor( 255, 255, 255, static_cast<u8>( NameAlpha ) ),
                          m_NameText );
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_load_game::Render( s32 ox, s32 oy )
 {
@@ -370,8 +403,11 @@ void dlg_load_game::Render( s32 ox, s32 oy )
 
     RenderFullscreen( XCOLOR_BLACK );
 
+    // Keep the screen black until the slideshow setup is complete.
     if( (m_SlideshowState == STATE_IDLE) || (m_SlideshowState == STATE_SETUP) )
+    {
         return;
+    }
 
     s32 SlideAlphas[NUM_SLIDES];
     x_memset( SlideAlphas, 0, sizeof(SlideAlphas) );
@@ -399,7 +435,7 @@ void dlg_load_game::Render( s32 ox, s32 oy )
                 T = MINMAX( 0.0f, T, 1.0f );
 
                 ShadowAlpha = T;
-                NameAlpha   = MINMAX( 0, (s32)(255.0f * T), 255 );
+                NameAlpha   = MINMAX( 0, static_cast<s32>( 255.0f * T ), 255 );
             }
             else if( TextAnimTime < SHADOW_SLIDE_END_TIME )
             {
@@ -430,6 +466,7 @@ void dlg_load_game::Render( s32 ox, s32 oy )
     }
     else
     {
+        // Hold the finished title on screen if loading outlasts the slides.
         NameAlpha   = 255;
         ShadowAlpha = 1.0f;
     }
@@ -437,17 +474,23 @@ void dlg_load_game::Render( s32 ox, s32 oy )
     for( s32 i = 0; i < m_nSlides; i++ )
     {
         if( SlideAlphas[i] <= 0 )
+        {
             continue;
+        }
 
         xcolor C( m_Slides[i].SlideColor.R,
                   m_Slides[i].SlideColor.G,
                   m_Slides[i].SlideColor.B,
-                  (u8)SlideAlphas[i] );
+                  static_cast<u8>( SlideAlphas[i] ) );
 
         if( m_Slides[i].BitmapName.GetLength() > 0 )
+        {
             RenderSlideImage( m_Slides[i], C );
+        }
         else
+        {
             RenderFullscreen( C );
+        }
     }
 
     if( NameAlpha > 0 )
@@ -455,14 +498,15 @@ void dlg_load_game::Render( s32 ox, s32 oy )
         RenderLevelName( NameAlpha, ShadowOffsetX, ShadowOffsetY, ShadowAlpha );
     }
 
+    // Fade the whole composition, regardless of which animation is running.
     if( m_FinalFadeoutStarted )
     {
         f32 T = MINMAX( 0.0f, m_FadeTimeElapsed / FINAL_FADE_OUT_TIME, 1.0f );
-        RenderFullscreen( xcolor( 0, 0, 0, (u8)(255.0f * T) ) );
+        RenderFullscreen( xcolor( 0, 0, 0, static_cast<u8>( 255.0f * T ) ) );
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_load_game::OnAccept( ui_win* pWin )
 {
@@ -471,14 +515,16 @@ void dlg_load_game::OnAccept( ui_win* pWin )
     if( (m_SlideshowState == STATE_SLIDESHOW) && m_AllowSkip )
     {
         if( g_AudioMgr.IsValidVoiceIdCached( m_VoiceID ) )
+        {
             g_AudioMgr.Release( m_VoiceID, 0.0f );
+        }
 
         m_SlideshowState = STATE_LOADING;
         ResetSlideshowClock();
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_load_game::OnUpdate( ui_win* pWin, f32 DeltaTime )
 {
@@ -497,16 +543,22 @@ void dlg_load_game::OnUpdate( ui_win* pWin, f32 DeltaTime )
                            (Pad.GetFrameLogical( frontend_pad::UI_ACTIVATE ).GetWasValue() > 0.25f);
         }
 
+        // Don't let the button that opened the loading screen skip the slides.
         if( m_AllowSkip && SkipPressed )
+        {
             OnAccept( pWin );
+        }
         else if( !AnyHeld )
+        {
             m_AllowSkip = TRUE;
+        }
     }
 
     if( m_SlideshowState == STATE_SLIDESHOW )
     {
         AdvanceSlideshowClock( DeltaTime );
 
+        // If loading finishes early, let the title appear before fading out.
         if( m_LoadingComplete &&
             !m_FinalFadeoutStarted &&
             (m_ElapsedTime > (m_StartTextAnim + SHADOW_SLIDE_BEGIN_TIME)) )
@@ -514,6 +566,7 @@ void dlg_load_game::OnUpdate( ui_win* pWin, f32 DeltaTime )
             m_FinalFadeoutStarted = TRUE;
         }
 
+        // Keep the slideshow running until both the title and slides finish.
         f32 EndTime = m_StartTextAnim + SHADOW_FADEIN_END_TIME;
         for( s32 i = 0; i < m_nSlides; i++ )
         {
@@ -523,7 +576,9 @@ void dlg_load_game::OnUpdate( ui_win* pWin, f32 DeltaTime )
         if( m_ElapsedTime > EndTime )
         {
             if( g_AudioMgr.IsValidVoiceIdCached( m_VoiceID ) )
+            {
                 g_AudioMgr.Release( m_VoiceID, 0.0f );
+            }
 
             m_SlideshowState = STATE_LOADING;
             m_ElapsedTime    = 0.0f;
@@ -534,18 +589,23 @@ void dlg_load_game::OnUpdate( ui_win* pWin, f32 DeltaTime )
         m_ElapsedTime += DeltaTime;
 
         if( m_LoadingComplete && !m_FinalFadeoutStarted )
+        {
             m_FinalFadeoutStarted = TRUE;
+        }
     }
 
     if( m_FinalFadeoutStarted )
     {
         m_FadeTimeElapsed += DeltaTime;
+        // Hold on black briefly before handing off to the game.
         if( m_FadeTimeElapsed > (FINAL_FADE_OUT_TIME + 0.11f) )
+        {
             m_State = DIALOG_STATE_EXIT;
+        }
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_load_game::StartLoadingProcess( void )
 {
@@ -563,14 +623,17 @@ void dlg_load_game::StartLoadingProcess( void )
     m_NameText.Clear();
     m_NameText += g_ActiveConfig.GetLevelName();
 
+    // The loading-screen font originally lacked a backslash glyph.
     for( s32 i = 0; i < m_NameText.GetLength(); i++ )
     {
         if( m_NameText[i] == '\\' )
+        {
             m_NameText[i] = '/';
+        }
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_load_game::SetTextAnimInfo( f32 StartTextAnim )
 {
@@ -578,7 +641,7 @@ void dlg_load_game::SetTextAnimInfo( f32 StartTextAnim )
     m_StartTextAnim = StartTextAnim;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_load_game::SetVoiceID( s32 VoiceID )
 {
@@ -586,7 +649,7 @@ void dlg_load_game::SetVoiceID( s32 VoiceID )
     m_VoiceID = VoiceID;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_load_game::SetNSlides( s32 nSlides )
 {
@@ -606,7 +669,7 @@ void dlg_load_game::SetNSlides( s32 nSlides )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_load_game::SetSlideInfo( s32         Index,
                                   const char* pTextureName,
@@ -620,7 +683,9 @@ void dlg_load_game::SetSlideInfo( s32         Index,
     ASSERT( (Index >= 0) && (Index < m_nSlides) );
 
     if( (Index < 0) || (Index >= m_nSlides) )
+    {
         return;
+    }
 
     ReleaseSlide( m_Slides[Index] );
 
@@ -632,7 +697,7 @@ void dlg_load_game::SetSlideInfo( s32         Index,
 
     if( pTextureName && x_stricmp( pTextureName, "<NULL>" ) )
     {
-        const xstring BitmapName = (const char*)xfs( "load_game_slide_%02d", Index );
+        const xstring BitmapName = static_cast<const char*>( xfs( "load_game_slide_%02d", Index ) );
         if( g_UiMgr && (g_UiMgr->LoadBitmap( BitmapName, pTextureName ) >= 0) )
         {
             m_Slides[Index].BitmapName = BitmapName;
@@ -640,7 +705,7 @@ void dlg_load_game::SetSlideInfo( s32         Index,
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_load_game::StartSlideshow( void )
 {
@@ -651,12 +716,14 @@ void dlg_load_game::StartSlideshow( void )
     ResetSlideshowClock();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_load_game::LoadingComplete( void )
 {
     m_LoadingComplete = TRUE;
 
     if( m_SlideshowState == STATE_IDLE )
+    {
         m_State = DIALOG_STATE_EXIT;
+    }
 }

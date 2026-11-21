@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  ui_textbox.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 #include "../AudioMgr/AudioMgr.hpp"
@@ -12,49 +16,41 @@
 #include "ui_font.hpp"
 #include "StateMgr/StateMgr.hpp"
 
-//=========================================================================
-//  Defines
-//=========================================================================
+//==============================================================================
+//  DEFINES
+//==============================================================================
 
 #define SPACE_TOP       4
 #define SPACE_BOTTOM    4
 #define TEXT_OFFSET     -2
 
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
-
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 ui_win* ui_textbox_factory( s32 UserID, ui_manager* pManager, const irect& Position, ui_win* pParent, s32 Flags )
 {
     ui_textbox* pcombo = new ui_textbox;
     pcombo->Create( UserID, pManager, Position, pParent, Flags );
 
-    return (ui_win*)pcombo;
+    return pcombo;
 }
 
-//=========================================================================
-//  ui_textbox
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 ui_textbox::ui_textbox( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_textbox::~ui_textbox( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_textbox::Create( s32 UserID, ui_manager* pManager, const irect& Position, ui_win* pParent, s32 Flags )
 {
@@ -84,7 +80,7 @@ xbool ui_textbox::Create( s32 UserID, ui_manager* pManager, const irect& Positio
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_textbox::SetLabel( const xwstring& Text )
 {
@@ -96,12 +92,12 @@ void ui_textbox::SetLabel( const xwstring& Text )
     m_pManager->WordWrapString( m_Font, r, Text, Wrapped );
 
     m_Label  = Wrapped;
-    m_pManager->TextSize( m_Font, m_TextRect, (const xwchar*)m_Label, -1 );
+    m_pManager->TextSize( m_Font, m_TextRect, static_cast<const xwchar*>( m_Label ), -1 );
     m_nLines = m_TextRect.GetHeight() / m_LineHeight;
     m_iFirstVisibleLine = 0;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_textbox::Render( s32 ox, s32 oy )
 {
@@ -117,7 +113,9 @@ void ui_textbox::Render( s32 ox, s32 oy )
         irect   rb = r;
         
         if (m_ShowFrame)
+        {
             rb.Deflate( 1, 1 );
+        }
 
         m_pManager->RenderRect( rb, m_BackgroundColor, FALSE );
         if( !(m_Flags & WF_DISABLED) )
@@ -140,11 +138,13 @@ void ui_textbox::Render( s32 ox, s32 oy )
         rt.Deflate( 4, 0 );
 
         // Skip to the first visible line in the wrapped text by counting newlines.
-        const xwchar* pVisibleText = (const xwchar*)m_Label;
+        const xwchar* pVisibleText = static_cast<const xwchar*>( m_Label );
         for( s32 skipLines = m_iFirstVisibleLine; skipLines > 0 && *pVisibleText; )
         {
             if( *pVisibleText == '\n' )
+            {
                 skipLines--;
+            }
             pVisibleText++;
         }
 
@@ -177,7 +177,7 @@ void ui_textbox::Render( s32 ox, s32 oy )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_textbox::SetPosition( const irect& Position )
 {
@@ -186,7 +186,7 @@ void ui_textbox::SetPosition( const irect& Position )
     SetFirstVisibleLine( m_iFirstVisibleLine );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_textbox::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
@@ -196,15 +196,21 @@ void ui_textbox::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 
     switch( Code )
     {
         case ui_navigation::Up:
+        {
             Direction = -1;
-            break;
+        }
+        break;
 
         case ui_navigation::Down:
+        {
             Direction = 1;
-            break;
+        }
+        break;
 
         default:
-            break;
+        {
+        }
+        break;
     }
 
     if( IsActive() && (Direction != 0) )
@@ -223,7 +229,7 @@ void ui_textbox::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 
     ui_win::OnNavigate( pWin, Code, Presses, Repeats, WrapX, WrapY );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_textbox::OnPage( ui_win* pWin, s32 Direction )
 {
@@ -236,7 +242,7 @@ void ui_textbox::OnPage( ui_win* pWin, s32 Direction )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_textbox::OnJump( ui_win* pWin, s32 Direction )
 {
@@ -249,14 +255,16 @@ void ui_textbox::OnJump( ui_win* pWin, s32 Direction )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_textbox::OnAccept( ui_win* pWin )
 {
     if ( ( IsActive() ) && ( m_ExitOnSelect ) )
     {
         if( m_pParent )
+        {
             m_pParent->OnAccept( pWin );
+        }
     }
     else
     {
@@ -267,7 +275,7 @@ void ui_textbox::OnAccept( ui_win* pWin )
 
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_textbox::OnCancel( ui_win* pWin )
 {
@@ -279,32 +287,34 @@ void ui_textbox::OnCancel( ui_win* pWin )
     else
     {
         if( m_pParent )
+        {
             m_pParent->OnCancel( pWin );
+        }
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_textbox::SetBackgroundColor( xcolor Color )
 {
     m_BackgroundColor = Color;
 }
 
-//=========================================================================
+//==============================================================================
 
 xcolor ui_textbox::GetBackgroundColor( void ) const
 {
     return m_BackgroundColor;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_textbox::GetLineCount( void ) const
 {
     return m_nLines;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_textbox::EnsureVisible( s32 iLine )
 {
@@ -318,7 +328,7 @@ void ui_textbox::EnsureVisible( s32 iLine )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_textbox::SetFirstVisibleLine( s32 FirstVisibleLine )
 {
@@ -333,7 +343,7 @@ xbool ui_textbox::SetFirstVisibleLine( s32 FirstVisibleLine )
     return TRUE;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_textbox::UpdateScrollBar( void )
 {
@@ -343,7 +353,7 @@ void ui_textbox::UpdateScrollBar( void )
     m_ScrollBar.SetRange( m_nLines, m_nVisibleLines, m_iFirstVisibleLine );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_textbox::OnPointerMove ( ui_win* pWin, s32 x, s32 y )
 {
@@ -359,7 +369,7 @@ void ui_textbox::OnPointerMove ( ui_win* pWin, s32 x, s32 y )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_textbox::OnPointerLeave( ui_win* pWin )
 {
@@ -367,7 +377,7 @@ void ui_textbox::OnPointerLeave( ui_win* pWin )
     m_ScrollBar.OnPointerLeave();
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_textbox::OnPointerWheel( ui_win* pWin, s32 Delta )
 {
@@ -381,7 +391,7 @@ void ui_textbox::OnPointerWheel( ui_win* pWin, s32 Delta )
     ui_win::OnPointerWheel( pWin, Delta );
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_textbox::OnPointerDown( ui_win* pWin, s32 x, s32 y )
 {
@@ -398,7 +408,7 @@ void ui_textbox::OnPointerDown( ui_win* pWin, s32 x, s32 y )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_textbox::OnPointerUp( ui_win* pWin, s32 x, s32 y )
 {
@@ -412,7 +422,7 @@ void ui_textbox::OnPointerUp( ui_win* pWin, s32 x, s32 y )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_textbox::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -425,7 +435,7 @@ void ui_textbox::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_textbox::OnFocusLost ( ui_win* pWin )
 {
@@ -439,4 +449,4 @@ void ui_textbox::OnFocusLost ( ui_win* pWin )
     ui_win::OnFocusLost( pWin );
 }
 
-//=========================================================================
+//==============================================================================

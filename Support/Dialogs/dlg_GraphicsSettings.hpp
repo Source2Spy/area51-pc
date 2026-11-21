@@ -25,11 +25,15 @@ class ui_slider;
 class ui_text;
 
 //==============================================================================
-//  dlg_graphics_settings
+//  REGISTRATION
 //==============================================================================
 
 extern void     dlg_graphics_settings_register  ( ui_manager* pManager );
 extern ui_win*  dlg_graphics_settings_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
+
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum graphics_settings_controls
 {
@@ -47,6 +51,10 @@ enum graphics_settings_controls
     IDC_GRAPHICS_ADVANCED,
     IDC_GRAPHICS_BUTTON_APPLY,
 };
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class dlg_graphics_settings : public ui_dialog
 {

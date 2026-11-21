@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_OnlineLogin.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -22,9 +26,10 @@
 #include "AudioMgr/AudioMgr.hpp"
 #include "Configuration/GameConfig.hpp"
 
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
+//  DATA
+//==============================================================================
+
 ui_manager::dialog_tem LoginDialog =
 {
     "IDS_ONLINE_LOGIN_TITLE",
@@ -34,43 +39,41 @@ ui_manager::dialog_tem LoginDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_online_login_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "login", &LoginDialog, &dlg_online_login_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_online_login_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_online_login* pDialog = new dlg_online_login;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_online_login
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_online_login::dlg_online_login( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_online_login::~dlg_online_login( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_online_login::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -130,7 +133,7 @@ xbool dlg_online_login::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_login::Destroy( void )
 {
@@ -144,15 +147,16 @@ void dlg_online_login::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_login::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
     irect   rb;
+    // Dim the background behind the dialog.
     rb = g_UiMgr->GetUserBounds( m_UserID );
     g_UiMgr->RenderGouraudRect( rb, xcolor(0,0,0,180),
                                     xcolor(0,0,0,180),
@@ -204,14 +208,14 @@ void dlg_online_login::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_login::OnAccept( ui_win* pWin )
 {
     (void)pWin;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_login::OnCancel( ui_win* pWin )
 {
@@ -225,7 +229,7 @@ void dlg_online_login::OnCancel( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_login::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -234,7 +238,9 @@ void dlg_online_login::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     (void)DeltaTime;
 
     if( m_State != DIALOG_STATE_ACTIVE )
+    {
         return;
+    }
 
     // scale window if necessary
     if( g_UiMgr->IsScreenScaling() )
@@ -262,7 +268,7 @@ void dlg_online_login::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_login::SetLoginState( dlg_login_state NewState )
 {
@@ -281,26 +287,32 @@ void dlg_online_login::SetLoginState( dlg_login_state NewState )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_login::EnterState( dlg_login_state State )
 {
 
     switch( State )
     {
-    case LOGIN_IDLE:
+        case LOGIN_IDLE:
+        {
+        }
         break;
-    case LOGIN_INITIATE_CONNECTION:
-        g_ActiveConfig.SetExitReason( GAME_EXIT_CONTINUE );
-        g_PendingConfig.SetGameTypeID( GAME_MP );
-        g_MatchMgr.StartIndirectLookup();
-        ProgressDialog( "IDS_ONLINE_LOGIN_CONNECTING" );
+
+        case LOGIN_INITIATE_CONNECTION:
+        {
+            g_ActiveConfig.SetExitReason( GAME_EXIT_CONTINUE );
+            g_PendingConfig.SetGameTypeID( GAME_MP );
+            g_MatchMgr.StartIndirectLookup();
+            ProgressDialog( "IDS_ONLINE_LOGIN_CONNECTING" );
+        }
         break;
-    case LOGIN_ACQUIRE_PASSWORD:
+
+        case LOGIN_ACQUIRE_PASSWORD:
         {
             // open a VK to enter the password
             irect r = m_pManager->GetUserBounds( m_UserID );
-            ui_dlg_vkeyboard* pVKeyboard = (ui_dlg_vkeyboard*)m_pManager->OpenDialog( m_UserID, "ui_vkeyboard", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_INPUTMODAL );
+            ui_dlg_vkeyboard* pVKeyboard = static_cast<ui_dlg_vkeyboard*>( m_pManager->OpenDialog( m_UserID, "ui_vkeyboard", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_INPUTMODAL ) );
             pVKeyboard->Configure( FALSE );
             pVKeyboard->SetLabel( g_StringTableMgr( "ui", "IDS_ENTER_PASSWORD" ) );
             pVKeyboard->ConnectString( &m_JoinPassword, NET_PASSWORD_LENGTH );
@@ -309,15 +321,16 @@ void dlg_online_login::EnterState( dlg_login_state State )
             m_JoinPasswordOK    = FALSE;
         }
         break;
-    case LOGIN_PASSWORD_ERROR:
+
+        case LOGIN_PASSWORD_ERROR:
         {
             irect r = g_UiMgr->GetUserBounds( g_UiUserID );
 
             SetNavTextVisible( FALSE );
             if( m_pPopup == NULL )
             {
-                m_pPopup = (dlg_popup*)g_UiMgr->OpenDialog(  g_UiUserID, "popup", r, NULL, 
-                    ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+                m_pPopup = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  g_UiUserID, "popup", r, NULL,
+                    ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
             }
 
             r.Set( 0, 0, 300, 160 );
@@ -326,7 +339,7 @@ void dlg_online_login::EnterState( dlg_login_state State )
             NavText += g_StringTableMgr( "ui", "IDS_NAV_CANCEL" );
 
             m_pPopup->Configure( r,                                         // Position
-                g_StringTableMgr( "ui", "IDS_NETWORK_POPUP" ),              // Title 
+                g_StringTableMgr( "ui", "IDS_NETWORK_POPUP" ),              // Title
                 TRUE,                                                       // Yes
                 TRUE,                                                       // No
                 FALSE,                                                      // Maybe
@@ -335,28 +348,33 @@ void dlg_online_login::EnterState( dlg_login_state State )
                 &m_PopUpResult );                                           // Result
         }
         break;
-    case LOGIN_WAIT_FOR_LOGIN:
-        LOG_APP_NAME( "CLIENT" );
-        g_NetworkMgr.SetLocalPlayerCount(1);
-        g_PendingConfig.SetPassword( xstring(m_JoinPassword) );
-        g_PendingConfig.SetGameTypeID( GAME_MP );
-        game_config::Commit();
-        g_MatchMgr.StartLogin();
+
+        case LOGIN_WAIT_FOR_LOGIN:
+        {
+            LOG_APP_NAME( "CLIENT" );
+            g_NetworkMgr.SetLocalPlayerCount(1);
+            g_PendingConfig.SetPassword( xstring(m_JoinPassword) );
+            g_PendingConfig.SetGameTypeID( GAME_MP );
+            game_config::Commit();
+            g_MatchMgr.StartLogin();
+        }
         break;
 
-    default:
+        default:
+        {
+        }
         break;
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_login::ExitState( dlg_login_state State )
 {
     (void)State;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_login::UpdateState( f32 DeltaTime )
 {
@@ -371,53 +389,73 @@ void dlg_online_login::UpdateState( f32 DeltaTime )
     switch( m_LoginState )
     {
         //---------------------------------------------
-    case LOGIN_IDLE:
-        if( m_PopUpResult != DLG_POPUP_IDLE )
+        case LOGIN_IDLE:
         {
-            //SetNavTextVisible( TRUE );
-        }
-        break;
-        //---------------------------------------------
-    case LOGIN_INITIATE_CONNECTION:
-        UpdateInitConnection();
-        break;
-
-        //---------------------------------------------
-    case LOGIN_WAIT_FOR_LOGIN:
-        UpdateWaitForLogin();
-        break;
-        //---------------------------------------------
-    case LOGIN_ACQUIRE_PASSWORD:
-        UpdateAcquirePassword();
-        break;
-
-        //---------------------------------------------
-    case LOGIN_ERROR:
-        SetState( DIALOG_STATE_BACK );
-        break;
-        //---------------------------------------------
-    case LOGIN_PASSWORD_ERROR:
-        if( m_PopUpResult != DLG_POPUP_IDLE )
-        {
-            m_pPopup=NULL;
-            if( m_PopUpResult == DLG_POPUP_YES )
+            if( m_PopUpResult != DLG_POPUP_IDLE )
             {
-                SetLoginState( LOGIN_ACQUIRE_PASSWORD );
-            }
-            else 
-            {
-                SetState( DIALOG_STATE_CANCEL );
+                //SetNavTextVisible( TRUE );
             }
         }
         break;
+
         //---------------------------------------------
-    default:
-        ASSERT(FALSE);
+        case LOGIN_INITIATE_CONNECTION:
+        {
+            UpdateInitConnection();
+        }
+        break;
+
+        //---------------------------------------------
+
+        case LOGIN_WAIT_FOR_LOGIN:
+        {
+            UpdateWaitForLogin();
+        }
+        break;
+
+        //---------------------------------------------
+        case LOGIN_ACQUIRE_PASSWORD:
+        {
+            UpdateAcquirePassword();
+        }
+        break;
+
+        //---------------------------------------------
+
+        case LOGIN_ERROR:
+        {
+            SetState( DIALOG_STATE_BACK );
+        }
+        break;
+
+        //---------------------------------------------
+        case LOGIN_PASSWORD_ERROR:
+        {
+            if( m_PopUpResult != DLG_POPUP_IDLE )
+            {
+                m_pPopup=NULL;
+                if( m_PopUpResult == DLG_POPUP_YES )
+                {
+                    SetLoginState( LOGIN_ACQUIRE_PASSWORD );
+                }
+                else
+                {
+                    SetState( DIALOG_STATE_CANCEL );
+                }
+            }
+        }
+        break;
+
+        //---------------------------------------------
+        default:
+        {
+            ASSERT(FALSE);
+        }
         break;
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_login::OkDialog( const char* pString, const char* pButton )
 {
@@ -426,8 +464,8 @@ void dlg_online_login::OkDialog( const char* pString, const char* pButton )
     SetNavTextVisible( FALSE );
     if( m_pPopup == NULL )
     {
-        m_pPopup = (dlg_popup*)g_UiMgr->OpenDialog(  g_UiUserID, "popup", r, NULL, 
-            ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+        m_pPopup = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  g_UiUserID, "popup", r, NULL,
+            ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
     }
     
     r.Set( 0, 0, 300, 160 );
@@ -442,7 +480,7 @@ void dlg_online_login::OkDialog( const char* pString, const char* pButton )
         &m_PopUpResult );                                       // Result
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_login::CloseDialog( void )
 {
@@ -455,7 +493,7 @@ void dlg_online_login::CloseDialog( void )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_online_login::ProgressDialog( const char* pString, xbool AllowBackout )
 {
@@ -466,8 +504,8 @@ void dlg_online_login::ProgressDialog( const char* pString, xbool AllowBackout )
 
     if( m_pPopup == NULL )
     {
-        m_pPopup = (dlg_popup*)g_UiMgr->OpenDialog(  g_UiUserID, "popup", r, NULL, 
-            ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+        m_pPopup = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  g_UiUserID, "popup", r, NULL,
+            ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
     }
 
     r.Set( 0, 0, 380, 160 );
@@ -499,23 +537,51 @@ void dlg_online_login::ProgressDialog( const char* pString, xbool AllowBackout )
                         &m_PopUpResult );                                       // Result
 }
 
+//==============================================================================
 
-//------------------------------------------------------------------------------
 const char* dlg_online_login::GetStateName( dlg_login_state LoginState )
 {
     switch( LoginState )
     {
-    case LOGIN_IDLE:                    return "LOGIN_IDLE";
-    case LOGIN_INITIATE_CONNECTION:     return "LOGIN_INITIATE_CONNECTION";
-    case LOGIN_WAIT_FOR_LOGIN:          return "LOGIN_WAIT_FOR_LOGIN";
-    case LOGIN_ERROR:                   return "LOGIN_ERROR";
-    case LOGIN_PASSWORD_ERROR:          return "LOGIN_PASSWORD_ERROR";
-    case LOGIN_ACQUIRE_PASSWORD:        return "LOGIN_WAIT_FOR_PASSWORD";
-    default:                            return "<Unknown>";
+        case LOGIN_IDLE:
+        {
+            return "LOGIN_IDLE";
+        }
+
+        case LOGIN_INITIATE_CONNECTION:
+        {
+            return "LOGIN_INITIATE_CONNECTION";
+        }
+
+        case LOGIN_WAIT_FOR_LOGIN:
+        {
+            return "LOGIN_WAIT_FOR_LOGIN";
+        }
+
+        case LOGIN_ERROR:
+        {
+            return "LOGIN_ERROR";
+        }
+
+        case LOGIN_PASSWORD_ERROR:
+        {
+            return "LOGIN_PASSWORD_ERROR";
+        }
+
+        case LOGIN_ACQUIRE_PASSWORD:
+        {
+            return "LOGIN_WAIT_FOR_PASSWORD";
+        }
+
+        default:
+        {
+            return "<Unknown>";
+        }
     }
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
+
 void dlg_online_login::UpdateInitConnection( void )
 {
     if( m_PopUpResult != DLG_POPUP_IDLE )
@@ -538,8 +604,8 @@ void dlg_online_login::UpdateInitConnection( void )
     }
 }
 
+//==============================================================================
 
-//------------------------------------------------------------------------------
 void dlg_online_login::UpdateWaitForLogin( void )
 {
     if( m_PopUpResult != DLG_POPUP_IDLE )
@@ -585,7 +651,8 @@ void dlg_online_login::UpdateWaitForLogin( void )
 
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
+
 void dlg_online_login::UpdateAcquirePassword( void )
 {
     if( m_JoinPasswordDone )
@@ -601,7 +668,8 @@ void dlg_online_login::UpdateAcquirePassword( void )
     }
 }
 
-//------------------------------------------------------------------------------
+//==============================================================================
+
 void dlg_online_login::SetState( dialog_states State )
 {
     m_State = State;

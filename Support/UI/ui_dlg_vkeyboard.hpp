@@ -15,13 +15,21 @@
 #include "Dialogs/dlg_PopUp.hpp"
 
 //==============================================================================
-//  ui_dlg_vkeyboard
+//  REGISTRATION
 //==============================================================================
 
 extern ui_win* ui_dlg_vkeyboard_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 class ui_vkString;
 class ui_control;
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class ui_dlg_vkeyboard : public ui_dialog
 {

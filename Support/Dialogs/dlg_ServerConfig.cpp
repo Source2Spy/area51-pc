@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_ServerConfig.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -17,9 +21,9 @@
 #include "StringMgr/StringMgr.hpp"
 #include "NetworkMgr/Game/GameMgr.hpp"
 
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem ServerConfigControls[] = 
 {
@@ -33,7 +37,7 @@ ui_manager::control_tem ServerConfigControls[] =
     
 };
 
-//-------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 ui_manager::dialog_tem ServerConfigDialog =
 {
@@ -44,43 +48,41 @@ ui_manager::dialog_tem ServerConfigDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_server_config_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "server config", &ServerConfigDialog, &dlg_server_config_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_server_config_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_server_config* pDialog = new dlg_server_config;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_server_config
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_server_config::dlg_server_config( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_server_config::~dlg_server_config( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_server_config::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -100,17 +102,17 @@ xbool dlg_server_config::Create( s32                        UserID,
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
     // get button handles
-    m_pButtonChangeMap      = (ui_button*)  FindChildByID( IDC_SERVER_CONFIG_CHANGE_MAP  );
-    m_pButtonKickPlayer     = (ui_button*)  FindChildByID( IDC_SERVER_CONFIG_KICK_PLAYER );     
-    m_pButtonChangeTeam     = (ui_button*)  FindChildByID( IDC_SERVER_CONFIG_CHANGE_TEAM );     
-    m_pButtonRestartMap     = (ui_button*)  FindChildByID( IDC_SERVER_CONFIG_RESTART_MAP );             
-    m_pButtonReconfigure    = (ui_button*)  FindChildByID( IDC_SERVER_CONFIG_RECONFIGURE );         
-    m_pButtonShutdown       = (ui_button*)  FindChildByID( IDC_SERVER_CONFIG_SHUTDOWN    );     
+    m_pButtonChangeMap      = static_cast<ui_button*>( FindChildByID( IDC_SERVER_CONFIG_CHANGE_MAP  ) );
+    m_pButtonKickPlayer     = static_cast<ui_button*>( FindChildByID( IDC_SERVER_CONFIG_KICK_PLAYER ) );
+    m_pButtonChangeTeam     = static_cast<ui_button*>( FindChildByID( IDC_SERVER_CONFIG_CHANGE_TEAM ) );
+    m_pButtonRestartMap     = static_cast<ui_button*>( FindChildByID( IDC_SERVER_CONFIG_RESTART_MAP ) );
+    m_pButtonReconfigure    = static_cast<ui_button*>( FindChildByID( IDC_SERVER_CONFIG_RECONFIGURE ) );
+    m_pButtonShutdown       = static_cast<ui_button*>( FindChildByID( IDC_SERVER_CONFIG_SHUTDOWN    ) );
 
     s32 iControl = g_StateMgr.GetCurrentControl();
     if( (iControl == -1) || (GotoControl(iControl)==NULL) )
     {
-        GotoControl( (ui_control*)m_pButtonChangeMap );
+        GotoControl( m_pButtonChangeMap );
         m_CurrentControl = IDC_SERVER_CONFIG_CHANGE_MAP;
     }
     else
@@ -152,7 +154,7 @@ xbool dlg_server_config::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_server_config::Destroy( void )
 {
@@ -162,11 +164,11 @@ void dlg_server_config::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_server_config::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
@@ -228,7 +230,7 @@ void dlg_server_config::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_server_config::OnAccept( ui_win* pWin )
 {
@@ -236,28 +238,28 @@ void dlg_server_config::OnAccept( ui_win* pWin )
 
     if ( m_State == DIALOG_STATE_ACTIVE )
     {
-        if( pWin == (ui_win*)m_pButtonKickPlayer )
+        if( pWin == m_pButtonKickPlayer )
         {
             // kick player
             m_CurrentControl = IDC_SERVER_CONFIG_KICK_PLAYER;
             m_State = DIALOG_STATE_SELECT;
             g_AudioMgr.Play( "Select_Norm" );
         }
-        else if( pWin == (ui_win*)m_pButtonChangeMap )
+        else if( pWin == m_pButtonChangeMap )
         {
             // change map
             m_CurrentControl = IDC_SERVER_CONFIG_CHANGE_MAP;
             m_State = DIALOG_STATE_SELECT;
             g_AudioMgr.Play( "Select_Norm" );
         }
-        else if( pWin == (ui_win*)m_pButtonChangeTeam )
+        else if( pWin == m_pButtonChangeTeam )
         {
             // change map
             m_CurrentControl = IDC_SERVER_CONFIG_CHANGE_TEAM;
             m_State = DIALOG_STATE_SELECT;
             g_AudioMgr.Play( "Select_Norm" );
         }
-        else if( pWin == (ui_win*)m_pButtonRestartMap )
+        else if( pWin == m_pButtonRestartMap )
         {
 
 
@@ -266,7 +268,7 @@ void dlg_server_config::OnAccept( ui_win* pWin )
 
             // open confirmation dialog
             irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-            m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+            m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
 
             // set nav text
             xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_YES" ));
@@ -283,14 +285,14 @@ void dlg_server_config::OnAccept( ui_win* pWin )
                 &m_PopUpResult );
 
         }
-        else if( pWin == (ui_win*)m_pButtonReconfigure )
+        else if( pWin == m_pButtonReconfigure )
         {
             // change map
             m_CurrentControl = IDC_SERVER_CONFIG_RECONFIGURE;
             m_State = DIALOG_STATE_SELECT;
             g_AudioMgr.Play( "Select_Norm" );
         }
-        else if( pWin == (ui_win*)m_pButtonShutdown )
+        else if( pWin == m_pButtonShutdown )
         {
 
 
@@ -299,7 +301,7 @@ void dlg_server_config::OnAccept( ui_win* pWin )
       
             // open confirmation dialog
             irect r = g_UiMgr->GetUserBounds( g_UiUserID );
-            m_PopUp = (dlg_popup*)g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL );
+            m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog(  m_UserID, "popup", r, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER|ui_win::WF_DLG_CENTER|WF_INPUTMODAL ) );
 
             // set nav text
             xwstring navText(g_StringTableMgr( "ui", "IDS_NAV_YES" ));
@@ -319,7 +321,7 @@ void dlg_server_config::OnAccept( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_server_config::OnCancel( ui_win* pWin )
 {
@@ -332,7 +334,7 @@ void dlg_server_config::OnCancel( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_server_config::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -357,7 +359,7 @@ void dlg_server_config::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             s32 iControl = g_StateMgr.GetCurrentControl();
             if( (iControl == -1) || (GotoControl(iControl)==NULL) )
             {
-                GotoControl( (ui_control*)m_pButtonChangeMap );
+                GotoControl( m_pButtonChangeMap );
                 g_UiMgr->SetScreenHighlight( m_pButtonChangeMap->GetPosition() );
                 m_CurrentControl =  IDC_SERVER_CONFIG_CHANGE_MAP;
             }
@@ -419,19 +421,23 @@ void dlg_server_config::OnUpdate ( ui_win* pWin, f32 DeltaTime )
             switch( m_CurrentControl )
             {
                 case IDC_SERVER_CONFIG_SHUTDOWN:
+                {
                     if ( m_PopUpResult == DLG_POPUP_YES )
                     {
                         // shutdown the server here
                         m_State = DIALOG_STATE_SELECT;
                     }
-                    break;
+                }
+                break;
 
                 case IDC_SERVER_CONFIG_RESTART_MAP:
+                {
                     if( m_PopUpResult == DLG_POPUP_YES )
                     {
                         m_State = DIALOG_STATE_SELECT;
                         // restart the current map
                     }
+                }
             }
 
             // clear popup 
@@ -479,10 +485,12 @@ void dlg_server_config::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     if( highLight != m_CurrHL )
     {
         if( highLight != -1 )
+        {
             g_AudioMgr.Play("Cusor_Norm");
+        }
 
         m_CurrHL = highLight;
     }
 }
 
-//=========================================================================
+//==============================================================================

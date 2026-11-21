@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  dlg_stats.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 
@@ -18,11 +22,9 @@
 #include "NetworkMgr/NetworkMgr.hpp"
 #include "NetworkMgr/Game/GameMgr.hpp"
 
-
-
-//=========================================================================
-//  Main Menu Dialog
-//=========================================================================
+//==============================================================================
+//  ENUMS
+//==============================================================================
 
 enum controls
 {
@@ -47,6 +49,10 @@ enum controls
     IDC_STATS_KICKS_TEXT,
     IDC_STATS_VOTES_TEXT,
 };
+
+//==============================================================================
+//  DATA
+//==============================================================================
 
 ui_manager::control_tem StatsControls[] = 
 {
@@ -74,6 +80,8 @@ ui_manager::control_tem StatsControls[] =
     { IDC_STATS_VOTES,          "IDS_ONLINE_STATS_VOTES",   "text", 240, 285, 180,  25, 0, 0, 0, 0, ui_win::WF_VISIBLE },
 };
 
+//==============================================================================
+
 ui_manager::dialog_tem StatsDialog =
 {
     "IDS_ONLINE_STATS",
@@ -83,43 +91,41 @@ ui_manager::dialog_tem StatsDialog =
     0
 };
 
-//=========================================================================
-//  Registration function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 void dlg_stats_register( ui_manager* pManager )
 {
     pManager->RegisterDialogClass( "stats", &StatsDialog, &dlg_stats_factory );
 }
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
 
 ui_win* dlg_stats_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     dlg_stats* pDialog = new dlg_stats;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  dlg_level_select
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 dlg_stats::dlg_stats( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 dlg_stats::~dlg_stats( void )
 {
     Destroy();
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool dlg_stats::Create( s32                        UserID,
                              ui_manager*                pManager,
@@ -139,27 +145,27 @@ xbool dlg_stats::Create( s32                        UserID,
     Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
     // find controls
-    m_pLabelTime    = (ui_text*)  FindChildByID( IDC_STATS_TIME    );
-    m_pLabelKills   = (ui_text*)  FindChildByID( IDC_STATS_KILLS   );
-    m_pLabelDeaths  = (ui_text*)  FindChildByID( IDC_STATS_DEATHS  );
-    m_pLabelGames   = (ui_text*)  FindChildByID( IDC_STATS_GAMES   );
-    m_pLabelWins    = (ui_text*)  FindChildByID( IDC_STATS_WINS    );
-    m_pLabelGolds   = (ui_text*)  FindChildByID( IDC_STATS_GOLDS   );
-    m_pLabelSilvers = (ui_text*)  FindChildByID( IDC_STATS_SILVERS );
-    m_pLabelBronzes = (ui_text*)  FindChildByID( IDC_STATS_BRONZES );
-    m_pLabelKicks   = (ui_text*)  FindChildByID( IDC_STATS_KICKS   );
-    m_pLabelVotes   = (ui_text*)  FindChildByID( IDC_STATS_VOTES   );
+    m_pLabelTime    = static_cast<ui_text*>( FindChildByID( IDC_STATS_TIME    ) );
+    m_pLabelKills   = static_cast<ui_text*>( FindChildByID( IDC_STATS_KILLS   ) );
+    m_pLabelDeaths  = static_cast<ui_text*>( FindChildByID( IDC_STATS_DEATHS  ) );
+    m_pLabelGames   = static_cast<ui_text*>( FindChildByID( IDC_STATS_GAMES   ) );
+    m_pLabelWins    = static_cast<ui_text*>( FindChildByID( IDC_STATS_WINS    ) );
+    m_pLabelGolds   = static_cast<ui_text*>( FindChildByID( IDC_STATS_GOLDS   ) );
+    m_pLabelSilvers = static_cast<ui_text*>( FindChildByID( IDC_STATS_SILVERS ) );
+    m_pLabelBronzes = static_cast<ui_text*>( FindChildByID( IDC_STATS_BRONZES ) );
+    m_pLabelKicks   = static_cast<ui_text*>( FindChildByID( IDC_STATS_KICKS   ) );
+    m_pLabelVotes   = static_cast<ui_text*>( FindChildByID( IDC_STATS_VOTES   ) );
     
-    m_pTextTime     = (ui_text*)  FindChildByID( IDC_STATS_TIME_TEXT    );
-    m_pTextKills    = (ui_text*)  FindChildByID( IDC_STATS_KILLS_TEXT   );
-    m_pTextDeaths   = (ui_text*)  FindChildByID( IDC_STATS_DEATHS_TEXT  );
-    m_pTextGames    = (ui_text*)  FindChildByID( IDC_STATS_GAMES_TEXT   );
-    m_pTextWins     = (ui_text*)  FindChildByID( IDC_STATS_WINS_TEXT    );
-    m_pTextGolds    = (ui_text*)  FindChildByID( IDC_STATS_GOLDS_TEXT   );
-    m_pTextSilvers  = (ui_text*)  FindChildByID( IDC_STATS_SILVERS_TEXT );
-    m_pTextBronzes  = (ui_text*)  FindChildByID( IDC_STATS_BRONZES_TEXT );
-    m_pTextKicks    = (ui_text*)  FindChildByID( IDC_STATS_KICKS_TEXT   );
-    m_pTextVotes    = (ui_text*)  FindChildByID( IDC_STATS_VOTES_TEXT   );
+    m_pTextTime     = static_cast<ui_text*>( FindChildByID( IDC_STATS_TIME_TEXT    ) );
+    m_pTextKills    = static_cast<ui_text*>( FindChildByID( IDC_STATS_KILLS_TEXT   ) );
+    m_pTextDeaths   = static_cast<ui_text*>( FindChildByID( IDC_STATS_DEATHS_TEXT  ) );
+    m_pTextGames    = static_cast<ui_text*>( FindChildByID( IDC_STATS_GAMES_TEXT   ) );
+    m_pTextWins     = static_cast<ui_text*>( FindChildByID( IDC_STATS_WINS_TEXT    ) );
+    m_pTextGolds    = static_cast<ui_text*>( FindChildByID( IDC_STATS_GOLDS_TEXT   ) );
+    m_pTextSilvers  = static_cast<ui_text*>( FindChildByID( IDC_STATS_SILVERS_TEXT ) );
+    m_pTextBronzes  = static_cast<ui_text*>( FindChildByID( IDC_STATS_BRONZES_TEXT ) );
+    m_pTextKicks    = static_cast<ui_text*>( FindChildByID( IDC_STATS_KICKS_TEXT   ) );
+    m_pTextVotes    = static_cast<ui_text*>( FindChildByID( IDC_STATS_VOTES_TEXT   ) );
 
 
     // hide them
@@ -260,7 +266,7 @@ xbool dlg_stats::Create( s32                        UserID,
     player_stats MyStats = g_StateMgr.GetActiveProfile( g_StateMgr.GetProfileListIndex(0) ).GetCareerStats();
     s32 Hours   = ( MyStats.PlayTime / 60 );
     s32 Minutes = ( MyStats.PlayTime % 60 );
-    m_pTextTime     ->SetLabel( xwstring( xfs( (const char*)xstring(g_StringTableMgr( "ui", "IDS_ONLINE_STATS_HOURS_MINS" )), Hours, Minutes ) ) );
+    m_pTextTime     ->SetLabel( xwstring( xfs( static_cast<const char*>( xstring(g_StringTableMgr( "ui", "IDS_ONLINE_STATS_HOURS_MINS" )) ), Hours, Minutes ) ) );
     m_pTextKills    ->SetLabel( xwstring( xfs( "%d", MyStats.KillsAsHuman ) ) );
     m_pTextDeaths   ->SetLabel( xwstring( xfs( "%d", MyStats.Deaths       ) ) );
     m_pTextGames    ->SetLabel( xwstring( xfs( "%d", MyStats.Games        ) ) );
@@ -287,7 +293,7 @@ xbool dlg_stats::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_stats::Destroy( void )
 {
@@ -297,11 +303,11 @@ void dlg_stats::Destroy( void )
     g_UiMgr->ResetScreenWipe();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_stats::Render( s32 ox, s32 oy )
 {
-    const s32 offset = (s32)(g_UiMgr->GetAlphaTime() * 60.0f) % 10;
+    const s32 offset = static_cast<s32>( g_UiMgr->GetAlphaTime() * 60.0f ) % 10;
     static s32 gap      =  9;
     static s32 width    =  4;
 
@@ -364,7 +370,7 @@ void dlg_stats::Render( s32 ox, s32 oy )
     g_UiMgr->RenderGlowBar();
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_stats::OnCancel( ui_win* pWin )
 {
@@ -378,7 +384,7 @@ void dlg_stats::OnCancel( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void dlg_stats::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
@@ -419,7 +425,7 @@ void dlg_stats::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     g_UiMgr->UpdateGlowBar(DeltaTime);
 }
 
-//=========================================================================
+//==============================================================================
 
 
 

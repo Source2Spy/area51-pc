@@ -18,9 +18,8 @@
 
 #include "dlg_PopUp.hpp"
 
-
 //==============================================================================
-//  DEFINES
+//  ENUMS
 //==============================================================================
 
 enum pause_online_controls
@@ -36,15 +35,22 @@ enum pause_online_controls
     IDC_PAUSE_ONLINE_QUIT,
 };
 
-
 //==============================================================================
-//  dlg_pause_online
+//  REGISTRATION
 //==============================================================================
 
 extern void     dlg_pause_online_register  ( ui_manager* pManager );
 extern ui_win*  dlg_pause_online_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 class ui_button;
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class dlg_pause_online : public ui_dialog
 {

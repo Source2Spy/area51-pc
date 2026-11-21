@@ -21,13 +21,21 @@
 #include "NetworkMgr/Game/GameMgr.hpp"
 
 //==============================================================================
-//  dlg_vote_kick
+//  REGISTRATION
 //==============================================================================
 
 extern void     dlg_vote_kick_register  ( ui_manager* pManager );
 extern ui_win*  dlg_vote_kick_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
 
+//==============================================================================
+//  FORWARD DECLARATIONS
+//==============================================================================
+
 class ui_button;
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class dlg_vote_kick : public ui_dialog
 {
@@ -58,6 +66,7 @@ protected:
 
     dlg_popup*          m_PopUp;
     s32                 m_PopUpResult;
+    xbool               m_ExitPending;
 
     player_score        m_PlayerData[32];
 

@@ -17,11 +17,15 @@
 #include "dlg_PopUp.hpp"
 
 //==============================================================================
-//  dlg_autosave
+//  REGISTRATION
 //==============================================================================
 
 extern void     dlg_autosave_register  ( ui_manager* pManager );
 extern ui_win*  dlg_autosave_factory   ( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData );
+
+//==============================================================================
+//  CLASSES
+//==============================================================================
 
 class dlg_autosave : public ui_dialog
 {

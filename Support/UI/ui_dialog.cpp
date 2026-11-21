@@ -1,8 +1,12 @@
-//=========================================================================
+//==============================================================================
 //
 //  ui_dialog.cpp
 //
-//=========================================================================
+//==============================================================================
+
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Entropy.hpp"
 #include "ui_dialog.hpp"
@@ -13,50 +17,42 @@
 #include "StringMgr/StringMgr.hpp"
 #include "AudioMgr/AudioMgr.hpp"
 
-//=========================================================================
-//  Defines
-//=========================================================================
-
-//=========================================================================
-//  Structs
-//=========================================================================
-
-//=========================================================================
-//  Data
-//=========================================================================
+//==============================================================================
+//  DATA
+//==============================================================================
 
 // define the global dialog colors
 xcolor   ui_dialog::m_TextColorNormal;
 xcolor   ui_dialog::m_TextColorShadow;
 
-//=========================================================================
-//  Factory function
-//=========================================================================
+//==============================================================================
+//  REGISTRATION
+//==============================================================================
 
 ui_win* ui_dialog_factory( s32 UserID, ui_manager* pManager, ui_manager::dialog_tem* pDialogTem, const irect& Position, ui_win* pParent, s32 Flags, void* pUserData )
 {
     ui_dialog* pDialog = new ui_dialog;
     pDialog->Create( UserID, pManager, pDialogTem, Position, pParent, Flags, pUserData );
 
-    return (ui_win*)pDialog;
+    return pDialog;
 }
 
-//=========================================================================
-//  ui_dialog
-//=========================================================================
+//==============================================================================
+//  IMPLEMENTATION
+//==============================================================================
 
 ui_dialog::ui_dialog( void )
 {
     m_IsNavTextVisible = TRUE;
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_dialog::~ui_dialog( void )
 {
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_dialog::Create( s32                        UserID,
                          ui_manager*                pManager,
@@ -131,7 +127,7 @@ xbool ui_dialog::Create( s32                        UserID,
             irect Pos;
             Pos.Set( pControlTem->x, pControlTem->y, pControlTem->x + pControlTem->w, pControlTem->y + pControlTem->h );
 
-            ui_control* pControl = (ui_control*)pManager->CreateWin( UserID, pControlTem->pClass, Pos, this, pControlTem->Flags );
+            ui_control* pControl = static_cast<ui_control*>( pManager->CreateWin( UserID, pControlTem->pClass, Pos, this, pControlTem->Flags ) );
             ASSERT( pControl );
 
             // Assign control ID
@@ -148,7 +144,7 @@ xbool ui_dialog::Create( s32                        UserID,
             pControl->SetLabel( pLabel );
             if( x_strcmp( pControlTem->pClass, "edit" ) == 0 )
             {
-                ui_edit*    pEdit = (ui_edit*)pControl;
+                ui_edit*    pEdit = static_cast<ui_edit*>( pControl );
                 pEdit->SetVirtualKeyboardTitle( pLabel );
             }
 
@@ -176,7 +172,7 @@ xbool ui_dialog::Create( s32                        UserID,
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_dialog::Render( s32 ox, s32 oy )
 {
@@ -220,6 +216,7 @@ void ui_dialog::Render( s32 ox, s32 oy )
 
         if( ChildrenClipped )
         {
+            // Restore the outer clip before drawing the wipe and frame.
             m_pManager->PopClipWindow();
         }
 
@@ -230,10 +227,12 @@ void ui_dialog::Render( s32 ox, s32 oy )
         {
             if( m_Flags & WF_DISABLED )
             {
+                // Disabled frame.
                 m_pManager->RenderElement( m_iElement, r, 1 );
             }
             else
             {
+                // Normal frame.
                 m_pManager->RenderElement( m_iElement, r, 0 );
             }
 
@@ -255,12 +254,9 @@ void ui_dialog::Render( s32 ox, s32 oy )
     }
 }
 
-//=========================================================================
-
-//=========================================================================
-//  Message Handler Functions
-//=========================================================================
-//=========================================================================
+//==============================================================================
+//  MESSAGE HANDLERS
+//==============================================================================
 
 void ui_dialog::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 Repeats, xbool WrapX, xbool WrapY )
 {
@@ -269,7 +265,9 @@ void ui_dialog::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 R
     (void)Repeats;
 
     if (!m_InputEnabled)
+    {
         return;
+    }
 
     ui_manager::user*   pUser   = m_pManager->GetUser( m_UserID );
     s32                 x       = m_NavX;
@@ -280,20 +278,33 @@ void ui_dialog::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 R
     // Which way are we moving
     switch( Code )
     {
-    case ui_navigation::Up:
-        dy = -1;
-        break;
-    case ui_navigation::Down:
-        dy = 1;
-        break;
-    case ui_navigation::Left:
-        dx = -1;
-        break;
-    case ui_navigation::Right:
-        dx = 1;
+        case ui_navigation::Up:
+        {
+            dy = -1;
+        }
         break;
 
-    default:
+        case ui_navigation::Down:
+        {
+            dy = 1;
+        }
+        break;
+
+        case ui_navigation::Left:
+        {
+            dx = -1;
+        }
+        break;
+
+        case ui_navigation::Right:
+        {
+            dx = 1;
+        }
+        break;
+
+        default:
+        {
+        }
         break;
     }
 
@@ -360,7 +371,9 @@ void ui_dialog::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 R
                         }
 
                         if( doneLeft && doneRight )
+                        {
                             break;
+                        }
                     }
                 }
             }
@@ -416,7 +429,7 @@ void ui_dialog::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 R
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_dialog::OnFocusWithin( ui_win* pWin )
 {
@@ -440,21 +453,21 @@ void ui_dialog::OnFocusWithin( ui_win* pWin )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_dialog::SetBackgroundColor( xcolor Color )
 {
     m_BackgroundColor = Color;
 }
 
-//=========================================================================
+//==============================================================================
 
 xcolor ui_dialog::GetBackgroundColor( void ) const
 {
     return m_BackgroundColor;
 }
 
-//=========================================================================
+//==============================================================================
 
 ui_control* ui_dialog::GotoControl( s32 iControl )
 {
@@ -467,10 +480,13 @@ ui_control* ui_dialog::GotoControl( s32 iControl )
         return NULL;
     }
 
-    ui_control* pChild = (ui_control*)m_Children[iControl];
+    ui_control* pChild = static_cast<ui_control*>( m_Children[iControl] );
 
     ASSERT( pChild );
-    if( !pChild ) return NULL;
+    if( !pChild )
+    {
+        return NULL;
+    }
 
     if( pChild->CanFocus() )
     {
@@ -490,7 +506,7 @@ ui_control* ui_dialog::GotoControl( s32 iControl )
     return pControl;
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_dialog::GotoControl( ui_control* pControl )
 {
@@ -504,7 +520,7 @@ xbool ui_dialog::GotoControl( ui_control* pControl )
     {
         if( m_Children[i] == pControl )
         {
-            pChild = (ui_control*)m_Children[i];
+            pChild = static_cast<ui_control*>( m_Children[i] );
             iControl = i;
         }
     }
@@ -533,21 +549,21 @@ xbool ui_dialog::GotoControl( ui_control* pControl )
     return Success;
 }
 
-//=========================================================================
+//==============================================================================
 
 s32 ui_dialog::GetNumControls( void ) const
 {
     return m_Children.GetCount();
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_dialog::SetNavText( const xwstring& Text )
 {
     m_NavText = Text;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_dialog::SetNavText( const xwchar* pText )
 {
@@ -562,28 +578,28 @@ void ui_dialog::SetNavText( const xwchar* pText )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_dialog::SetNavTextVisible( xbool IsVisible )
 {
     m_IsNavTextVisible = IsVisible;
 }
 
-//=========================================================================
+//==============================================================================
 
 const xwstring& ui_dialog::GetNavText( void ) const
 {
     return m_NavText;
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_dialog::IsNavTextVisible( void ) const
 {
     return m_IsNavTextVisible;
 }
 
-//=========================================================================
+//==============================================================================
 
 void ui_dialog::InitScreenScaling( const irect& Position )
 {
@@ -597,7 +613,7 @@ void ui_dialog::InitScreenScaling( const irect& Position )
     // set up scaling
     m_scaleCount = 0.3f; // time to scale in seconds
     m_scaleAngle = 180.0f / m_scaleCount;
-    m_scaleX = (f32)(Position.l - m_CurrPos.l) / 2.0f;
+    m_scaleX = static_cast<f32>( Position.l - m_CurrPos.l ) / 2.0f;
     m_totalX = 0.0f;
 
     // set starting position
@@ -629,7 +645,7 @@ void ui_dialog::InitScreenScaling( const irect& Position )
     }
 }
 
-//=========================================================================
+//==============================================================================
 
 xbool ui_dialog::UpdateScreenScaling( f32 DeltaTime, xbool DoWipe )
 {
@@ -659,8 +675,8 @@ xbool ui_dialog::UpdateScreenScaling( f32 DeltaTime, xbool DoWipe )
         else
         {
             m_totalX = m_scaleX + (m_scaleX * x_cos( DEG_TO_RAD( m_scaleAngle * m_scaleCount ) ) );
-            m_CurrPos.l = m_StartPos.l + (s32)m_totalX;
-            m_CurrPos.r = m_StartPos.r - (s32)m_totalX;
+            m_CurrPos.l = m_StartPos.l + static_cast<s32>( m_totalX );
+            m_CurrPos.r = m_StartPos.r - static_cast<s32>( m_totalX );
 
             // resize the window
             SetPosition(m_CurrPos);        
@@ -675,15 +691,11 @@ xbool ui_dialog::UpdateScreenScaling( f32 DeltaTime, xbool DoWipe )
     return FALSE;
 }
 
-//=========================================================================
-//=========================================================================
-
-
-//=========================================================================
+//==============================================================================
 
 ui_manager::dialog_tem* ui_dialog::GetTemplate( void )
 {
     return m_pDialogTem;
 }
 
-//=========================================================================
+//==============================================================================
