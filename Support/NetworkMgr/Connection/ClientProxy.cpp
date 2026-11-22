@@ -7,6 +7,11 @@
 //  Copyright (c) 2002-2003 Inevitable Entertainment Inc. All rights reserved.
 //  Not to be used without express permission of Inevitable Entertainment, Inc.
 //
+//=========================================================================
+
+//=========================================================================
+//  INCLUDES
+//=========================================================================
 
 #include "ClientProxy.hpp"
 #include "NetworkMgr/Match/MatchMgr.hpp"
@@ -20,7 +25,10 @@
 
 extern game_server* g_pServer;
 
-//------------------------------------------------------------------------------
+//=========================================================================
+//  IMPLEMENTATION
+//=========================================================================
+
 client_proxy::client_proxy(void)
 {
     m_IsConnected       = FALSE;
@@ -30,12 +38,14 @@ client_proxy::client_proxy(void)
     Clear();
 }
 
-//------------------------------------------------------------------------------
+//=========================================================================
+
 client_proxy::~client_proxy( void )
 {
 }
 
-//------------------------------------------------------------------------------
+//=========================================================================
+
 void client_proxy::Init( net_socket*         pLocalSocket,
                          const net_address&  Remote,      
                          s32                 ClientIndex, 
@@ -69,7 +79,8 @@ void client_proxy::Init( net_socket*         pLocalSocket,
     EnterState( STATE_CLIENT_INIT );
 }
 
-//------------------------------------------------------------------------------
+//=========================================================================
+
 void client_proxy::Kill( void )
 {
     ASSERT( m_IsConnected );
@@ -80,7 +91,8 @@ void client_proxy::Kill( void )
     m_VoiceProxy.Kill();
 }
 
-//------------------------------------------------------------------------------
+//=========================================================================
+
 void client_proxy::Update( f32 DeltaTime, server_state ServerState )
 {
     m_ConnMgr.SetServerState( ServerState );
@@ -105,7 +117,8 @@ void client_proxy::Update( f32 DeltaTime, server_state ServerState )
     }
 }
 
-//------------------------------------------------------------------------------
+//=========================================================================
+
 void client_proxy::Disconnect( exit_reason Reason )
 {
     netstream Request;
@@ -127,7 +140,8 @@ void client_proxy::Disconnect( exit_reason Reason )
     // need to tell it again to shutdown.
 }
 
-//------------------------------------------------------------------------------
+//=========================================================================
+
 void client_proxy::Clear( void )
 {
     s32 i;
@@ -140,7 +154,8 @@ void client_proxy::Clear( void )
     }
 }
 
-//------------------------------------------------------------------------------
+//=========================================================================
+
 void client_proxy::AddPlayer( s32 Index, const char* pName, u64 Identifier )
 {
     if( m_LocalPlayerCount >= NET_MAX_PER_CLIENT )
@@ -156,7 +171,7 @@ void client_proxy::AddPlayer( s32 Index, const char* pName, u64 Identifier )
     m_VoiceProxy.SetPlayerSlot( Index );
 }
 
-//------------------------------------------------------------------------------
+//=========================================================================
 
 s32 client_proxy::GetPlayerSlot( s32 Index )
 {
@@ -164,16 +179,15 @@ s32 client_proxy::GetPlayerSlot( s32 Index )
     return m_LocalPlayerSlot[Index];
 }
 
-//------------------------------------------------------------------------------
+//=========================================================================
 
 const net_address& client_proxy::GetAddress(void)
 {
     return m_ConnMgr.GetAddress();
 }
 
-//------------------------------------------------------------------------------
+//=========================================================================
 
-//------------------------------------------------------------------------------
 xbool client_proxy::ReceivePacket(netstream& BitStream)
 {
     if( m_ConnMgr.ReceivePacket( BitStream ) )
@@ -236,7 +250,8 @@ xbool client_proxy::ReceivePacket(netstream& BitStream)
     return TRUE;
 }
 
-//------------------------------------------------------------------------------
+//=========================================================================
+
 xbool client_proxy::ProvideUpdate(void)
 {
     if ( (IsConnected()==FALSE) || ((GetState() != STATE_CLIENT_SYNC) && (GetState() != STATE_CLIENT_INGAME)) )
@@ -258,32 +273,35 @@ xbool client_proxy::ProvideUpdate(void)
     return FALSE;
 }
 
-//------------------------------------------------------------------------------
+//=========================================================================
+
 xbool client_proxy::IsInGame(void)
 {
     return m_ConnMgr.GetClientState() == STATE_CLIENT_INGAME;
 }
 
-//------------------------------------------------------------------------------
+//=========================================================================
+
 xbool client_proxy::HasMapLoaded(void)
 {
     return m_ConnMgr.GetClientState() > STATE_CLIENT_LOAD_MISSION;
 }
 
-//------------------------------------------------------------------------------
+//=========================================================================
+
 void client_proxy::QueueVoice(const byte* pBuffer, s32 Length)
 {
     m_ConnMgr.QueueVoice(pBuffer,Length);
 }
 
-//------------------------------------------------------------------------------
-//------------------------------------------------------------------------------
+//=========================================================================
+
 const byte* client_proxy::GetUniqueId(void)
 {
     return m_UniqueId;
 }
 
-//------------------------------------------------------------------------------
+//=========================================================================
 
 xbool client_proxy::KickPlayer( s32 PlayerId )
 {
@@ -311,26 +329,21 @@ xbool client_proxy::KickPlayer( s32 PlayerId )
     return FALSE;
 }
 
-//------------------------------------------------------------------------------
-s32 client_proxy::ReadFromVoiceFifo( byte* pBuffer, s32 MaxLength )
-{
-    return m_VoiceProxy.Read( pBuffer, MaxLength );
-}
+//=========================================================================
 
-//------------------------------------------------------------------------------
 void client_proxy::WriteToVoiceFifo( const byte* pBuffer, s32 Length )
 {
     m_VoiceProxy.Write( pBuffer, Length );
 }
 
-//------------------------------------------------------------------------------
+//=========================================================================
 
 void client_proxy::ProcessEndMission( netstream& BitStream )
 {
     (void)BitStream;
 }
 
-//------------------------------------------------------------------------------
+//=========================================================================
 
 void client_proxy::ProcessVerifyRequest( netstream& BitStream )
 {
@@ -375,7 +388,8 @@ void client_proxy::ProcessVerifyRequest( netstream& BitStream )
     m_ConnMgr.Send  ( Reply );
 }
 
-//------------------------------------------------------------------------------
+//=========================================================================
+
 void client_proxy::ProcessMissionRequest( netstream& BitStream )
 {
     if( !FinishConnectionPacket(BitStream) )
@@ -394,13 +408,15 @@ void client_proxy::ProcessMissionRequest( netstream& BitStream )
     m_ConnMgr.Send  ( Reply );
 }
 
-//------------------------------------------------------------------------------
+//=========================================================================
+
 exit_reason client_proxy::GetExitReason( void )
 { 
     return m_ExitReason;
 }
 
-//------------------------------------------------------------------------------
+//=========================================================================
+
 void client_proxy::SetExitReason( exit_reason Reason )
 { 
     m_ExitReason = Reason;

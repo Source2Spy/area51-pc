@@ -19,10 +19,9 @@
 #include "VoiceMgr.hpp"
 
 //==============================================================================
-//  DEFINES
+//  CLASS
 //==============================================================================
-//  TYPES
-//==============================================================================
+
 class voice_proxy
 {
 public:
@@ -34,12 +33,13 @@ public:
 
         void                ProvideUpdate       ( netstream& BitStream );
         void                AcceptUpdate        ( netstream& BitStream );
-        s32                 Read                ( byte* pBuffer, s32 MaxLength );
         void                Write               ( const byte* pBuffer, s32 Length );
         void                SetPlayerSlot       ( s32 PlayerSlot );
         s32                 GetPlayerSlot       ( void );
-        void                SetVoiceOwner       ( s32 PlayerSlot, actual_talk_mode TalkMode );
+        void                SetVoiceOwner       ( s32 PlayerSlot, actual_talk_mode TalkMode, xbool Drain );
         s32                 GetVoiceOwner       ( void );
+        s32                 GetOutgoingOwner    ( void ) const { return m_OutgoingOwner; }
+        actual_talk_mode    GetVoiceTalkMode    ( void ) const { return m_VoiceTalkMode; }
         desired_talk_mode   GetDesiredTalkMode  ( void ) { return m_DesiredTalkMode; }
         u32                 GetMutedPlayers     ( void ) { return m_MutedPlayers; }
 
@@ -47,6 +47,7 @@ private:
         xbool               m_Initialized;
 
         s32                 m_VoiceOwner;
+        s32                 m_OutgoingOwner;
         actual_talk_mode    m_VoiceTalkMode;
         u32                 m_MutedPlayers;
 
@@ -55,9 +56,7 @@ private:
         desired_talk_mode   m_DesiredTalkMode;
 
         fifo                m_Outgoing;
-        fifo                m_Incoming;
-        byte                m_OutgoingBuffer[256];
-        byte                m_IncomingBuffer[256];
+        byte                m_OutgoingBuffer[voice_update::FIFO_BYTES];
 };
 
 

@@ -203,7 +203,6 @@ void network_mgr::BeginFrame( f32 RealDeltaTime )
     }
 
     m_CancelledConnections.Update( m_LocalSocket, RealDeltaTime );
-    g_VoiceMgr.Update( RealDeltaTime );
 
     // -------------------------------------------------------------------------
     // Receive network packets
@@ -293,6 +292,8 @@ void network_mgr::EndFrame( f32 RealDeltaTime )
     {
         return;
     }
+
+    g_VoiceMgr.Update( RealDeltaTime );
 
     // -------------------------------------------------------------------------
     // Advance level or detect game completion.

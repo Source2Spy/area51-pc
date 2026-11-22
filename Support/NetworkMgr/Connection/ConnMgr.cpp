@@ -25,6 +25,12 @@
 
 //==============================================================================
 
+static_assert( voice_update::MAX_FRAMES * voice_codec::SAMPLES_PER_FRAME >=
+               MAX_SHIP_INTERVAL * voice_codec::SAMPLE_RATE,
+               "A voice update must carry audio for the maximum game packet interval." );
+
+//==============================================================================
+
 #if defined(TARGET_DEV) && defined(X_DEBUG)
 #endif
 
@@ -1179,8 +1185,7 @@ void conn_mgr::WriteManagerData( conn_packet& Packet, netstream& BitStream )
 
     Cursor = BitStream.GetCursor();
 
-#if defined(TARGET_WINDOWS)
-    // Desktop voice travels in the reliable connection packet.  The server
+    // Voice is part of the game data packet on every platform. The server
     // owns one proxy per client; a client sends its local headset data.
     if( m_pVoiceProxy != NULL )
     {
@@ -1190,7 +1195,6 @@ void conn_mgr::WriteManagerData( conn_packet& Packet, netstream& BitStream )
     {
         g_VoiceMgr.ProvideUpdate( BitStream );
     }
-#endif
 
     m_Stats.BitsVoiceMgr += BitStream.GetCursor() - Cursor;
 
@@ -1291,8 +1295,7 @@ void conn_mgr::ProcessManagerData( netstream& BitStream )
     if( !m_IsConnected )
         return;
 
-#if defined(TARGET_WINDOWS)
-    // This mirrors the desktop voice payload written above.  Server-side
+    // This mirrors the voice payload written above. Server-side
     // connections terminate in a voice proxy; the local client terminates in
     // the global voice manager.
     if( IsServer() )
@@ -1305,7 +1308,6 @@ void conn_mgr::ProcessManagerData( netstream& BitStream )
         ASSERT( m_pVoiceProxy == NULL );
         g_VoiceMgr.AcceptUpdate( BitStream );
     }
-#endif
 
     if( BitStream.ReadError() )
         return;
@@ -1571,4 +1573,3 @@ void conn_mgr::QueueVoice(const byte* pData, s32 Length)
 }
 
 //==============================================================================
-

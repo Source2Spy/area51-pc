@@ -11586,7 +11586,6 @@ void state_mgr::Reboot( reboot_reason Reason )
 void state_mgr::SetActiveControllerID( s32 ID )
 {
     m_ActiveControllerID = ID;
-    g_VoiceMgr.GetHeadset().SetActiveHeadset( ID );
 }
 
 //=========================================================================

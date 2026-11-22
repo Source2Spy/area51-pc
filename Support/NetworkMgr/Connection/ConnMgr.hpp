@@ -61,7 +61,7 @@ const   s32                 PACKET_LOSS_HISTORY     =  16;
 const   f32                 CONFIRM_ALIVE_TIMEOUT   = 10.0f;
 // Maximum ship interval of 250ms, minimum ship
 // interval of 100ms.
-const   f32                 MAX_SHIP_INTERVAL       = (1.0f /  4.0f);
+constexpr f32               MAX_SHIP_INTERVAL       = (1.0f /  4.0f);
 const   f32                 MIN_SHIP_INTERVAL       = (1.0f / 10.0f);
 // Default ship interval of 100ms
 const   f32                 DEFAULT_SHIP_INTERVAL   = MIN_SHIP_INTERVAL;

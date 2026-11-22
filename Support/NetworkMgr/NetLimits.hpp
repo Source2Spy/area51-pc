@@ -8,6 +8,8 @@
 #define NET_LIMITS_HPP
 
 //==============================================================================
+//  CONSTANTS
+//==============================================================================
 
 #if defined(TARGET_DESKTOP) || defined(TARGET_MOBILE)
 const s32   NET_MAX_PER_CLIENT          =     1;        // No split-screen local client.
@@ -24,8 +26,7 @@ const s32   NET_MAX_PLAYERS             =    32;        // Absolute maximum play
 const s32   NET_MAX_OBJECTS_ON_SERVER   =   384;
 const s32   NET_MAX_OBJECTS_ON_CLIENT   =    64;
 const s32   NET_MAX_OBJECTS             =   NET_MAX_OBJECTS_ON_SERVER  +
-                                            (NET_MAX_OBJECTS_ON_CLIENT * NET_MAX_TOTAL_CLIENTS);
-
+                                           (NET_MAX_OBJECTS_ON_CLIENT * NET_MAX_TOTAL_CLIENTS);
 
 const s32   NET_SERVER_NAME_LENGTH     =    24;
 const s32   NET_PASSWORD_LENGTH        =    16;

@@ -14,13 +14,18 @@
 #define CLIENTPROXY_HPP
 
 //=========================================================================
+//  INCLUDES
+//=========================================================================
 
 #include "x_files.hpp"
+
 #include "e_Network.hpp"
+
 #include "NetworkMgr/Replication/UpdateMgr.hpp"
 #include "NetworkMgr/Replication/PainQueue.hpp"
 #include "NetworkMgr/Replication/GMMgr.hpp"
 #include "NetworkMgr/Voice/VoiceProxy.hpp"
+
 //=========================================================================
 
 class client_proxy
@@ -51,7 +56,6 @@ public:
         void                AddPlayer           ( s32 Index, const char* pName, u64 Identifier);
         s32                 GetPlayerSlot       ( s32 Index );
         s32                 GetPlayerCount      ( void )                    { return m_LocalPlayerCount; }
-        s32                 ReadFromVoiceFifo   ( byte* pBuffer, s32 MaxLength );
         void                WriteToVoiceFifo    ( const byte* pBuffer, s32 Length );
 
 
@@ -81,11 +85,6 @@ private:
         s32                 m_LocalPlayerSlot[NET_MAX_PER_CLIENT];
         char                m_PlayerNames[NET_MAX_PER_CLIENT][NET_NAME_LENGTH];
         u64                 m_PlayerIdentifier[NET_MAX_PER_CLIENT];
-
-//      object::id          PlayerObjID[2];
-    //s32                 PlayerIndex[2];    // Index in GameMgr.
-    //f32                 PacketShipDelay;
-    //f32                 HeartbeatDelay;
 
     friend class game_server;
 

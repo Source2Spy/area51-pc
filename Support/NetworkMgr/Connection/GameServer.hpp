@@ -8,6 +8,7 @@
 //  Not to be used without express permission of Inevitable Entertainment, Inc.
 //
 //=========================================================================
+
 #ifndef GAMESERVER_HPP
 #define GAMESERVER_HPP
 
@@ -20,6 +21,7 @@
 #include "NetworkMgr/Match/MatchMgr.hpp"
 
 class client_proxy;
+
 //=========================================================================
 
 struct extended_lookup
@@ -39,7 +41,6 @@ public:
         void                Kill                ( void );
         void                RetireConnection    ( const net_address& Remote, u64 ID ) { m_RetiredConnections.Add(Remote, ID); }
         exit_reason         Update              ( f32 DeltaTime );
-        void                UpdateVoice         ( f32 DeltaTime );
         void                SetState            ( server_state State );
         server_state        GetState            ( void )                    { return m_State; }
 
@@ -51,10 +52,6 @@ public:
         void                KickPlayer          ( s32 PlayerIndex );
         void                BanPlayer           ( s32 PlayerIndex );
         void                DropPlayer          ( s32 PlayerIndex );
-
-//    void        SendMsg         ( const msg& Msg );
-//  void        SendMessage     ( const char* Str, xcolor Color=XCOLOR_WHITE, u32 TeamBits=0xFFFFFFFF );
-//  void        SendPopMessage  ( const char* Str, xcolor Color=XCOLOR_WHITE, s32 PlayerIndex = -1 );
 
         void                SendAudio           ( s32 SampleID, s32 PlayerIndex );
         void                SendAudio           ( s32 SampleID, u32 TeamBits=0xFFFFFFFF );

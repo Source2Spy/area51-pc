@@ -12,19 +12,12 @@
 //==============================================================================
 
 #include "x_types.hpp"
-#include "Network/NetStream.hpp"
 
 //==============================================================================
 
 class fifo
 {
 public:
-    struct update
-    {
-        byte    Data[255];
-        s32     Length;
-    };
-
                         fifo                ( void );
                        ~fifo                ( void );
         void            Init                ( void* pBuffer, s32 Length );
@@ -37,9 +30,6 @@ public:
 
         byte*           GetData             ( void );                                           // Return ptr to base of data structure
         void            Clear               ( void );
-        void            ProvideUpdate       ( netstream& BitStream, s32 MaxLength=255,s32 Modulo = 0 );
-        xbool           ReadUpdate          ( netstream& BitStream, update& Update, s32 Modulo ) const;
-        void            AcceptUpdate        ( const update& Update, s32 Modulo );
 
 private:
         xbool           m_Initialized;

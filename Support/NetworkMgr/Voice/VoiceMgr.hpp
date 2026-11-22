@@ -25,37 +25,6 @@ static_assert( NET_MAX_PLAYERS <= (sizeof( u32 ) * 8), "Voice player masks requi
 //  TYPES
 //==============================================================================
 
-enum desired_talk_mode
-{
-    TALK_TEAM,
-    TALK_GLOBAL,
-    TALK_LOCAL,
-    TALK_NONE,
-};
-
-//------------------------------------------------------------------------------
-
-enum actual_talk_mode
-{
-    TALK_NEW_TEAM,
-    TALK_POT_TEAM,
-    TALK_OLD_TEAM,
-
-    TALK_NEW_LOCAL,
-    TALK_POT_LOCAL,
-    TALK_OLD_LOCAL,
-
-    TALK_NEW_GLOBAL,
-    TALK_POT_GLOBAL,
-    TALK_OLD_GLOBAL,
-
-    TALK_NOT_TALKING,
-    TALK_MODE_FIRST = TALK_NEW_TEAM,
-    TALK_MODE_LAST  = TALK_OLD_GLOBAL,
-};
-
-//------------------------------------------------------------------------------
-
 struct speaker
 {
     s32                 PlayerNum;
@@ -67,7 +36,6 @@ struct speaker
 //==============================================================================
 //  VOICE MGR
 //==============================================================================
-
 
 class voice_mgr
 {
@@ -87,10 +55,8 @@ public:
         void                AcceptUpdate            ( netstream& BitStream );
         void                ProvideUpdate           ( netstream& BitStream );
 
-        s32                 ReadFromVoiceFifo       ( byte* pBuffer, s32 MaxLength );
         void                WriteToVoiceFifo        ( const byte* pBuffer, s32 Length );
         s32                 GetBytesInWriteFifo     ( void );
-        void                SetLocalVoiceOwner      ( s32 Owner, actual_talk_mode TalkMode );
         s32                 GetLocalVoiceOwner      ( void );
         actual_talk_mode    GetLocalVoiceTalkType   ( void )                                                    { return m_LocalVoiceTalkType;              }
         xbool               IsSpeaking              ( s32 Speaker );
@@ -101,7 +67,6 @@ public:
 
         desired_talk_mode   GetLocalTalkType        ( void )                                                    { return m_CurrentTalkType;                 }
         desired_talk_mode   GetLocalDesiredTalkMode ( void )                                                    { return m_LocalDesiredTalkMode;            }
-        s32                 GetEncodeBlockSize      ( void )                                                    { return m_Headset.GetEncodedBlockSize();   }
         xbool               IsHeadsetPresent        ( void )                                                    { return m_Headset.IsHardwarePresent();     }
         xbool               IsVoiceBanned           ( void )                                                    { return m_Headset.IsBanned();              }
         xbool               IsVoiceEnabled          ( void )                                                    { return m_Headset.IsEnabled();             }
@@ -141,6 +106,10 @@ public:
             if( bMuted )
             {
                 m_LocalMutedPlayers |= (u32( 1 ) << PlayerIndex);
+                if( m_Initialized && (m_PlaybackOwner == PlayerIndex) )
+                {
+                    StopLocalPlayback();
+                }
             }
         }
 
@@ -153,15 +122,22 @@ public:
         xbool               IsGameVoiceEnabled      ( void )                                                    { return m_bGameIsVoiceEnabled; }
 
 private:
+        void                DistributeLocalCapture  ( s32 Player );
+        xbool               CanDrainVoice           ( s32 Speaker, s32 Listener, actual_talk_mode TalkMode );
+        void                SetLocalVoiceOwner      ( s32 Owner, actual_talk_mode TalkMode );
+        void                StopLocalPlayback       ( void );
+
         xbool               m_bGameIsVoiceEnabled;
         xbool               m_Initialized;
-        xbool               m_HeadsetEnabled;
+        xbool               m_TalkingRequested;
         headset             m_Headset;
         desired_talk_mode   m_CurrentTalkType;
         desired_talk_mode   m_LocalDesiredTalkMode;
 
         s32                 m_LocalVoiceOwner;
         actual_talk_mode    m_LocalVoiceTalkType;
+        s32                 m_PlaybackOwner;
+        actual_talk_mode    m_PlaybackTalkMode;
 
         s32                 m_MaxSpeakers;
 

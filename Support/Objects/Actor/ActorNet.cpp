@@ -209,6 +209,7 @@ void update::Read( const bitstream& BS )
         if( (LifeSeq & 0x01) == 0 )
         {
             // Spawn information.
+            BS.ReadU16      ( SpawnZones );
             BS.ReadU32      ( WeaponBits, INVEN_WEAPON_LAST+1 );
             BS.ReadRangedS32( AmmoSMP      , 0, 750 );
             BS.ReadRangedS32( AmmoShotgun  , 0, 120 );
@@ -655,6 +656,7 @@ void update::Write( bitstream& BS )
         if( (LifeSeq & 0x01) == 0 )
         {
             // Spawn information.
+            BS.WriteU16      ( SpawnZones );
             BS.WriteU32      ( WeaponBits, INVEN_WEAPON_LAST+1 );
             BS.WriteRangedS32( AmmoSMP      , 0, 750 );
             BS.WriteRangedS32( AmmoShotgun  , 0, 120 );
@@ -1203,8 +1205,8 @@ void actor::net_AcceptUpdate( const update& Update )
                     Position,
                     Pitch,
                     Yaw,
-                    static_cast<zone_mgr::zone_id>( GetZone1() ),
-                    static_cast<zone_mgr::zone_id>( GetZone2() ),
+                    static_cast<zone_mgr::zone_id>( Update.SpawnZones & 0xFF ),
+                    static_cast<zone_mgr::zone_id>( Update.SpawnZones >> 8 ),
                     PlayerTeleportVelocityPolicy::Clear,
                     FALSE,
                     FALSE );
@@ -1716,9 +1718,10 @@ void actor::net_ProvideUpdate( update& Update, u32& DirtyBits )
 
         if( (m_Net.LifeSeq & 0x01) == 0 )
         {
-            Update.Position = GetPosition();
-            Update.Pitch    = GetPitch();
-            Update.Yaw      = GetYaw();
+            Update.Position   = GetPosition();
+            Update.Pitch      = GetPitch();
+            Update.Yaw        = GetYaw();
+            Update.SpawnZones = GetZones();
 
             // Loadout.
             Update.WeaponBits = 0x00000000;

@@ -4,67 +4,154 @@
 //
 //==============================================================================
 
-#include "x_types.hpp"
-#include "x_log.hpp"
-#include "x_string.hpp"
+//==============================================================================
+//  INCLUDES
+//==============================================================================
 
 #include "Headset.hpp"
+#include "x_files.hpp"
 
 //==============================================================================
+//  LIFECYCLE
+//==============================================================================
 
-void headset::ProvideUpdate( netstream& BitStream, s32 MaxLength )
+void headset::Init( xbool EnableHardware )
 {
-    m_ReadFifo.ProvideUpdate( BitStream, MaxLength, m_EncodeBlockSize );
+    m_ReadFifo.Init( m_ReadBuffer, sizeof( m_ReadBuffer ) );
+    m_WriteFifo.Init( m_WriteBuffer, sizeof( m_WriteBuffer ) );
+    m_LoopbackEnabled = FALSE;
+    m_VoiceBanned     = FALSE;
+
+    // A relay without local audio still needs to parse voice updates.
+    if( !EnableHardware )
+    {
+        return;
+    }
+
+    if( !m_Codec.Init() )
+    {
+        x_DebugMsg( "headset::Init: Unable to initialize the Opus voice codec.\n" );
+        return;
+    }
+
+    m_AudioInitialized = InitAudio();
+    if( !m_AudioInitialized )
+    {
+        m_Codec.Kill();
+    }
 }
 
 //==============================================================================
 
-xbool headset::ReadUpdate( netstream& BitStream, fifo::update& Update ) const
+void headset::Kill( void )
 {
-    return m_WriteFifo.ReadUpdate( BitStream, Update, m_EncodeBlockSize );
+    if( m_AudioInitialized )
+    {
+        KillAudio();
+        m_AudioInitialized = FALSE;
+    }
+
+    m_Codec.Kill();
+    m_ReadFifo.Kill();
+    m_WriteFifo.Kill();
 }
 
 //==============================================================================
 
-void headset::AcceptUpdate( const fifo::update& Update )
+void headset::Update( f32 DeltaTime, xbool TalkingRequested, xbool GameVoiceEnabled )
 {
-    m_WriteFifo.AcceptUpdate( Update, m_EncodeBlockSize );
+    if( !m_AudioInitialized )
+    {
+        return;
+    }
+
+    xbool const Enabled = GameVoiceEnabled && m_VoiceEnabled && !m_VoiceBanned;
+    UpdateDevices( DeltaTime, Enabled, TalkingRequested );
+    if( Enabled )
+    {
+        UpdateCapture( TalkingRequested );
+        UpdateLoopBack();
+        UpdatePlayback();
+    }
+}
+
+//==============================================================================
+//  VOICE PACKETS
+//==============================================================================
+
+void headset::ProvideUpdate( netstream& BitStream, xbool SendAudio )
+{
+    voice_update Update;
+    Update.Write( BitStream, m_ReadFifo, SendAudio );
+}
+
+//==============================================================================
+
+void headset::AcceptUpdate( const voice_update& Update )
+{
+    Write( Update.Data, Update.Length );
 }
 
 //==============================================================================
 
 void headset::UpdateLoopBack( void )
 {
-    if( m_LoopbackEnabled == TRUE )
+    if( !m_LoopbackEnabled )
     {
-        char Buffer[ 256 ];
+        return;
+    }
 
-        if( m_ReadFifo.Remove( Buffer, m_EncodeBlockSize, m_EncodeBlockSize ) )
+    byte Frame[voice_codec::FRAME_BYTES];
+    while( m_ReadFifo.Remove( Frame, sizeof( Frame ), sizeof( Frame ) ) )
+    {
+        Write( Frame, sizeof( Frame ) );
+    }
+}
+
+//==============================================================================
+
+xbool headset::EncodeCapture( const s16* pSamples )
+{
+    byte Frame[voice_codec::FRAME_BYTES];
+    if( !m_Codec.Encode( pSamples, Frame ) )
+    {
+        x_DebugMsg( "headset::EncodeCapture: Unable to encode an Opus voice frame.\n" );
+        return FALSE;
+    }
+
+    return m_ReadFifo.Insert( Frame, sizeof( Frame ), sizeof( Frame ) );
+}
+
+//==============================================================================
+
+xbool headset::ReadPlayback( s16* pSamples )
+{
+    byte Frame[voice_codec::FRAME_BYTES];
+    while( m_WriteFifo.Remove( Frame, sizeof( Frame ), sizeof( Frame ) ) )
+    {
+        if( m_Codec.Decode( Frame, pSamples ) )
         {
-            m_WriteFifo.Insert( Buffer, m_EncodeBlockSize, m_EncodeBlockSize );
+            return TRUE;
         }
     }
+
+    return FALSE;
 }
 
 //==============================================================================
 
 s32 headset::Read( void* pBuffer, s32 Length )
 {
-    s32     Available;
-
-    if( (pBuffer == NULL) ||
-        (Length <= 0) ||
-        (m_EncodeBlockSize <= 0) )
+    if( (pBuffer == NULL) || (Length <= 0) )
     {
         return 0;
     }
 
-    Available = m_ReadFifo.GetBytesUsed();
-    Available = MIN( Available, Length );
-    Available -= Available % m_EncodeBlockSize;
+    s32 Available = MIN( m_ReadFifo.GetBytesUsed(), Length );
+    Available -= Available % voice_codec::FRAME_BYTES;
 
     if( (Available <= 0) ||
-        !m_ReadFifo.Remove( pBuffer, Available, m_EncodeBlockSize ) )
+        !m_ReadFifo.Remove( pBuffer, Available, voice_codec::FRAME_BYTES ) )
     {
         return 0;
     }
@@ -76,20 +163,16 @@ s32 headset::Read( void* pBuffer, s32 Length )
 
 s32 headset::Write( const void* pBuffer, s32 Length )
 {
-    if( (pBuffer == NULL) ||
+    if( !m_pPlayback || !m_VoiceEnabled || !m_VoiceAudible || m_VoiceBanned ||
+        (pBuffer == NULL) ||
         (Length <= 0) ||
-        (m_EncodeBlockSize <= 0) ||
-        ((Length % m_EncodeBlockSize) != 0) )
+        (Length > static_cast<s32>( sizeof( m_WriteBuffer ) )) ||
+        ((Length % voice_codec::FRAME_BYTES) != 0) )
     {
         return 0;
     }
 
-    if( !m_WriteFifo.Insert( pBuffer, Length, m_EncodeBlockSize ) )
-    {
-        return 0;
-    }
-
-    return Length;
+    return m_WriteFifo.Insert( pBuffer, Length, voice_codec::FRAME_BYTES ) ? Length : 0;
 }
 
 //==============================================================================
@@ -104,73 +187,50 @@ void headset::ClearReadFifo( void )
 void headset::ClearWriteFifo( void )
 {
     m_WriteFifo.Clear();
-}
+    ClearPlayback();
 
-//==============================================================================
-
-void headset::UpdateTalkingState( void )
-{
-    xbool IsTalking = m_TalkingRequested && (m_HeadsetCount > 0);
-    if( m_IsTalking != IsTalking )
+    if( m_AudioInitialized && !m_Codec.ResetDecoder() )
     {
-        m_IsTalking = IsTalking;
-        m_TalkingGeneration++;
-        m_ReadFifo.Clear();
+        x_DebugMsg( "headset::ClearWriteFifo: Unable to reset the Opus decoder.\n" );
     }
-}
-
-//==============================================================================
-
-void headset::SetTalking( xbool IsTalking )
-{
-    m_TalkingRequested = IsTalking;
-    UpdateTalkingState();
-}
-
-//==============================================================================
-
-void headset::SetVolume( f32 Headset, f32 MicrophoneSensitivity )
-{
-    m_HeadsetVolume         = MAX( 0.0f, MIN( 1.0f, Headset ) );
-    m_MicrophoneSensitivity = MAX( 0.0f, MIN( 1.0f, MicrophoneSensitivity ) );
-}
-
-//==============================================================================
-
-void headset::GetVolume( f32& Headset, f32& Microphone )
-{
-    Headset = m_HeadsetVolume;
-    Microphone = m_MicrophoneSensitivity;
 }
 
 //==============================================================================
 
 s32 headset::GetNumBytesInWriteFifo( void )
 {
-    return( m_WriteFifo.GetBytesUsed() );
+    return m_WriteFifo.GetBytesUsed();
+}
+
+//==============================================================================
+//  SETTINGS
+//==============================================================================
+
+void headset::SetVolume( f32 Headset, f32 MicrophoneSensitivity )
+{
+    m_HeadsetVolume         = x_clamp( Headset, 0.0f, 1.0f );
+    m_MicrophoneSensitivity = x_clamp( MicrophoneSensitivity, 0.0f, 1.0f );
+    ApplyAudioGain();
 }
 
 //==============================================================================
 
-void headset::SetActiveHeadset( s32 HeadsetIndex )
+void headset::GetVolume( f32& Headset, f32& MicrophoneSensitivity )
 {
-    if( HeadsetIndex != m_ActiveHeadset )
-    {
-        //
-        // If the old headset was there, then we tell the system it has been removed
-        //
-        if( (m_ActiveHeadset != -1) && (m_HeadsetMask & (1<<m_ActiveHeadset)) )
-        {
-            OnHeadsetRemove();
-        }
+    Headset               = m_HeadsetVolume;
+    MicrophoneSensitivity = m_MicrophoneSensitivity;
+}
 
-        m_ActiveHeadset = HeadsetIndex;
-        //
-        // If the new headset is present, insert it.
-        //
-        if( (m_ActiveHeadset != -1) && (m_HeadsetMask & (1<<m_ActiveHeadset)) )
-        {
-            OnHeadsetInsert();
-        }
-    }
+//==============================================================================
+
+void headset::SetSpeakerVolume( f32 SpeakerVolume )
+{
+    SetVolume( SpeakerVolume, m_MicrophoneSensitivity );
+}
+
+//==============================================================================
+
+void headset::SetLoopback( xbool IsEnabled )
+{
+    m_LoopbackEnabled = IsEnabled;
 }

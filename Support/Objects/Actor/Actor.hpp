@@ -72,6 +72,7 @@ struct update
     s32             AmmoMSN;                // LIFE_BIT
     s32             AmmoGrensFrag;          // LIFE_BIT
     s32             AmmoGrensJB;            // LIFE_BIT
+    u16             SpawnZones;             // LIFE_BIT
     u32             TeamBits;               // TEAM_BITS_BIT
     f32             Lean;                   // LEAN_BIT
 

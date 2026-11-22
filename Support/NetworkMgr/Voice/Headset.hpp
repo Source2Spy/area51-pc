@@ -7,11 +7,19 @@
 #ifndef HEADSET_HPP
 #define HEADSET_HPP
 
+//==============================================================================
+//  INCLUDES
+//==============================================================================
+
 #include "x_types.hpp"
 #include "Network/FiFo.hpp"
+#include "VoicePacket.hpp"
 
-const s32 VOICE_SAMPLE_RATE = 8000;
-const s32 VOICE_MAX_UPDATE_BYTES = 256;
+//==============================================================================
+//  TYPES
+//==============================================================================
+
+struct SDL_AudioStream;
 
 //==============================================================================
 
@@ -19,27 +27,23 @@ class headset
 {
 public:
 
-        //
+        //----------------------------------------------------------------------
         // Generic Public Functions
-        //
+        //----------------------------------------------------------------------
 
         void            Init                        ( xbool EnableHardware );
         void            Kill                        ( void );
-        void            Update                      ( f32 DeltaTime );
+        void            Update                      ( f32 DeltaTime, xbool TalkingRequested, xbool GameVoiceEnabled );
 
         s32             Read                        ( void* pBuffer, s32 MaxLength );
         s32             Write                       ( const void* pBuffer, s32 Length );
-        void            ClearReadFifo                ( void );
-        void            ClearWriteFifo               ( void );
-        s32             GetEncodedBlockSize         ( void ) const                          { return m_EncodeBlockSize;   }
-        s32             GetDecodedBlockSize         ( void ) const                          { return m_DecodeBlockSize;   }
-        void            PeriodicUpdate              ( f32 DeltaTime );
-        void            ProvideUpdate               ( netstream& BitStream, s32 MaxLength = VOICE_MAX_UPDATE_BYTES );
-        xbool           ReadUpdate                  ( netstream& BitStream, fifo::update& Update ) const;
-        void            AcceptUpdate                ( const fifo::update& Update );
-        xbool           IsTalking                   ( void ) const                          { return m_IsTalking;                   }
-        void            SetTalking                  ( xbool IsTalking );
-        xbool           IsHardwarePresent           ( void )                                { return m_HeadsetCount>0;              }
+        void            ClearReadFifo               ( void );
+        void            ClearWriteFifo              ( void );
+        void            ProvideUpdate               ( netstream& BitStream, xbool SendAudio );
+        void            AcceptUpdate                ( const voice_update& Update );
+        s32             GetCaptureBytes             ( void )                                { return m_ReadFifo.GetBytesUsed();      }
+        xbool           IsTalking                   ( void ) const;
+        xbool           IsHardwarePresent           ( void ) const;
         xbool           IsBanned                    ( void )                                { return m_VoiceBanned;                 }
         xbool           IsEnabled                   ( void )                                { return m_VoiceEnabled;                }
         xbool           IsAudible                   ( void )                                { return m_VoiceAudible;                }
@@ -51,46 +55,52 @@ public:
         void            SetLoopback                 ( xbool IsEnabled );
         void            SetSpeakerVolume            ( f32 SpeakerVolume );
         void            SetVolume                   ( f32 Headset, f32 MicrophoneSensitivity );
-        void            SetActiveHeadset            ( s32 HeadsetIndex );
         void            GetVolume                   ( f32& Headset, f32& MicrophoneSensitivity );
         s32             GetNumBytesInWriteFifo      ( void );
         void            UpdateLoopBack              ( void );
 
 private:
 
-        void            UpdateTalkingState           ( void );
-        void            ResetEncoder                 ( void );
+        xbool           InitAudio                   ( void );
+        void            KillAudio                   ( void );
+        void            UpdateDevices               ( f32 DeltaTime, xbool Enabled, xbool TalkingRequested );
+        void            UpdateCapture               ( xbool TalkingRequested );
+        xbool           ReadCaptureFrames           ( void );
+        void            UpdatePlayback              ( void );
+        xbool           EncodeCapture               ( const s16* pSamples );
+        xbool           ReadPlayback                ( s16* pSamples );
+        void            CloseCapture                ( void );
+        void            ClosePlayback               ( void );
+        void            ClearPlayback               ( void );
+        void            ApplyAudioGain              ( void );
 
-        //
-        // Generic Private Variables
-        //
+        //----------------------------------------------------------------------
+        // Voice settings and packet queues
+        //----------------------------------------------------------------------
 
-        s32             m_EncodeBlockSize;
-        s32             m_DecodeBlockSize;
-        f32             m_HeadsetVolume;
-        f32             m_MicrophoneSensitivity;
-        s32             m_HeadsetCount;
-        xbool           m_HardwareEnabled;
-        s32             m_ActiveHeadset;
-        xbool           m_IsTalking;
-        u32             m_TalkingGeneration;
-        xbool           m_TalkingRequested;
-        xbool           m_LoopbackEnabled;
-        byte*           m_pEncodeBuffer;
-        byte*           m_pDecodeBuffer;
-        fifo            m_ReadFifo;
-        fifo            m_WriteFifo;
-        xbool           m_VoiceBanned;
-        xbool           m_VoiceEnabled;
-        xbool           m_VoiceAudible;
-        xbool           m_VoiceThroughSpeaker;
-        s32             m_HeadsetMask;
-        void            OnHeadsetInsert             ( void );
-        void            OnHeadsetRemove             ( void );
+        f32                 m_HeadsetVolume         = 1.0f;
+        f32                 m_MicrophoneSensitivity = 1.0f;
+        xbool               m_LoopbackEnabled       = FALSE;
+        xbool               m_VoiceBanned           = FALSE;
+        xbool               m_VoiceEnabled          = TRUE;
+        xbool               m_VoiceAudible          = TRUE;
+        xbool               m_VoiceThroughSpeaker   = FALSE;
+        byte                m_ReadBuffer[voice_update::FIFO_BYTES];
+        byte                m_WriteBuffer[voice_update::FIFO_BYTES];
+        fifo                m_ReadFifo;
+        fifo                m_WriteFifo;
+        voice_codec_state   m_Codec;
 
-#ifdef TARGET_WINDOWS
-        void*           m_pWindowsState;
-#endif
+        //----------------------------------------------------------------------
+        // SDL audio devices
+        //----------------------------------------------------------------------
+
+        xbool               m_AudioInitialized      = FALSE;
+        SDL_AudioStream*    m_pCapture              = NULL;
+        SDL_AudioStream*    m_pPlayback             = NULL;
+        xbool               m_CaptureAvailable      = FALSE;
+        f32                 m_DeviceCheckTime       = 0.0f;
+        f32                 m_CaptureRetry          = 0.0f;
 };
 
 //==============================================================================

@@ -225,12 +225,6 @@ void game_server::ExitState(server_state OldState)
         }
         // store the first local player slot for use later
         g_StateMgr.SetLocalPlayerSlot( m_LocalPlayerSlot[0] );
-
-        // Now that the server has started up, we can update its game manager's
-        // voice peripheral status directly.
-        ASSERT( g_NetworkMgr.IsServer() == TRUE );
-        GameMgr.SetVoiceAllowed( m_LocalPlayerSlot[0], !g_VoiceMgr.IsVoiceBanned()  );
-        GameMgr.SetVoiceCapable( m_LocalPlayerSlot[0],  g_VoiceMgr.IsVoiceCapable() );
         break;
 
     //-------------------------------------------------

@@ -297,29 +297,14 @@ void player::OnButtonInput( f32 DeltaTime )
 
 
 #ifndef X_EDITOR
-    if( g_NetworkMgr.IsOnline() )
+    if( (m_LocalSlot == 0) && g_NetworkMgr.IsOnline() )
     {
         if( Input.WasPressed( PlayerAction::TalkModeToggle ) )
         {
             g_VoiceMgr.ToggleTalkMode();
         }
 
-        // Voice chat
-        {
-            g_VoiceMgr.SetTalking( FALSE );
-
-            if( g_VoiceMgr.IsHeadsetPresent() == TRUE )
-            {
-                // check for voice chat
-                if( Input.IsHeld( PlayerAction::Chat ) )
-                {
-                    // Test to make sure the player is allowed to chat
-                    if( (g_VoiceMgr.IsVoiceBanned()  == FALSE) &&
-                        (g_VoiceMgr.IsVoiceEnabled() ==  TRUE) )
-                         g_VoiceMgr.SetTalking( TRUE );
-                }
-            }
-        }
+        g_VoiceMgr.SetTalking( Input.IsHeld( PlayerAction::Chat ) );
     }
 
     player_profile& p = g_StateMgr.GetActiveProfile(g_StateMgr.GetProfileListIndex(m_LocalSlot));

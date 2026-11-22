@@ -25,6 +25,7 @@
 #include "x_log.hpp"
 #include "NetworkMgr/NetworkMgr.hpp"
 #include "NetworkMgr/Messages/MsgMgr.hpp"
+#include "NetworkMgr/Voice/VoiceMgr.hpp"
 #include "StateMgr/MapList.hpp"
 #include "StateMgr/StateMgr.hpp"
 #include "Configuration/GameConfig.hpp"
@@ -287,6 +288,7 @@ void game_client::ProcessMissionResponse( netstream& BitStream )
     g_ActiveConfig.SetLevelID( MapIndex );
     g_ActiveConfig.SetFriendlyFire( FriendlyFire );
     g_ActiveConfig.SetVoiceEnabled( IsVoiceEnabled );
+    g_VoiceMgr.SetIsGameVoiceEnabled( IsVoiceEnabled );
     g_ActiveConfig.SetGameTypeID ( (game_type)GameType );
     g_PendingConfig.SetGameTypeID( (game_type)GameType );   // HACK TO MOVE FORWARD
     SetState( STATE_CLIENT_LOAD_MISSION );

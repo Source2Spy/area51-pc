@@ -1,108 +1,4 @@
-﻿set( A51_NETWORK_PLATFORM_SOURCES )
-set( A51_NETWORK_PLATFORM_DEPENDENCIES )
-set( A51_SPEEX_ROOT "${CMAKE_SOURCE_DIR}/xCore/3rdParty/Speex" )
-set( A51_SPEEX_GENERATED_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/speex" )
-file( MAKE_DIRECTORY "${A51_SPEEX_GENERATED_INCLUDE_DIR}" )
-set( INCLUDE_STDINT "#include <stdint.h>" )
-set( SIZE16 "int16_t" )
-set( USIZE16 "uint16_t" )
-set( SIZE32 "int32_t" )
-set( USIZE32 "uint32_t" )
-configure_file(
-    "${A51_SPEEX_ROOT}/include/speex/speex_config_types.h.in"
-    "${A51_SPEEX_GENERATED_INCLUDE_DIR}/speex_config_types.h"
-    @ONLY
-)
-set( A51_SPEEX_SOURCES
-    "${A51_SPEEX_ROOT}/libspeex/bits.c"
-    "${A51_SPEEX_ROOT}/libspeex/cb_search.c"
-    "${A51_SPEEX_ROOT}/libspeex/exc_10_16_table.c"
-    "${A51_SPEEX_ROOT}/libspeex/exc_10_32_table.c"
-    "${A51_SPEEX_ROOT}/libspeex/exc_20_32_table.c"
-    "${A51_SPEEX_ROOT}/libspeex/exc_5_256_table.c"
-    "${A51_SPEEX_ROOT}/libspeex/exc_5_64_table.c"
-    "${A51_SPEEX_ROOT}/libspeex/exc_8_128_table.c"
-    "${A51_SPEEX_ROOT}/libspeex/fftwrap.c"
-    "${A51_SPEEX_ROOT}/libspeex/filters.c"
-    "${A51_SPEEX_ROOT}/libspeex/gain_table.c"
-    "${A51_SPEEX_ROOT}/libspeex/gain_table_lbr.c"
-    "${A51_SPEEX_ROOT}/libspeex/hexc_10_32_table.c"
-    "${A51_SPEEX_ROOT}/libspeex/hexc_table.c"
-    "${A51_SPEEX_ROOT}/libspeex/high_lsp_tables.c"
-    "${A51_SPEEX_ROOT}/libspeex/kiss_fft.c"
-    "${A51_SPEEX_ROOT}/libspeex/kiss_fftr.c"
-    "${A51_SPEEX_ROOT}/libspeex/lpc.c"
-    "${A51_SPEEX_ROOT}/libspeex/lsp.c"
-    "${A51_SPEEX_ROOT}/libspeex/lsp_tables_nb.c"
-    "${A51_SPEEX_ROOT}/libspeex/ltp.c"
-    "${A51_SPEEX_ROOT}/libspeex/modes.c"
-    "${A51_SPEEX_ROOT}/libspeex/modes_wb.c"
-    "${A51_SPEEX_ROOT}/libspeex/nb_celp.c"
-    "${A51_SPEEX_ROOT}/libspeex/quant_lsp.c"
-    "${A51_SPEEX_ROOT}/libspeex/sb_celp.c"
-    "${A51_SPEEX_ROOT}/libspeex/smallft.c"
-    "${A51_SPEEX_ROOT}/libspeex/speex.c"
-    "${A51_SPEEX_ROOT}/libspeex/speex_callbacks.c"
-    "${A51_SPEEX_ROOT}/libspeex/speex_header.c"
-    "${A51_SPEEX_ROOT}/libspeex/stereo.c"
-    "${A51_SPEEX_ROOT}/libspeex/vbr.c"
-    "${A51_SPEEX_ROOT}/libspeex/vorbis_psy.c"
-    "${A51_SPEEX_ROOT}/libspeex/vq.c"
-    "${A51_SPEEX_ROOT}/libspeex/window.c"
-)
-set( A51_SPEEX_HEADERS
-    "${A51_SPEEX_ROOT}/include/speex/speex.h"
-    "${A51_SPEEX_ROOT}/include/speex/speex_bits.h"
-    "${A51_SPEEX_ROOT}/include/speex/speex_callbacks.h"
-    "${A51_SPEEX_ROOT}/include/speex/speex_config_types.h.in"
-    "${A51_SPEEX_ROOT}/include/speex/speex_header.h"
-    "${A51_SPEEX_ROOT}/include/speex/speex_stereo.h"
-    "${A51_SPEEX_ROOT}/include/speex/speex_types.h"
-    "${A51_SPEEX_ROOT}/libspeex/arch.h"
-    "${A51_SPEEX_ROOT}/libspeex/cb_search.h"
-    "${A51_SPEEX_ROOT}/libspeex/cb_search_sse.h"
-    "${A51_SPEEX_ROOT}/libspeex/filters.h"
-    "${A51_SPEEX_ROOT}/libspeex/filters_sse.h"
-    "${A51_SPEEX_ROOT}/libspeex/fixed_arm4.h"
-    "${A51_SPEEX_ROOT}/libspeex/fixed_arm5e.h"
-    "${A51_SPEEX_ROOT}/libspeex/fixed_bfin.h"
-    "${A51_SPEEX_ROOT}/libspeex/fixed_debug.h"
-    "${A51_SPEEX_ROOT}/libspeex/fixed_generic.h"
-    "${A51_SPEEX_ROOT}/libspeex/fftwrap.h"
-    "${A51_SPEEX_ROOT}/libspeex/kiss_fft.h"
-    "${A51_SPEEX_ROOT}/libspeex/kiss_fftr.h"
-    "${A51_SPEEX_ROOT}/libspeex/lpc.h"
-    "${A51_SPEEX_ROOT}/libspeex/lsp.h"
-    "${A51_SPEEX_ROOT}/libspeex/ltp.h"
-    "${A51_SPEEX_ROOT}/libspeex/ltp_sse.h"
-    "${A51_SPEEX_ROOT}/libspeex/math_approx.h"
-    "${A51_SPEEX_ROOT}/libspeex/modes.h"
-    "${A51_SPEEX_ROOT}/libspeex/nb_celp.h"
-    "${A51_SPEEX_ROOT}/libspeex/quant_lsp.h"
-    "${A51_SPEEX_ROOT}/libspeex/sb_celp.h"
-    "${A51_SPEEX_ROOT}/libspeex/smallft.h"
-    "${A51_SPEEX_ROOT}/libspeex/speex.def"
-    "${A51_SPEEX_ROOT}/libspeex/stack_alloc.h"
-    "${A51_SPEEX_ROOT}/libspeex/vbr.h"
-    "${A51_SPEEX_ROOT}/libspeex/vq.h"
-    "${A51_SPEEX_ROOT}/libspeex/vq_sse.h"
-    "${A51_SPEEX_ROOT}/libspeex/vorbis_psy.h"
-)
-
-if( WIN32 )
-    list( APPEND A51_NETWORK_PLATFORM_SOURCES
-        "${CMAKE_CURRENT_LIST_DIR}/Voice/Headset_Windows.cpp"
-    )
-    list( APPEND A51_NETWORK_PLATFORM_DEPENDENCIES winmm )
-elseif( CMAKE_SYSTEM_NAME MATCHES "^(Linux|Android)$" )
-    list( APPEND A51_NETWORK_PLATFORM_SOURCES
-        "${CMAKE_CURRENT_LIST_DIR}/Voice/Headset_POSIX.cpp"
-    )
-else()
-    message( FATAL_ERROR "NetworkMgr has no platform backend for ${CMAKE_SYSTEM_NAME}" )
-endif()
-
-include( A51BuildAuthentication )
+﻿include( A51BuildAuthentication )
 
 a51_add_project( NetworkMgr STATIC
     SOURCE_ROOT "${CMAKE_CURRENT_LIST_DIR}"
@@ -146,11 +42,11 @@ a51_add_project( NetworkMgr STATIC
         "${CMAKE_CURRENT_LIST_DIR}/Replication/PainQueue.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Replication/UpdateMgr.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Voice/Headset_Common.cpp"
-        "${CMAKE_CURRENT_LIST_DIR}/Voice/Speex.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/Voice/Headset_SDL.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/Voice/VoiceCodec.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Voice/VoiceMgr.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/Voice/VoicePacket.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Voice/VoiceProxy.cpp"
-        ${A51_NETWORK_PLATFORM_SOURCES}
-        ${A51_SPEEX_SOURCES}
         "${CMAKE_CURRENT_LIST_DIR}/../Objects/NetGhost.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/Connection/ClientProxy.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/Connection/BuildAuthentication.hpp"
@@ -195,25 +91,19 @@ a51_add_project( NetworkMgr STATIC
         "${CMAKE_CURRENT_LIST_DIR}/Replication/UpdateMgr.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/ServerVersion.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/Voice/Headset.hpp"
-        "${CMAKE_CURRENT_LIST_DIR}/Voice/Speex.hpp"
+        "${CMAKE_CURRENT_LIST_DIR}/Voice/VoiceCodec.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/Voice/VoiceMgr.hpp"
+        "${CMAKE_CURRENT_LIST_DIR}/Voice/VoicePacket.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/Voice/VoiceProxy.hpp"
-        ${A51_SPEEX_HEADERS}
     DEPENDENCIES
         a51::monocypher
-        ${A51_NETWORK_PLATFORM_DEPENDENCIES}
+        a51::opus
+        a51::SDL3
     PRIVATE_INCLUDE_DIRECTORIES
         "${A51_BUILD_AUTHENTICATION_INCLUDE_DIR}"
-        "${A51_SPEEX_GENERATED_INCLUDE_DIR}"
         "${CMAKE_SOURCE_DIR}/xCore"
         "${CMAKE_SOURCE_DIR}/xCore/../Support"
         "${CMAKE_SOURCE_DIR}/xCore/Entropy"
         "${CMAKE_SOURCE_DIR}/xCore/x_files"
         "${CMAKE_SOURCE_DIR}/xCore/Auxiliary"
-        "${A51_SPEEX_ROOT}/include"
-        "${A51_SPEEX_ROOT}/libspeex"
-    COMPILE_DEFINITIONS
-        FLOATING_POINT
-        USE_KISS_FFT
-        "EXPORT="
     )

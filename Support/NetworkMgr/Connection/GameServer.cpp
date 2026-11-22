@@ -15,7 +15,6 @@
 #include "NetworkMgr/NetworkMgr.hpp"
 #include "Configuration/GameConfig.hpp"
 #include "ClientProxy.hpp"
-#include "NetworkMgr/Voice/VoiceMgr.hpp"
 
 #include "x_log.hpp"
 
@@ -511,12 +510,10 @@ xtimer  s_KickTimer;
 exit_reason game_server::Update( f32 DeltaTime )
 {
     s32     i, j;
-//  byte    VoiceBuffer[128];
     s32     Length;
     (void)Length;
 
     UpdateState(DeltaTime);
-    UpdateVoice(DeltaTime);
 
     //
     // Do heartbeats, and kicks too
@@ -972,34 +969,6 @@ voice_proxy& game_server::GetVoiceProxy( s32 ClientIndex )
 {
     return m_pClients[ClientIndex].m_VoiceProxy;
 }
-
-//==============================================================================
-// This only deals with the local server's headset.
-
-void game_server::UpdateVoice( f32 DeltaTime )
-{
-    s32     VoiceDataLength = 0;
-    byte    VoiceDataBuffer[ 256 ];
-
-    (void)DeltaTime;
-
-    if( g_NetworkMgr.IsOnline() == FALSE )
-    {
-        return;
-    }
-
-
-    while( TRUE )
-    {
-        VoiceDataLength = g_VoiceMgr.ReadFromVoiceFifo( VoiceDataBuffer, g_VoiceMgr.GetHeadset().GetEncodedBlockSize() );
-        if( VoiceDataLength <= 0 )
-        {
-            break;
-        }
-        g_VoiceMgr.Distribute( m_LocalPlayerSlot[0], VoiceDataBuffer, VoiceDataLength );
-    }
-}
-
 
 //==============================================================================
 void game_server::UpdateRegistration( void )

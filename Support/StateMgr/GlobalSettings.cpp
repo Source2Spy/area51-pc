@@ -245,7 +245,7 @@ void global_settings::Commit( void )
 
     if( g_NetworkMgr.IsServer() )
     {
-        g_VoiceMgr.SetIsGameVoiceEnabled( m_HostSettings.m_Flags & SERVER_VOICE_ENABLED );
+        g_VoiceMgr.SetIsGameVoiceEnabled( g_ActiveConfig.IsVoiceEnabled() );
     }
 
     UpdateHeadsetMode( GetHeadsetMode() );
@@ -829,12 +829,6 @@ void global_settings::UpdateHeadsetMode( headset_mode HeadsetMode )
     g_VoiceMgr.SetVoiceEnabled( IsVoiceEnabled );
     g_VoiceMgr.SetVoiceAudible( IsVoiceAudible );
     g_VoiceMgr.SetVoiceThruSpeakers( IsThroughSpeakers );
-
-    // On the server we must update the game manager's voice peripheral status directly
-    if( g_NetworkMgr.IsServer() == TRUE )
-    {
-        GameMgr.SetVoiceCapable( 0, IsVoiceEnabled );
-    }
 }
 
 //==============================================================================
