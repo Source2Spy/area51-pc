@@ -326,6 +326,7 @@ float4 PS_PainBlur( float4 Pos : SV_POSITION, float2 UV : TEXCOORD0 ) : SV_Targe
         const float Blend = saturate( FilterParams3.w );
         const float TintWeight = pow( 1.0f - Blend, 4.0f );
         Result *= lerp( 1.0f.xxx, FilterParams3.rgb, TintWeight );
+        return float4( Result, FilterParams6.y );
     }
 
     return float4( Result, 1.0f );

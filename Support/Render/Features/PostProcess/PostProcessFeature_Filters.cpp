@@ -32,6 +32,7 @@ namespace
 static const s32 kMipRampSampleCount      = 256;
 static const f32 kPainBlurReferenceWidth  = 256.0f;
 static const f32 kPainBlurReferenceHeight = 192.0f;
+static const f32 kPainBlurFadeOffset      = 6.0f;
 
 //=========================================================================
 
@@ -807,7 +808,7 @@ xbool PostProcessFeature::DeclarePainFilterPasses( FrameGraphBuilder& Graph, con
         return FALSE;
     }
 
-    if( x_abs( m_PainFilter.Offset[Palette] ) < 0.001f )
+    if( m_PainFilter.Offset[Palette] <= 0.0f )
     {
         return TRUE;
     }
@@ -872,7 +873,7 @@ xbool PostProcessFeature::DeclarePainFilterPasses( FrameGraphBuilder& Graph, con
 
     Graph.Read( PassData, m_FilterPainScratch );
 
-    if( !Graph.DeclareCompositePipeline( PassData, COMPOSITE_BLEND_COPY_RGB, &m_FilterResources.PainBlurPS ) )
+    if( !Graph.DeclareCompositePipeline( PassData, COMPOSITE_BLEND_ALPHA_RGB, &m_FilterResources.PainBlurPS ) )
     {
         return FALSE;
     }
@@ -1408,20 +1409,22 @@ xbool PostProcessFeature::ExecutePainVerticalPass( RenderPassContext& Context, P
     }
 
     const xcolor&       ColorData = pPost->m_PainFilter.Color[Palette];
+    const f32           Offset = pPost->m_PainFilter.Offset[Palette];
+    const f32           Fade = x_clamp( Offset / kPainBlurFadeOffset, 0.0f, 1.0f );
+    const f32           Opacity = Fade * Fade * ( 3.0f - 2.0f * Fade );
     PostFilterConstants Constants;
     x_memset( &Constants, 0, sizeof( Constants ) );
     Constants.Params3.Set( ColorData.R / 255.0f, ColorData.G / 255.0f, ColorData.B / 255.0f,
                            static_cast<f32>( ColorData.A / 2 ) / 255.0f );
-    Constants.Params5.Set( 0.0f, 0.0f, 0.0f,
-                           pPost->m_PainFilter.Offset[Palette] / ( kPainBlurReferenceHeight * 8.0f ) );
-    Constants.Params6.Set( 1.0f, 0.0f, 0.0f, 0.0f );
+    Constants.Params5.Set( 0.0f, 0.0f, 0.0f, Offset / ( kPainBlurReferenceHeight * 8.0f ) );
+    Constants.Params6.Set( 1.0f, Opacity, 0.0f, 0.0f );
 
     if( !BindFilterConstants( pPost->m_FilterResources.PainBlurPS, Constants ) )
     {
         return FALSE;
     }
 
-    return composite_Blit( *pSource, COMPOSITE_BLEND_COPY_RGB, 1.0f, &pPost->m_FilterResources.PainBlurPS,
+    return composite_Blit( *pSource, COMPOSITE_BLEND_ALPHA_RGB, 1.0f, &pPost->m_FilterResources.PainBlurPS,
                            RSTATE_SAMPLER_PRESET_LINEAR_CLAMP, A51Resource_PostSource );
 }
 
