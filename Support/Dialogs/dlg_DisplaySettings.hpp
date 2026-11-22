@@ -80,7 +80,6 @@ protected:
     ui_text*            m_pBrightnessText;
     ui_text*            m_pContrastText;
 
-    s32                 m_CurrHL;
     xbool               m_bRenderBlackout;
     global_settings     m_OriginalSettings;
     dlg_popup*          m_PopUp;

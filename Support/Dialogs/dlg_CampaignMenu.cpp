@@ -115,7 +115,6 @@ xbool dlg_campaign_menu::Create( s32                        UserID,
     m_pButtonLevelSelect    = static_cast<ui_button*>( FindChildByID( IDC_CAMPAIGN_MENU_LEVEL_SELECT  ) );
 #endif
 
-    m_CurrHL            = 0;
     m_PopUp             = NULL;
     m_PopUpResult       = DLG_POPUP_IDLE;
     m_bCheckKeySequence = FALSE;
@@ -431,7 +430,6 @@ void dlg_campaign_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     (void)pWin;
     (void)DeltaTime;
 
-    s32 highLight = -1;
 
     // scale window if necessary
     if( g_UiMgr->IsScreenScaling() )
@@ -526,50 +524,34 @@ void dlg_campaign_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     if( m_pButtonNewCampaign->IsFocused() )
     {
         g_UiMgr->SetScreenHighlight( m_pButtonNewCampaign->GetPosition() );
-        highLight = 0;
     }
     else if( m_pButtonResumeCampaign->IsFocused() )
     {
         g_UiMgr->SetScreenHighlight( m_pButtonResumeCampaign->GetPosition() );
-        highLight = 1;
     }
     else if( m_pButtonEditProfile->IsFocused() )
     {
         g_UiMgr->SetScreenHighlight( m_pButtonEditProfile->GetPosition() );
-        highLight = 2;
     }
     else if( m_pButtonLore->IsFocused() )
     {
         g_UiMgr->SetScreenHighlight( m_pButtonLore->GetPosition() );
-        highLight = 3;
     }
     else if( m_pButtonSecrets->IsFocused() )
     {
         g_UiMgr->SetScreenHighlight( m_pButtonSecrets->GetPosition() );
-        highLight = 4;
     }
     else if( m_pButtonExtras->IsFocused() )
     {
         g_UiMgr->SetScreenHighlight( m_pButtonExtras->GetPosition() );
-        highLight = 5;
     }
 #ifndef CONFIG_RETAIL
     else if( m_pButtonLevelSelect->IsFocused() )
     {
         g_UiMgr->SetScreenHighlight( m_pButtonLevelSelect->GetPosition() );
-        highLight = 6;
     }
 #endif
 
-    if( highLight != m_CurrHL )
-    {
-        if( highLight != -1 )
-        {
-            g_AudioMgr.Play("Cusor_Norm");
-        }
-
-        m_CurrHL = highLight;
-    }
 }
 
 //==============================================================================

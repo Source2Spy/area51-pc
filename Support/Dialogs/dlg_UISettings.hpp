@@ -73,7 +73,6 @@ protected:
     ui_text*            m_pHUDScaleText;
     ui_text*            m_pLetterboxText;
 
-    s32                 m_CurrHL;
     xbool               m_bRenderBlackout;
     global_settings     m_OriginalSettings;
     dlg_popup*          m_PopUp;

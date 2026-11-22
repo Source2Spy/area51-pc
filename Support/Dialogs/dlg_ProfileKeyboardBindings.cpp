@@ -235,7 +235,6 @@ xbool dlg_profile_keyboard_bindings::Create( s32                       UserID,
     for( ui_win* pControl : Controls )
         pControl->SetFlag( ui_win::WF_VISIBLE, FALSE );
 
-    m_CurrHL          = 0;
     m_PopUp           = NULL;
     m_PopUpResult     = DLG_POPUP_IDLE;
     m_InputState      = INPUT_WAIT_RELEASE;
@@ -505,7 +504,6 @@ void dlg_profile_keyboard_bindings::OnDelete( ui_win* pWin )
 void dlg_profile_keyboard_bindings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 {
     (void)pWin;
-    s32 Highlight = -1;
     const input_snapshot& Snapshot = g_Input.GetFrameSnapshot();
 
     // Consume the popup result once before resuming the dialog.
@@ -615,7 +613,6 @@ void dlg_profile_keyboard_bindings::OnUpdate( ui_win* pWin, f32 DeltaTime )
     {
         if( Controls[iControl]->IsFocused() )
         {
-            Highlight = iControl;
             if( Controls[iControl] == m_pBindings )
             {
                 g_UiMgr->DisableScreenHighlight();
@@ -627,14 +624,6 @@ void dlg_profile_keyboard_bindings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         }
     }
 
-    if( Highlight != m_CurrHL )
-    {
-        if( Highlight != -1 )
-        {
-            g_AudioMgr.Play( "Cusor_Norm" );
-        }
-        m_CurrHL = Highlight;
-    }
 }
 
 //==============================================================================

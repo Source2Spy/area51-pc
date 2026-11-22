@@ -964,8 +964,11 @@ void ui_dlg_vkeyboard::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses
 
     (void)WrapX;
     (void)WrapY;
-    ui_dialog::OnNavigate( pWin, Code, Presses, Repeats, TRUE, FALSE );
-    g_AudioMgr.Play( "Cursor_VKB" );
+
+    if( NavigateFocus( Code, TRUE, FALSE ) )
+    {
+        g_AudioMgr.Play( "Cursor_VKB" );
+    }
 }
 
 //==============================================================================

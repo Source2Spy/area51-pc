@@ -212,12 +212,10 @@ xbool dlg_display_settings::Create( s32                       UserID,
     m_pBrightness->SetRange( BRIGHTNESS_MIN_PERCENT, BRIGHTNESS_MAX_PERCENT );
     m_pBrightness->SetStep( 5 );
     m_pBrightness->SetValue( PendingSettings.GetBrightness() );
-    m_pBrightness->UseDefaultSound( FALSE );
 
     m_pContrast->SetRange( CONTRAST_MIN_PERCENT, CONTRAST_MAX_PERCENT );
     m_pContrast->SetStep( 5 );
     m_pContrast->SetValue( PendingSettings.GetContrast() );
-    m_pContrast->UseDefaultSound( FALSE );
 
     m_pDisplayMode->AddItem( g_StringTableMgr( "ui", "IDS_DISPLAY_MODE_BORDERLESS" ), ENG_DISPLAY_BORDERLESS );
     m_pDisplayMode->AddItem( g_StringTableMgr( "ui", "IDS_DISPLAY_MODE_WINDOWED"   ), ENG_DISPLAY_WINDOWED );
@@ -319,7 +317,6 @@ xbool dlg_display_settings::Create( s32                       UserID,
     m_pBrightnessText ->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pContrastText   ->SetFlag( ui_win::WF_VISIBLE, FALSE );
 
-    m_CurrHL = 0;
     m_PopUp = NULL;
     m_PopUpResult = DLG_POPUP_IDLE;
 
@@ -557,7 +554,6 @@ void dlg_display_settings::OnDelete( ui_win* pWin )
 void dlg_display_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 {
     (void)pWin;
-    s32 highLight = -1;
 
     // Consume the popup result once before resuming the dialog.
     if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
@@ -631,7 +627,6 @@ void dlg_display_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pDisplayMode->IsFocused() )
     {
-        highLight = 0;
         m_pDisplayModeText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pDisplayModeText->GetPosition() );
     }
@@ -642,7 +637,6 @@ void dlg_display_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pResolution->IsFocused() )
     {
-        highLight = 1;
         m_pResolutionText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pResolutionText->GetPosition() );
     }
@@ -653,7 +647,6 @@ void dlg_display_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pPresentMode->IsFocused() )
     {
-        highLight = 2;
         m_pPresentModeText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pPresentModeText->GetPosition() );
     }
@@ -664,7 +657,6 @@ void dlg_display_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pFrameLimit->IsFocused() )
     {
-        highLight = 3;
         m_pFrameLimitText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pFrameLimitText->GetPosition() );
     }
@@ -675,7 +667,6 @@ void dlg_display_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pBrightness->IsFocused() )
     {
-        highLight = 4;
         m_pBrightnessText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pBrightnessText->GetPosition() );
     }
@@ -686,7 +677,6 @@ void dlg_display_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pContrast->IsFocused() )
     {
-        highLight = 5;
         m_pContrastText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pContrastText->GetPosition() );
     }
@@ -697,18 +687,9 @@ void dlg_display_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pButtonApply->IsFocused() )
     {
-        highLight = 6;
         g_UiMgr->SetScreenHighlight( m_pButtonApply->GetPosition() );
     }
 
-    if( highLight != m_CurrHL )
-    {
-        if( highLight != -1 )
-        {
-            g_AudioMgr.Play( "Cusor_Norm" );
-        }
-        m_CurrHL = highLight;
-    }
 }
 
 //==============================================================================

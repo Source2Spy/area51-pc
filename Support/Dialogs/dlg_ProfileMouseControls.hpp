@@ -76,7 +76,6 @@ private:
     ui_text*            m_pInvertXText;
     ui_text*            m_pInvertYText;
 
-    s32                 m_CurrHL;
     xbool               m_bRenderBlackout;
     player_profile      m_OriginalProfile;
     dlg_popup*          m_PopUp;

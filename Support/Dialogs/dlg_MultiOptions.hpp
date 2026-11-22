@@ -79,7 +79,6 @@ protected:
 
     dlg_popup*          m_PopUp;
 
-    s32                 m_CurrHL;
 
     s32                 m_CurrGameType;
 };

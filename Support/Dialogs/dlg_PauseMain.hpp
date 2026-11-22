@@ -89,7 +89,6 @@ protected:
     ui_button*          m_pButtonQuit;
     ui_button*          m_pButtonOptions;
     ui_button*          m_pButtonSettings;
-    s32                 m_CurrHL;
     ui_button*          m_pButtonInvert;
     ui_button*          m_pButtonVibration;
 

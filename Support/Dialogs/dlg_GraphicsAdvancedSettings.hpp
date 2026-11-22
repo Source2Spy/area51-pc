@@ -108,7 +108,6 @@ protected:
     ui_text*            m_pTessellationText;
     ui_text*            m_pAmbientOcclusionText;
 
-    s32                 m_CurrHL;
     xbool               m_bRenderBlackout;
     global_settings     m_OriginalSettings;
     dlg_popup*          m_PopUp;

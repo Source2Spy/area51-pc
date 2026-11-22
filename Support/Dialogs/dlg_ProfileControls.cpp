@@ -158,7 +158,6 @@ xbool dlg_profile_controls::Create( s32                       UserID,
     m_pAimText         ->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pAutoSwitchText  ->SetFlag( ui_win::WF_VISIBLE, FALSE );
 
-    m_CurrHL = 0;
     m_PopUp = NULL;
     m_PopUpResult = DLG_POPUP_IDLE;
 
@@ -396,7 +395,6 @@ void dlg_profile_controls::OnDelete( ui_win* pWin )
 void dlg_profile_controls::OnUpdate( ui_win* pWin, f32 DeltaTime )
 {
     (void)pWin;
-    s32 Highlight = -1;
 
     // Consume the popup result once before resuming the dialog.
     if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
@@ -448,7 +446,6 @@ void dlg_profile_controls::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pMouseMenu->IsFocused() )
     {
-        Highlight = 3;
         m_pMouseMenu->SetLabelColor( xcolor( 255, 252, 204, 255 ) );
         g_UiMgr->SetScreenHighlight( m_pMouseMenu->GetPosition() );
     }
@@ -459,7 +456,6 @@ void dlg_profile_controls::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pGamepadMenu->IsFocused() )
     {
-        Highlight = 4;
         m_pGamepadMenu->SetLabelColor( xcolor( 255, 252, 204, 255 ) );
         g_UiMgr->SetScreenHighlight( m_pGamepadMenu->GetPosition() );
     }
@@ -470,7 +466,6 @@ void dlg_profile_controls::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pKeyboardMenu->IsFocused() )
     {
-        Highlight = 5;
         m_pKeyboardMenu->SetLabelColor( xcolor( 255, 252, 204, 255 ) );
         g_UiMgr->SetScreenHighlight( m_pKeyboardMenu->GetPosition() );
     }
@@ -481,7 +476,6 @@ void dlg_profile_controls::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pToggleCrouch->IsFocused() )
     {
-        Highlight = 0;
         m_pCrouchText->SetLabelColor( xcolor( 255, 252, 204, 255 ) );
         g_UiMgr->SetScreenHighlight( m_pCrouchText->GetPosition() );
     }
@@ -492,7 +486,6 @@ void dlg_profile_controls::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pToggleAutoSwitch->IsFocused() )
     {
-        Highlight = 2;
         m_pAutoSwitchText->SetLabelColor( xcolor( 255, 252, 204, 255 ) );
         g_UiMgr->SetScreenHighlight( m_pAutoSwitchText->GetPosition() );
     }
@@ -503,7 +496,6 @@ void dlg_profile_controls::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pToggleAim->IsFocused() )
     {
-        Highlight = 1;
         m_pAimText->SetLabelColor( xcolor( 255, 252, 204, 255 ) );
         g_UiMgr->SetScreenHighlight( m_pAimText->GetPosition() );
     }
@@ -514,7 +506,6 @@ void dlg_profile_controls::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pButtonAccept->IsFocused() )
     {
-        Highlight = 6;
         m_pButtonAccept->SetLabelColor( xcolor( 255, 252, 204, 255 ) );
         g_UiMgr->SetScreenHighlight( m_pButtonAccept->GetPosition() );
     }
@@ -523,14 +514,6 @@ void dlg_profile_controls::OnUpdate( ui_win* pWin, f32 DeltaTime )
         m_pButtonAccept->SetLabelColor( xcolor( 126, 220, 60, 255 ) );
     }
 
-    if( Highlight != m_CurrHL )
-    {
-        if( Highlight != -1 )
-        {
-            g_AudioMgr.Play( "Cusor_Norm" );
-        }
-        m_CurrHL = Highlight;
-    }
 }
 
 //==============================================================================

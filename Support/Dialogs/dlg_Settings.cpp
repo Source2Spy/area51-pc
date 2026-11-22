@@ -34,12 +34,11 @@ enum
 ui_manager::control_tem SettingsControls[] =
 {
     { IDC_SETTINGS_AUDIO,    "IDS_OPTIONS_AUDIO_SETTINGS",    "button", 40,  40, 240, 40, 0, 0, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_SETTINGS_HEADSET,  "IDS_OPTIONS_HEADSET_TEST",      "button", 40,  75, 240, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_SETTINGS_GRAPHICS, "IDS_OPTIONS_GRAPHICS_SETTINGS", "button", 40, 110, 240, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_SETTINGS_DISPLAY,  "IDS_OPTIONS_DISPLAY_SETTINGS",  "button", 40, 145, 240, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_SETTINGS_UI,       "IDS_OPTIONS_UI_SETTINGS",        "button", 40, 180, 240, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_SETTINGS_LANGUAGE, "IDS_OPTIONS_LANGUAGE_SETTINGS", "button", 40, 215, 240, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_SETTINGS_ACCEPT,   "IDS_PROFILE_OPTIONS_ACCEPT",    "button", 40, 285, 240, 40, 0, 6, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_SETTINGS_GRAPHICS, "IDS_OPTIONS_GRAPHICS_SETTINGS", "button", 40,  75, 240, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_SETTINGS_DISPLAY,  "IDS_OPTIONS_DISPLAY_SETTINGS",  "button", 40, 110, 240, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_SETTINGS_UI,       "IDS_OPTIONS_UI_SETTINGS",        "button", 40, 145, 240, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_SETTINGS_LANGUAGE, "IDS_OPTIONS_LANGUAGE_SETTINGS", "button", 40, 180, 240, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_SETTINGS_ACCEPT,   "IDS_PROFILE_OPTIONS_ACCEPT",    "button", 40, 285, 240, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE },
 };
 
 //------------------------------------------------------------------------------
@@ -47,7 +46,7 @@ ui_manager::control_tem SettingsControls[] =
 ui_manager::dialog_tem SettingsDialog =
 {
     "IDS_SETTINGS",
-    1, 7,
+    1, 6,
     sizeof(SettingsControls) / sizeof(ui_manager::control_tem),
     &SettingsControls[0],
     0
@@ -96,7 +95,6 @@ xbool dlg_settings::Create( s32 UserID, ui_manager* pManager, ui_manager::dialog
     xbool const Success = ui_dialog::Create( UserID, pManager, pDialogTem, Position, pParent, Flags );
 
     m_pAudio    = static_cast<ui_button*>( FindChildByID( IDC_SETTINGS_AUDIO ) );
-    m_pHeadset  = static_cast<ui_button*>( FindChildByID( IDC_SETTINGS_HEADSET ) );
     m_pGraphics = static_cast<ui_button*>( FindChildByID( IDC_SETTINGS_GRAPHICS ) );
     m_pDisplay  = static_cast<ui_button*>( FindChildByID( IDC_SETTINGS_DISPLAY ) );
     m_pUI       = static_cast<ui_button*>( FindChildByID( IDC_SETTINGS_UI ) );
@@ -114,18 +112,17 @@ xbool dlg_settings::Create( s32 UserID, ui_manager* pManager, ui_manager::dialog
         m_CurrentControl = CurrentControl;
     }
 
-    ui_button* pButtons[] = { m_pAudio, m_pHeadset, m_pGraphics, m_pDisplay, m_pUI, m_pLanguage, m_pAccept };
-    for( s32 i = 0; i < 7; i++ )
+    ui_button* pButtons[] = { m_pAudio, m_pGraphics, m_pDisplay, m_pUI, m_pLanguage, m_pAccept };
+    for( ui_button* pButton : pButtons )
     {
-        pButtons[i]->SetFlag( ui_win::WF_BUTTON_LEFT, TRUE );
-        pButtons[i]->SetFlag( ui_win::WF_VISIBLE, FALSE );
+        pButton->SetFlag( ui_win::WF_BUTTON_LEFT, TRUE );
+        pButton->SetFlag( ui_win::WF_VISIBLE, FALSE );
     }
 
     xwstring NavText( g_StringTableMgr( "ui", "IDS_NAV_SELECT" ) );
     NavText += g_StringTableMgr( "ui", "IDS_NAV_CANCEL" );
     SetNavText( NavText );
 
-    m_CurrHL = 0;
     m_bRenderBlackout = FALSE;
     m_PopUp = NULL;
     m_PopUpResult = DLG_POPUP_IDLE;
@@ -195,14 +192,13 @@ void dlg_settings::OnAccept( ui_win* pWin )
         return;
     }
 
-    ui_button* pMenus[] = { m_pAudio, m_pHeadset, m_pGraphics, m_pDisplay, m_pUI, m_pLanguage };
-    s32 const Controls[] = { IDC_SETTINGS_AUDIO, IDC_SETTINGS_HEADSET, IDC_SETTINGS_GRAPHICS, IDC_SETTINGS_DISPLAY, IDC_SETTINGS_UI, IDC_SETTINGS_LANGUAGE };
-    for( s32 i = 0; i < 6; i++ )
+    ui_button* pMenus[] = { m_pAudio, m_pGraphics, m_pDisplay, m_pUI, m_pLanguage };
+    for( ui_button* pMenu : pMenus )
     {
-        if( pWin == pMenus[i] )
+        if( pWin == pMenu )
         {
             g_AudioMgr.Play( "Select_Norm" );
-            m_CurrentControl = Controls[i];
+            m_CurrentControl = pMenu->GetControlID();
             m_State = DIALOG_STATE_SELECT;
             return;
         }
@@ -307,15 +303,14 @@ void dlg_settings::BeginSave( void )
 void dlg_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 {
     (void)pWin;
-    s32 Highlight = -1;
 
     // Show the controls only after the opening animation finishes.
     if( g_UiMgr->IsScreenScaling() && (UpdateScreenScaling( DeltaTime ) == FALSE) )
     {
-        ui_button* pButtons[] = { m_pAudio, m_pHeadset, m_pGraphics, m_pDisplay, m_pUI, m_pLanguage, m_pAccept };
-        for( s32 i = 0; i < 7; i++ )
+        ui_button* pButtons[] = { m_pAudio, m_pGraphics, m_pDisplay, m_pUI, m_pLanguage, m_pAccept };
+        for( ui_button* pButton : pButtons )
         {
-            pButtons[i]->SetFlag( ui_win::WF_VISIBLE, TRUE );
+            pButton->SetFlag( ui_win::WF_VISIBLE, TRUE );
         }
         s32 const CurrentControl = g_StateMgr.GetCurrentControl();
         if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
@@ -350,24 +345,15 @@ void dlg_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     g_UiMgr->UpdateGlowBar( DeltaTime );
 
-    ui_button* pButtons[] = { m_pAudio, m_pHeadset, m_pGraphics, m_pDisplay, m_pUI, m_pLanguage, m_pAccept };
-    for( s32 i = 0; i < 7; i++ )
+    ui_button* pButtons[] = { m_pAudio, m_pGraphics, m_pDisplay, m_pUI, m_pLanguage, m_pAccept };
+    for( ui_button* pButton : pButtons )
     {
-        if( pButtons[i]->IsFocused() )
+        if( pButton->IsFocused() )
         {
-            Highlight = i;
-            g_UiMgr->SetScreenHighlight( pButtons[i]->GetPosition() );
+            g_UiMgr->SetScreenHighlight( pButton->GetPosition() );
         }
     }
 
-    if( Highlight != m_CurrHL )
-    {
-        if( Highlight != -1 )
-        {
-            g_AudioMgr.Play( "Cusor_Norm" );
-        }
-        m_CurrHL = Highlight;
-    }
 }
 
 //==============================================================================

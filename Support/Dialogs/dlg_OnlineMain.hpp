@@ -75,7 +75,6 @@ protected:
     ui_button*          m_pButtonEditProfile;
     ui_button*          m_pButtonViewStats;
     ui_button*          m_pButtonSignOut;
-    s32                 m_CurrHL;
     dlg_popup*          m_pPopUp;
     s32                 m_PopUpResult;
 };

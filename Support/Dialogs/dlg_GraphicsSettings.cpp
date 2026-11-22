@@ -125,7 +125,6 @@ xbool dlg_graphics_settings::Create( s32                       UserID,
     m_pFieldOfView->SetRange( FIELD_OF_VIEW_MIN_DEGREES, FIELD_OF_VIEW_MAX_DEGREES );
     m_pFieldOfView->SetStep( 5 );
     m_pFieldOfView->SetValue( PendingSettings.GetFieldOfView() );
-    m_pFieldOfView->UseDefaultSound( FALSE );
 
     m_pRenderScale->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV );
     for( s32 Percent = RENDER_SCALE_MIN_PERCENT;
@@ -144,7 +143,6 @@ xbool dlg_graphics_settings::Create( s32                       UserID,
     m_pFilmGrain->SetRange( FILM_GRAIN_MIN_STRENGTH, FILM_GRAIN_MAX_STRENGTH );
     m_pFilmGrain->SetStep( 5, 10 );
     m_pFilmGrain->SetValue( PendingSettings.GetFilmGrainStrength() );
-    m_pFilmGrain->UseDefaultSound( FALSE );
 
     m_pTextureFiltering->SetNavFlags( ui_combo::CB_CHANGE_ON_NAV );
     m_pTextureFiltering->AddItem( g_StringTableMgr( "ui", "IDS_GRAPHICS_FILTER_BILINEAR" ),
@@ -210,7 +208,6 @@ xbool dlg_graphics_settings::Create( s32                       UserID,
     m_pTextureFilteringText->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pAntiAliasingText  ->SetFlag( ui_win::WF_VISIBLE, FALSE );
 
-    m_CurrHL = 0;
     m_PopUp = NULL;
     m_PopUpResult = DLG_POPUP_IDLE;
 
@@ -446,7 +443,6 @@ void dlg_graphics_settings::OnDelete( ui_win* pWin )
 void dlg_graphics_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 {
     (void)pWin;
-    s32 highLight = -1;
 
     // Consume the popup result once before resuming the dialog.
     if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
@@ -501,7 +497,6 @@ void dlg_graphics_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pFieldOfView->IsFocused() )
     {
-        highLight = 0;
         m_pFieldOfViewText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pFieldOfViewText->GetPosition() );
     }
@@ -512,7 +507,6 @@ void dlg_graphics_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pFilmGrain->IsFocused() )
     {
-        highLight = 1;
         m_pFilmGrainText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pFilmGrainText->GetPosition() );
     }
@@ -523,7 +517,6 @@ void dlg_graphics_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pTextureFiltering->IsFocused() )
     {
-        highLight = 4;
         m_pTextureFilteringText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pTextureFilteringText->GetPosition() );
     }
@@ -534,7 +527,6 @@ void dlg_graphics_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pRenderScale->IsFocused() )
     {
-        highLight = 2;
         m_pRenderScaleText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pRenderScaleText->GetPosition() );
     }
@@ -545,7 +537,6 @@ void dlg_graphics_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pAntiAliasing->IsFocused() )
     {
-        highLight = 3;
         m_pAntiAliasingText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pAntiAliasingText->GetPosition() );
     }
@@ -556,24 +547,14 @@ void dlg_graphics_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pAdvanced->IsFocused() )
     {
-        highLight = 5;
         g_UiMgr->SetScreenHighlight( m_pAdvanced->GetPosition() );
     }
 
     if( m_pButtonApply->IsFocused() )
     {
-        highLight = 6;
         g_UiMgr->SetScreenHighlight( m_pButtonApply->GetPosition() );
     }
 
-    if( highLight != m_CurrHL )
-    {
-        if( highLight != -1 )
-        {
-            g_AudioMgr.Play( "Cusor_Norm" );
-        }
-        m_CurrHL = highLight;
-    }
 }
 
 //==============================================================================

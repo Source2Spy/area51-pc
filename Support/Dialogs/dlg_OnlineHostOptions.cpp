@@ -431,6 +431,7 @@ void dlg_online_host_options::OnCancel( ui_win* pWin )
 
     if( m_State == DIALOG_STATE_ACTIVE )
     {
+        g_AudioMgr.Play( "Backup" );
         m_State = DIALOG_STATE_BACK;
     }
 }
@@ -454,6 +455,7 @@ void dlg_online_host_options::OnAccept( ui_win* pWin )
 
         case IDC_RESET:
         {
+            g_AudioMgr.Play( "Select_Norm" );
             global_settings Defaults;
             ReadSettings( Defaults.GetHostSettings() );
             if( m_Advanced )
@@ -483,6 +485,7 @@ void dlg_online_host_options::OnAccept( ui_win* pWin )
                 }
                 if( !Valid || (Port < 1) || (Port > 65535) )
                 {
+                    g_AudioMgr.Play( "InvalidEntry" );
                     m_pStatus->SetLabel( g_StringTableMgr( "ui", "IDS_HOST_INVALID_PORT" ) );
                     return;
                 }
@@ -491,6 +494,7 @@ void dlg_online_host_options::OnAccept( ui_win* pWin )
                 match_endpoint Address;
                 if( !m_pLanOnly->IsChecked() && Directory.GetLength() && !Address.Parse( Directory, MATCH_DIRECTORY_PORT ) )
                 {
+                    g_AudioMgr.Play( "InvalidEntry" );
                     m_pStatus->SetLabel( g_StringTableMgr( "ui", "IDS_BROWSER_INVALID_ADDRESS" ) );
                     return;
                 }
@@ -532,6 +536,7 @@ void dlg_online_host_options::OnAccept( ui_win* pWin )
                 }
             }
 
+            g_AudioMgr.Play( "Select_Norm" );
             m_State = DIALOG_STATE_SELECT;
         }
         break;

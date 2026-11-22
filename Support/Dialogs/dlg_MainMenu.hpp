@@ -90,7 +90,6 @@ protected:
     s32                 m_PopUpResult;
     s32                 m_LogoBitmapID;
 
-    s32                 m_CurrHL;
 
     xbool               m_bCheckKeySequence;
 };

@@ -141,7 +141,6 @@ xbool dlg_headset::Create( s32                        UserID,
     {
         m_CurrentControl = CurrentControl;
     }
-    m_CurrHL = 0;
 
     // set range
     m_pVolumeSpeaker ->SetRange( VOLUME_MIN_PERCENT, VOLUME_MAX_PERCENT );
@@ -449,9 +448,6 @@ void dlg_headset::OnDelete( ui_win* pWin )
 void dlg_headset::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 {
     (void)pWin;
-    (void)DeltaTime;
-
-    s32 highLight = -1;
 
     // Consume the popup result once before resuming the dialog.
     if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
@@ -508,7 +504,6 @@ void dlg_headset::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     // update labels
     if( m_pToggleHeadsetAudio->IsFocused() )
     {
-        highLight = 0;
         m_pToggleHeadsetAudioText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pToggleHeadsetAudioText->GetPosition() );
     }
@@ -519,7 +514,6 @@ void dlg_headset::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
     if( m_pVolumeSpeaker->IsFocused() )
     {
-        highLight = 1;
         m_pVolumeSpeakerText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pVolumeSpeakerText->GetPosition() );
     }
@@ -530,7 +524,6 @@ void dlg_headset::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
     if( m_pVolumeMic->IsFocused() )
     {
-        highLight = 2;
         m_pVolumeMicText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pVolumeMicText->GetPosition() );
     }
@@ -541,19 +534,9 @@ void dlg_headset::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     
     if( m_pButtonAccept->IsFocused() )
     {
-        highLight = 3;
         g_UiMgr->SetScreenHighlight( m_pButtonAccept->GetPosition() );
     }
 
-    if( highLight != m_CurrHL )
-    {
-        if( highLight != -1 )
-        {
-            g_AudioMgr.Play("Cusor_Norm");
-        }
-
-        m_CurrHL = highLight;
-    }
 }
 
 //==============================================================================

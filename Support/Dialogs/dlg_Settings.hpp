@@ -22,7 +22,6 @@
 enum settings_controls
 {
     IDC_SETTINGS_AUDIO,
-    IDC_SETTINGS_HEADSET,
     IDC_SETTINGS_GRAPHICS,
     IDC_SETTINGS_DISPLAY,
     IDC_SETTINGS_UI,
@@ -78,14 +77,12 @@ private:
 
 private:
     ui_button*          m_pAudio;
-    ui_button*          m_pHeadset;
     ui_button*          m_pGraphics;
     ui_button*          m_pDisplay;
     ui_button*          m_pUI;
     ui_button*          m_pLanguage;
     ui_button*          m_pAccept;
 
-    s32                 m_CurrHL;
     xbool               m_bRenderBlackout;
 
     dlg_popup*          m_PopUp;

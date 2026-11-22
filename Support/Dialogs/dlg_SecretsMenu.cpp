@@ -689,11 +689,6 @@ void dlg_secrets_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     {
         if( highLight != m_CurrHL )
         {
-            if( highLight != -1 )
-            {
-                g_AudioMgr.Play("Cusor_Norm");
-            }
-
             m_CurrHL = highLight;
 
             if( highLight > 0 )

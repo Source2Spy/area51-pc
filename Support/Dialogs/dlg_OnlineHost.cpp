@@ -371,6 +371,7 @@ void dlg_online_host::AddMap( void )
     Rotation.m_bUseDefault = FALSE;
     FillRotation( Rotation.m_MapCycleCount - 1 );
     SavePreferences();
+    g_AudioMgr.Play( "Select_Norm" );
 }
 
 //==============================================================================
@@ -390,6 +391,7 @@ void dlg_online_host::RemoveMap( void )
     Rotation.m_bUseDefault = FALSE;
     FillRotation( Selection );
     SavePreferences();
+    g_AudioMgr.Play( "Select_Norm" );
 }
 
 //==============================================================================
@@ -410,6 +412,7 @@ void dlg_online_host::MoveMap( s32 Direction )
     Rotation.m_bUseDefault = FALSE;
     FillRotation( Target );
     SavePreferences();
+    g_AudioMgr.Play( "Select_Norm" );
 }
 
 //==============================================================================
@@ -449,6 +452,7 @@ xbool dlg_online_host::FocusMapControl( s32 Start, s32 Direction )
         ui_control* pControl = static_cast<ui_control*>( FindChildByID( Controls[i] ) );
         if( GotoControl( pControl ) )
         {
+            g_AudioMgr.Play( "Cusor_Norm" );
             return TRUE;
         }
     }
@@ -501,27 +505,34 @@ void dlg_online_host::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses,
 
         if( Code == ui_navigation::Left )
         {
-            GotoControl( m_pMaps );
+            if( GotoControl( m_pMaps ) )
+            {
+                g_AudioMgr.Play( "Cusor_Norm" );
+            }
             return;
         }
         if( Code == ui_navigation::Right )
         {
-            GotoControl( m_pRotation );
+            if( GotoControl( m_pRotation ) )
+            {
+                g_AudioMgr.Play( "Cusor_Norm" );
+            }
             return;
         }
         if( Code == ui_navigation::Up )
         {
-            if( !FocusMapControl( i - 1, -1 ) )
+            if( !FocusMapControl( i - 1, -1 ) && GotoControl( m_pName ) )
             {
-                GotoControl( m_pName );
+                g_AudioMgr.Play( "Cusor_Norm" );
             }
             return;
         }
         if( Code == ui_navigation::Down )
         {
-            if( !FocusMapControl( i + 1, 1 ) )
+            if( !FocusMapControl( i + 1, 1 ) &&
+                GotoControl( static_cast<ui_control*>( FindChildByID( IDC_GAME_SETUP ) ) ) )
             {
-                GotoControl( static_cast<ui_control*>( FindChildByID( IDC_GAME_SETUP ) ) );
+                g_AudioMgr.Play( "Cusor_Norm" );
             }
             return;
         }
@@ -549,6 +560,10 @@ void dlg_online_host::OnAccept( ui_win* pWin )
             m_pOptionsDialog = static_cast<dlg_online_host_options*>( m_pManager->OpenDialog( m_UserID,
                 Advanced ? "host advanced" : "host game setup", Bounds, NULL,
                 WF_VISIBLE | WF_INPUTMODAL | WF_DLG_CENTER, &m_Options ) );
+            if( m_pOptionsDialog )
+            {
+                g_AudioMgr.Play( "Select_Norm" );
+            }
         }
         break;
 

@@ -116,7 +116,6 @@ protected:
     ui_combo*           m_pAutosaveSelect;
 
 
-    s32                 m_CurrHL;
 
     profile_dlg_types   m_Type;
     xbool               m_bCreate;

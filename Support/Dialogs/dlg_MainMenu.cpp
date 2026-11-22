@@ -136,7 +136,6 @@ xbool dlg_main_menu::Create( s32                        UserID,
         m_CurrentControl = iControl;
     }
 
-    m_CurrHL = 0;
     m_bCheckKeySequence = FALSE;
 
     // switch off the buttons to start
@@ -341,7 +340,6 @@ void dlg_main_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     (void)pWin;
     (void)DeltaTime;
 
-    s32 highLight = -1;
 
     // scale window if necessary
     if( g_UiMgr->IsScreenScaling() )
@@ -414,49 +412,33 @@ void dlg_main_menu::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     if( m_pButtonCampaign->IsFocused() )
     {
         g_UiMgr->SetScreenHighlight( m_pButtonCampaign->GetPosition() );
-        highLight = 0;
     }
     else if( m_pButtonMultiPlayer->IsFocused() )
     {
         g_UiMgr->SetScreenHighlight( m_pButtonMultiPlayer->GetPosition() );
-        highLight = 1;
     }
     else if( m_pButtonOnline->IsFocused() )
     {
         g_UiMgr->SetScreenHighlight( m_pButtonOnline->GetPosition() );
-        highLight = 2;
     }
     else if( m_pButtonSettings->IsFocused() )
     {
         g_UiMgr->SetScreenHighlight( m_pButtonSettings->GetPosition() );
-        highLight = 3;
     }
     else if( m_pButtonProfiles->IsFocused() )
     {
         g_UiMgr->SetScreenHighlight( m_pButtonProfiles->GetPosition() );
-        highLight = 4;
     }
     else if( m_pButtonCredits->IsFocused() )
     {
         g_UiMgr->SetScreenHighlight( m_pButtonCredits->GetPosition() );
-        highLight = 5;
     }
 #if defined(TARGET_DESKTOP)    
     else if( m_pButtonExit->IsFocused() )
     {
         g_UiMgr->SetScreenHighlight( m_pButtonExit->GetPosition() );
-        highLight = 6;
     }
 #endif
-    if( highLight != m_CurrHL )
-    {
-        if( highLight != -1 )
-        {
-            g_AudioMgr.Play("Cusor_Norm");
-        }
-
-        m_CurrHL = highLight;
-    }
 
 #ifndef CONFIG_RETAIL
 #if defined(TARGET_DESKTOP)

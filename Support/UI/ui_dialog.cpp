@@ -264,9 +264,19 @@ void ui_dialog::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 R
     (void)Presses;
     (void)Repeats;
 
+    if( NavigateFocus( Code, WrapX, WrapY ) )
+    {
+        g_AudioMgr.Play( "Cusor_Norm" );
+    }
+}
+
+//==============================================================================
+
+xbool ui_dialog::NavigateFocus( ui_navigation Code, xbool WrapX, xbool WrapY )
+{
     if (!m_InputEnabled)
     {
-        return;
+        return FALSE;
     }
 
     ui_manager::user*   pUser   = m_pManager->GetUser( m_UserID );
@@ -310,7 +320,7 @@ void ui_dialog::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 R
 
     if( (dx == 0) && (dy == 0) )
     {
-        return;
+        return FALSE;
     }
 
     xbool bWrapped = FALSE;
@@ -388,7 +398,7 @@ void ui_dialog::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 R
                 m_NavX = x;
                 m_NavY = y;
                 m_CurrentControl = m_Children.Find( pCandidate );
-                break;
+                return TRUE;
             }
         }
 
@@ -427,6 +437,8 @@ void ui_dialog::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 R
             }
         }
     }
+
+    return FALSE;
 }
 
 //==============================================================================

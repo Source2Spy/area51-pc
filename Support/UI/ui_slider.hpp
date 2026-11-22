@@ -61,6 +61,7 @@ public:
 
 protected:
     void            SetValueFromPointer ( s32 x );
+    xbool           SetUserValue        ( s32 Value );
 
     s32             m_iElementBar;
     s32             m_iElementThumb;

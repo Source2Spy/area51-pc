@@ -208,7 +208,6 @@ xbool dlg_avatar_select::Create( s32                        UserID,
     }
 
     // set initial focus
-    m_CurrHL = 0;
     GotoControl( m_pAvatarSelect );
     m_CurrentControl = IDC_AVATAR_SELECT_COMBO;
     m_OriginalProfile = g_StateMgr.GetPendingProfile();
@@ -488,7 +487,6 @@ void dlg_avatar_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     (void)pWin;
     (void)DeltaTime;
 
-    s32 highLight = -1;
 
     // Consume the popup result once before resuming the dialog.
     if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
@@ -529,25 +527,14 @@ void dlg_avatar_select::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     // update labels    
     if( m_pAvatarSelect->IsFocused() )
     {
-        highLight = 0;
         g_UiMgr->SetScreenHighlight( m_pAvatarSelect->GetPosition() );
     }    
     
     if( m_pButtonAccept->IsFocused() )
     {
-        highLight = 1;
         g_UiMgr->SetScreenHighlight( m_pButtonAccept->GetPosition() );
     }
 
-    if( highLight != m_CurrHL )
-    {
-        if( highLight != -1 )
-        {
-            g_AudioMgr.Play("Cusor_Norm");
-        }
-
-        m_CurrHL = highLight;
-    }    
 }
 
 //==============================================================================

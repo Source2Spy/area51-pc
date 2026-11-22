@@ -84,7 +84,6 @@ protected:
     ui_button*          m_pButtonAccept;
 
 
-    s32                 m_CurrHL;
 
     xbool               m_bRenderBlackout;
 

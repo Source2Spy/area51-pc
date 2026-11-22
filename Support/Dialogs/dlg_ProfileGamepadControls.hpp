@@ -78,7 +78,6 @@ private:
     ui_text*            m_pInvertYText;
     ui_text*            m_pVibrationText;
 
-    s32                 m_CurrHL;
     xbool               m_bRenderBlackout;
     player_profile      m_OriginalProfile;
     dlg_popup*          m_PopUp;

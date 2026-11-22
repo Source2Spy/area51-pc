@@ -89,7 +89,6 @@ private:
     xbool               m_ConflictPopup;
     player_profile      m_EditingProfile;
     xbool               m_bRenderBlackout;
-    s32                 m_CurrHL;
     player_profile      m_OriginalProfile;
     dlg_popup*          m_PopUp;
     s32                 m_PopUpResult;

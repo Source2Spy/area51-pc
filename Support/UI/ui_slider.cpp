@@ -150,15 +150,9 @@ void ui_slider::OnNavigate( ui_win* pWin, ui_navigation Code, s32 Presses, s32 R
         }
     }
 
-    s32 const OldValue = m_Value;
-    SetValue( m_Value + Direction * m_Step * m_StepScaler );
-    if( m_Value == OldValue )
+    if( !SetUserValue( m_Value + Direction * m_Step * m_StepScaler ) )
     {
         g_AudioMgr.Play( "InvalidEntry" );
-    }
-    else if( m_UseSound )
-    {
-        g_AudioMgr.Play( "Slider" );
     }
 }
 
@@ -249,8 +243,32 @@ void ui_slider::SetValue( s32 Value )
         {
             m_ValueParametric = 0.0f;
         }
-        Notify( ui_notification_type::SliderChanged, static_cast<s32>( m_Value  ) );
     }
+}
+
+//==============================================================================
+
+xbool ui_slider::SetUserValue( s32 Value )
+{
+    s32 const OldValue = m_Value;
+    SetValue( Value );
+    if( m_Value == OldValue )
+    {
+        return FALSE;
+    }
+
+    Notify( ui_notification_type::SliderChanged, m_Value );
+
+    if( m_UseSound )
+    {
+        static voice_id SliderVoiceID = 0;
+        if( !SliderVoiceID || !g_AudioMgr.IsValidVoiceIdCached( SliderVoiceID ) )
+        {
+            SliderVoiceID = g_AudioMgr.Play( "Slider" );
+        }
+    }
+
+    return TRUE;
 }
 
 //==============================================================================
@@ -328,7 +346,7 @@ void ui_slider::SetValueFromPointer( s32 x )
     s32 const LocalX = x_clamp( x, 0, TrackWidth );
     s32 const Range = m_Max - m_Min;
     s32 const Value = m_Min + ((LocalX * Range + TrackWidth / 2) / TrackWidth);
-    SetValue( Value );
+    SetUserValue( Value );
 }
 
 //==============================================================================

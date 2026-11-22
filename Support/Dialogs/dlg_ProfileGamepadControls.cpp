@@ -177,7 +177,6 @@ xbool dlg_profile_gamepad_controls::Create( s32                       UserID,
     m_pInvertYText     ->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pVibrationText   ->SetFlag( ui_win::WF_VISIBLE, FALSE );
 
-    m_CurrHL = 0;
     m_PopUp = NULL;
     m_PopUpResult = DLG_POPUP_IDLE;
 
@@ -407,7 +406,6 @@ void dlg_profile_gamepad_controls::OnDelete( ui_win* pWin )
 void dlg_profile_gamepad_controls::OnUpdate( ui_win* pWin, f32 DeltaTime )
 {
     (void)pWin;
-    s32 Highlight = -1;
 
     // Consume the popup result once before resuming the dialog.
     if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
@@ -482,7 +480,6 @@ void dlg_profile_gamepad_controls::OnUpdate( ui_win* pWin, f32 DeltaTime )
     {
         if( Controls[iControl]->IsFocused() )
         {
-            Highlight = iControl;
             Labels[iControl]->SetLabelColor( xcolor( 255, 252, 204, 255 ) );
             g_UiMgr->SetScreenHighlight( Labels[iControl]->GetPosition() );
         }
@@ -492,14 +489,6 @@ void dlg_profile_gamepad_controls::OnUpdate( ui_win* pWin, f32 DeltaTime )
         }
     }
 
-    if( Highlight != m_CurrHL )
-    {
-        if( Highlight != -1 )
-        {
-            g_AudioMgr.Play( "Cusor_Norm" );
-        }
-        m_CurrHL = Highlight;
-    }
 }
 
 //==============================================================================

@@ -217,7 +217,6 @@ xbool dlg_graphics_advanced_settings::Create( s32                       UserID,
     m_pTessellationText    ->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pAmbientOcclusionText->SetFlag( ui_win::WF_VISIBLE, FALSE );
 
-    m_CurrHL = 0;
     m_PopUp = NULL;
     m_PopUpResult = DLG_POPUP_IDLE;
 
@@ -442,7 +441,6 @@ void dlg_graphics_advanced_settings::OnDelete( ui_win* pWin )
 void dlg_graphics_advanced_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 {
     (void)pWin;
-    s32 highLight = -1;
 
     // Consume the popup result once before resuming the dialog.
     if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
@@ -506,7 +504,6 @@ void dlg_graphics_advanced_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pPhongShading->IsFocused() )
     {
-        highLight = 0;
         m_pPhongShadingText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pPhongShadingText->GetPosition() );
     }
@@ -517,7 +514,6 @@ void dlg_graphics_advanced_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pShadows->IsFocused() )
     {
-        highLight = 1;
         m_pShadowsText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pShadowsText->GetPosition() );
     }
@@ -528,7 +524,6 @@ void dlg_graphics_advanced_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pShadowFilter->IsFocused() )
     {
-        highLight = 2;
         m_pShadowFilterText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pShadowFilterText->GetPosition() );
     }
@@ -539,7 +534,6 @@ void dlg_graphics_advanced_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pBackgroundBlur->IsFocused() )
     {
-        highLight = 3;
         m_pBackgroundBlurText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pBackgroundBlurText->GetPosition() );
     }
@@ -550,7 +544,6 @@ void dlg_graphics_advanced_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pTessellation->IsFocused() )
     {
-        highLight = 4;
         m_pTessellationText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pTessellationText->GetPosition() );
     }
@@ -561,7 +554,6 @@ void dlg_graphics_advanced_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pAmbientOcclusion->IsFocused() )
     {
-        highLight = 5;
         m_pAmbientOcclusionText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pAmbientOcclusionText->GetPosition() );
     }
@@ -572,18 +564,9 @@ void dlg_graphics_advanced_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pButtonApply->IsFocused() )
     {
-        highLight = 6;
         g_UiMgr->SetScreenHighlight( m_pButtonApply->GetPosition() );
     }
 
-    if( highLight != m_CurrHL )
-    {
-        if( highLight != -1 )
-        {
-            g_AudioMgr.Play( "Cusor_Norm" );
-        }
-        m_CurrHL = highLight;
-    }
 }
 
 //==============================================================================

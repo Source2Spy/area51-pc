@@ -255,7 +255,6 @@ xbool dlg_multi_options::Create( s32                        UserID,
 
 
     // set initial highlight/control
-    m_CurrHL = 4;
     m_pContinueButton->SetActive( TRUE );
     GotoControl( m_pContinueButton );
 
@@ -561,7 +560,6 @@ void dlg_multi_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     (void)pWin;
     (void)DeltaTime;
 
-    s32 highLight = -1;
 
     // scale window if necessary
     if( g_UiMgr->IsScreenScaling() )
@@ -596,7 +594,6 @@ void dlg_multi_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     // update labels
     if( m_pTimeSelect->IsFocused() )
     {
-        highLight = 0;
         m_pTimeLimitText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pTimeLimitText->GetPosition() );
     }
@@ -607,7 +604,6 @@ void dlg_multi_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
     if( m_pScoreSelect->IsFocused() )
     {
-        highLight = 1;
         m_pScoreText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pScoreText->GetPosition() );
     }
@@ -619,7 +615,6 @@ void dlg_multi_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 #if defined (ALLOW_EXTENDED_OPTIONS)
     if( m_pMutationSelect->IsFocused() )
     {
-        highLight = 2;
         m_pMutationText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pMutationText->GetPosition() );
     }
@@ -630,7 +625,6 @@ void dlg_multi_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
     if( m_pGameTypeSelect->IsFocused() )
     {
-        highLight = 3;
         m_pGameTypeText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pGameTypeText->GetPosition() );
     }
@@ -642,19 +636,9 @@ void dlg_multi_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
     if( m_pContinueButton->IsFocused() )
     {
-        highLight = 4;
         g_UiMgr->SetScreenHighlight( m_pContinueButton->GetPosition() );
     }
 
-    if( highLight != m_CurrHL )
-    {
-        if( highLight != -1 )
-        {
-            g_AudioMgr.Play("Cusor_Norm");
-        }
-
-        m_CurrHL = highLight;
-    }
 }
 
 //==============================================================================

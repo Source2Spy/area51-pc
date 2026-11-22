@@ -2592,12 +2592,6 @@ void state_mgr::UpdateSettingsMenu( void )
                     }
                     break;
 
-                    case IDC_SETTINGS_HEADSET:
-                    {
-                        SetState( SM_SETTINGS_HEADSET );
-                    }
-                    break;
-
                     case IDC_SETTINGS_GRAPHICS:
                     {
                         SetState( SM_SETTINGS_GRAPHICS );
@@ -2663,6 +2657,15 @@ void state_mgr::UpdateSettingsAudio( void )
             }
             break;
 
+            case DIALOG_STATE_SELECT:
+            {
+                if( m_CurrentDialog->GetControl() == IDC_AUDIO_HEADSET )
+                {
+                    SetState( SM_SETTINGS_HEADSET );
+                }
+            }
+            break;
+
             case DIALOG_STATE_SAVE_DATA_ERROR:
             {
                 SetState( SM_SETTINGS_SAVE_DATA_SELECT );
@@ -2703,7 +2706,7 @@ void state_mgr::UpdateSettingsHeadset( void )
         {
             case DIALOG_STATE_BACK:
             {
-                SetState( SM_SETTINGS_MENU );
+                SetState( SM_SETTINGS_AUDIO );
             }
             break;
 
@@ -6540,12 +6543,6 @@ void state_mgr::UpdatePauseSettings( void )
                     }
                     break;
 
-                    case IDC_SETTINGS_HEADSET:
-                    {
-                        SetState( SM_PAUSE_HEADSET );
-                    }
-                    break;
-
                     case IDC_SETTINGS_GRAPHICS:
                     {
                         SetState( SM_PAUSE_GRAPHICS );
@@ -6612,6 +6609,15 @@ void state_mgr::UpdatePauseAudio( void )
             }
             break;
 
+            case DIALOG_STATE_SELECT:
+            {
+                if( m_CurrentDialog->GetControl() == IDC_AUDIO_HEADSET )
+                {
+                    SetState( SM_PAUSE_HEADSET );
+                }
+            }
+            break;
+
             case DIALOG_STATE_SAVE_DATA_ERROR:
             {
                 SetState( SM_PAUSE_SETTINGS_SELECT );
@@ -6653,7 +6659,7 @@ void state_mgr::UpdatePauseHeadset ( void )
         {
             case DIALOG_STATE_BACK:
             {
-                SetState( SM_PAUSE_SETTINGS );
+                SetState( SM_PAUSE_AUDIO );
             }
             break;
 
@@ -7151,12 +7157,6 @@ void state_mgr::UpdatePauseMPSettings( void )
                     }
                     break;
 
-                    case IDC_SETTINGS_HEADSET:
-                    {
-                        SetState( SM_PAUSE_MP_HEADSET );
-                    }
-                    break;
-
                     case IDC_SETTINGS_GRAPHICS:
                     {
                         SetState( SM_PAUSE_MP_GRAPHICS );
@@ -7223,6 +7223,15 @@ void state_mgr::UpdatePauseMPAudio( void )
             }
             break;
 
+            case DIALOG_STATE_SELECT:
+            {
+                if( m_CurrentDialog->GetControl() == IDC_AUDIO_HEADSET )
+                {
+                    SetState( SM_PAUSE_MP_HEADSET );
+                }
+            }
+            break;
+
             case DIALOG_STATE_SAVE_DATA_ERROR:
             {
                 SetState( SM_PAUSE_MP_SETTINGS_SELECT );
@@ -7264,7 +7273,7 @@ void state_mgr::UpdatePauseMPHeadset ( void )
         {
             case DIALOG_STATE_BACK:
             {
-                SetState( SM_PAUSE_MP_SETTINGS );
+                SetState( SM_PAUSE_MP_AUDIO );
             }
             break;
 
@@ -8129,12 +8138,6 @@ void state_mgr::UpdatePauseOnlineSettings( void )
                     }
                     break;
 
-                    case IDC_SETTINGS_HEADSET:
-                    {
-                        SetState( SM_PAUSE_ONLINE_HEADSET );
-                    }
-                    break;
-
                     case IDC_SETTINGS_GRAPHICS:
                     {
                         SetState( SM_PAUSE_ONLINE_GRAPHICS );
@@ -8202,6 +8205,15 @@ void state_mgr::UpdatePauseOnlineAudio( void )
             }
             break;
 
+            case DIALOG_STATE_SELECT:
+            {
+                if( m_CurrentDialog->GetControl() == IDC_AUDIO_HEADSET )
+                {
+                    SetState( SM_PAUSE_ONLINE_HEADSET );
+                }
+            }
+            break;
+
             case DIALOG_STATE_SAVE_DATA_ERROR:
             {
                 SetState( SM_PAUSE_ONLINE_SAVE_SELECT );
@@ -8243,7 +8255,7 @@ void state_mgr::UpdatePauseOnlineHeadset ( void )
         {
             case DIALOG_STATE_BACK:
             {
-                SetState( SM_PAUSE_ONLINE_SETTINGS );
+                SetState( SM_PAUSE_ONLINE_AUDIO );
             }
             break;
 

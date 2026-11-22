@@ -180,7 +180,6 @@ xbool dlg_ui_settings::Create( s32                       UserID,
     m_pLetterbox    ->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pLetterboxText->SetFlag( ui_win::WF_VISIBLE, FALSE );
 
-    m_CurrHL = 0;
     m_PopUp = NULL;
     m_PopUpResult = DLG_POPUP_IDLE;
 
@@ -385,7 +384,6 @@ void dlg_ui_settings::OnDelete( ui_win* pWin )
 void dlg_ui_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 {
     (void)pWin;
-    s32 highLight = -1;
 
     // Consume the popup result once before resuming the dialog.
     if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
@@ -435,7 +433,6 @@ void dlg_ui_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pUIScale->IsFocused() )
     {
-        highLight = 0;
         m_pUIScaleText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pUIScaleText->GetPosition() );
     }
@@ -446,7 +443,6 @@ void dlg_ui_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pHUDScale->IsFocused() )
     {
-        highLight = 1;
         m_pHUDScaleText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pHUDScaleText->GetPosition() );
     }
@@ -457,7 +453,6 @@ void dlg_ui_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pLetterbox->IsFocused() )
     {
-        highLight = 2;
         m_pLetterboxText->SetLabelColor( xcolor(255,252,204,255) );
         g_UiMgr->SetScreenHighlight( m_pLetterboxText->GetPosition() );
     }
@@ -468,18 +463,9 @@ void dlg_ui_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
     if( m_pButtonApply->IsFocused() )
     {
-        highLight = 3;
         g_UiMgr->SetScreenHighlight( m_pButtonApply->GetPosition() );
     }
 
-    if( highLight != m_CurrHL )
-    {
-        if( highLight != -1 )
-        {
-            g_AudioMgr.Play( "Cusor_Norm" );
-        }
-        m_CurrHL = highLight;
-    }
 }
 
 //==============================================================================

@@ -370,12 +370,13 @@ void dlg_online_join::OnAccept( ui_win* pWin )
         case IDC_JOIN:
         {
             JoinSelectedServer();
+            g_AudioMgr.Play( (m_State == DIALOG_STATE_SELECT) ? "Select_Norm" : "InvalidEntry" );
         }
         break;
 
         case IDC_REFRESH:
         {
-            Refresh();
+            OnDelete( pWin );
         }
         break;
 
@@ -386,6 +387,7 @@ void dlg_online_join::OnAccept( ui_win* pWin )
             if( m_pFiltersDialog )
             {
                 m_pFiltersDialog->Configure( m_Filter );
+                g_AudioMgr.Play( "Select_Norm" );
             }
         }
         break;
@@ -394,6 +396,10 @@ void dlg_online_join::OnAccept( ui_win* pWin )
         {
             m_pAdvancedDialog = static_cast<dlg_browser_advanced*>( m_pManager->OpenDialog( m_UserID, "browser advanced",
                 irect( 0, 0, 360, 288 ), NULL, WF_VISIBLE | WF_INPUTMODAL | WF_DLG_CENTER ) );
+            if( m_pAdvancedDialog )
+            {
+                g_AudioMgr.Play( "Select_Norm" );
+            }
         }
         break;
 
@@ -412,6 +418,7 @@ void dlg_online_join::OnCancel( ui_win* pWin )
 
     if( (m_State == DIALOG_STATE_ACTIVE) && !CONFIG_IS_AUTOCLIENT && !m_pFiltersDialog && !m_pAdvancedDialog )
     {
+        g_AudioMgr.Play( "Backup" );
         m_State = DIALOG_STATE_BACK;
     }
 }
@@ -448,7 +455,11 @@ void dlg_online_join::Refresh( void )
 void dlg_online_join::OnDelete( ui_win* pWin )
 {
     (void)pWin;
-    Refresh();
+    if( m_RefreshTimeout <= 0.0f )
+    {
+        Refresh();
+        g_AudioMgr.Play( "Select_Norm" );
+    }
 }
 
 //==============================================================================

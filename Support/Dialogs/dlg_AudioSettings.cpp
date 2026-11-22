@@ -23,24 +23,6 @@
 #include "dlg_PopUp.hpp"
 
 //==============================================================================
-//  ENUMS
-//==============================================================================
-
-enum audio_settings_controls
-{
-    IDC_AUDIO_VOLUME_SFX_TEXT,
-    IDC_AUDIO_VOLUME_MUSIC_TEXT,
-    IDC_AUDIO_VOLUME_SPEECH_TEXT,
-    IDC_AUDIO_VOLUME_VIDEO_TEXT,
-
-    IDC_AUDIO_VOLUME_SFX,
-    IDC_AUDIO_VOLUME_MUSIC,
-    IDC_AUDIO_VOLUME_SPEECH,
-    IDC_AUDIO_VOLUME_VIDEO,
-    IDC_AUDIO_BUTTON_APPLY,
-};
-
-//==============================================================================
 //  DATA
 //==============================================================================
 
@@ -55,7 +37,8 @@ ui_manager::control_tem AudioSettingsControls[] =
     { IDC_AUDIO_VOLUME_MUSIC,       "IDS_NULL",                  "slider", 300,  75, 120, 40, 0, 1, 1, 1, ui_win::WF_VISIBLE },
     { IDC_AUDIO_VOLUME_SPEECH,      "IDS_NULL",                  "slider", 300, 110, 120, 40, 0, 2, 1, 1, ui_win::WF_VISIBLE },
     { IDC_AUDIO_VOLUME_VIDEO,       "IDS_NULL",                  "slider", 300, 145, 120, 40, 0, 3, 1, 1, ui_win::WF_VISIBLE },
-    { IDC_AUDIO_BUTTON_APPLY,       "IDS_PROFILE_OPTIONS_ACCEPT", "button", 40, 285, 220, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_AUDIO_HEADSET,            "IDS_PROFILE_HEADSET",       "button", 40, 250, 220, 40, 0, 4, 1, 1, ui_win::WF_VISIBLE },
+    { IDC_AUDIO_BUTTON_APPLY,       "IDS_PROFILE_OPTIONS_ACCEPT","button", 40, 285, 220, 40, 0, 5, 1, 1, ui_win::WF_VISIBLE },
 };
 
 //------------------------------------------------------------------------------
@@ -63,7 +46,7 @@ ui_manager::control_tem AudioSettingsControls[] =
 ui_manager::dialog_tem AudioSettingsDialog =
 {
     "IDS_OPTIONS_AUDIO_SETTINGS",
-    1, 9,
+    1, 6,
     sizeof(AudioSettingsControls) / sizeof(ui_manager::control_tem),
     &AudioSettingsControls[0],
     0
@@ -115,6 +98,7 @@ xbool dlg_audio_settings::Create( s32 UserID, ui_manager* pManager, ui_manager::
     m_pVolumeMusic      = static_cast<ui_slider*>( FindChildByID( IDC_AUDIO_VOLUME_MUSIC ) );
     m_pVolumeSpeech     = static_cast<ui_slider*>( FindChildByID( IDC_AUDIO_VOLUME_SPEECH ) );
     m_pVolumeVideo      = static_cast<ui_slider*>( FindChildByID( IDC_AUDIO_VOLUME_VIDEO ) );
+    m_pHeadset          = static_cast<ui_button*>( FindChildByID( IDC_AUDIO_HEADSET ) );
     m_pButtonApply      = static_cast<ui_button*>( FindChildByID( IDC_AUDIO_BUTTON_APPLY ) );
     m_pVolumeSFXText    = static_cast<ui_text*>( FindChildByID( IDC_AUDIO_VOLUME_SFX_TEXT ) );
     m_pVolumeMusicText  = static_cast<ui_text*>( FindChildByID( IDC_AUDIO_VOLUME_MUSIC_TEXT ) );
@@ -155,6 +139,8 @@ xbool dlg_audio_settings::Create( s32 UserID, ui_manager* pManager, ui_manager::
         pLabels[i]->SetFlag( ui_win::WF_VISIBLE, FALSE );
     }
 
+    m_pHeadset->SetFlag( ui_win::WF_BUTTON_LEFT, TRUE );
+    m_pHeadset->SetFlag( ui_win::WF_VISIBLE, FALSE );
     m_pButtonApply->SetFlag( ui_win::WF_BUTTON_LEFT, TRUE );
     m_pButtonApply->SetFlag( ui_win::WF_VISIBLE, FALSE );
 
@@ -163,7 +149,6 @@ xbool dlg_audio_settings::Create( s32 UserID, ui_manager* pManager, ui_manager::
     NavText += g_StringTableMgr( "ui", "IDS_NAV_RESTORE_DEFAULTS" );
     SetNavText( NavText );
 
-    m_CurrHL = 0;
     m_bRenderBlackout = FALSE;
     m_PopUp = NULL;
     m_PopUpResult = DLG_POPUP_IDLE;
@@ -234,37 +219,56 @@ void dlg_audio_settings::CommitPreview( void )
 
 void dlg_audio_settings::OnNotify( ui_notification const& Event )
 {
-    if( (Event.m_Type != ui_notification_type::SliderChanged) || (m_State == DIALOG_STATE_INIT) )
+    if( Event.m_Type != ui_notification_type::SliderChanged )
     {
         return;
     }
 
-    static s32 SpeechVoiceID = 0;
+    static voice_id SFXPreviewID   = 0;
+    static voice_id MusicPreviewID = 0;
+    static voice_id VoicePreviewID = 0;
 
     if( Event.m_pSender == m_pVolumeSFX )
     {
         m_Settings.SetVolume( VOLUME_SFX, m_pVolumeSFX->GetValue() );
         CommitPreview();
-        g_AudioMgr.Play( "Fader_SFX" );
+        if( !SFXPreviewID || !g_AudioMgr.IsValidVoiceIdCached( SFXPreviewID ) )
+        {
+            SFXPreviewID = g_AudioMgr.Play( "Fader_SFX" );
+        }
     }
     else if( Event.m_pSender == m_pVolumeMusic )
     {
         m_Settings.SetVolume( VOLUME_MUSIC, m_pVolumeMusic->GetValue() );
         CommitPreview();
-        g_AudioMgr.Play( "Music_Slider" );
+        if( !MusicPreviewID || !g_AudioMgr.IsValidVoiceIdCached( MusicPreviewID ) )
+        {
+            MusicPreviewID = g_AudioMgr.Play( "Music_Slider" );
+        }
     }
-    else if( Event.m_pSender == m_pVolumeSpeech )
+    else if( (Event.m_pSender == m_pVolumeSpeech) || (Event.m_pSender == m_pVolumeVideo) )
     {
-        g_AudioMgr.SetVolume( SpeechVoiceID, static_cast<f32>( m_Settings.GetVolume( VOLUME_SPEECH ) ) / 100.0f );
-        m_Settings.SetVolume( VOLUME_SPEECH, m_pVolumeSpeech->GetValue() );
+        f32 Volume = 1.0f;
+        if( Event.m_pSender == m_pVolumeSpeech )
+        {
+            m_Settings.SetVolume( VOLUME_SPEECH, m_pVolumeSpeech->GetValue() );
+        }
+        else
+        {
+            m_Settings.SetVideoVolume( m_pVolumeVideo->GetValue() );
+            Volume = static_cast<f32>( m_Settings.GetVideoVolume() ) / 100.0f;
+        }
         CommitPreview();
-        g_AudioMgr.Release( SpeechVoiceID, 1.0f );
-        SpeechVoiceID = g_AudioMgr.Play( "Voice_Slider" );
-    }
-    else if( Event.m_pSender == m_pVolumeVideo )
-    {
-        m_Settings.SetVideoVolume( m_pVolumeVideo->GetValue() );
-        CommitPreview();
+
+        if( VoicePreviewID && g_AudioMgr.IsValidVoiceIdCached( VoicePreviewID ) )
+        {
+            g_AudioMgr.SetVolume( VoicePreviewID, Volume );
+        }
+        else if( Volume > 0.0f )
+        {
+            VoicePreviewID = g_AudioMgr.PlayConfigured( "Voice_Slider", vector3( 0.0f, 0.0f, 0.0f ),
+                                                        -1, FALSE, Volume, 0.0f );
+        }
     }
 }
 
@@ -272,19 +276,35 @@ void dlg_audio_settings::OnNotify( ui_notification const& Event )
 
 void dlg_audio_settings::OnAccept( ui_win* pWin )
 {
-    if( (m_State != DIALOG_STATE_ACTIVE) || (pWin != m_pButtonApply) )
+    if( m_State != DIALOG_STATE_ACTIVE )
     {
         return;
     }
 
-    if( !m_Settings.HasChanged() )
+    if( pWin == m_pHeadset )
+    {
+        ApplySettings( g_StateMgr.GetPendingSettings() );
+        g_AudioMgr.Play( "Select_Norm" );
+        m_CurrentControl = IDC_AUDIO_HEADSET;
+        m_State = DIALOG_STATE_SELECT;
+        return;
+    }
+
+    if( pWin != m_pButtonApply )
+    {
+        return;
+    }
+
+    global_settings Settings = m_OriginalSettings;
+    ApplySettings( Settings );
+    if( !Settings.HasChanged() )
     {
         g_AudioMgr.Play( "Select_Norm" );
         m_State = DIALOG_STATE_BACK;
         return;
     }
 
-    ApplySettings();
+    g_StateMgr.GetPendingSettings() = Settings;
     g_AudioMgr.Play( "Select_Norm" );
     OpenSavePopup();
 }
@@ -300,26 +320,27 @@ void dlg_audio_settings::OnCancel( ui_win* pWin )
         return;
     }
 
-    if( !m_Settings.HasChanged() )
+    global_settings Settings = m_OriginalSettings;
+    ApplySettings( Settings );
+    if( !Settings.HasChanged() )
     {
         g_AudioMgr.Play( "Backup" );
         m_State = DIALOG_STATE_BACK;
         return;
     }
 
+    g_StateMgr.GetPendingSettings() = Settings;
     OpenSavePopup();
 }
 
 //==============================================================================
 
-void dlg_audio_settings::ApplySettings( void )
+void dlg_audio_settings::ApplySettings( global_settings& Settings )
 {
-    global_settings& PendingSettings = g_StateMgr.GetPendingSettings();
-    PendingSettings.SetVolume( VOLUME_SFX, m_Settings.GetVolume( VOLUME_SFX ) );
-    PendingSettings.SetVolume( VOLUME_MUSIC, m_Settings.GetVolume( VOLUME_MUSIC ) );
-    PendingSettings.SetVolume( VOLUME_SPEECH, m_Settings.GetVolume( VOLUME_SPEECH ) );
-    PendingSettings.SetVideoVolume( m_Settings.GetVideoVolume() );
-    PendingSettings.CommitAudio();
+    Settings.SetVolume( VOLUME_SFX, m_Settings.GetVolume( VOLUME_SFX ) );
+    Settings.SetVolume( VOLUME_MUSIC, m_Settings.GetVolume( VOLUME_MUSIC ) );
+    Settings.SetVolume( VOLUME_SPEECH, m_Settings.GetVolume( VOLUME_SPEECH ) );
+    Settings.SetVideoVolume( m_Settings.GetVideoVolume() );
 }
 
 //==============================================================================
@@ -403,7 +424,6 @@ void dlg_audio_settings::OnDelete( ui_win* pWin )
 void dlg_audio_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 {
     (void)pWin;
-    s32 Highlight = -1;
 
     // Consume the popup result once before resuming the dialog.
     if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
@@ -415,7 +435,6 @@ void dlg_audio_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 
         if( Result == DLG_POPUP_YES )
         {
-            ApplySettings();
             BeginSave();
         }
         else
@@ -435,14 +454,16 @@ void dlg_audio_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         pLabels[i]->SetLabelColor( Focused ? xcolor(255,252,204,255) : xcolor(126,220,60,255) );
         if( Focused )
         {
-            Highlight = i;
             g_UiMgr->SetScreenHighlight( pLabels[i]->GetPosition() );
         }
     }
 
-    if( m_pButtonApply->IsFocused() )
+    if( m_pHeadset->IsFocused() )
     {
-        Highlight = 4;
+        g_UiMgr->SetScreenHighlight( m_pHeadset->GetPosition() );
+    }
+    else if( m_pButtonApply->IsFocused() )
+    {
         g_UiMgr->SetScreenHighlight( m_pButtonApply->GetPosition() );
     }
 
@@ -451,12 +472,12 @@ void dlg_audio_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
     {
         ui_win* pControls[] =
         {
-            m_pVolumeSFX, m_pVolumeMusic, m_pVolumeSpeech, m_pVolumeVideo, m_pButtonApply,
+            m_pVolumeSFX, m_pVolumeMusic, m_pVolumeSpeech, m_pVolumeVideo, m_pHeadset, m_pButtonApply,
             m_pVolumeSFXText, m_pVolumeMusicText, m_pVolumeSpeechText, m_pVolumeVideoText,
         };
-        for( s32 i = 0; i < 9; i++ )
+        for( ui_win* pControl : pControls )
         {
-            pControls[i]->SetFlag( ui_win::WF_VISIBLE, TRUE );
+            pControl->SetFlag( ui_win::WF_VISIBLE, TRUE );
         }
         s32 const CurrentControl = g_StateMgr.GetCurrentControl();
         if( (CurrentControl == -1) || (GotoControl( CurrentControl ) == NULL) )
@@ -470,14 +491,6 @@ void dlg_audio_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         }
     }
 
-    if( Highlight != m_CurrHL )
-    {
-        if( Highlight != -1 )
-        {
-            g_AudioMgr.Play( "Cusor_Norm" );
-        }
-        m_CurrHL = Highlight;
-    }
 }
 
 //==============================================================================

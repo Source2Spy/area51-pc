@@ -211,7 +211,6 @@ xbool dlg_language_settings::Create( s32 UserID, ui_manager* pManager, ui_manage
     NavText += g_StringTableMgr( "ui", "IDS_NAV_RESTORE_DEFAULTS" );
     SetNavText( NavText );
 
-    m_CurrHL = 0;
     m_bRenderBlackout = FALSE;
     m_PopUp = NULL;
     m_PopUpResult = DLG_POPUP_IDLE;
@@ -425,7 +424,6 @@ void dlg_language_settings::OnDelete( ui_win* pWin )
 void dlg_language_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
 {
     (void)pWin;
-    s32 Highlight = -1;
 
     // Consume the popup result once before resuming the dialog.
     if( m_PopUp && (m_PopUpResult != DLG_POPUP_IDLE) )
@@ -481,25 +479,15 @@ void dlg_language_settings::OnUpdate( ui_win* pWin, f32 DeltaTime )
         pLabels[i]->SetLabelColor( Focused ? xcolor(255,252,204,255) : xcolor(126,220,60,255) );
         if( Focused )
         {
-            Highlight = i;
             g_UiMgr->SetScreenHighlight( pLabels[i]->GetPosition() );
         }
     }
 
     if( m_pButtonApply->IsFocused() )
     {
-        Highlight = 3;
         g_UiMgr->SetScreenHighlight( m_pButtonApply->GetPosition() );
     }
 
-    if( Highlight != m_CurrHL )
-    {
-        if( Highlight != -1 )
-        {
-            g_AudioMgr.Play( "Cusor_Norm" );
-        }
-        m_CurrHL = Highlight;
-    }
 }
 
 //==============================================================================

@@ -24,6 +24,25 @@ class ui_slider;
 class ui_text;
 
 //==============================================================================
+//  CONTROLS
+//==============================================================================
+
+enum audio_settings_controls
+{
+    IDC_AUDIO_VOLUME_SFX_TEXT,
+    IDC_AUDIO_VOLUME_MUSIC_TEXT,
+    IDC_AUDIO_VOLUME_SPEECH_TEXT,
+    IDC_AUDIO_VOLUME_VIDEO_TEXT,
+
+    IDC_AUDIO_VOLUME_SFX,
+    IDC_AUDIO_VOLUME_MUSIC,
+    IDC_AUDIO_VOLUME_SPEECH,
+    IDC_AUDIO_VOLUME_VIDEO,
+    IDC_AUDIO_HEADSET,
+    IDC_AUDIO_BUTTON_APPLY,
+};
+
+//==============================================================================
 //  REGISTRATION
 //==============================================================================
 
@@ -60,7 +79,7 @@ public:
 
 private:
     void                CommitPreview      ( void );
-    void                ApplySettings      ( void );
+    void                ApplySettings      ( global_settings& Settings );
     void                BeginSave          ( void );
     void                OpenSavePopup      ( void );
     void                RestoreSettings    ( void );
@@ -71,6 +90,7 @@ private:
     ui_slider*          m_pVolumeMusic;
     ui_slider*          m_pVolumeSpeech;
     ui_slider*          m_pVolumeVideo;
+    ui_button*          m_pHeadset;
     ui_button*          m_pButtonApply;
 
     ui_text*            m_pVolumeSFXText;
@@ -82,7 +102,6 @@ private:
     global_settings     m_OriginalSettings;
     dlg_popup*          m_PopUp;
     s32                 m_PopUpResult;
-    s32                 m_CurrHL;
     xbool               m_bRenderBlackout;
 };
 

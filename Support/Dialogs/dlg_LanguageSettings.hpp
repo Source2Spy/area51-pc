@@ -76,7 +76,6 @@ private:
     ui_text*            m_pAudioLanguageText;
     ui_text*            m_pVideoLanguageText;
 
-    s32                 m_CurrHL;
     xbool               m_bRenderBlackout;
     global_settings     m_OriginalSettings;
     dlg_popup*          m_PopUp;

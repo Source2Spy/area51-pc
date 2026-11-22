@@ -116,7 +116,6 @@ xbool dlg_online_main::Create( s32                        UserID,
         m_CurrentControl = iControl;
     }
 
-    m_CurrHL = 0;
 
     // switch off the buttons to start
     m_pButtonJoin        ->SetFlag(ui_win::WF_VISIBLE, FALSE);
@@ -293,7 +292,6 @@ void dlg_online_main::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     (void)pWin;
     (void)DeltaTime;
 
-    s32 highLight = -1;
 
     // scale window if necessary
     if( g_UiMgr->IsScreenScaling() )
@@ -329,37 +327,23 @@ void dlg_online_main::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
     if( m_pButtonJoin->IsFocused() )
     {
-        highLight = 0;
         g_UiMgr->SetScreenHighlight( m_pButtonJoin->GetPosition() );
     }
     else if( m_pButtonHost->IsFocused() )
     {
-        highLight = 1;
         g_UiMgr->SetScreenHighlight( m_pButtonHost->GetPosition() );
     }
     else if( m_pButtonEditProfile->IsFocused() )
     {
-        highLight = 4;
         g_UiMgr->SetScreenHighlight( m_pButtonEditProfile->GetPosition() );
     }
     else if( m_pButtonViewStats->IsFocused() )
     {
-        highLight = 5;
         g_UiMgr->SetScreenHighlight( m_pButtonViewStats->GetPosition() );
     }
     else if( m_pButtonSignOut->IsFocused() )
     {
-        highLight = 6;
         g_UiMgr->SetScreenHighlight( m_pButtonSignOut->GetPosition() );
-    }
-    if( highLight != m_CurrHL )
-    {
-        if( highLight != -1 )
-        {
-            g_AudioMgr.Play("Cusor_Norm");
-        }
-
-        m_CurrHL = highLight;
     }
 
     if( m_pPopUp )

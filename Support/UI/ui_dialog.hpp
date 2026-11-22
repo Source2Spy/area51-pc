@@ -109,6 +109,8 @@ public:
     static void             SetTextColorShadow  ( xcolor color)             { m_TextColorShadow    = color; }
 
 protected:
+    xbool                   NavigateFocus       ( ui_navigation Code, xbool WrapX, xbool WrapY );
+
     s32                     m_iElement;
     ui_manager::dialog_tem* m_pDialogTem;
     s32                     m_NavW;

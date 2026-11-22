@@ -114,7 +114,6 @@ xbool dlg_pause_mp::Create( s32                        UserID,
         m_CurrentControl = iControl;
     }
 
-    m_CurrHL = 0;
     m_PopUp = NULL;
 
     // switch off the buttons to start
@@ -286,7 +285,6 @@ void dlg_pause_mp::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     (void)pWin;
     (void)DeltaTime;
 
-    s32 highLight = -1;
 
     //
     // Figure out if we have invitations to be friends or join games
@@ -353,34 +351,21 @@ void dlg_pause_mp::OnUpdate ( ui_win* pWin, f32 DeltaTime )
 
     if( m_pButtonQuit->IsFocused() )
     {
-        highLight = 0;
         g_UiMgr->SetScreenHighlight( m_pButtonQuit->GetPosition() );
     }
     else if( m_pButtonScore->IsFocused() )
     {
-        highLight = 1;
         g_UiMgr->SetScreenHighlight( m_pButtonScore->GetPosition() );
     }
     else if( m_pButtonOptions->IsFocused() )
     {
-        highLight = 2;
         g_UiMgr->SetScreenHighlight( m_pButtonOptions->GetPosition() );
     }
     else if( m_pButtonSettings->IsFocused() )
     {
-        highLight = 3;
         g_UiMgr->SetScreenHighlight( m_pButtonSettings->GetPosition() );
     }
 
-    if( highLight != m_CurrHL )
-    {
-        if( highLight != -1 )
-        {
-            g_AudioMgr.Play("Cusor_Norm");
-        }
-
-        m_CurrHL = highLight;
-    }
 }
 
 //==============================================================================

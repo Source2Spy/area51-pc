@@ -196,7 +196,6 @@ xbool dlg_profile_options::Create( s32                        UserID,
         m_CurrentControl = iControl;
     }
 
-    m_CurrHL = 0;
     m_PopUp = NULL;
     m_PopUpResult = DLG_POPUP_IDLE;
     m_OriginalProfile = g_StateMgr.GetPendingProfile();
@@ -793,7 +792,6 @@ void dlg_profile_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     (void)pWin;
     (void)DeltaTime;
 
-    s32 highLight = -1;
 
     // scale window if necessary
     if( g_UiMgr->IsScreenScaling() )
@@ -937,41 +935,27 @@ void dlg_profile_options::OnUpdate ( ui_win* pWin, f32 DeltaTime )
     // Use the navigation rows from the profile dialog templates, including gaps.
     if( m_pButtonControls->IsFocused() )
     {
-        highLight = 0;
         g_UiMgr->SetScreenHighlight( m_pButtonControls->GetPosition() );
     }
     else if( m_pButtonAvatar->IsFocused() )
     {
-        highLight = 1;
         g_UiMgr->SetScreenHighlight( m_pButtonAvatar->GetPosition() );
     }
     else if( m_pButtonDifficulty->IsFocused() )
     {
-        highLight = 2;
         g_UiMgr->SetScreenHighlight( m_pButtonDifficulty->GetPosition() );
     }
     else if( m_pButtonAutosave->IsFocused() )
     {
-        highLight = 4;
         g_UiMgr->SetScreenHighlight( m_pButtonAutosave->GetPosition() );
     }
     else if( m_pButtonCreate->IsFocused() )
     {
         // Assuming 'Create/Accept' button corresponds to highlight index 6
         // (Indices seem to skip based on control layout/disabling)
-        highLight = 6;
         g_UiMgr->SetScreenHighlight( m_pButtonCreate->GetPosition() );
     }
 
-    if( highLight != m_CurrHL )
-    {
-        if( highLight != -1 )
-        {
-            g_AudioMgr.Play("Cusor_Norm");
-        }
-
-        m_CurrHL = highLight;
-    }
 }
 
 //==============================================================================

@@ -85,13 +85,13 @@ void ui_check::OnAccept( ui_win* pWin )
     if( pWin == this )
     {
         m_bIsChecked = !m_bIsChecked;
+        g_AudioMgr.Play( "Toggle" );
 
         // Notify Parent
         if( m_pParent )
         {
             Notify( ui_notification_type::CheckChanged, static_cast<s32>( m_bIsChecked  ) );
         }
-
     }
 }
 

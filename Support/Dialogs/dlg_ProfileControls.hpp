@@ -92,7 +92,6 @@ private:
     ui_text*            m_pAimText;
     ui_text*            m_pAutoSwitchText;
 
-    s32                 m_CurrHL;
     xbool               m_bRenderBlackout;
     player_profile      m_OriginalProfile;
     dlg_popup*          m_PopUp;

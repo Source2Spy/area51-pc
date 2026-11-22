@@ -65,7 +65,6 @@ protected:
     ui_frame*           m_pFrame1;
     ui_combo*           m_pAvatarSelect;
     ui_button*          m_pButtonAccept;
-    s32                 m_CurrHL;
     xbool               m_bRenderBlackout;
     player_profile      m_OriginalProfile;
     dlg_popup*          m_PopUp;

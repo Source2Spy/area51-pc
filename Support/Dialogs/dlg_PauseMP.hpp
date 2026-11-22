@@ -75,7 +75,6 @@ protected:
     ui_button*          m_pButtonOptions;
     ui_button*          m_pButtonSettings;
 
-    s32                 m_CurrHL;
 
     dlg_popup*          m_PopUp;
     s32                 m_PopUpResult;

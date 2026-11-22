@@ -264,6 +264,7 @@ void dlg_browser_options::OnCancel( ui_win* pWin )
 
     if( m_State == DIALOG_STATE_ACTIVE )
     {
+        g_AudioMgr.Play( "Backup" );
         m_State = DIALOG_STATE_BACK;
     }
 }
@@ -358,6 +359,7 @@ void dlg_browser_filters::OnAccept( ui_win* pWin )
     {
         case IDC_FILTER_RESET:
         {
+            g_AudioMgr.Play( "Select_Norm" );
             Configure( match_browser_filter() );
         }
         break;
@@ -378,6 +380,7 @@ void dlg_browser_filters::OnAccept( ui_win* pWin )
             m_Filter.HideFull = m_pNotFull->IsChecked();
             m_Filter.HideEmpty = m_pNotEmpty->IsChecked();
             m_Filter.HidePassword = m_pNoPassword->IsChecked();
+            g_AudioMgr.Play( "Select_Norm" );
             m_State = DIALOG_STATE_SELECT;
         }
         break;
@@ -448,6 +451,7 @@ void dlg_browser_advanced::OnAccept( ui_win* pWin )
 
         case IDC_ADVANCED_RESET:
         {
+            g_AudioMgr.Play( "Select_Norm" );
             m_pDirectory->SetLabel( xwstring( "" ) );
             m_pAddress->SetLabel( xwstring( "" ) );
             m_pStatus->SetLabel( xwstring( "" ) );
@@ -462,11 +466,13 @@ void dlg_browser_advanced::OnAccept( ui_win* pWin )
                 m_pDirectory->GetLabel().GetLength() &&
                 !Directory.Parse( xstring( m_pDirectory->GetLabel() ), MATCH_DIRECTORY_PORT ) )
             {
+                g_AudioMgr.Play( "InvalidEntry" );
                 m_pStatus->SetLabel( g_StringTableMgr( "ui", "IDS_BROWSER_INVALID_ADDRESS" ) );
                 break;
             }
 
             HandleConnectionResult( g_MatchMgr.PrepareDirectConnection( xstring( m_pAddress->GetLabel() ) ) );
+            g_AudioMgr.Play( ((m_State == DIALOG_STATE_SELECT) || m_Resolving) ? "Select_Norm" : "InvalidEntry" );
         }
         break;
 
@@ -477,10 +483,12 @@ void dlg_browser_advanced::OnAccept( ui_win* pWin )
                 (g_MatchMgr.ConfigureDirectory( xstring( m_pDirectory->GetLabel() ) ) == MATCH_RESULT_OK) )
             {
                 SavePreferences();
+                g_AudioMgr.Play( "Select_Norm" );
                 m_State = DIALOG_STATE_SELECT;
             }
             else
             {
+                g_AudioMgr.Play( "InvalidEntry" );
                 m_pStatus->SetLabel( g_StringTableMgr( "ui", "IDS_BROWSER_INVALID_ADDRESS" ) );
             }
         }
