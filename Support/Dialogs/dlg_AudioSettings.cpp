@@ -234,7 +234,7 @@ void dlg_audio_settings::CommitPreview( void )
 
 void dlg_audio_settings::OnNotify( ui_notification const& Event )
 {
-    if( Event.m_Type != ui_notification_type::SliderChanged )
+    if( (Event.m_Type != ui_notification_type::SliderChanged) || (m_State == DIALOG_STATE_INIT) )
     {
         return;
     }
