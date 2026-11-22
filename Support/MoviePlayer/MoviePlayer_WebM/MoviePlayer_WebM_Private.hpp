@@ -23,7 +23,6 @@
 //  INCLUDES
 //==============================================================================
 
-#include <climits>
 #include "x_files.hpp"
 #include "Entropy.hpp"
 
@@ -83,8 +82,16 @@ enum decode_status
 {
     DECODE_ERROR = -1,
     DECODE_EMPTY,
-    DECODE_FRAME,
-    DECODE_DISCARDED
+    DECODE_FRAME
+};
+
+//------------------------------------------------------------------------------
+
+enum work_status
+{
+    WORK_ERROR = -1,
+    WORK_BLOCKED,
+    WORK_PROGRESS
 };
 
 //------------------------------------------------------------------------------
@@ -165,24 +172,56 @@ struct sample
 
 //------------------------------------------------------------------------------
 
+class sample_queue
+{
+public:
+    xbool   IsEmpty(void) const { return m_Count == 0; }
+    xbool   IsFull (void) const { return m_Count == CAPACITY; }
+    void    Clear  (void) { m_Read = m_Count = 0; }
+    const sample* Peek(void) const { return IsEmpty() ? NULL : &m_Samples[m_Read]; }
+
+    void Push(const sample& Sample)
+    {
+        ASSERT(!IsFull());
+        m_Samples[(m_Read + m_Count) % CAPACITY] = Sample;
+        ++m_Count;
+    }
+
+    sample Pop(void)
+    {
+        ASSERT(!IsEmpty());
+        const sample Sample = m_Samples[m_Read];
+        m_Read = (m_Read + 1) % CAPACITY;
+        --m_Count;
+        return Sample;
+    }
+
+private:
+    enum 
+    { 
+        CAPACITY = 64 
+    };
+
+    sample  m_Samples[CAPACITY];
+    s32     m_Read = 0;
+    s32     m_Count = 0;
+};
+
+//------------------------------------------------------------------------------
+
 struct render_data
 {
     render_data(void)
     {
-        pFrameData  = NULL;
         Width       = 0;
         Height      = 0;
-        Pitch       = 0;
-        FrameTime   = 0.0;
         bHasNewFrame= FALSE;
         bIsValid    = FALSE;
     }
 
-    u8*         pFrameData;
+    xarray<u8>  Pixels;
     s32         Width;
     s32         Height;
-    s32         Pitch;
-    f64         FrameTime;
     xbool       bHasNewFrame;
     xbool       bIsValid;
     xmutex      DataMutex;
@@ -266,28 +305,20 @@ public:
     xbool           Initialize      (const player_config& Config);
     void            Shutdown        (void);
 
-    decode_status   DecodeSample    (const sample& Sample, mkvparser::IMkvReader* pReader, xbool ConvertImage = TRUE);
-
-    const u8*       GetFrameData    (void) const { return (m_FrameBuffer.GetCount() > 0) ? m_FrameBuffer.GetPtr() : NULL; }
-    s32             GetFramePitch   (void) const { return m_FramePitch; }
-    s32             GetWidth        (void) const { return m_Width; }
-    s32             GetHeight       (void) const { return m_Height; }
+    decode_status      DecodeSample    (const sample& Sample, mkvparser::IMkvReader* pReader);
+    const vpx_image_t& GetDecodedImage(void) const { ASSERT(m_pDecodedImage); return *m_pDecodedImage; }
 
 private:
     xbool           InitializeCodec (const player_config& Config);
     void            DestroyCodec    (void);
-    xbool           ConvertFrame    (const vpx_image_t& Image);
 
 private:
     vpx_codec_ctx_t             m_CodecCtx;
     const vpx_codec_iface_t*    m_pCodecIface;
     xbool                       m_bCodecInitialized;
+    const vpx_image_t*          m_pDecodedImage;
 
     xarray<u8>                  m_CompressedBuffer;
-    xarray<u8>                  m_FrameBuffer;
-    s32                         m_FramePitch;
-    s32                         m_Width;
-    s32                         m_Height;
 };
 
 //==============================================================================
@@ -304,7 +335,7 @@ public:
     void            Shutdown        (void);
     xbool           Reset           (void);
     xbool           BeginSample     (const sample& Sample, mkvparser::IMkvReader* pReader);
-    xbool           Pump            (void);
+    work_status     Pump            (void);
     xbool           HasPendingSample(void) const { return m_bHasPendingSample; }
     void            EndInput        (void);
     xbool           IsDrained       (void);
@@ -312,6 +343,7 @@ public:
     const char*     GetError        (void) const { return m_ErrorText; }
     f64             GetEndTime      (void) const { return (f64)m_EndSample / m_SampleRate; }
     f64             GetDevicePeriod (void) const { return m_DevicePeriod; }
+    f64             GetBufferedTime (void);
 
     void            SetVolume       (f32 Volume);
     xbool           Pause           (void);
@@ -325,8 +357,9 @@ private:
         CODEC_VORBIS
     };
 
-    static void SDLCALL AudioCallback       (void* pData, SDL_AudioStream* pStream, int AdditionalAmount, int TotalAmount);
-    void            OutputPCM           (s32 Bytes);
+    static void SDLCALL AudioCallback   (void* pData, SDL_AudioStream* pStream, int AdditionalAmount, int TotalAmount);
+    void            OutputPCM           (s32 AdditionalBytes, s32 TotalBytes);
+    void            DropExpiredPCM      (s64 FirstSample);
     void            ResetSync           (void);
     void            SetError            (void);
     xbool           InitializeSDL       (void);
@@ -361,13 +394,16 @@ private:
     s32                         m_TimestampTolerance;
 
     sample                      m_PendingSample;
-    mkvparser::IMkvReader*       m_pReader;
+    mkvparser::IMkvReader*      m_pReader;
     xbool                       m_bHasPendingSample;
     s32                         m_PendingFrame;
     s64                         m_BlockOffset;
     s64                         m_BlockStart;
     s64                         m_TrimStart;
     s64                         m_TrimEnd;
+    s32                         m_MeasureFrame;
+    s32                         m_MeasurePreviousBlockSize;
+    s64                         m_MeasuredSamples;
     s64                         m_NextSample;
     s64                         m_EndSample;
     xbool                       m_bHasSampleTime;
@@ -386,7 +422,6 @@ private:
     xbool                       m_bEndOfInput;
     xbool                       m_bStreamFlushed;
     xbool                       m_bSyncHold;
-    xbool                       m_bUnderrun;
     s64                         m_OutputSample;
     f64                         m_SyncError;
     f64                         m_LastCallbackTime;
@@ -482,18 +517,21 @@ private:
     void            ThreadMain          (void);
     f64             ThreadLoop          (void);
 
-    movie_webm::decode_status ProcessVideoSample(const movie_webm::sample& Sample);
+    movie_webm::work_status PumpInput   (void);
+    movie_webm::work_status PumpVideo   (void);
+    xbool           ShouldSkipVideoFrame(f64 FrameTime) const;
     movie_webm::sample GetVideoFrame    (const movie_webm::sample& Sample, s32 FrameIndex) const;
-    void            UpdateRenderBuffer  (const movie_webm::sample& Sample);
+    void            UpdateRenderBuffer  (void);
     void            ResetPlayback       (void);
     xbool           PrimePlayback       (void);
     void            FailPlayback        (const char* pOperation, s32 Code, const movie_webm::sample* pSample = NULL);
-    xbool           PumpAudio           (void);
+    movie_webm::work_status PumpAudio   (void);
+    void            ClearPendingSamples (void);
     void            HandleEndOfStream   (void);
     void            WaitForPlayback     (f64 Seconds);
 
-    xbool           CreateVideoTexture  (void);
-    void            DestroyVideoTexture (void);
+    xbool           CreateVideoTextures (void);
+    void            DestroyVideoTextures(void);
     xbool           UpdateVideoTexture  (void);
     void            RenderVideoFrame    (void);
 
@@ -519,9 +557,8 @@ private:
     xmutex                      m_PlaybackMutex;
 
     // Rendering
-    vram_texture                m_VideoTexture;
+    vram_texture                m_VideoPlanes[3];
     movie_webm::render_data     m_RenderData;
-    xarray<u8>                  m_RenderBuffer;
 
     // Playback helpers
     movie_webm::container       m_Container;
@@ -530,12 +567,16 @@ private:
     movie_webm::sync_clock      m_Clock;
     movie_webm::player_config   m_Config;
     f64                         m_LastVideoTime;
+    f64                         m_LastVideoPublishTime;
+    f64                         m_LastQueuedVideoTime = 0.0;
     movie_webm::sample          m_VideoSample;
     s32                         m_VideoFrameIndex;
-    movie_webm::sample          m_PendingVideoSample;
+    f64                         m_PendingVideoTime;
     xbool                       m_bHasPendingVideo;
-    xarray<movie_webm::sample>   m_AudioSamples;
-    s32                         m_AudioSampleRead;
+    movie_webm::sample_queue    m_AudioSamples;
+    movie_webm::sample_queue    m_VideoSamples;
 };
 
+//==============================================================================
 #endif // MOVIEPLAYER_WEBM_PRIVATE_HPP
+//==============================================================================

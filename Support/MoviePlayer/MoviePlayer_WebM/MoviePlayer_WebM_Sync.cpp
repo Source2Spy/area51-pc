@@ -52,8 +52,10 @@ sync_clock::~sync_clock(void)
 
 void sync_clock::Start(void)
 {
-    if (!m_pMutex)
+    if( !m_pMutex )
+    {
         return;
+    }
 
     SDL_LockMutex(m_pMutex);
     m_StartTime      = x_GetTime();
@@ -68,8 +70,10 @@ void sync_clock::Start(void)
 
 void sync_clock::Stop(void)
 {
-    if (!m_pMutex)
+    if( !m_pMutex )
+    {
         return;
+    }
 
     SDL_LockMutex(m_pMutex);
     m_bRunning       = FALSE;
@@ -82,11 +86,13 @@ void sync_clock::Stop(void)
 
 void sync_clock::Pause(void)
 {
-    if (!m_pMutex)
+    if( !m_pMutex )
+    {
         return;
+    }
 
     SDL_LockMutex(m_pMutex);
-    if (m_bRunning && !m_bPaused)
+    if( m_bRunning && !m_bPaused )
     {
         m_PauseTime = x_GetTime();
         m_bPaused   = TRUE;
@@ -98,11 +104,13 @@ void sync_clock::Pause(void)
 
 void sync_clock::Resume(void)
 {
-    if (!m_pMutex)
+    if( !m_pMutex )
+    {
         return;
+    }
 
     SDL_LockMutex(m_pMutex);
-    if (m_bRunning && m_bPaused)
+    if( m_bRunning && m_bPaused )
     {
         const xtick currentTime = x_GetTime();
         m_PausedDuration += x_TicksToSec(currentTime - m_PauseTime);
@@ -115,8 +123,10 @@ void sync_clock::Resume(void)
 
 void sync_clock::Reset(void)
 {
-    if (!m_pMutex)
+    if( !m_pMutex )
+    {
         return;
+    }
 
     SDL_LockMutex(m_pMutex);
     m_StartTime      = 0;
@@ -131,17 +141,20 @@ void sync_clock::Reset(void)
 
 f64 sync_clock::GetTime(void) const
 {
-    if (!m_pMutex)
+    if( !m_pMutex )
+    {
         return 0.0;
+    }
 
     SDL_LockMutex(m_pMutex);
     f64 time = 0.0;
-    if (m_bRunning)
+    if( m_bRunning )
     {
         const xtick now = m_bPaused ? m_PauseTime : x_GetTime();
         time = x_TicksToSec(now - m_StartTime) - m_PausedDuration;
     }
     SDL_UnlockMutex(m_pMutex);
+
     return time;
 }
 
@@ -149,12 +162,15 @@ f64 sync_clock::GetTime(void) const
 
 xbool sync_clock::IsRunning(void) const
 {
-    if (!m_pMutex)
+    if( !m_pMutex )
+    {
         return FALSE;
+    }
 
     SDL_LockMutex(m_pMutex);
     const xbool running = m_bRunning;
     SDL_UnlockMutex(m_pMutex);
+
     return running;
 }
 
@@ -162,12 +178,15 @@ xbool sync_clock::IsRunning(void) const
 
 xbool sync_clock::IsPaused(void) const
 {
-    if (!m_pMutex)
+    if( !m_pMutex )
+    {
         return FALSE;
+    }
 
     SDL_LockMutex(m_pMutex);
     const xbool paused = m_bPaused;
     SDL_UnlockMutex(m_pMutex);
+
     return paused;
 }
 

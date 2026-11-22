@@ -51,20 +51,24 @@ xbool file_reader::Open(const char* pFilename)
 {
     Close();
 
-    if (!pFilename || !pFilename[0])
+    if( !pFilename || !pFilename[0] )
+    {
         return FALSE;
+    }
 
     xstring Path = pFilename;
 
-    if (Path.Find('.') == -1)
+    if( Path.Find('.') == -1 )
     {
         Path += ".webm";
     }
 
     m_pFile = x_fopen(Path, "rb");
 
-    if (!m_pFile)
+    if( !m_pFile )
+    {
         return FALSE;
+    }
 
     m_Length = x_flength(m_pFile);
     return TRUE;
@@ -74,7 +78,7 @@ xbool file_reader::Open(const char* pFilename)
 
 void file_reader::Close(void)
 {
-    if (m_pFile)
+    if( m_pFile )
     {
         x_fclose(m_pFile);
         m_pFile = NULL;
@@ -87,21 +91,31 @@ void file_reader::Close(void)
 
 int file_reader::Read(long long position, long length, unsigned char* buffer)
 {
-    if (!m_pFile || !buffer || (length <= 0))
+    if( !m_pFile || !buffer || (length <= 0) )
+    {
         return -1;
-    
-    if (position < 0)
+    }
+
+    if( position < 0 )
+    {
         return -1;
-    
-    if (position > 0x7FFFFFFF)
+    }
+
+    if( position > 0x7FFFFFFF )
+    {
         return -1;
-    
-    if (length > 0x7FFFFFFF)
+    }
+
+    if( length > 0x7FFFFFFF )
+    {
         return -1;
-    
-    if (x_fseek(m_pFile, (s32)position, X_SEEK_SET) != 0)
+    }
+
+    if( x_fseek(m_pFile, (s32)position, X_SEEK_SET) != 0 )
+    {
         return -1;
-    
+    }
+
     const s32 len32 = (s32)length;
     const s32 bytesRead = x_fread(buffer, 1, len32, m_pFile);
     return (bytesRead == len32) ? 0 : -1;
@@ -111,11 +125,15 @@ int file_reader::Read(long long position, long length, unsigned char* buffer)
 
 int file_reader::Length(long long* total, long long* available)
 {
-    if (total)
+    if( total )
+    {
         *total = m_Length;
+    }
 
-    if (available)
+    if( available )
+    {
         *available = m_Length;
+    }
 
     return 0;
 }
@@ -191,7 +209,7 @@ xbool IsAudioLanguageMatch( const mkvparser::Track* pTrack, const char* pLanguag
 
 //==============================================================================
 
-static 
+static
 void ApplyAudioTrackConfig(player_config& Config, const mkvparser::Track* pTrack)
 {
     Config.AudioTrack = (s32)pTrack->GetNumber();
@@ -204,20 +222,26 @@ void ApplyAudioTrackConfig(player_config& Config, const mkvparser::Track* pTrack
     Config.AudioBitDepth   = (s32)pAudio->GetBitDepth();
     Config.CodecDelay      = (s64)pTrack->GetCodecDelay();
 
-    if (Config.AudioChannels <= 0)
+    if( Config.AudioChannels <= 0 )
+    {
         Config.AudioChannels = 2;
+    }
 
-    if (Config.AudioSampleRate <= 0)
+    if( Config.AudioSampleRate <= 0 )
+    {
         Config.AudioSampleRate = 48000;
+    }
 
-    if (Config.AudioBitDepth <= 0)
+    if( Config.AudioBitDepth <= 0 )
+    {
         Config.AudioBitDepth = 16;
+    }
 
     Config.AudioCodecPrivate.Clear();
 
     size_t privateSize = 0;
     const unsigned char* pPrivate = pTrack->GetCodecPrivate(privateSize);
-    if (pPrivate && (privateSize > 0) && (privateSize <= INT_MAX))
+    if( pPrivate && (privateSize > 0) && (privateSize <= S32_MAX) )
     {
         Config.AudioCodecPrivate.SetCount((s32)privateSize);
         x_memcpy(Config.AudioCodecPrivate.GetPtr(), pPrivate, (s32)privateSize);
@@ -234,10 +258,12 @@ container::container(void)
     m_pTracks    = NULL;
     m_pCluster   = NULL;
     m_pEntry     = NULL;
+
     m_TimeScale  = WEBM_NANOSEC;
     m_Duration   = 0.0;
     m_VideoTrack = -1;
     m_AudioTrack = -1;
+
     m_bEOF       = FALSE;
     m_Error      = 0;
     m_bHasPendingSample = FALSE;
@@ -254,16 +280,18 @@ container::~container(void)
 
 xbool container::Open(const char* pFilename, player_config& Config)
 {
-    if (!m_FileReader.Open(pFilename))
+    if( !m_FileReader.Open(pFilename) )
+    {
         return FALSE;
+    }
 
-    if (!InitializeSegment(Config))
+    if( !InitializeSegment(Config) )
     {
         Close();
         return FALSE;
     }
 
-    if (!SelectTracks(Config))
+    if( !SelectTracks(Config) )
     {
         Close();
         return FALSE;
@@ -282,7 +310,7 @@ xbool container::Open(const char* pFilename, player_config& Config)
 
 void container::Close(void)
 {
-    if (m_pSegment)
+    if( m_pSegment )
     {
         delete m_pSegment;
         m_pSegment = NULL;
@@ -291,10 +319,12 @@ void container::Close(void)
     m_pTracks           = NULL;
     m_pCluster          = NULL;
     m_pEntry            = NULL;
+
     m_VideoTrack        = -1;
     m_AudioTrack        = -1;
     m_TimeScale         = WEBM_NANOSEC;
     m_Duration          = 0.0;
+
     m_bEOF              = FALSE;
     m_Error             = 0;
     m_bHasPendingSample = FALSE;
@@ -306,8 +336,10 @@ void container::Close(void)
 
 void container::Rewind(void)
 {
-    if (!m_pSegment)
+    if( !m_pSegment )
+    {
         return;
+    }
 
     m_pCluster          = m_pSegment->GetFirst();
     m_pEntry            = NULL;
@@ -320,18 +352,22 @@ void container::Rewind(void)
 
 sample_status container::PeekSample(sample& OutSample)
 {
-    if (m_bHasPendingSample)
+    if( m_bHasPendingSample )
     {
         OutSample = m_PendingSample;
+
         return SAMPLE_READY;
     }
 
     const sample_status status = AcquireSample(m_PendingSample);
-    if (status != SAMPLE_READY)
+    if( status != SAMPLE_READY )
+    {
         return status;
+    }
 
     m_bHasPendingSample = TRUE;
     OutSample = m_PendingSample;
+
     return SAMPLE_READY;
 }
 
@@ -339,10 +375,11 @@ sample_status container::PeekSample(sample& OutSample)
 
 sample_status container::ReadSample(sample& OutSample)
 {
-    if (m_bHasPendingSample)
+    if( m_bHasPendingSample )
     {
         OutSample = m_PendingSample;
         m_bHasPendingSample = FALSE;
+
         return SAMPLE_READY;
     }
 
@@ -353,33 +390,41 @@ sample_status container::ReadSample(sample& OutSample)
 
 sample_status container::AcquireSample(sample& OutSample)
 {
-    if (m_Error)
+    if( m_Error )
+    {
         return SAMPLE_ERROR;
-    if (m_bEOF || !m_pSegment)
-        return SAMPLE_END;
+    }
 
-    while (AdvanceEntry())
+    if( m_bEOF || !m_pSegment )
+    {
+        return SAMPLE_END;
+    }
+
+    while( AdvanceEntry() )
     {
         const mkvparser::Block* pBlock = m_pEntry->GetBlock();
-        if (!pBlock)
-            continue;
-
-        const s32 trackNumber = (s32)pBlock->GetTrackNumber();
-
-        if ((trackNumber != m_VideoTrack) && (trackNumber != m_AudioTrack))
+        if( !pBlock )
         {
             continue;
         }
 
-        OutSample.FrameIndex  = 0;
-        OutSample.pEntry      = m_pEntry;
-        OutSample.pBlock      = pBlock;
-        OutSample.pCluster    = m_pCluster;
+        const s32 trackNumber = (s32)pBlock->GetTrackNumber();
+
+        if( (trackNumber != m_VideoTrack) && (trackNumber != m_AudioTrack) )
+        {
+            continue;
+        }
+
+        OutSample.FrameIndex      = 0;
+        OutSample.pEntry          = m_pEntry;
+        OutSample.pBlock          = pBlock;
+        OutSample.pCluster        = m_pCluster;
         OutSample.TimeNanoseconds = pBlock->GetTime(m_pCluster);
-        OutSample.TimeSeconds = (f64)OutSample.TimeNanoseconds / WEBM_NANOSEC;
-        OutSample.IsKeyFrame  = pBlock->IsKey();
-        OutSample.DiscardPadding = pBlock->GetDiscardPadding();
-        OutSample.Type        = (trackNumber == m_VideoTrack) ? STREAm_Type_VIDEO : STREAm_Type_AUDIO;
+        OutSample.TimeSeconds     = (f64)OutSample.TimeNanoseconds / WEBM_NANOSEC;
+        OutSample.IsKeyFrame      = pBlock->IsKey();
+        OutSample.DiscardPadding  = pBlock->GetDiscardPadding();
+        OutSample.Type            = (trackNumber == m_VideoTrack) ? STREAm_Type_VIDEO : STREAm_Type_AUDIO;
+
         return SAMPLE_READY;
     }
 
@@ -393,19 +438,25 @@ xbool container::InitializeSegment(player_config& Config)
 {
     long long pos = 0;
     long long status = mkvparser::Segment::CreateInstance(&m_FileReader, pos, m_pSegment);
-    if (status < 0 || !m_pSegment)
+    if( status < 0 || !m_pSegment )
+    {
         return FALSE;
+    }
 
     status = m_pSegment->Load();
-    if (status < 0)
+    if( status < 0 )
+    {
         return FALSE;
+    }
 
     const mkvparser::SegmentInfo* pInfo = m_pSegment->GetInfo();
-    if (!pInfo)
+    if( !pInfo )
+    {
         return FALSE;
+    }
 
     m_TimeScale = (f64)pInfo->GetTimeCodeScale();
-    if (m_TimeScale <= 0.0)
+    if( m_TimeScale <= 0.0 )
     {
         m_TimeScale = WEBM_NANOSEC;
     }
@@ -422,8 +473,10 @@ xbool container::InitializeSegment(player_config& Config)
 
 xbool container::SelectTracks(player_config& Config)
 {
-    if (!m_pTracks)
+    if( !m_pTracks )
+    {
         return FALSE;
+    }
 
     const u32 trackCount = (u32)m_pTracks->GetTracksCount();
     const char* pPreferredAudioLanguage = x_GetLocaleString( Config.AudioLanguage,
@@ -431,13 +484,15 @@ xbool container::SelectTracks(player_config& Config)
     const mkvparser::Track* pFirstAudioTrack = NULL;
     const mkvparser::Track* pSelectedAudioTrack = NULL;
 
-    for (u32 i = 0; i < trackCount; ++i)
+    for( u32 i = 0; i < trackCount; ++i )
     {
         const mkvparser::Track* pTrack = m_pTracks->GetTrackByIndex(i);
-        if (!pTrack)
+        if( !pTrack )
+        {
             continue;
+        }
 
-        if ((pTrack->GetType() == mkvparser::Track::kVideo) && (m_VideoTrack < 0))
+        if( (pTrack->GetType() == mkvparser::Track::kVideo) && (m_VideoTrack < 0) )
         {
             m_VideoTrack      = (s32)pTrack->GetNumber();
             Config.VideoTrack = m_VideoTrack;
@@ -449,20 +504,26 @@ xbool container::SelectTracks(player_config& Config)
             Config.FrameRate = (f32)pVideo->GetFrameRate();
             Config.VideoFrameDuration = (f64)pTrack->GetDefaultDuration() / WEBM_NANOSEC;
         }
-        else if (pTrack->GetType() == mkvparser::Track::kAudio)
+        else if( pTrack->GetType() == mkvparser::Track::kAudio )
         {
-            if (!pFirstAudioTrack)
+            if( !pFirstAudioTrack )
+            {
                 pFirstAudioTrack = pTrack;
+            }
 
             if( !pSelectedAudioTrack && IsAudioLanguageMatch( pTrack, pPreferredAudioLanguage ) )
+            {
                 pSelectedAudioTrack = pTrack;
+            }
         }
     }
 
     if( !pSelectedAudioTrack )
+    {
         pSelectedAudioTrack = pFirstAudioTrack;
+    }
 
-    if (pSelectedAudioTrack)
+    if( pSelectedAudioTrack )
     {
         m_AudioTrack = (s32)pSelectedAudioTrack->GetNumber();
         ApplyAudioTrackConfig(Config, pSelectedAudioTrack);
@@ -475,10 +536,12 @@ xbool container::SelectTracks(player_config& Config)
 
 xbool container::AdvanceCluster(void)
 {
-    if (!m_pSegment)
+    if( !m_pSegment )
+    {
         return FALSE;
+    }
 
-    if (!m_pCluster)
+    if( !m_pCluster )
     {
         m_pCluster = m_pSegment->GetFirst();
     }
@@ -487,7 +550,7 @@ xbool container::AdvanceCluster(void)
         m_pCluster = m_pSegment->GetNext(m_pCluster);
     }
 
-    if (!m_pCluster || m_pCluster->EOS())
+    if( !m_pCluster || m_pCluster->EOS() )
     {
         m_bEOF    = TRUE;
         m_pCluster = NULL;
@@ -502,32 +565,39 @@ xbool container::AdvanceCluster(void)
 
 xbool container::AdvanceEntry(void)
 {
-    if (m_bEOF)
-        return FALSE;
-
-    while (TRUE)
+    if( m_bEOF )
     {
-        if (!m_pCluster)
+        return FALSE;
+    }
+
+    while( TRUE )
+    {
+        if( !m_pCluster )
         {
-            if (!AdvanceCluster())
+            if( !AdvanceCluster() )
+            {
                 return FALSE;
+            }
         }
 
-        if (!m_pEntry)
+        if( !m_pEntry )
         {
             const mkvparser::BlockEntry* pEntry = NULL;
             const s32 status = (s32)m_pCluster->GetFirst(pEntry);
 
-            if (status < 0)
+            if( status < 0 )
             {
                 m_Error = status;
                 return FALSE;
             }
 
-            if (!pEntry || pEntry->EOS())
+            if( !pEntry || pEntry->EOS() )
             {
-                if (!AdvanceCluster())
+                if( !AdvanceCluster() )
+                {
                     return FALSE;
+                }
+
                 continue;
             }
 
@@ -538,23 +608,25 @@ xbool container::AdvanceEntry(void)
         const mkvparser::BlockEntry* pNext = NULL;
         const s32 status = (s32)m_pCluster->GetNext(m_pEntry, pNext);
 
-        if (status < 0)
+        if( status < 0 )
         {
             m_Error = status;
             return FALSE;
         }
 
-        if (!pNext || pNext->EOS())
+        if( !pNext || pNext->EOS() )
         {
-            if (!AdvanceCluster())
+            if( !AdvanceCluster() )
+            {
                 return FALSE;
+            }
+
             continue;
         }
 
         m_pEntry = pNext;
         return TRUE;
     }
-
 }
 
 //==============================================================================

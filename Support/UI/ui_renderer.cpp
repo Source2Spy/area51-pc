@@ -667,6 +667,8 @@ xbool ui_draw_list::AreStacksBalanced( void ) const
 xbool ui_draw_list::IsSameCommand( const command& A, const command& B ) const
 {
     return (A.Material.Texture.pBackend == B.Material.Texture.pBackend) &&
+           (A.Material.ChromaU.pBackend == B.Material.ChromaU.pBackend) &&
+           (A.Material.ChromaV.pBackend == B.Material.ChromaV.pBackend) &&
            (A.Material.Blend    == B.Material.Blend   ) &&
            (A.Material.Sampler  == B.Material.Sampler ) &&
            (A.Material.Coverage == B.Material.Coverage) &&
@@ -955,9 +957,11 @@ ui_renderer::ui_renderer( void ) :
     m_PreparedIndices     ( 0 ),
     m_vertexShader        (),
     m_pixelShader         (),
+    m_videoPixelShader    (),
     m_DrawUniformSlot     ( 0xffffffffu ),
     m_PixelDrawUniformSlot( 0xffffffffu ),
     m_textureSlot         ( 0xffffffffu ),
+    m_videoSlots          { 0xffffffffu, 0xffffffffu, 0xffffffffu },
     m_whiteTexture        (),
     m_pipelines           (),
     m_prewarmedFormat     ( RTARGET_FORMAT_COUNT ),
@@ -1000,12 +1004,15 @@ void ui_renderer::Kill( void )
     for( s32 i = 0; i < UI_SAMPLER_COUNT; i++ )
         rstate_DestroySampler( m_samplers[i] );
 
+    shader_Destroy( m_videoPixelShader );
     shader_Destroy( m_pixelShader );
     shader_Destroy( m_vertexShader );
 
     m_DrawUniformSlot  = 0xffffffffu;
     m_PixelDrawUniformSlot = 0xffffffffu;
     m_textureSlot      = 0xffffffffu;
+    for( u32& Slot : m_videoSlots )
+        Slot = 0xffffffffu;
     m_PreparedVertices = 0;
     m_PreparedIndices  = 0;
     m_bPrepared        = FALSE;
@@ -1146,6 +1153,23 @@ xbool ui_renderer::DrawImage( const shader_resource& Texture,
 {
     return m_DrawList.AddImage( ui_material( Texture, Blend, Sampler ),
                                 Position, Size, UV0, UV1, Color, Rotation );
+}
+
+//==============================================================================
+
+xbool ui_renderer::DrawI420( const shader_resource& Y,
+                             const shader_resource& U,
+                             const shader_resource& V,
+                             const vector2& Position,
+                             const vector2& Size )
+{
+    if( !Y || !U || !V )
+        return FALSE;
+
+    ui_material Material( Y );
+    Material.ChromaU = U;
+    Material.ChromaV = V;
+    return m_DrawList.AddImage( Material, Position, Size, vector2( 0, 0 ), vector2( 1, 1 ), XCOLOR_WHITE );
 }
 
 //==============================================================================
@@ -1406,6 +1430,7 @@ xbool ui_renderer::ExecuteGraphPass( render::RenderPassContext& Context )
     irect ActiveCoordinateViewport;
     ActiveCoordinateViewport.Clear();
     ui_blend_mode ActiveBlend = UI_BLEND_COUNT;
+    xbool ActiveI420 = FALSE;
     s32 ActiveCoverage = -1;
     const shader_resource* pActiveTexture = NULL;
     const rstate_sampler* pActiveSampler = NULL;
@@ -1415,6 +1440,7 @@ xbool ui_renderer::ExecuteGraphPass( render::RenderPassContext& Context )
     for( s32 i = 0; i < m_DrawList.m_Commands.GetCount(); i++ )
     {
         const ui_draw_list::command& Command = m_DrawList.m_Commands[i];
+        const xbool IsI420 = Command.Material.IsI420();
         if( (Command.IndexCount == 0) ||
             (Command.StartIndex + Command.IndexCount > static_cast<u32>( m_PreparedIndices )) )
         {
@@ -1425,7 +1451,8 @@ xbool ui_renderer::ExecuteGraphPass( render::RenderPassContext& Context )
 
         if( (Command.CoordinateSpace != ActiveCoordinateSpace) ||
             (Command.CoordinateViewport != ActiveCoordinateViewport) ||
-            (static_cast<s32>( Command.Material.Coverage ) != ActiveCoverage) )
+            (static_cast<s32>( Command.Material.Coverage ) != ActiveCoverage) ||
+            (IsI420 != ActiveI420) )
         {
             UIDrawConstants Constants = {};
             Constants.Coverage = Command.Material.Coverage ? 1 : 0;
@@ -1459,7 +1486,7 @@ xbool ui_renderer::ExecuteGraphPass( render::RenderPassContext& Context )
                                          m_DrawUniformSlot,
                                          &Constants,
                                          sizeof(Constants) ) ||
-                !shader_PushUniformData( SHADER_STAGE_PIXEL, m_PixelDrawUniformSlot, &Constants, sizeof(Constants) ) )
+                (!IsI420 && !shader_PushUniformData( SHADER_STAGE_PIXEL, m_PixelDrawUniformSlot, &Constants, sizeof(Constants) )) )
             {
                 RENDER_THROW( "UIRenderer", "failed to upload draw constants command=%d", i );
                 return FALSE;
@@ -1497,9 +1524,9 @@ xbool ui_renderer::ExecuteGraphPass( render::RenderPassContext& Context )
             continue;
         }
 
-        if( Command.Material.Blend != ActiveBlend )
+        if( (Command.Material.Blend != ActiveBlend) || (IsI420 != ActiveI420) )
         {
-            if( !BindPipeline( pBackBuffer->Desc.Format, Command.Material.Blend ) )
+            if( !BindPipeline( pBackBuffer->Desc.Format, Command.Material.Blend, IsI420 ) )
             {
                 RENDER_THROW( "UIRenderer", "failed to bind pipeline command=%d format=%d blend=%d", i,
                               pBackBuffer->Desc.Format, Command.Material.Blend );
@@ -1509,31 +1536,40 @@ xbool ui_renderer::ExecuteGraphPass( render::RenderPassContext& Context )
             pActiveSampler = NULL;
         }
         ActiveBlend = Command.Material.Blend;
-
-        const shader_resource* pTexture = &Command.Material.Texture;
-        if( !*pTexture )
-        {
-            pTexture = vram_GetShaderResource( m_whiteTexture );
-        }
+        ActiveI420 = IsI420;
 
         const rstate_sampler* pSampler = GetSampler( Command.Material.Sampler );
-        if( !pTexture || !pSampler )
+        const shader_resource* pTexture = &Command.Material.Texture;
+        if( IsI420 )
         {
-            RENDER_THROW( "UIRenderer", "failed to bind texture command=%d", i );
-            return FALSE;
+            const shader_sampler_binding Bindings[] =
+            {
+                shader_sampler_binding( SHADER_STAGE_PIXEL, m_videoSlots[0], pTexture, pSampler ),
+                shader_sampler_binding( SHADER_STAGE_PIXEL, m_videoSlots[1], &Command.Material.ChromaU, pSampler ),
+                shader_sampler_binding( SHADER_STAGE_PIXEL, m_videoSlots[2], &Command.Material.ChromaV, pSampler )
+            };
+            if( !pSampler || !shader_BindSamplers( Bindings, ARRAYSIZE(Bindings) ) )
+            {
+                RENDER_THROW( "UIRenderer", "failed to bind video planes command=%d", i );
+                return FALSE;
+            }
         }
-        if( ( !pActiveTexture || ( pActiveTexture->pBackend != pTexture->pBackend ) ||
-              ( pActiveSampler != pSampler ) ) &&
-            !shader_BindSampler( shader_sampler_binding( SHADER_STAGE_PIXEL,
-                                                         m_textureSlot,
-                                                         pTexture,
-                                                         pSampler ) ) )
+        else
         {
-            RENDER_THROW( "UIRenderer", "failed to bind texture command=%d", i );
-            return FALSE;
+            if( !*pTexture )
+                pTexture = vram_GetShaderResource( m_whiteTexture );
+
+            if( !pTexture || !pSampler ||
+                (( !pActiveTexture || ( pActiveTexture->pBackend != pTexture->pBackend ) ||
+                   ( pActiveSampler != pSampler ) ) &&
+                 !shader_BindSampler( shader_sampler_binding( SHADER_STAGE_PIXEL, m_textureSlot, pTexture, pSampler ) )) )
+            {
+                RENDER_THROW( "UIRenderer", "failed to bind texture command=%d", i );
+                return FALSE;
+            }
+            pActiveTexture = pTexture;
+            pActiveSampler = pSampler;
         }
-        pActiveTexture = pTexture;
-        pActiveSampler = pSampler;
 
         rdraw_scissor Scissor;
         Scissor.X      = Clip.l;
@@ -1576,8 +1612,9 @@ xbool ui_renderer::LoadShaders( void )
 {
     shader_LoadComboStage( m_vertexShader, A51FixedPrograms[A51FixedProgram_ui].PackageFile, SHADER_COMBO_FIXED, A51FixedPrograms[A51FixedProgram_ui].Key, SHADER_STAGE_VERTEX );
     shader_LoadComboStage( m_pixelShader, A51FixedPrograms[A51FixedProgram_ui].PackageFile, SHADER_COMBO_FIXED, A51FixedPrograms[A51FixedProgram_ui].Key, SHADER_STAGE_PIXEL );
+    shader_LoadComboStage( m_videoPixelShader, A51FixedPrograms[A51FixedProgram_ui_video].PackageFile, SHADER_COMBO_FIXED, A51FixedPrograms[A51FixedProgram_ui_video].Key, SHADER_STAGE_PIXEL );
 
-    if( !m_vertexShader || !m_pixelShader )
+    if( !m_vertexShader || !m_pixelShader || !m_videoPixelShader )
     {
         return FALSE;
     }
@@ -1588,7 +1625,10 @@ xbool ui_renderer::LoadShaders( void )
     }
 
     return shader_GetResourceSlot( m_pixelShader, A51Resource_cbUIDraw, m_PixelDrawUniformSlot ) &&
-           shader_GetResourceSlot( m_pixelShader, A51Resource_txUI, m_textureSlot );
+           shader_GetResourceSlot( m_pixelShader, A51Resource_txUI, m_textureSlot ) &&
+           shader_GetResourceSlot( m_videoPixelShader, A51Resource_txVideoY, m_videoSlots[0] ) &&
+           shader_GetResourceSlot( m_videoPixelShader, A51Resource_txVideoU, m_videoSlots[1] ) &&
+           shader_GetResourceSlot( m_videoPixelShader, A51Resource_txVideoV, m_videoSlots[2] );
 }
 
 //==============================================================================
@@ -1673,16 +1713,21 @@ xbool ui_renderer::PrewarmPipelinesForFormat( rtarget_format Format )
     {
         if( !GetOrCreatePipeline( Format,
                                   static_cast<ui_blend_mode>( Blend ),
+                                  FALSE,
                                   TRUE ) )
         {
             return FALSE;
         }
     }
+    if( !GetOrCreatePipeline( Format, UI_BLEND_ALPHA, TRUE, TRUE ) )
+    {
+        return FALSE;
+    }
 
     m_prewarmedFormat = Format;
 
     x_DebugMsg( "UIRenderer: prewarmed %d graphics pipeline variants for format %d\n",
-                UI_BLEND_COUNT,
+                UI_BLEND_COUNT + 1,
                 Format );
     return TRUE;
 }
@@ -1753,10 +1798,11 @@ xbool ui_renderer::CreateBuffers( s32 VertexCapacity, s32 IndexCapacity )
 
 render_pipeline* ui_renderer::GetOrCreatePipeline( rtarget_format Format,
                                                    ui_blend_mode  Blend,
+                                                   xbool          IsI420,
                                                    xbool          isPrewarm )
 {
     render_pipeline_desc Desc;
-    if( !BuildPipelineDesc( Desc, Format, Blend ) )
+    if( !BuildPipelineDesc( Desc, Format, Blend, IsI420 ) )
     {
         return NULL;
     }
@@ -1768,9 +1814,9 @@ render_pipeline* ui_renderer::GetOrCreatePipeline( rtarget_format Format,
 
 //==============================================================================
 
-xbool ui_renderer::BindPipeline( rtarget_format Format, ui_blend_mode Blend )
+xbool ui_renderer::BindPipeline( rtarget_format Format, ui_blend_mode Blend, xbool IsI420 )
 {
-    render_pipeline* pPipeline = GetOrCreatePipeline( Format, Blend );
+    render_pipeline* pPipeline = GetOrCreatePipeline( Format, Blend, IsI420 );
     return pPipeline && render_BindPipeline( *pPipeline );
 }
 
@@ -1778,7 +1824,8 @@ xbool ui_renderer::BindPipeline( rtarget_format Format, ui_blend_mode Blend )
 
 xbool ui_renderer::BuildPipelineDesc( render_pipeline_desc& Desc,
                                       rtarget_format       Format,
-                                      ui_blend_mode        Blend ) const
+                                      ui_blend_mode        Blend,
+                                      xbool                IsI420 ) const
 {
     if( (Format < 0) || (Format >= RTARGET_FORMAT_COUNT) ||
         (Blend < 0) || (Blend >= UI_BLEND_COUNT) )
@@ -1803,7 +1850,7 @@ xbool ui_renderer::BuildPipelineDesc( render_pipeline_desc& Desc,
 
     Desc = render_pipeline_desc();
     Desc.Shader.pVertexShader     = &m_vertexShader;
-    Desc.Shader.pPixelShader      = &m_pixelShader;
+    Desc.Shader.pPixelShader      = IsI420 ? &m_videoPixelShader : &m_pixelShader;
     Desc.Shader.pVertexBuffers    = &VertexBuffer;
     Desc.Shader.VertexBufferCount = 1;
     Desc.Shader.pInputElements    = Layout;
@@ -1816,7 +1863,7 @@ xbool ui_renderer::BuildPipelineDesc( render_pipeline_desc& Desc,
     Desc.ColorTargets[0].Blend    = rstate_GetBlendDesc( ui_GetBlendPreset( Blend ) );
     Desc.DepthFormat              = RTARGET_FORMAT_COUNT;
     Desc.SampleCount              = 1;
-    Desc.pDebugName               = "UIPipeline";
+    Desc.pDebugName               = IsI420 ? "UIVideoPipeline" : "UIPipeline";
     return TRUE;
 }
 

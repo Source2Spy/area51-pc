@@ -155,6 +155,8 @@ struct ui_vertex
 struct ui_material
 {
     shader_resource        Texture;
+    shader_resource        ChromaU;
+    shader_resource        ChromaV;
     ui_blend_mode          Blend;
     ui_sampler_mode        Sampler;
     xbool                  Coverage;
@@ -166,6 +168,7 @@ struct ui_material
     ui_material( const shader_resource& Texture,
                  ui_blend_mode BlendMode = UI_BLEND_ALPHA,
                  ui_sampler_mode SamplerMode = UI_SAMPLER_LINEAR_CLAMP );
+    xbool IsI420( void ) const { return ChromaU.pBackend != NULL; }
 };
 
 //==============================================================================
@@ -322,6 +325,11 @@ public:
                                           radian Rotation = 0.0f,
                                           ui_blend_mode Blend = UI_BLEND_ALPHA,
                                           ui_sampler_mode Sampler = UI_SAMPLER_LINEAR_CLAMP );
+    xbool           DrawI420           ( const shader_resource& Y,
+                                          const shader_resource& U,
+                                          const shader_resource& V,
+                                          const vector2& Position,
+                                          const vector2& Size );
     xbool           DrawRect           ( const irect& Rect,
                                           const xcolor& Color,
                                           xbool Wire = FALSE,
@@ -368,16 +376,18 @@ protected:
     void            DestroyBuffers     ( void );
     xbool           EnsureBufferCapacity( s32 VertexCount, s32 IndexCount );
     xbool           CreateBuffers      ( s32 VertexCapacity, s32 IndexCapacity );
-    xbool           BindPipeline       ( rtarget_format Format, ui_blend_mode Blend );
+    xbool           BindPipeline       ( rtarget_format Format, ui_blend_mode Blend, xbool IsI420 );
     xbool           ExecuteGraphPass   ( render::RenderPassContext& Context );
     static xbool    ExecuteGraphPassThunk( render::RenderPassContext& Context, ui_renderer* pRenderer );
     render_pipeline*
                     GetOrCreatePipeline( rtarget_format Format,
                                           ui_blend_mode Blend,
+                                          xbool         IsI420,
                                           xbool         isPrewarm = FALSE );
     xbool           BuildPipelineDesc  ( render_pipeline_desc& Out,
                                           rtarget_format       Format,
-                                          ui_blend_mode        Blend ) const;
+                                          ui_blend_mode        Blend,
+                                          xbool                IsI420 ) const;
     const rstate_sampler*
                     GetSampler         ( ui_sampler_mode Sampler ) const;
 
@@ -393,9 +403,11 @@ protected:
 
     shader           m_vertexShader;
     shader           m_pixelShader;
+    shader           m_videoPixelShader;
     u32              m_DrawUniformSlot;
     u32              m_PixelDrawUniformSlot;
     u32              m_textureSlot;
+    u32              m_videoSlots[3];
     rstate_sampler   m_samplers[UI_SAMPLER_COUNT];
     vram_texture     m_whiteTexture;
     render::GraphicsPipelineCache

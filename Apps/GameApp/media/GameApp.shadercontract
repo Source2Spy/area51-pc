@@ -23,6 +23,10 @@ shaders:
     {
     }
 
+    shader ui_video_ps pixel a51_ui_video.hlsl PSMain ps_6_0
+    {
+    }
+
     shader shadow_cast_dynamic_vs vertex a51_shadow_cast_dynamic.hlsl VSMain vs_6_0
     {
     }
@@ -145,6 +149,7 @@ programs:
     program composite composite_vs composite_ps
     program composite_clamp_negative composite_vs composite_clamp_negative_ps
     program ui ui_vs ui_ps
+    program ui_video ui_vs ui_video_ps
     program shadow_cast_dynamic shadow_cast_dynamic_vs shadow_cast_dynamic_ps
     program shadow_evsm_convert shadow_evsm_vs shadow_evsm_convert_ps
     program shadow_evsm_blur_horizontal shadow_evsm_vs shadow_evsm_blur_horizontal_ps
@@ -199,6 +204,7 @@ packages:
     package ui
     {
         program ui
+        program ui_video
     }
     package composite
     {

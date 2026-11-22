@@ -271,6 +271,9 @@ resources:
     resource txShadowMoments
     resource cbUIDraw
     resource txUI
+    resource txVideoY
+    resource txVideoU
+    resource txVideoV
 
 buffers:
     buffer SceneRegionCopyData SceneRegionCopyConstants SceneRegionParams
