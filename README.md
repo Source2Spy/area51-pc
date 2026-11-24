@@ -49,7 +49,7 @@ The original PC code was written around Direct3D, 32-bit Windows and the develop
 * Blinn-Phong lighting support for the game's existing materials.
 * XeGTAO ambient occlusion.
 * Screen Space Reflections (SSR).
-* SMAA, CMAA2 and MSAA anti-aliasing.
+* SSAA, CMAA2 and MSAA anti-aliasing.
 * Anisotropic filtering.
 * Tessellated cloth rendering.
 * Improved cloth rendering with restored console-style cloth destruction.
@@ -138,7 +138,7 @@ Both effects are integrated into the reworked framegraph instead of being bolted
 
 ## Anti-aliasing and Post-processing
 
-SMAA and CMAA2 are post-process anti-aliasing methods, while MSAA operates on coverage samples during rendering. The renderer supports all three.
+CMAA2 are post-process anti-aliasing method, SSAA, which renders the scene at a higher resolution before downsampling, and MSAA which operates on coverage samples during rendering. The renderer supports all three.
 
 The post-processing work also includes film grain and screen warp from beta versions of *Area-51*, along with radial blur and fog from the PlayStation 2 release. Brightness and contrast settings have been corrected as part of the same renderer work.
 
