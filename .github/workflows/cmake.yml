@@ -168,3 +168,59 @@ jobs:
           name: A51-linux-x64-release
           path: build/packages/linux-x64
           if-no-files-found: error
+
+  nightly-release:
+    name: Nightly Release
+    needs: [windows-x64, android-arm64, linux-x64]
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    permissions:
+      actions: read
+      contents: write
+    concurrency:
+      group: nightly-release
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download builds
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p build/packages
+          for NAME in A51-windows-x64-release A51-android-arm64-release-signed A51-linux-x64-release; do
+            ID=$(gh api --method GET "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts" -f name="$NAME" --jq '.artifacts[] | select(.expired == false) | .id')
+            test -n "$ID"
+            curl --fail --silent --show-error --location \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/artifacts/$ID/zip" \
+              --output "build/packages/$NAME.zip"
+          done
+
+      - name: Publish Nightly Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LATEST=$(git ls-remote origin refs/heads/master | cut -f1)
+          if [ "$LATEST" != "$GITHUB_SHA" ]; then
+            exit 0
+          fi
+          TITLE="Dreamland-51 Automatic Release $(date -u +'%Y%m%d')"
+          NOTES='Automatic releases are being uploaded after any new commit.'
+          git push origin "+$GITHUB_SHA:refs/tags/nightly"
+          if gh release view nightly >/dev/null 2>&1; then
+            gh release upload nightly \
+              build/packages/A51-windows-x64-release.zip \
+              build/packages/A51-android-arm64-release-signed.zip \
+              build/packages/A51-linux-x64-release.zip \
+              --clobber
+            gh release edit nightly --title "$TITLE" --notes "$NOTES" --prerelease
+          else
+            gh release create nightly \
+              build/packages/A51-windows-x64-release.zip \
+              build/packages/A51-android-arm64-release-signed.zip \
+              build/packages/A51-linux-x64-release.zip \
+              --title "$TITLE" --notes "$NOTES" --prerelease --verify-tag
+          fi
