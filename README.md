@@ -58,6 +58,7 @@ The original PC code was written around Direct3D, 32-bit Windows and the develop
 * Fixed lighting on `.skingeom` meshes, including skinned characters and other animated geometry.
 * Fixed lighting on `.rigidgeom` meshes used for debris and effects.
 * Fixed translucent rendering.
+* Improved anim-blending, animations have become smoother in many aspects.
 * Restored beta-era film grain and screen-warp effects.
 * Restored PlayStation 2 radial blur and fog effects.
 * Correct brightness and contrast adjustments in the game's video settings.
