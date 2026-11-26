@@ -477,7 +477,6 @@ a51_add_project( Gamelib STATIC
         "${CMAKE_CURRENT_LIST_DIR}/../Dialogs/dlg_MainMenu.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/../Dialogs/dlg_MultiOptions.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/../Dialogs/dlg_MultiPlayer.hpp"
-        "${CMAKE_CURRENT_LIST_DIR}/../Dialogs/dlg_OnlineConnect.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/../Dialogs/dlg_OnlineHost.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/../Dialogs/dlg_OnlineJoin.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/../Dialogs/dlg_OnlineLevelSelect.hpp"

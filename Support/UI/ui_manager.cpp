@@ -131,80 +131,80 @@ static const f32 SCREEN_WIPE_HEAD_HEIGHT   = 32.0f;
 static const f32 SCREEN_WIPE_SPEED         = 960.0f;
 static const f32 SCREEN_WIPE_FADE_DURATION = 16.0f / 30.0f;
 
-namespace
+struct ui_nine_slice_layout
 {
-    struct ui_nine_slice_layout
+    f32 X[4];
+    f32 Y[4];
+};
+
+//==============================================================================
+
+static
+xbool ui_CalculateNineSliceLayout( const ui_manager::element& Element,
+                                   const irect& Position,
+                                   s32 State,
+                                   ui_nine_slice_layout& Layout )
+{
+    if( (State < 0) || (State >= Element.nStates) )
     {
-        f32 X[4];
-        f32 Y[4];
-    };
-
-    static xbool ui_CalculateNineSliceLayout( const ui_manager::element& Element,
-                                               const irect& Position,
-                                               s32 State,
-                                               ui_nine_slice_layout& Layout )
-    {
-        if( (State < 0) || (State >= Element.nStates) )
-        {
-            return FALSE;
-        }
-
-        const s32 BaseIndex = State * Element.cx * Element.cy;
-
-        if( Element.cx == 1 )
-        {
-            const f32 Width = static_cast<f32>( Element.LayoutRects[BaseIndex].GetWidth() );
-            Layout.X[0] = static_cast<f32>( Position.l ) + (static_cast<f32>( Position.GetWidth() ) - Width) * 0.5f;
-            Layout.X[1] = Layout.X[0] + Width;
-        }
-        else
-        {
-            ASSERT( Element.cx == 3 );
-            const f32 AvailableWidth = static_cast<f32>( MAX( Position.GetWidth(), 0 ) );
-            f32 LeftWidth  = static_cast<f32>( Element.LayoutRects[BaseIndex].GetWidth() );
-            f32 RightWidth = static_cast<f32>( Element.LayoutRects[BaseIndex + 2].GetWidth() );
-            const f32 FixedWidth = LeftWidth + RightWidth;
-            if( FixedWidth > AvailableWidth )
-            {
-                const f32 BorderScale = (FixedWidth > 0.0f) ? AvailableWidth / FixedWidth : 0.0f;
-                LeftWidth  *= BorderScale;
-                RightWidth  = AvailableWidth - LeftWidth;
-            }
-
-            Layout.X[0] = static_cast<f32>( Position.l );
-            Layout.X[1] = Layout.X[0] + LeftWidth;
-            Layout.X[2] = static_cast<f32>( Position.r ) - RightWidth;
-            Layout.X[3] = static_cast<f32>( Position.r );
-        }
-
-        if( Element.cy == 1 )
-        {
-            const f32 Height = static_cast<f32>( Element.LayoutRects[BaseIndex].GetHeight() );
-            Layout.Y[0] = static_cast<f32>( Position.t ) + (static_cast<f32>( Position.GetHeight() ) - Height) * 0.5f;
-            Layout.Y[1] = Layout.Y[0] + Height;
-        }
-        else
-        {
-            ASSERT( Element.cy == 3 );
-            const f32 AvailableHeight = static_cast<f32>( MAX( Position.GetHeight(), 0 ) );
-            f32 TopHeight    = static_cast<f32>( Element.LayoutRects[BaseIndex].GetHeight() );
-            f32 BottomHeight = static_cast<f32>( Element.LayoutRects[BaseIndex + (Element.cy - 1) * Element.cx].GetHeight() );
-            const f32 FixedHeight = TopHeight + BottomHeight;
-            if( FixedHeight > AvailableHeight )
-            {
-                const f32 BorderScale = (FixedHeight > 0.0f) ? AvailableHeight / FixedHeight : 0.0f;
-                TopHeight    *= BorderScale;
-                BottomHeight = AvailableHeight - TopHeight;
-            }
-
-            Layout.Y[0] = static_cast<f32>( Position.t );
-            Layout.Y[1] = Layout.Y[0] + TopHeight;
-            Layout.Y[2] = static_cast<f32>( Position.b ) - BottomHeight;
-            Layout.Y[3] = static_cast<f32>( Position.b );
-        }
-
-        return TRUE;
+        return FALSE;
     }
+
+    const s32 BaseIndex = State * Element.cx * Element.cy;
+
+    if( Element.cx == 1 )
+    {
+        const f32 Width = static_cast<f32>( Element.LayoutRects[BaseIndex].GetWidth() );
+        Layout.X[0] = static_cast<f32>( Position.l ) + (static_cast<f32>( Position.GetWidth() ) - Width) * 0.5f;
+        Layout.X[1] = Layout.X[0] + Width;
+    }
+    else
+    {
+        ASSERT( Element.cx == 3 );
+        const f32 AvailableWidth = static_cast<f32>( MAX( Position.GetWidth(), 0 ) );
+        f32 LeftWidth  = static_cast<f32>( Element.LayoutRects[BaseIndex].GetWidth() );
+        f32 RightWidth = static_cast<f32>( Element.LayoutRects[BaseIndex + 2].GetWidth() );
+        const f32 FixedWidth = LeftWidth + RightWidth;
+        if( FixedWidth > AvailableWidth )
+        {
+            const f32 BorderScale = (FixedWidth > 0.0f) ? AvailableWidth / FixedWidth : 0.0f;
+            LeftWidth  *= BorderScale;
+            RightWidth  = AvailableWidth - LeftWidth;
+        }
+
+        Layout.X[0] = static_cast<f32>( Position.l );
+        Layout.X[1] = Layout.X[0] + LeftWidth;
+        Layout.X[2] = static_cast<f32>( Position.r ) - RightWidth;
+        Layout.X[3] = static_cast<f32>( Position.r );
+    }
+
+    if( Element.cy == 1 )
+    {
+        const f32 Height = static_cast<f32>( Element.LayoutRects[BaseIndex].GetHeight() );
+        Layout.Y[0] = static_cast<f32>( Position.t ) + (static_cast<f32>( Position.GetHeight() ) - Height) * 0.5f;
+        Layout.Y[1] = Layout.Y[0] + Height;
+    }
+    else
+    {
+        ASSERT( Element.cy == 3 );
+        const f32 AvailableHeight = static_cast<f32>( MAX( Position.GetHeight(), 0 ) );
+        f32 TopHeight    = static_cast<f32>( Element.LayoutRects[BaseIndex].GetHeight() );
+        f32 BottomHeight = static_cast<f32>( Element.LayoutRects[BaseIndex + (Element.cy - 1) * Element.cx].GetHeight() );
+        const f32 FixedHeight = TopHeight + BottomHeight;
+        if( FixedHeight > AvailableHeight )
+        {
+            const f32 BorderScale = (FixedHeight > 0.0f) ? AvailableHeight / FixedHeight : 0.0f;
+            TopHeight    *= BorderScale;
+            BottomHeight = AvailableHeight - TopHeight;
+        }
+
+        Layout.Y[0] = static_cast<f32>( Position.t );
+        Layout.Y[1] = Layout.Y[0] + TopHeight;
+        Layout.Y[2] = static_cast<f32>( Position.b ) - BottomHeight;
+        Layout.Y[3] = static_cast<f32>( Position.b );
+    }
+
+    return TRUE;
 }
 
 //==============================================================================
@@ -523,6 +523,34 @@ s32 GetButtonCodeForGadget( input_gadget GadgetID )
     case INPUT_XBOX_BTN_BACK:       return XBOX_BUTTON_START;
     default:                        return -1;
     }
+}
+
+//==============================================================================
+
+static
+ui_win* GetSemanticInputTarget( const ui_manager::user* pUser, ui_win* pFocus )
+{
+    const s32 Count = pUser->DialogStack.GetCount();
+    if( !pFocus )
+    {
+        return (Count > 0) ? pUser->DialogStack[Count - 1] : NULL;
+    }
+
+    for( s32 i = Count - 1; i >= 0; i-- )
+    {
+        ui_dialog* pDialog = pUser->DialogStack[i];
+        if( (pFocus == pDialog) || pFocus->IsChildOf( pDialog ) )
+        {
+            return pFocus;
+        }
+
+        if( pDialog->GetFlags() & ui_win::WF_INPUTMODAL )
+        {
+            return pDialog;
+        }
+    }
+
+    return pFocus;
 }
 
 //==============================================================================
@@ -1919,6 +1947,12 @@ void ui_manager::SetFocusWindow( s32 UserID, ui_win* pWin )
 
     user*   pUser = GetUserById( UserID );
 
+    // Background dialogs can request focus when their opening animation ends.
+    if( pWin && (GetSemanticInputTarget( pUser, pWin ) != pWin) )
+    {
+        return;
+    }
+
     // Only fire events when the focused window actually changes
     if( pWin == pUser->pFocusedWindow )
     {
@@ -2184,10 +2218,6 @@ xbool ui_manager::ProcessInput( f32 DeltaTime, s32 UserID )
                                   ? 0
                                   : static_cast<s32>( g_Input.GetFrameSnapshot().GetValue( INPUT_MOUSE_WHEEL_REL ) );
 
-        // Semantic navigation is routed through focus. Pointer capture is a
-        // separate concern and must not redirect keyboard/gamepad actions.
-        ui_win* pWin = pUser->pFocusedWindow;
-
         // Character keys are not semantic UI actions, but they still switch
         // the active input mode and hide the mouse cursor.
         if( g_Input.WasFrameDeviceButtonPressed( INPUT_DEVICE_KEYBOARD ) )
@@ -2228,16 +2258,8 @@ xbool ui_manager::ProcessInput( f32 DeltaTime, s32 UserID )
             }
         }
 
-        // Determine which window receives input this frame
-        if( pWin == NULL )
-        {
-            // If nothing has focus (e.g. mouse is over background), fall back to
-            // the topmost dialog so pad navigation always has somewhere to go
-            if( pUser->DialogStack.GetCount() > 0 )
-            {
-                pWin = pUser->DialogStack[pUser->DialogStack.GetCount()-1];
-            }
-        }
+        // Pointer capture must not redirect keyboard/gamepad actions.
+        ui_win* pWin = GetSemanticInputTarget( pUser, pUser->pFocusedWindow );
 
         auto RefreshInputTarget = [&]() -> xbool
         {
@@ -2247,11 +2269,7 @@ xbool ui_manager::ProcessInput( f32 DeltaTime, s32 UserID )
             }
 
             DialogRevision = pUser->DialogRevision;
-            pWin = pUser->pFocusedWindow;
-            if( !pWin && (pUser->DialogStack.GetCount() > 0) )
-            {
-                pWin = pUser->DialogStack[pUser->DialogStack.GetCount()-1];
-            }
+            pWin = GetSemanticInputTarget( pUser, pUser->pFocusedWindow );
             return TRUE;
         };
 
@@ -2887,6 +2905,21 @@ ui_dialog* ui_manager::OpenDialog( s32 UserID, const char* ClassName, irect Posi
             {
                 pUser->DialogStack.Append() = pDialog;
                 pUser->DialogRevision++;
+
+                if( Flags & ui_win::WF_INPUTMODAL )
+                {
+                    if( pUser->pCaptureWindow )
+                    {
+                        pUser->pCaptureWindow->m_IsPressed = FALSE;
+                        ReleaseCapture( UserID );
+                    }
+
+                    if( pUser->pPressedWindow )
+                    {
+                        pUser->pPressedWindow->m_IsPressed = FALSE;
+                        pUser->pPressedWindow = NULL;
+                    }
+                }
             }
 
             // Activate the dialog if it has controls

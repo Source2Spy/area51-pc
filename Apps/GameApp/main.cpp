@@ -333,7 +333,7 @@ xbool HandleInput( f32 DeltaTime )
         }
     #endif // defined( ENABLE_DEBUG_MENU )
 
-        if( !g_StateMgr.InSystemError() )
+        if( !g_StateMgr.InSystemError() && !g_StateMgr.IsPipelinePrewarming() )
         {
             // check for pause 
             s32 PausingController;
@@ -501,7 +501,15 @@ void UpdateFrameServices( f32 FrameDeltaTime )
     g_DebugMenu.Update( FrameDeltaTime );
     #endif
 
-    g_StateMgr.Update( FrameDeltaTime );
+    if( g_StateMgr.IsPipelinePrewarming() )
+    {
+        g_StateMgr.UpdateLoading( FrameDeltaTime );
+    }
+    else
+    {
+        g_StateMgr.Update( FrameDeltaTime );
+    }
+
     g_GameTextMgr.Update( FrameDeltaTime );
     UpdateAudio( FrameDeltaTime );
 
@@ -640,8 +648,6 @@ xbool UpdateFrontEnd( FramePacer& Pacer, FrameTiming& FrontEndClock )
 
         g_FrontendInput.Update( DeltaTime );
 
-        g_StateMgr.CheckControllers();
-
         #ifdef TARGET_DESKTOP
         if( g_Input.GetFrameSnapshot().IsPressed( INPUT_MSG_EXIT ) )
         {
@@ -677,7 +683,7 @@ xbool UpdateLevelLoadingFrame( FrameTiming& FrontEndClock )
         g_LevelLoader.UpdateLevelLoad( k_LevelLoadTimeBudgetSeconds );
         g_FrontendInput.Update( DeltaTime );
         g_NetworkMgr.UpdateFrame( DeltaTime );
-        g_StateMgr.UpdateLevelLoading( DeltaTime );
+        g_StateMgr.UpdateLoading( DeltaTime );
         g_StateMgr.RenderLoading();
         UpdateAudio( DeltaTime );
     }
@@ -1473,7 +1479,7 @@ void RunGame( void )
         {
             X_PROFILE_SCOPE_CATEGORY( "Frame", "Frame.Update" );
 
-            if( g_GameInput.UpdateFrame( FrameDeltaSeconds, GetGameInputContext() ) )
+            if( g_GameInput.UpdateFrame( FrameDeltaSeconds, GetGameInputContext(), g_NetworkMgr.GetLocalPlayerCount() ) )
             {
                 g_ActiveConfig.SetExitReason( GAME_EXIT_PLAYER_QUIT );
             }
@@ -1558,8 +1564,12 @@ void RunGame( void )
                 g_ActiveConfig.SetExitReason( GAME_EXIT_INVALID_MISSION );
             if( !g_LevelLoader.UpdatePipelinePrewarm() )
                 g_ActiveConfig.SetExitReason( GAME_EXIT_INVALID_MISSION );
+
+            const xbool Prewarming = !g_LevelLoader.IsPipelinePrewarmComplete();
+            g_StateMgr.SetPipelinePrewarming( Prewarming && (g_ActiveConfig.GetExitReason() == GAME_EXIT_CONTINUE) );
+
             if( g_nLogicFramesAfterLoad > 10 && StartupSimulationTime >= (10.0f / 30.0f) &&
-                g_LevelLoader.IsPipelinePrewarmComplete() &&
+                !Prewarming &&
                 g_ActiveConfig.GetExitReason() == GAME_EXIT_CONTINUE )
             {
                 RenderGame();
@@ -1588,6 +1598,8 @@ void RunGame( void )
             break;
         }
     }
+    g_StateMgr.SetPipelinePrewarming( FALSE );
+
     //
     // Was the user in the pause menu - unexpected exit condition.
     //

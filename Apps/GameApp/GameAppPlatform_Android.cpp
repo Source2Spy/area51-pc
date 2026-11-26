@@ -12,7 +12,7 @@
 
 #include <unistd.h>
 
-// #define A51_ANDROID_USE_APP_DATA_DIR
+//#define A51_ANDROID_USE_APP_DATA_DIR
 
 //==============================================================================
 

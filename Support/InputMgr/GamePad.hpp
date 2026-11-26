@@ -168,7 +168,7 @@ public:
     logical&            GetFrameLogical ( s32 I );
     const logical&      GetFrameLogical ( s32 I ) const;
 
-    virtual void        Sample          ( input_snapshot const& Snapshot, f32 DeltaTime );
+    virtual void        Sample          ( input_snapshot const& Snapshot, f32 DeltaTime, xbool SampleDesktop );
 
     static  const char* GetLogicalIDName    ( s32 Index );
     static  const char* GetLogicalIDEnum    ( void );
@@ -267,7 +267,7 @@ public:
                         frontend_input  ( void );
 
     void                Update          ( f32 DeltaTime );
-    void                SampleFrame     ( input_snapshot const& Snapshot, f32 DeltaTime, u32 Context );
+    void                SampleFrame     ( input_snapshot const& Snapshot, f32 DeltaTime, u32 Context, s32 DesktopController );
     frontend_pad&       GetPad          ( s32 ControllerID );
     const frontend_pad& GetPad          ( s32 ControllerID ) const;
 
@@ -284,13 +284,14 @@ public:
 
                         game_input          ( void );
 
-    xbool               UpdateFrame         ( f32 DeltaTime, u32 Context );
+    xbool               UpdateFrame         ( f32 DeltaTime, u32 Context, s32 LocalPlayerCount );
     void                ClearInput          ( void );
 
     const ingame_pad&   GetPlayer           ( s32 PlayerIndex ) const;
     const ingame_pad&   operator[]          ( s32 PlayerIndex ) const;
     void                SetPlayerDevice     ( s32 PlayerIndex, s32 DeviceID );
     s32                 GetPlayerDevice     ( s32 PlayerIndex ) const;
+    s32                 GetActiveGamepad    ( s32 PlayerIndex ) const;
     void                ClearPlayerDevice   ( s32 PlayerIndex );
     void                ClearPlayerDevices  ( void );
     void                ClearPlayerActions  ( s32 PlayerIndex );
@@ -303,6 +304,7 @@ private:
 
     ingame_pad          m_Players[MAX_LOCAL_PLAYERS];
     system_pad          m_SystemPads[frontend_input::MAX_CONTROLLERS];
+    s32                 m_ActiveGamepad[MAX_LOCAL_PLAYERS];
 };
 
 //=========================================================================

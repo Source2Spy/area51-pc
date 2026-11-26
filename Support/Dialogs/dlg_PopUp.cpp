@@ -185,6 +185,8 @@ dlg_popup::dlg_popup( void )
     m_LastInputDevice = ui_input_device::None;
     m_HasNavText = FALSE;
     m_NavTextIsActionPrompt = FALSE;
+    m_pAcceptOwner = NULL;
+    m_pAcceptMethod = NULL;
     x_memset( m_pActionButtons, 0, sizeof( m_pActionButtons ) );
 }
 
@@ -890,14 +892,29 @@ void dlg_popup::LayoutActionButtons( void )
 
 //==============================================================================
 
+void dlg_popup::SetAcceptHandler( state_mgr* pOwner, xbool (state_mgr::*pMethod)( void ) )
+{
+    ASSERT( pOwner && pMethod );
+    m_pAcceptOwner = pOwner;
+    m_pAcceptMethod = pMethod;
+}
+
+//==============================================================================
+
 void dlg_popup::CompleteAction( s32 Result, xbool TrackController )
 {
+    const xbool HasAcceptHandler = (Result == DLG_POPUP_YES) && m_pAcceptOwner && m_pAcceptMethod;
+    if( HasAcceptHandler && !(m_pAcceptOwner->*m_pAcceptMethod)() )
+    {
+        return;
+    }
+
     if( m_pResult )
     {
         *m_pResult = Result;
     }
 
-    if( TrackController )
+    if( TrackController && !HasAcceptHandler )
     {
         g_StateMgr.SetControllerRequested( g_UiMgr->GetActiveController(), TRUE );
     }

@@ -818,7 +818,7 @@ const ingame_pad::logical& ingame_pad::GetFrameLogical( s32 I ) const
 
 //=========================================================================
 
-void ingame_pad::Sample( input_snapshot const& Snapshot, f32 DeltaTime )
+void ingame_pad::Sample( input_snapshot const& Snapshot, f32 DeltaTime, xbool SampleDesktop )
 {
     if( !HasDeviceID() )
     {
@@ -826,7 +826,7 @@ void ingame_pad::Sample( input_snapshot const& Snapshot, f32 DeltaTime )
         return;
     }
 
-    input_action_map::Sample( Snapshot, DeltaTime );
+    input_action_map::Sample( Snapshot, DeltaTime, SampleDesktop );
 }
 
 //=========================================================================
@@ -988,7 +988,6 @@ void ingame_pad::SetKeyboardBinding( keyboard_bindings& Bindings, s32 Action, s3
         ( ( Key != INPUT_UNDEFINED ) && !IsKeyboardKey( Key ) ) )
         return;
 
-    // Replacing a binding removes the key from other actions before assigning it.
     if( Replace && ( Key != INPUT_UNDEFINED ) )
         for( s32 Other = 0; Other < KEYBOARD_ACTION_COUNT; Other++ )
             for( s32 OtherSlot = 0; OtherSlot < KEYBOARD_SLOT_COUNT; OtherSlot++ )
@@ -1007,7 +1006,6 @@ void ingame_pad::ApplyKeyboardBindings( const keyboard_bindings& Bindings )
     if( !KeyboardBindingsAreValid( Bindings ) )
         return;
 
-    // Replace only keyboard bindings; gamepad mappings remain registered.
     for( s32 Action = 0; Action < KEYBOARD_ACTION_COUNT; Action++ )
     {
         s32 LogicalID = s_KeyboardActions[Action].LogicalID;
@@ -1022,7 +1020,6 @@ void ingame_pad::ApplyKeyboardBindings( const keyboard_bindings& Bindings )
         }
     }
 
-    // Do not carry held or pressed state across a binding change.
     ClearAllActions();
 }
 
@@ -1123,17 +1120,17 @@ frontend_input::frontend_input( void )
 void frontend_input::Update( f32 DeltaTime )
 {
     g_Input.CaptureFrameInput();
-    SampleFrame( g_Input.GetFrameSnapshot(), DeltaTime, FRONTEND_CONTEXT );
+    SampleFrame( g_Input.GetFrameSnapshot(), DeltaTime, FRONTEND_CONTEXT, 0 );
 }
 
 //=========================================================================
 
-void frontend_input::SampleFrame( input_snapshot const& Snapshot, f32 DeltaTime, u32 Context )
+void frontend_input::SampleFrame( input_snapshot const& Snapshot, f32 DeltaTime, u32 Context, s32 DesktopController )
 {
     for( s32 i = 0; i < MAX_CONTROLLERS; i++ )
     {
         m_Pads[i].SetActiveContext( Context );
-        m_Pads[i].Sample( Snapshot, DeltaTime );
+        m_Pads[i].Sample( Snapshot, DeltaTime, i == DesktopController );
     }
 }
 
@@ -1157,6 +1154,11 @@ const frontend_pad& frontend_input::GetPad( s32 ControllerID ) const
 
 game_input::game_input( void )
 {
+    for( s32 i = 0; i < MAX_LOCAL_PLAYERS; i++ )
+    {
+        m_ActiveGamepad[i] = -1;
+    }
+
     for( s32 i = 0; i < frontend_input::MAX_CONTROLLERS; i++ )
     {
         m_SystemPads[i].SetDeviceID( i );
@@ -1165,25 +1167,64 @@ game_input::game_input( void )
 
 //=========================================================================
 
-xbool game_input::UpdateFrame( f32 DeltaTime, u32 Context )
+xbool game_input::UpdateFrame( f32 DeltaTime, u32 Context, s32 LocalPlayerCount )
 {
     xbool const           ExitRequested = g_Input.CaptureFrameInput();
     input_snapshot const& Snapshot      = g_Input.GetFrameSnapshot();
 
-    // All action maps consume the same captured snapshot for this frame.
     for( s32 i = 0; i < MAX_LOCAL_PLAYERS; i++ )
     {
         m_Players[i].SetActiveContext( Context );
-        m_Players[i].Sample( Snapshot, DeltaTime );
+        m_Players[i].Sample( Snapshot, DeltaTime, i == 0 );
+
+        if( (i >= LocalPlayerCount) || (Context != INGAME_CONTEXT) )
+        {
+            continue;
+        }
+
+        const f32 MouseLookThreshold = 2.0f;
+        s32 GamepadID = -1;
+        xbool DesktopActivity = FALSE;
+        for( s32 ActionID = 0; ActionID < ingame_pad::MAX_ACTION; ActionID++ )
+        {
+            const ingame_pad::logical& Action = m_Players[i].GetFrameLogical( ActionID );
+            const input_action_source& Pressed = Action.GetWasSource( INPUT_DEVICE_GAMEPAD );
+            const input_action_source& Held = Action.GetIsSource( INPUT_DEVICE_GAMEPAD );
+            if( Pressed.IsValid() )
+            {
+                GamepadID = Pressed.DeviceID;
+            }
+            else if( Held.IsValid() && input_system::IsPromptDeviceActivity( Held.GadgetID, Action.GetIsValue( INPUT_DEVICE_GAMEPAD ), FALSE ) )
+            {
+                GamepadID = Held.DeviceID;
+            }
+
+            DesktopActivity |= Action.GetWasSource( INPUT_DEVICE_KEYBOARD ).IsValid() ||
+                               Action.GetWasSource( INPUT_DEVICE_MOUSE ).IsValid();
+            if( (ActionID == ingame_pad::LOOK_HORIZONTAL) || (ActionID == ingame_pad::LOOK_VERTICAL) )
+            {
+                DesktopActivity |= x_abs( Action.GetIsValue( INPUT_DEVICE_MOUSE ) ) >= MouseLookThreshold;
+            }
+        }
+
+        if( DesktopActivity )
+        {
+            m_ActiveGamepad[i] = -1;
+        }
+        else if( GamepadID != -1 )
+        {
+            m_ActiveGamepad[i] = GamepadID;
+        }
     }
 
+    s32 const PrimaryDeviceID = GetPlayerDevice( 0 );
     for( s32 i = 0; i < frontend_input::MAX_CONTROLLERS; i++ )
     {
         m_SystemPads[i].SetActiveContext( Context );
-        m_SystemPads[i].Sample( Snapshot, DeltaTime );
+        m_SystemPads[i].Sample( Snapshot, DeltaTime, i == PrimaryDeviceID );
     }
 
-    g_FrontendInput.SampleFrame( Snapshot, DeltaTime, Context );
+    g_FrontendInput.SampleFrame( Snapshot, DeltaTime, Context, MAX( PrimaryDeviceID, 0 ) );
     return ExitRequested;
 }
 
@@ -1229,6 +1270,7 @@ void game_input::SetPlayerDevice( s32 PlayerIndex, s32 DeviceID )
     ASSERT( ( PlayerIndex >= 0 ) && ( PlayerIndex < MAX_LOCAL_PLAYERS ) );
     ASSERT( ( DeviceID >= 0 ) && ( DeviceID < frontend_input::MAX_CONTROLLERS ) );
     m_Players[PlayerIndex].SetDeviceID( DeviceID );
+    m_ActiveGamepad[PlayerIndex] = -1;
 }
 
 //=========================================================================
@@ -1240,11 +1282,20 @@ s32 game_input::GetPlayerDevice( s32 PlayerIndex ) const
 
 //=========================================================================
 
+s32 game_input::GetActiveGamepad( s32 PlayerIndex ) const
+{
+    ASSERT( ( PlayerIndex >= 0 ) && ( PlayerIndex < MAX_LOCAL_PLAYERS ) );
+    return m_ActiveGamepad[PlayerIndex];
+}
+
+//=========================================================================
+
 void game_input::ClearPlayerDevice( s32 PlayerIndex )
 {
     ASSERT( ( PlayerIndex >= 0 ) && ( PlayerIndex < MAX_LOCAL_PLAYERS ) );
     m_Players[PlayerIndex].SetDeviceID( -1 );
     m_Players[PlayerIndex].ClearAllActions();
+    m_ActiveGamepad[PlayerIndex] = -1;
 }
 
 //=========================================================================

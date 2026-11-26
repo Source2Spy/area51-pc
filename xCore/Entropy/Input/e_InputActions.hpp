@@ -121,7 +121,7 @@ public:
     s32                 GetResolvedDeviceID     ( s32 FallbackDeviceID ) const;
 
     void                ClearAllActions         ( void );
-    virtual void        Sample                  ( input_snapshot const& Snapshot, f32 DeltaTime );
+    virtual void        Sample                  ( input_snapshot const& Snapshot, f32 DeltaTime, xbool SampleDesktop );
 
 protected:
 
@@ -142,10 +142,11 @@ private:
         input_action_value_mode ValueMode;
     };
 
-    void                SampleDevice            ( input_snapshot const& Snapshot, f32 DeltaTime, s32 DeviceID );
+    void                SampleDevice            ( input_snapshot const& Snapshot, s32 DeviceID, xbool SampleDesktop );
     void                SampleBinding           ( input_snapshot const& Snapshot,
                                                   binding& Binding,
-                                                  s32 DeviceID );
+                                                  s32 DeviceID,
+                                                  xbool SampleDesktop );
     void                SampleDigitalBinding    ( input_snapshot const& Snapshot,
                                                   binding const& Binding,
                                                   s32 DeviceID );

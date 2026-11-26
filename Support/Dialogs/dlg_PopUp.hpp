@@ -40,6 +40,7 @@ extern ui_win*  dlg_popup_factory   ( s32 UserID, ui_manager* pManager, ui_manag
 //  FORWARD DECLARATIONS
 //==============================================================================
 
+class state_mgr;
 class ui_button;
 
 //==============================================================================
@@ -139,6 +140,7 @@ public:
                                                     s32*                pResult = NULL );
 
     void                Close               ( void );
+    void                SetAcceptHandler    ( state_mgr* pOwner, xbool (state_mgr::*pMethod)( void ) );
 
     xbool               Create              ( s32                       UserID,
                                               ui_manager*               pManager,
@@ -232,6 +234,8 @@ protected:
     xbool               m_bDoTimeout;
     xbool               m_DismissOnCancel;
     s32*                m_pResult;
+    state_mgr*          m_pAcceptOwner;
+    xbool               (state_mgr::*m_pAcceptMethod)( void );
     s32                 m_CurrHL;
     xbool               m_bDoBlackout;
     xbool               m_HasNavText;

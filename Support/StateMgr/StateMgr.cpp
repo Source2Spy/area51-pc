@@ -43,7 +43,6 @@
 #include "Dialogs/dlg_ProfileMouseControls.hpp"
 #include "Dialogs/dlg_ProfileKeyboardBindings.hpp"
 #include "Dialogs/dlg_ProfileGamepadControls.hpp"
-#include "Dialogs/dlg_OnlineConnect.hpp"
 #include "Dialogs/dlg_OnlineHost.hpp"
 #include "Dialogs/dlg_OnlineHostOptions.hpp"
 #include "Dialogs/dlg_OnlineJoin.hpp"
@@ -119,7 +118,6 @@ extern xtimer g_DemoIdleTimer;
 //  Globals                                                                
 //=========================================================================
 
-extern xbool    g_bControllerCheck;
 state_mgr       g_StateMgr;
 
 extern s32      g_Difficulty;
@@ -234,7 +232,6 @@ void state_mgr::Init( void )
 #ifndef CONFIG_RETAIL
     dlg_level_select_register       ( g_UiMgr );
 #endif
-    dlg_online_connect_register     ( g_UiMgr );
     dlg_online_main_register        ( g_UiMgr );
     dlg_online_host_register        ( g_UiMgr );
     dlg_online_host_options_register( g_UiMgr );
@@ -293,6 +290,8 @@ void state_mgr::Init( void )
     m_StartupIntroMovieIndex    = 0;
     m_CurrentDialog             = NULL;
     m_pScoreboardDialog         = NULL;
+    m_PopUp                     = NULL;
+    m_bPipelinePrewarming       = FALSE;
     m_bPlayMovie                = FALSE;
     m_bSimpleMoviePending       = FALSE;
     m_bSimpleMovieCompleted     = FALSE;
@@ -675,8 +674,14 @@ void state_mgr::SystemError( sm_system_error MessageID, void* pUserData )
         return;
     }
 
+    if( MessageID == SM_SYS_ERR_CONTROLLER )
+    {
+        CloseScoreboardOverlay();
+    }
+
     // enter system error state
     g_StateMgr.m_bDoSystemError    = TRUE;
+    g_StateMgr.m_SystemError       = MessageID;
 
     // save current paused state, and then set it to pause.
     g_StateMgr.m_bWasPaused        = g_StateMgr.m_bIsPaused;
@@ -730,43 +735,32 @@ void state_mgr::SystemError( sm_system_error MessageID, void* pUserData )
         
         case SM_SYS_ERR_CONTROLLER:
         {
-            s32 ControllerID = *(s32*)pUserData;
+            m_DisconnectedPlayer = *static_cast<const s32*>( pUserData );
+            s32 const ControllerID = g_GameInput.GetActiveGamepad( m_DisconnectedPlayer );
 
-            g_UiMgr->SetUserController(g_UiUserID, ControllerID);
+            g_UiMgr->SetUserController( g_UiUserID, -1 );
 
-            if( ControllerID == -1 )
-            {   // no controllers connected (not port specific).
-                MessageText = g_StringTableMgr( "ui", "IDS_NO_CONTROLLERS" );
-            }
-            else
+            MessageText = g_StringTableMgr( "ui", "IDS_LOST_CONTROLLER_XBOX" );
+            s32 const Index = MessageText.Find( '#' );
+            if( Index > -1 )
             {
-                MessageText = g_StringTableMgr( "ui", "IDS_LOST_CONTROLLER" );
-                s32 Index = MessageText.Find( 0x0023 );
-                ASSERT( Index > -1 );
+                char temp[32];
+                x_sprintf( temp, "%d", ControllerID + 1 );
 
-                // !! if we don't find our string, this will crash. "<NULL>" is better.
-                if( Index > -1 )
-                {
-                    char temp[32];
-                    x_sprintf( temp,"%d",ControllerID+1 );
+                xwstring Final;
+                Final += MessageText.Left( Index );
+                Final += xwstring( temp );
+                Final += MessageText.Right( MessageText.GetLength() - Index - 1 );
 
-                    xwstring Final;
-                    Final += MessageText.Left( Index );
-                    Final += xwstring( temp );
-                    Final += MessageText.Right( MessageText.GetLength( )-Index-1 );
-
-                    MessageText = Final;
-                }
+                MessageText = Final;
             }
-            g_StateMgr.m_PopUp->Configure(
-                r,
-                g_StringTableMgr( "ui", "IDS_SYSTEM_MESSAGE" ), 
-                CanExit,
-                FALSE,  
-                FALSE, 
-                MessageText,
-                NavText,
-                &g_StateMgr.m_PopUpResult );
+            m_PopUp->Configure( r,
+                                g_StringTableMgr( "ui", "IDS_SYSTEM_MESSAGE" ),
+                                TRUE, FALSE, FALSE,
+                                MessageText,
+                                g_StringTableMgr( "ui", "IDS_NAV_OK" ),
+                                &m_PopUpResult );
+            m_PopUp->SetAcceptHandler( this, &state_mgr::AcceptControllerReconnect );
         }
         break;
 
@@ -803,6 +797,61 @@ void state_mgr::SystemError( sm_system_error MessageID, void* pUserData )
 }
 
 //=========================================================================
+
+xbool state_mgr::AcceptControllerReconnect( void )
+{
+    const s32 PlayerIndex = m_DisconnectedPlayer;
+    s32 ControllerID = g_GameInput.GetPlayerDevice( PlayerIndex );
+    const ui_input_device Device = g_UiMgr->GetInputDevice( g_UiUserID );
+    if( Device == ui_input_device::Mouse )
+    {
+        if( PlayerIndex != 0 )
+        {
+            return FALSE;
+        }
+    }
+    else
+    {
+        s32 const ActiveController = g_UiMgr->GetActiveController();
+        const frontend_pad::logical& Accept = g_FrontendInput.GetPad( ActiveController ).GetFrameLogical( frontend_pad::UI_SELECT );
+        const xbool KeyboardAccept = Accept.GetWasSource( INPUT_DEVICE_KEYBOARD ).IsValid();
+        const xbool GamepadAccept = Accept.GetWasSource( INPUT_DEVICE_GAMEPAD ).IsValid();
+        if( GamepadAccept && (!KeyboardAccept || (Device == ui_input_device::Gamepad)) )
+        {
+            if( !g_Input.IsDevicePresent( INPUT_DEVICE_GAMEPAD, ActiveController ) )
+            {
+                return FALSE;
+            }
+
+            s32 const LocalPlayerCount = MIN( g_NetworkMgr.GetLocalPlayerCount(), MAX_LOCAL_PLAYERS );
+            for( s32 i = 0; i < LocalPlayerCount; i++ )
+            {
+                if( (i != PlayerIndex) && (g_GameInput.GetPlayerDevice( i ) == ActiveController) )
+                {
+                    return FALSE;
+                }
+            }
+
+            ControllerID = ActiveController;
+            s32 const ProfileIndex = GetProfileListIndex( PlayerIndex );
+            if( ProfileIndex != -1 )
+            {
+                g_Input.EnableFeedback( GetActiveProfile( ProfileIndex ).GetVibration(), ControllerID );
+            }
+        }
+        else if( !KeyboardAccept || (PlayerIndex != 0) )
+        {
+            return FALSE;
+        }
+    }
+
+    g_GameInput.SetPlayerDevice( PlayerIndex, ControllerID );
+    g_GameInput.ClearPlayerActions( PlayerIndex );
+    g_UiMgr->SuppressInputUntilRelease();
+    return TRUE;
+}
+
+//=========================================================================
 //
 //  Check for pulled controllers.
 //
@@ -810,73 +859,25 @@ void state_mgr::SystemError( sm_system_error MessageID, void* pUserData )
 void state_mgr::CheckControllers( void )
 {
 #if !defined(X_EDITOR)
-
-// TODO: GS: Handle THIS normally
-
-    input_gadget ControllerQuery;
-    input_gadget AnalogQuery;
-    return;
-
-    if( !g_bControllerCheck )
-        return;
-
-    if( !InSystemError() )
+    if( (m_State != SM_PLAYING_GAME) || InSystemError() || IsPipelinePrewarming() )
     {
-        s32 ControllerID;
-
-        switch (m_State)
-        {
-            case SM_START_GAME:
-            case SM_START_SAVE_GAME:
-            case SM_SINGLE_PLAYER_LOAD_MISSION:
-            case SM_MULTI_PLAYER_LOAD_MISSION:
-            case SM_SERVER_SYNC:
-            case SM_SERVER_COOLDOWN:
-            case SM_SERVER_DISCONNECT:
-            case SM_CLIENT_SYNC:
-            case SM_CLIENT_COOLDOWN:
-            case SM_CLIENT_DISCONNECT:
-            case SM_EXIT_GAME:
-            case SM_POST_GAME:
-            {
-                // Not Safe! Not Safe! 
-            }    
-            break;
-            
-            case SM_PLAYING_GAME:
-            {
-                // check all ingame pads with valid IDs
-                for( s32 i = 0; i < MAX_LOCAL_PLAYERS; i++ )
-                {
-                    ControllerID = g_GameInput.GetPlayerDevice( i );
-                    if( ControllerID == -1 ) 
-                        continue;
-                    if( !(g_Input.GetFrameSnapshot().IsPresent( ControllerQuery, ControllerID ) &&
-                         g_Input.GetFrameSnapshot().IsPresent( AnalogQuery, ControllerID ) ) )
-                    {
-                        SystemError( SM_SYS_ERR_CONTROLLER, &ControllerID );
-                        break;
-                    }
-                }
-            }
-            break;
-            
-            default:
-            {
-                // only check for "locked" controllers
-                if( (ControllerID = GetActiveControllerID()) != -1 )
-                {
-                    if( !(g_Input.GetFrameSnapshot().IsPresent( ControllerQuery, ControllerID ) &&
-                          g_Input.GetFrameSnapshot().IsPresent( AnalogQuery, ControllerID ) ) )
-                    {
-                        SystemError( SM_SYS_ERR_CONTROLLER, &ControllerID );
-                    }
-                }
-            }
-            break;
-        }
+        return;
     }
 
+    s32 const LocalPlayerCount = MIN( g_NetworkMgr.GetLocalPlayerCount(), MAX_LOCAL_PLAYERS );
+    for( s32 PlayerIndex = 0; PlayerIndex < LocalPlayerCount; PlayerIndex++ )
+    {
+        s32 const ControllerID = g_GameInput.GetActiveGamepad( PlayerIndex );
+        if( (ControllerID != -1) && !g_Input.IsDevicePresent( INPUT_DEVICE_GAMEPAD, ControllerID ) )
+        {
+            SystemError( SM_SYS_ERR_CONTROLLER, &PlayerIndex );
+            if( InSystemError() )
+            {
+                g_UiMgr->SuppressInputUntilRelease();
+            }
+            return;
+        }
+    }
 #endif // !X_EDITOR
 }
 
@@ -903,7 +904,7 @@ void state_mgr::Update( f32 DeltaTime )
     // Update based on state
     UpdateState( m_State, DeltaTime );
 
-    // update UI
+    // Update UI
     g_UiMgr->Update( DeltaTime );
 
     if( m_bDoSystemError && m_PopUp )
@@ -923,8 +924,15 @@ void state_mgr::Update( f32 DeltaTime )
 
                 if( m_State == SM_PLAYING_GAME )
                 {
-                    m_bIsPaused = FALSE;
-                    g_AudioMgr.ResumeAll(); 
+                    if( m_SystemError != SM_SYS_ERR_CONTROLLER )
+                    {
+                        m_bIsPaused = FALSE;
+                        g_AudioMgr.ResumeAll();
+                    }
+                    else if( !g_NetworkMgr.IsOnline() && !m_bIsPaused )
+                    {
+                        g_AudioMgr.ResumeAll();
+                    }
                 }
 
                 if( m_bRetrySilentAutoSave )
@@ -948,7 +956,7 @@ void state_mgr::Update( f32 DeltaTime )
         }
     }
 
-    // update menu music
+    // Update menu music
     if( ( m_State > SM_PRESS_START_SCREEN ) && ( m_State < SM_END_PAUSE ) && ( !IsPaused() ) )
     {
         switch( m_State ) 
@@ -1017,28 +1025,71 @@ void state_mgr::Update( f32 DeltaTime )
     }
     else
     {
-        // kill background music
+        // Kill background music
         KillFrontEndMusic();
     }
 }
 
 //=========================================================================
 
-void state_mgr::UpdateLevelLoading( f32 DeltaTime )
+void state_mgr::UpdateLoading( f32 DeltaTime )
 {
-    // A loading frame updates the active dialog but must not advance the
-    // state machine until NetworkMgr::LoadMissionComplete has been called.
+    // Keep the UI and save data requests running while the caller waits for
+    // level loading or pipeline prewarm to finish.
     g_SaveDataMgr.Update( DeltaTime );
     g_UiMgr->ProcessInput( DeltaTime );
     g_UiMgr->Update( DeltaTime );
 }
 
+//=========================================================================
+
+void state_mgr::SetPipelinePrewarming( xbool Prewarming )
+{
+    if( Prewarming )
+    {
+        if( m_PopUp || InSystemError() )
+        {
+            return;
+        }
+
+        m_bUserWasEnabled = g_UiMgr->IsUserEnabled( g_UiUserID );
+        g_UiMgr->EnableUser( g_UiUserID, TRUE );
+
+        irect r = g_UiMgr->GetUserBounds( g_UiUserID );
+        m_PopUp = static_cast<dlg_popup*>( g_UiMgr->OpenDialog( g_UiUserID,
+                                                             "popup",
+                                                             r,
+                                                             NULL,
+                                                             ui_win::WF_VISIBLE |
+                                                             ui_win::WF_BORDER |
+                                                             ui_win::WF_DLG_CENTER |
+                                                             ui_win::WF_INPUTMODAL ) );
+
+        r.Set( 0, 0, 300, 120 );
+        m_PopUp->Configure( r,
+                            g_StringTableMgr( "ui", "IDS_OPTIONS_GRAPHICS_SETTINGS" ),
+                            FALSE, FALSE, FALSE,
+                            g_StringTableMgr( "ui", "IDS_WAIT_TEXT" ),
+                            NULL );
+        m_bPipelinePrewarming = TRUE;
+    }
+    else if( m_bPipelinePrewarming )
+    {
+        ASSERT( g_UiMgr->GetTopmostDialog( g_UiUserID ) == m_PopUp );
+        g_UiMgr->EndDialog( g_UiUserID, TRUE );
+        m_PopUp = NULL;
+        m_bPipelinePrewarming = FALSE;
+
+        g_UiMgr->EnableUser( g_UiUserID, m_bUserWasEnabled );
+        g_UiMgr->SuppressInputUntilRelease();
+    }
+}
 
 //=========================================================================
 
 void state_mgr::Render( void )
 {
-    if( ( m_State != SM_PLAYING_GAME ) || m_bDoSystemError )
+    if( ( m_State != SM_PLAYING_GAME ) || m_bDoSystemError || IsPipelinePrewarming() )
         RenderLoading();
 }
 
@@ -1064,7 +1115,7 @@ void state_mgr::RenderLoading( void )
 
     // Render UI
     g_UiMgr->Render();
-    if( m_State == SM_PLAYING_GAME && !m_bDoSystemError )
+    if( m_State == SM_PLAYING_GAME && !m_bDoSystemError && !IsPipelinePrewarming() )
     {
         irect TextRect( 0, 0, ui_viewport::CONTENT_WIDTH, ui_viewport::CONTENT_HEIGHT );
         g_UiMgr->RenderText( g_UiMgr->FindFont( "large" ), TextRect,
@@ -1360,6 +1411,7 @@ void state_mgr::ExitState( sm_states State )
         case SM_SERVER_SYNC:                    ExitServerSync();               break;
         case SM_CLIENT_SYNC:                    ExitClientSync();               break;
         case SM_PRESS_START_SCREEN:             ExitPressStart();               break;
+        case SM_ONLINE_CONNECT:                 ExitOnlineConnect();            break;
         case SM_ONLINE_LOGIN:                   ExitOnlineLogin();              break;
         case SM_NETWORK_DISCONNECT:             ExitNetworkDisconnect();        break;
         case SM_PLAYING_GAME:                   ExitPlayingGame();              break;
@@ -4934,15 +4986,42 @@ void state_mgr::ExitSaveDataReselectMP( void )
 
 //=========================================================================
 
-
-//=========================================================================
-
 void state_mgr::EnterOnlineConnect( void )
 {
     // Create online main menu
     g_UiMgr->EndDialog( g_UiUserID, TRUE );
-    irect mainarea(76, DIALOG_TOP, 436, DIALOG_BOTTOM );
-    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID, "connect info", mainarea, NULL, ui_win::WF_VISIBLE|ui_win::WF_BORDER );
+
+    irect r = g_UiMgr->GetUserBounds( g_UiUserID );
+    m_CurrentDialog = g_UiMgr->OpenDialog( g_UiUserID,
+                                          "popup",
+                                          r,
+                                          NULL,
+                                          ui_win::WF_VISIBLE |
+                                          ui_win::WF_BORDER |
+                                          ui_win::WF_DLG_CENTER |
+                                          ui_win::WF_INPUTMODAL );
+
+    dlg_popup* pPopUp = static_cast<dlg_popup*>( m_CurrentDialog );
+    if( g_NetworkMgr.BeginOnlineStateChange( TRUE ) )
+    {
+        r.Set( 0, 0, 300, 160 );
+        pPopUp->Configure( r,
+                           g_StringTableMgr( "ui", "IDS_ONLINE_CONNECT" ),
+                           FALSE,
+                           TRUE,
+                           FALSE,
+                           g_StringTableMgr( "ui", "IDS_ONLINE_PLEASE_WAIT" ),
+                           g_StringTableMgr( "ui", "IDS_NAV_CANCEL" ) );
+    }
+    else
+    {
+        r.Set( 0, 0, 300, 200 );
+        pPopUp->ConfigureMessage( r,
+                                  g_StringTableMgr( "ui", "IDS_NETWORK_POPUP" ),
+                                  g_StringTableMgr( "ui", "IDS_ONLINE_NETWORK_DOWN" ),
+                                  NULL );
+        pPopUp->SetState( DIALOG_STATE_POPUP );
+    }
 #ifndef USE_MOVIES
     g_UiMgr->SetUserBackground( g_UiUserID, "background1" );
 #endif
@@ -4952,46 +5031,98 @@ void state_mgr::EnterOnlineConnect( void )
 
 void state_mgr::UpdateOnlineConnect( void )
 {
-    if( m_CurrentDialog != NULL )
+    if( InSystemError() )
     {
-        u32 DialogState = m_CurrentDialog->GetState();
+        return;
+    }
 
-        switch( DialogState )
+    if( g_UiMgr->GetTopmostDialog( g_UiUserID ) != m_CurrentDialog )
+    {
+        m_CurrentDialog = NULL;
+    }
+
+    if( g_NetworkMgr.IsOnlineStateChanging() )
+    {
+        if( !g_NetworkMgr.IsOnlineStateChangeDone() )
         {
-            case DIALOG_STATE_EXIT:
-            {
-                // We got connected, so we make sure that we know we've not
-                // been notified of a disconnect due to network being down.
-                g_ActiveConfig.SetExitReason( GAME_EXIT_CONTINUE );
-
-                if( (GetProfileListIndex(0) != -1) && 
-                    (GetSelectedProfile( GetProfileListIndex(0) ) != 0 ) )
-                {
-                    // set nickname
-                    player_profile& ActiveProfile = GetActiveProfile( GetProfileListIndex(0) );
-                    g_MatchMgr.SetNickname( ActiveProfile.GetProfileName() );
-                    SetState( SM_ONLINE_IDENTITY );
-                }
-                else
-                {
-                    SetState( SM_ONLINE_PROFILE_SELECT );
-                }
-            }
-            break;
-
-            case DIALOG_STATE_BACK:
-            {
-                BeginNetworkDisconnect( SM_MAIN_MENU );
-            }
-            break;
+            return;
         }
-    }    
+
+        g_NetworkMgr.FinishOnlineStateChange();
+        m_Timeout = 10.0f;
+    }
+
+    if( m_CurrentDialog == NULL )
+    {
+        BeginNetworkDisconnect( SM_MAIN_MENU );
+        return;
+    }
+
+    if( m_CurrentDialog->GetState() == DIALOG_STATE_POPUP )
+    {
+        return;
+    }
+
+    xbool Connected = FALSE;
+    interface_info Info;
+    net_GetInterfaceInfo( -1, Info );
+    if( !Info.Address && (m_Timeout > 0.0f) )
+    {
+        return;
+    }
+
+    if( Info.Address )
+    {
+        net_socket& Socket = g_NetworkMgr.GetSocket();
+        if( !Socket.IsEmpty() || Socket.Bind( 0, NET_FLAGS_BROADCAST ) )
+        {
+            Connected = g_MatchMgr.IsReady() || g_MatchMgr.Init( Socket, net_address( Info.Broadcast, Socket.GetPort() ) );
+            if( !Connected )
+            {
+                Socket.Close();
+            }
+        }
+    }
+
+    if( !Connected )
+    {
+        irect r( 0, 0, 300, 200 );
+        dlg_popup* pPopUp = static_cast<dlg_popup*>( m_CurrentDialog );
+        pPopUp->ConfigureMessage( r,
+                                  g_StringTableMgr( "ui", "IDS_NETWORK_POPUP" ),
+                                  g_StringTableMgr( "ui", "IDS_ONLINE_NETWORK_DOWN" ),
+                                  NULL );
+        pPopUp->SetState( DIALOG_STATE_POPUP );
+        return;
+    }
+
+    // We got connected, so we make sure that we know we've not
+    // been notified of a disconnect due to network being down.
+    g_ActiveConfig.SetExitReason( GAME_EXIT_CONTINUE );
+
+    if( (GetProfileListIndex(0) != -1) &&
+        (GetSelectedProfile( GetProfileListIndex(0) ) != 0 ) )
+    {
+        // Set nickname
+        player_profile& ActiveProfile = GetActiveProfile( GetProfileListIndex(0) );
+        g_MatchMgr.SetNickname( ActiveProfile.GetProfileName() );
+        SetState( SM_ONLINE_IDENTITY );
+    }
+    else
+    {
+        SetState( SM_ONLINE_PROFILE_SELECT );
+    }
 }
 
 //=========================================================================
 
 void state_mgr::ExitOnlineConnect( void )
 {
+    if( m_CurrentDialog && (g_UiMgr->GetTopmostDialog( g_UiUserID ) == m_CurrentDialog) )
+    {
+        g_UiMgr->EndDialog( g_UiUserID, TRUE );
+    }
+    m_CurrentDialog = NULL;
 }
 
 //=========================================================================
@@ -5659,15 +5790,6 @@ void state_mgr::ExitOnlineJoinSaveSettings( void )
 
 //=========================================================================
 
-
-//=========================================================================
-
-
-//=========================================================================
-
-
-//=========================================================================
-
 void state_mgr::EnterOnlineStats( void )
 {
     //  create options main menu
@@ -6156,6 +6278,7 @@ void state_mgr::ExitSinglePlayerLoadMission( void )
 }
 
 //=========================================================================
+
 void state_mgr::EnterPlayingGame( void )
 {
     m_bIsPaused      = FALSE;        
@@ -6170,6 +6293,7 @@ void state_mgr::EnterPlayingGame( void )
 }
 
 //=========================================================================
+
 void state_mgr::UpdatePlayingGame( void )
 {
     UpdateScoreboardOverlay();
@@ -6188,8 +6312,26 @@ void state_mgr::UpdatePlayingGame( void )
 }
 
 //=========================================================================
+
 void state_mgr::ExitPlayingGame( void )
 {
+    if( InSystemError() && (m_SystemError == SM_SYS_ERR_CONTROLLER) )
+    {
+        if( m_PopUp && (g_UiMgr->GetTopmostDialog( g_UiUserID ) == m_PopUp) )
+        {
+            g_UiMgr->EndDialog( g_UiUserID, TRUE );
+        }
+
+        m_PopUp = NULL;
+        m_bDoSystemError = FALSE;
+        m_bIsPaused = m_bWasPaused;
+        g_UiMgr->EnableUser( g_UiUserID, m_bUserWasEnabled );
+        if( !g_NetworkMgr.IsOnline() )
+        {
+            g_AudioMgr.ResumeAll();
+        }
+    }
+
     CloseScoreboardOverlay();
 }
 

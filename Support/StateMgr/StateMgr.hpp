@@ -324,7 +324,9 @@ public:
     void                    CheckControllers                ( void );
 
     void                    Update                          ( f32 DeltaTime );
-    void                    UpdateLevelLoading              ( f32 DeltaTime );
+    void                    UpdateLoading                   ( f32 DeltaTime );
+    void                    SetPipelinePrewarming           ( xbool Prewarming );
+    xbool                   IsPipelinePrewarming            ( void ) const                          { return m_bPipelinePrewarming; }
     void                    Render                          ( void );
     void                    RenderLoading                   ( void );
     void                    DummyScreen                     ( const char* message, xbool canSkip, s32 waitTime);  
@@ -1090,12 +1092,15 @@ private:
     // It is important that each dialog properly cleans up after itself on getting a Destroy() 
     // call.
     xbool                   CheckForDisconnect              ( void );
+    xbool                   AcceptControllerReconnect       ( void );
     void                    SilentSaveProfileReturn         ( void );
 
     xbool                   m_bInited;
     xbool                   m_bIsPaused;
     xbool                   m_bWasPaused;
     xbool                   m_bDoSystemError;
+    sm_system_error         m_SystemError;
+    s32                     m_DisconnectedPlayer;
     xbool                   m_bIsDuplicateLogin;
     xbool                   m_bRetrySilentAutoSave;
     xbool                   m_bRetryAutoSaveMenu;
@@ -1122,6 +1127,7 @@ private:
     dlg_popup*              m_PopUp;
     s32                     m_PopUpResult;
     xbool                   m_bUserWasEnabled;
+    xbool                   m_bPipelinePrewarming;
     voice_id                m_StartupInfoVoiceID;
 
     sm_states               m_NetworkDisconnectDestination;

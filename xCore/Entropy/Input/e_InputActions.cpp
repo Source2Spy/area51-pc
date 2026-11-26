@@ -556,14 +556,14 @@ void input_action_map::ClearAllActions( void )
 
 //==============================================================================
 
-void input_action_map::Sample( input_snapshot const& Snapshot, f32 DeltaTime )
+void input_action_map::Sample( input_snapshot const& Snapshot, f32 DeltaTime, xbool SampleDesktop )
 {
     for( s32 i = 0; i < m_Actions.GetCount(); i++ )
     {
         m_Actions[i].BeginSample();
     }
 
-    SampleDevice( Snapshot, DeltaTime, GetResolvedDeviceID( 0 ) );
+    SampleDevice( Snapshot, GetResolvedDeviceID( 0 ), SampleDesktop );
 
     for( s32 i = 0; i < m_Actions.GetCount(); i++ )
     {
@@ -573,9 +573,8 @@ void input_action_map::Sample( input_snapshot const& Snapshot, f32 DeltaTime )
 
 //==============================================================================
 
-void input_action_map::SampleDevice( input_snapshot const& Snapshot, f32 DeltaTime, s32 DeviceID )
+void input_action_map::SampleDevice( input_snapshot const& Snapshot, s32 DeviceID, xbool SampleDesktop )
 {
-    (void)DeltaTime;
     ASSERT( DeviceID >= 0 );
     DeviceID = MAX( DeviceID, 0 );
 
@@ -583,7 +582,7 @@ void input_action_map::SampleDevice( input_snapshot const& Snapshot, f32 DeltaTi
     {
         for( s32 i = 0; i < m_Bindings[Platform].GetCount(); i++ )
         {
-            SampleBinding( Snapshot, m_Bindings[Platform][i], DeviceID );
+            SampleBinding( Snapshot, m_Bindings[Platform][i], DeviceID, SampleDesktop );
         }
     }
 }
@@ -592,7 +591,8 @@ void input_action_map::SampleDevice( input_snapshot const& Snapshot, f32 DeltaTi
 
 void input_action_map::SampleBinding( input_snapshot const& Snapshot,
                                       binding& Binding,
-                                      s32 DeviceID )
+                                      s32 DeviceID,
+                                      xbool SampleDesktop )
 {
     if( (Binding.GadgetID == INPUT_UNDEFINED) ||
         (Binding.ActionID < 0) || (Binding.ActionID >= m_Actions.GetCount()) )
@@ -601,6 +601,17 @@ void input_action_map::SampleBinding( input_snapshot const& Snapshot,
     }
 
     input_gadget_info const& Info = input_system::GetGadgetInfo( Binding.GadgetID );
+
+    if( (Info.Device == INPUT_DEVICE_KEYBOARD) || (Info.Device == INPUT_DEVICE_MOUSE) )
+    {
+        if( !SampleDesktop )
+        {
+            return;
+        }
+
+        DeviceID = 0;
+    }
+
     if( (Info.ValueKind == INPUT_VALUE_NONE) || (Info.ValueKind == INPUT_VALUE_QUERY) )
     {
         return;
