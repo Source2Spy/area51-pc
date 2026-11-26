@@ -375,7 +375,7 @@ The package contains the game executable and `SHADERS/` directory. Game data mus
 4. Copy `SHADERS/` folder into that directory, keeping the existing resource paths.
 5. Install the required textures according to the internal guide.
 6. Create com.area51.game/files/ folders in android/data/.
-7. Put assets inside com.area51.game/files/.
+7. Put assets inside /storage/emulated/0/Documents/Area51
 8. Install `.apk` file.
 
 ### Remember
