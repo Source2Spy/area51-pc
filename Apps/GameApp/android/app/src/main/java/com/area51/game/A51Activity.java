@@ -1,7 +1,13 @@
 package com.area51.game;
 
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.Settings;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowInsets;
@@ -15,6 +21,7 @@ import org.libsdl.app.SDLActivity;
  * Android, so keep the system bars out of the game surface here.
  */
 public final class A51Activity extends SDLActivity {
+    private static final int REQUEST_READ_EXTERNAL_STORAGE = 1001;
     private static final int LEGACY_FULLSCREEN_FLAGS =
             View.SYSTEM_UI_FLAG_FULLSCREEN |
             View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
@@ -22,6 +29,40 @@ public final class A51Activity extends SDLActivity {
             View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
             View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
             View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+
+    private boolean hasSharedStoragePermission() {
+        if (Build.VERSION.SDK_INT >= 30) {
+            return Environment.isExternalStorageManager();
+        }
+        if (Build.VERSION.SDK_INT >= 23) {
+            return checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
+                    == PackageManager.PERMISSION_GRANTED;
+        }
+        return true;
+    }
+
+    private void ensureSharedStoragePermissionIfNeeded() {
+        if (hasSharedStoragePermission()) {
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= 30) {
+            try {
+                startActivity(new Intent(
+                        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                        Uri.parse("package:" + getPackageName())));
+            } catch (RuntimeException ignored) {
+                try {
+                    startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+                } catch (RuntimeException ignoredFallback) {
+                }
+            }
+        } else if (Build.VERSION.SDK_INT >= 23) {
+            requestPermissions(
+                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                    REQUEST_READ_EXTERNAL_STORAGE);
+        }
+    }
 
     private void hideSystemBars() {
         final Window window = getWindow();
@@ -49,6 +90,7 @@ public final class A51Activity extends SDLActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ensureSharedStoragePermissionIfNeeded();
 
         getWindow().getDecorView().setOnSystemUiVisibilityChangeListener(visibility -> {
             if (hasWindowFocus()) {

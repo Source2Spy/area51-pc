@@ -10,10 +10,10 @@
 
 #include "GameAppPlatform.hpp"
 #include "A51Resources.hpp"
+#include "x_plus.hpp"
 
 #include <windows.h>
-#include <cstdlib>
-#include <cstring>
+#include <stdlib.h>
 
 #include "Entropy/SDLEngine/sdleng_window.hpp"
 
@@ -27,14 +27,14 @@ xbool CopyPath( char* pBuffer, s32 BufferSize, const char* pPath )
     if( (pBuffer == NULL) || (BufferSize <= 0) || (pPath == NULL) )
         return( FALSE );
 
-    size_t Length = std::strlen( pPath );
-    if( Length >= (size_t)BufferSize )
+    s32 Length = x_strlen( pPath );
+    if( Length >= BufferSize )
     {
         pBuffer[0] = '\0';
         return( FALSE );
     }
 
-    std::memcpy( pBuffer, pPath, Length + 1 );
+    x_memcpy( pBuffer, pPath, Length + 1 );
     return( TRUE );
 }
 
@@ -55,8 +55,8 @@ xbool GameAppGetExecutableDirectory( char* pBuffer, s32 BufferSize )
     }
 
     pBuffer[Length] = '\0';
-    char* pLastSlash = std::strrchr( pBuffer, '\\' );
-    char* pLastForwardSlash = std::strrchr( pBuffer, '/' );
+    char* pLastSlash = x_strrchr( pBuffer, '\\' );
+    char* pLastForwardSlash = x_strrchr( pBuffer, '/' );
     if( pLastForwardSlash && (!pLastSlash || (pLastForwardSlash > pLastSlash)) )
         pLastSlash = pLastForwardSlash;
 
@@ -70,7 +70,7 @@ xbool GameAppGetExecutableDirectory( char* pBuffer, s32 BufferSize )
 
 xbool GameAppGetDataDirectory( char* pBuffer, s32 BufferSize )
 {
-    const char* pDataRoot = std::getenv( "A51_DATA_ROOT" );
+    const char* pDataRoot = getenv( "A51_DATA_ROOT" );
     if( pDataRoot && pDataRoot[0] )
         return( CopyPath( pBuffer, BufferSize, pDataRoot ) );
 

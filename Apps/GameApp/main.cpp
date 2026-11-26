@@ -823,7 +823,7 @@ void RenderGame( void )
     if(g_MagentaColor)
     {
 
-        static int count = 0;
+        static s32 count = 0;
         count++;
         if( count%2 )
             eng_SetBackColor( XCOLOR_BLACK );

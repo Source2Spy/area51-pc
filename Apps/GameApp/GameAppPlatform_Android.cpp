@@ -5,12 +5,14 @@
 //==============================================================================
 
 #include "GameAppPlatform.hpp"
+#include "x_plus.hpp"
 
 #include "SDL3/SDL_filesystem.h"
 #include "SDL3/SDL_system.h"
 
-#include <cstring>
 #include <unistd.h>
+
+// #define A51_ANDROID_USE_APP_DATA_DIR
 
 //==============================================================================
 
@@ -20,14 +22,14 @@ xbool CopyPath( char* pBuffer, s32 BufferSize, const char* pPath )
     if( (pBuffer == NULL) || (BufferSize <= 0) || (pPath == NULL) )
         return FALSE;
 
-    size_t const Length = std::strlen( pPath );
-    if( Length >= (size_t)BufferSize )
+    s32 const Length = x_strlen( pPath );
+    if( Length >= BufferSize )
     {
         pBuffer[0] = '\0';
         return FALSE;
     }
 
-    std::memcpy( pBuffer, pPath, Length + 1 );
+    x_memcpy( pBuffer, pPath, Length + 1 );
     return TRUE;
 }
 
@@ -42,12 +44,13 @@ xbool GameAppGetExecutableDirectory( char* pBuffer, s32 BufferSize )
 
 xbool GameAppGetDataDirectory( char* pBuffer, s32 BufferSize )
 {
-    const char* pExternalPath = SDL_GetAndroidExternalStoragePath();
-    if( pExternalPath && pExternalPath[0] )
-    {
-        if( access( pExternalPath, R_OK | X_OK ) == 0 )
-            return CopyPath( pBuffer, BufferSize, pExternalPath );
-    }
+#if defined( A51_ANDROID_USE_APP_DATA_DIR )
+    const char* pDataPath = SDL_GetAndroidExternalStoragePath();
+#else
+    const char* pDataPath = "/storage/emulated/0/Documents/Area51";
+#endif
+    if( pDataPath && pDataPath[0] && (access( pDataPath, R_OK | X_OK ) == 0) )
+        return CopyPath( pBuffer, BufferSize, pDataPath );
 
     return CopyPath( pBuffer, BufferSize, "." );
 }
